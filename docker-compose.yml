@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: zhao-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: dev_root
+      MYSQL_DATABASE: zhao_family
+      MYSQL_USER: zhao
+      MYSQL_PASSWORD: dev_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - zhao_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uzhao", "-pdev_pass"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  zhao_mysql_data:
