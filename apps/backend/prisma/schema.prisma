@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int        @id @default(autoincrement())
+  familyName        String     @map("family_name")
+  givenName         String     @map("given_name")
+  name              String
+  email             String     @unique
+  emailVerified     Boolean    @default(false) @map("email_verified")
+  passwordHash      String     @map("password_hash")
+  restaurantId      Int        @map("restaurant_id")
+  restaurant        Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  birthday          DateTime?  @db.Date
+  jobRole           String?    @map("job_role")
+  phone             String?    @db.VarChar(50)
+  address           String?    @db.VarChar(255)
+  profilePhoto      String?    @map("profile_photo") @db.LongText
+  userLevel         Int        @default(0) @map("user_level") @db.UnsignedTinyInt
+  acceptedTerms     Boolean    @default(false) @map("accepted_terms")
+  preferredLanguage String     @default("fr") @map("preferred_language")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  userRoles         UserRole[]
+  purchaseOrders    PurchaseOrder[]  @relation("CreatedByUser")
+  purchaseReturns   PurchaseReturn[] @relation("CreatedByUserReturns")
+
+  @@index([restaurantId])
+  @@map("users")
+}
+
+model Role {
+  id              Int              @id @default(autoincrement())
+  name            String           @unique @db.VarChar(100)
+  description     String?          @db.VarChar(255)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id              Int              @id @default(autoincrement())
+  key             String           @unique @db.VarChar(150)
+  description     String?          @db.VarChar(255)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  roleId    Int      @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int        @map("role_id")
+  permissionId Int        @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Restaurant {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  address   String
+  photoUrl  String?  @map("photo_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @map("updated_at")
+  users     User[]
+  purchaseOrders  PurchaseOrder[]
+  purchaseReturns PurchaseReturn[]
+
+  @@map("restaurants")
+}
+
+model Product {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  supplierId     Int       @map("supplier_id")
+  reference      String?   @db.VarChar(100)
+  category       String    @map("categorie") @db.VarChar(20)
+  nameCn         String    @map("nom_cn") @db.VarChar(255)
+  designationFr  String?   @map("designation_fr") @db.VarChar(255)
+  unit           String?   @map("unite") @db.VarChar(100)
+  unitPriceHt    Decimal?  @map("prix_u_ht") @db.Decimal(10, 2)
+  image          String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  specification  String?   @db.VarChar(100)
+  specification2 String?   @map("specification_2") @db.VarChar(100)
+  specification3 String?   @map("specification_3") @db.VarChar(100)
+  unit2          String?   @map("unit_2") @db.VarChar(100)
+  unit3          String?   @map("unit_3") @db.VarChar(100)
+  unitPriceHt2   Decimal?  @map("prix_u_ht_2") @db.Decimal(10, 2)
+  unitPriceHt3   Decimal?  @map("prix_u_ht_3") @db.Decimal(10, 2)
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  inventoryMovements InventoryMovement[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  purchaseReturnItems PurchaseReturnItem[]
+
+  @@index([supplierId])
+  @@map("products")
+}
+
+model InventoryMovement {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  productId BigInt   @map("product_id") @db.UnsignedBigInt
+  delta     Int
+  reason    String?  @db.VarChar(255)
+  source    String   @default("manual") @db.VarChar(50)
+  sourceId  String?  @map("source_id") @db.VarChar(100)
+  userId    Int?     @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([createdAt])
+  @@map("inventory_movements")
+}
+
+model Supplier {
+  id                        Int      @id @default(autoincrement())
+  name                      String   @map("nom") @db.VarChar(255)
+  sortOrder                 Int      @map("sort_order")
+  includeAllProductsInOrder Boolean  @default(false) @map("include_all_products_in_order")
+  products                  Product[]
+  purchaseOrders            PurchaseOrder[]
+  purchaseReturns           PurchaseReturn[]
+
+  @@index([sortOrder])
+  @@map("fournisseurs")
+}
+
+model PurchaseOrder {
+  id              Int                 @id @default(autoincrement())
+  number          String              @unique @db.VarChar(50)
+  supplierId      Int                 @map("supplier_id")
+  supplier        Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  restaurantId    Int                 @map("restaurant_id")
+  restaurant      Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  createdByUserId Int                 @map("created_by_user_id")
+  createdByUser   User                @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  deliveryDate    DateTime            @map("delivery_date") @db.Date
+  deliveryAddress String              @map("delivery_address") @db.VarChar(255)
+  totalItems      Int                 @map("total_items")
+  totalAmount     Decimal             @map("total_amount") @db.Decimal(10, 2)
+  bonFileName     String              @map("bon_file_name") @db.VarChar(191)
+  items           PurchaseOrderItem[]
+  returns         PurchaseReturn[]
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamp(0)
+
+  @@index([restaurantId, createdAt])
+  @@index([supplierId, createdAt])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              Int                  @id @default(autoincrement())
+  purchaseOrderId Int                  @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder        @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       BigInt               @map("product_id") @db.UnsignedBigInt
+  product         Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  supplierId      Int                  @map("supplier_id")
+  specificationSlot Int?               @map("specification_slot")
+  quantity        Int
+  unitPriceHt     Decimal              @map("unit_price_ht") @db.Decimal(10, 2)
+  lineTotal       Decimal              @map("line_total") @db.Decimal(10, 2)
+  nameZh          String               @map("name_zh") @db.VarChar(255)
+  nameFr          String?              @map("name_fr") @db.VarChar(255)
+  specification   String?              @db.VarChar(100)
+  unit            String?              @db.VarChar(100)
+  category        String               @db.VarChar(20)
+  returnItems     PurchaseReturnItem[]
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@index([supplierId])
+  @@map("purchase_order_items")
+}
+
+model PurchaseReturn {
+  id              Int                  @id @default(autoincrement())
+  purchaseOrderId Int                  @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder        @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  supplierId      Int                  @map("supplier_id")
+  supplier        Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  restaurantId    Int                  @map("restaurant_id")
+  restaurant      Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  createdByUserId Int                  @map("created_by_user_id")
+  createdByUser   User                 @relation("CreatedByUserReturns", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  reason          String               @db.VarChar(255)
+  notes           String?              @db.Text
+  totalItems      Int                  @map("total_items")
+  items           PurchaseReturnItem[]
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamp(0)
+
+  @@index([purchaseOrderId])
+  @@index([restaurantId, createdAt])
+  @@index([supplierId, createdAt])
+  @@map("purchase_returns")
+}
+
+model PurchaseReturnItem {
+  id                  Int                       @id @default(autoincrement())
+  purchaseReturnId    Int                       @map("purchase_return_id")
+  purchaseReturn      PurchaseReturn            @relation(fields: [purchaseReturnId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId Int                       @map("purchase_order_item_id")
+  purchaseOrderItem   PurchaseOrderItem         @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  productId           BigInt                    @map("product_id") @db.UnsignedBigInt
+  product             Product                   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  specificationSlot   Int?                      @map("specification_slot")
+  quantity            Int
+  nameZh              String                    @map("name_zh") @db.VarChar(255)
+  nameFr              String?                   @map("name_fr") @db.VarChar(255)
+  specification       String?                   @db.VarChar(100)
+  unit                String?                   @db.VarChar(100)
+  category            String                    @db.VarChar(20)
+
+  @@index([purchaseReturnId])
+  @@index([purchaseOrderItemId])
+  @@index([productId])
+  @@map("purchase_return_items")
+}
+
+model TrainingMaterial {
+  id           Int      @id @default(autoincrement())
+  positionId   String   @map("position_id") @db.VarChar(40)
+  type         String   @db.VarChar(20)
+  isRequired   Boolean  @default(false) @map("is_required")
+  title        String   @db.VarChar(255)
+  description  String?  @db.VarChar(500)
+  originalName String   @map("original_name") @db.VarChar(255)
+  mimeType     String   @map("mime_type") @db.VarChar(100)
+  sizeBytes    BigInt   @map("size_bytes")
+  bucket       String   @db.VarChar(100)
+  objectKey    String   @unique @map("object_key") @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([positionId])
+  @@index([type])
+  @@map("training_materials")
+}
+
+model TrainingPosition {
+  id         Int      @id @default(autoincrement())
+  code       String   @unique @db.VarChar(40)
+  nameZh     String   @map("name_zh") @db.VarChar(100)
+  nameEn     String   @map("name_en") @db.VarChar(100)
+  nameFr     String   @map("name_fr") @db.VarChar(100)
+  parentCode String?  @map("parent_code") @db.VarChar(40)
+  isActive   Boolean  @default(true) @map("is_active")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([parentCode])
+  @@index([isActive, sortOrder])
+  @@map("training_positions")
+}

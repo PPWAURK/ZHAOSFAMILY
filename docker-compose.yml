@@ -1,15 +1,20 @@
 services:
   mysql:
     image: mysql:8.4
-    container_name: zhao-mysql
+    container_name: zhao-backend-mysql
     restart: unless-stopped
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
     environment:
       MYSQL_ROOT_PASSWORD: dev_root
       MYSQL_DATABASE: zhao_family
       MYSQL_USER: zhao
       MYSQL_PASSWORD: dev_pass
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - zhao_mysql_data:/var/lib/mysql
     healthcheck:
@@ -18,5 +23,25 @@ services:
       timeout: 3s
       retries: 10
 
+  minio:
+    image: minio/minio:latest
+    container_name: zhao-backend-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: change_this_password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - zhao_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   zhao_mysql_data:
+  zhao_minio_data:

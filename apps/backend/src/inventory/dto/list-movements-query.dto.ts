@@ -1,0 +1,23 @@
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, Max, Min } from 'class-validator';
+
+export class ListMovementsQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'INVALID_PRODUCT_ID' })
+  @Min(1, { message: 'INVALID_PRODUCT_ID' })
+  productId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'INVALID_SUPPLIER_ID' })
+  @Min(1, { message: 'INVALID_SUPPLIER_ID' })
+  supplierId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  limit?: number;
+}

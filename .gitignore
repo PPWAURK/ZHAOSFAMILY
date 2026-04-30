@@ -17,3 +17,6 @@ dist
 
 # Prisma
 apps/api/prisma/migrations/dev.db
+
+# local database backups
+/all_backup.sql
