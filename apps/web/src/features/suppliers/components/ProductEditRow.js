@@ -29,6 +29,7 @@ export default function ProductEditRow({
 }) {
   const [draft, setDraft] = useState(() => toInputValue(product));
   const [error, setError] = useState("");
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (editing) {
@@ -36,6 +37,10 @@ export default function ProductEditRow({
       setError("");
     }
   }, [editing, product]);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [editing, draft.image, product.image]);
 
   function patch(key, value) {
     setDraft((prev) => ({ ...prev, [key]: value }));
@@ -79,11 +84,21 @@ export default function ProductEditRow({
           />
         </td>
         <td>
-          <input
-            className={styles.tableInput}
-            value={draft.nameCn}
-            onChange={(e) => patch("nameCn", e.target.value)}
-          />
+          <div className={styles.nameCell}>
+            {draft.image && !imageError ? (
+              <img
+                src={draft.image}
+                alt=""
+                className={styles.nameImage}
+                onError={() => setImageError(true)}
+              />
+            ) : null}
+            <input
+              className={styles.tableInput}
+              value={draft.nameCn}
+              onChange={(e) => patch("nameCn", e.target.value)}
+            />
+          </div>
         </td>
         <td>
           <input
@@ -161,7 +176,19 @@ export default function ProductEditRow({
         {product.reference || "—"}
       </td>
       <td>{product.category || "—"}</td>
-      <td>{product.nameCn || "—"}</td>
+      <td>
+        <div className={styles.nameCell}>
+          {product.image && !imageError ? (
+            <img
+              src={product.image}
+              alt=""
+              className={styles.nameImage}
+              onError={() => setImageError(true)}
+            />
+          ) : null}
+          <span>{product.nameCn || "—"}</span>
+        </div>
+      </td>
       <td>{product.designationFr || "—"}</td>
       <td>{product.unit || "—"}</td>
       <td
