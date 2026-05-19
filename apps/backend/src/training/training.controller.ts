@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Patch,
   ParseIntPipe,
@@ -10,6 +11,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { AuthService } from '../auth/auth.service';
+import { parseBearerToken } from '../auth/auth-token.utils';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import {
   RequirePermissions,
@@ -22,16 +25,23 @@ import { ListTrainingCoursesQueryDto } from './dto/list-training-courses-query.d
 import { ListTrainingMaterialsQueryDto } from './dto/list-training-materials-query.dto';
 import { UpdateTrainingMaterialDto } from './dto/update-training-material.dto';
 import { UpdateTrainingPositionDto } from './dto/update-training-position.dto';
+import { UpdateTrainingProgressDto } from './dto/update-training-progress.dto';
 import { TrainingService } from './training.service';
 import type {
   TrainingCourseItem,
   TrainingMaterialItem,
+  TrainingMaterialProgressItem,
+  TrainingMyPlan,
   TrainingPositionItem,
+  TrainingStoreProgress,
 } from './training.types';
 
 @Controller('training')
 export class TrainingController {
-  constructor(private readonly trainingService: TrainingService) {}
+  constructor(
+    private readonly trainingService: TrainingService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Get('courses')
   listCourses(
@@ -88,6 +98,61 @@ export class TrainingController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<TrainingMaterialItem> {
     return this.trainingService.getMaterial(id);
+  }
+
+  @Get('progress')
+  async listMyProgress(
+    @Headers('authorization') authorization: string | undefined,
+  ): Promise<TrainingMaterialProgressItem[]> {
+    const user = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    return this.trainingService.listProgressForUser(user.id);
+  }
+
+  @Get('my-plan')
+  async getMyPlan(
+    @Headers('authorization') authorization: string | undefined,
+  ): Promise<TrainingMyPlan> {
+    const user = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    return this.trainingService.getMyPlan({
+      id: user.id,
+      jobRole: user.jobRole,
+    });
+  }
+
+  @Get('store-progress')
+  async getStoreProgress(
+    @Headers('authorization') authorization: string | undefined,
+  ): Promise<TrainingStoreProgress> {
+    const user = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    return this.trainingService.getStoreProgress({
+      id: user.id,
+      jobRole: user.jobRole,
+      restaurantId: user.restaurantId,
+      store: user.store,
+      permissions: user.permissions,
+    });
+  }
+
+  @Patch('materials/:id/progress')
+  async updateProgress(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTrainingProgressDto,
+  ): Promise<TrainingMaterialProgressItem> {
+    const user = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    return this.trainingService.updateProgress(user.id, id, dto);
   }
 
   @Post('materials')

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,10 +15,15 @@ import type { ListTrainingCoursesQueryDto } from './dto/list-training-courses-qu
 import type { ListTrainingMaterialsQueryDto } from './dto/list-training-materials-query.dto';
 import type { UpdateTrainingMaterialDto } from './dto/update-training-material.dto';
 import type { UpdateTrainingPositionDto } from './dto/update-training-position.dto';
+import type { UpdateTrainingProgressDto } from './dto/update-training-progress.dto';
 import type {
   TrainingCourseItem,
   TrainingMaterialItem,
+  TrainingMaterialProgressItem,
+  TrainingMyPlan,
+  TrainingPlanMaterialItem,
   TrainingPositionItem,
+  TrainingStoreProgress,
 } from './training.types';
 
 type TrainingMaterialRow = {
@@ -45,6 +51,50 @@ type TrainingPositionRow = {
   isActive: boolean;
   sortOrder: number;
 };
+
+type TrainingMaterialProgressRow = {
+  materialId: number;
+  status: string;
+  progressPct: number;
+  lastOpenedAt: Date;
+  completedAt: Date | null;
+};
+
+type StoreTrainingProgressRow = TrainingMaterialProgressRow & {
+  userId: number;
+};
+
+type TrainingUserScope = {
+  id: number;
+  jobRole: string | null;
+};
+
+type TrainingStoreViewer = TrainingUserScope & {
+  restaurantId: number;
+  store: {
+    id: number;
+    name: string;
+  };
+  permissions: string[];
+};
+
+type TrainingStoreUserRow = {
+  id: number;
+  name: string;
+  email: string;
+  jobRole: string | null;
+};
+
+const HOLDING_JOB_ROLE = 'holding';
+const ALL_POSITION_CODE = 'ALL';
+const STORE_MANAGER_JOB_ROLE = 'store-manager';
+const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
+const STORE_MANAGER_POSITION_CODE = 'SM';
+const NON_STORE_REQUIRED_POSITION_CODES = new Set([
+  ALL_POSITION_CODE,
+  'HOLDING',
+  'RM',
+]);
 
 function toTrainingMaterialItem(
   row: TrainingMaterialRow,
@@ -81,6 +131,23 @@ function toPositionNode(row: TrainingPositionRow): TrainingPositionItem {
   };
 }
 
+function toProgressItem(
+  row: TrainingMaterialProgressRow,
+): TrainingMaterialProgressItem {
+  const status =
+    row.status === 'completed' || row.status === 'in_progress'
+      ? row.status
+      : 'not_started';
+
+  return {
+    materialId: row.materialId,
+    status,
+    progressPct: row.progressPct,
+    lastOpenedAt: row.lastOpenedAt.toISOString(),
+    completedAt: row.completedAt ? row.completedAt.toISOString() : null,
+  };
+}
+
 function buildPositionTree(
   rows: TrainingPositionRow[],
 ): TrainingPositionItem[] {
@@ -101,6 +168,168 @@ function buildPositionTree(
   }
 
   return roots;
+}
+
+function getChildPositionCodes(
+  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
+  parentCode: string,
+): string[] {
+  return rows
+    .filter((row) => row.parentCode === parentCode)
+    .map((row) => row.code);
+}
+
+function getRoleValues(jobRole: string | null): string[] {
+  return `${jobRole || ''}`
+    .split(',')
+    .map((role) => role.trim())
+    .filter(Boolean);
+}
+
+function getStoreRequiredPositionCodes(
+  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
+): string[] {
+  return rows
+    .filter((row) => !NON_STORE_REQUIRED_POSITION_CODES.has(row.code))
+    .map((row) => row.code);
+}
+
+function getAllLearningPositionCodes(
+  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
+): string[] {
+  return rows.map((row) => row.code);
+}
+
+function hasJobRole(jobRole: string | null, expectedRole: string): boolean {
+  return getRoleValues(jobRole).includes(expectedRole);
+}
+
+function resolveSingleTrainingPositionCodes(
+  jobRole: string,
+  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
+): string[] {
+  const roleValue = jobRole;
+  const normalizedRole = roleValue.toLowerCase();
+
+  if (
+    normalizedRole.includes(HOLDING_JOB_ROLE) ||
+    normalizedRole.includes('headquarter') ||
+    normalizedRole.includes('hq')
+  ) {
+    return ['HOLDING'];
+  }
+
+  if (
+    normalizedRole === REGIONAL_MANAGER_JOB_ROLE ||
+    normalizedRole.includes('regional') ||
+    normalizedRole.includes('rm') ||
+    normalizedRole === STORE_MANAGER_JOB_ROLE ||
+    normalizedRole.includes('manager') ||
+    normalizedRole.includes('store') ||
+    normalizedRole.includes('sm')
+  ) {
+    return getAllLearningPositionCodes(rows);
+  }
+
+  if (normalizedRole.includes('all-rounder')) {
+    return getStoreRequiredPositionCodes(rows).filter(
+      (code) => code !== STORE_MANAGER_POSITION_CODE,
+    );
+  }
+
+  if (
+    normalizedRole.includes('kitchen') ||
+    normalizedRole.includes('boh') ||
+    normalizedRole.includes('chef') ||
+    normalizedRole.includes('back-of-house')
+  ) {
+    return ['BOH'];
+  }
+
+  if (normalizedRole.includes('cash')) {
+    return ['CASH'];
+  }
+
+  if (normalizedRole.includes('front-of-house')) {
+    return ['FOH'];
+  }
+
+  const explicitPosition = rows.find(
+    (row) => row.code === roleValue.toUpperCase(),
+  );
+
+  if (explicitPosition?.parentCode) {
+    return [explicitPosition.code, explicitPosition.parentCode];
+  }
+
+  if (explicitPosition?.code) {
+    return [
+      explicitPosition.code,
+      ...getChildPositionCodes(rows, explicitPosition.code),
+    ];
+  }
+
+  return [];
+}
+
+function resolveTrainingPositionCodes(
+  jobRole: string | null,
+  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
+): string[] {
+  const roleValues = getRoleValues(jobRole);
+  const matchedCodes = roleValues.flatMap((roleValue) =>
+    resolveSingleTrainingPositionCodes(roleValue, rows),
+  );
+  const positionCodes = matchedCodes.length > 0 ? matchedCodes : ['FOH'];
+
+  return [...new Set([...positionCodes, ALL_POSITION_CODE])];
+}
+
+function isHoldingJobRole(jobRole: string | null): boolean {
+  return `${jobRole || ''}`.toLowerCase() === HOLDING_JOB_ROLE;
+}
+
+function buildProgressMap(
+  rows: TrainingMaterialProgressRow[],
+): Map<number, TrainingMaterialProgressItem> {
+  return new Map(rows.map((row) => [row.materialId, toProgressItem(row)]));
+}
+
+function getDefaultProgress(materialId: number): TrainingMaterialProgressItem {
+  return {
+    materialId,
+    status: 'not_started',
+    progressPct: 0,
+    lastOpenedAt: null,
+    completedAt: null,
+  };
+}
+
+function toPlanMaterialItem(
+  material: TrainingMaterialItem,
+  progressByMaterialId: Map<number, TrainingMaterialProgressItem>,
+): TrainingPlanMaterialItem {
+  return {
+    ...material,
+    progress:
+      progressByMaterialId.get(material.id) ?? getDefaultProgress(material.id),
+  };
+}
+
+function calculateCompletionPercent(total: number, completed: number): number {
+  if (total === 0) {
+    return 100;
+  }
+
+  return Math.round((completed / total) * 100);
+}
+
+function getLatestIsoDate(dates: (Date | null)[]): string | null {
+  const latest = dates
+    .filter((date): date is Date => date !== null)
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+
+  return latest ? latest.toISOString() : null;
 }
 
 @Injectable()
@@ -243,6 +472,209 @@ export class TrainingService {
     return toTrainingMaterialItem(row);
   }
 
+  async listProgressForUser(
+    userId: number,
+  ): Promise<TrainingMaterialProgressItem[]> {
+    const rows = await this.prismaService.trainingMaterialProgress.findMany({
+      where: { userId },
+      select: {
+        materialId: true,
+        status: true,
+        progressPct: true,
+        lastOpenedAt: true,
+        completedAt: true,
+      },
+      orderBy: [{ lastOpenedAt: 'desc' }],
+    });
+
+    return rows.map(toProgressItem);
+  }
+
+  async getMyPlan(user: TrainingUserScope): Promise<TrainingMyPlan> {
+    const positions = await this.listActivePositionRows();
+    const positionCodes = resolveTrainingPositionCodes(user.jobRole, positions);
+    const materials = await this.listMaterialsForPositionCodes(positionCodes);
+    const progressRows =
+      await this.prismaService.trainingMaterialProgress.findMany({
+        where: {
+          userId: user.id,
+          materialId: {
+            in: materials.map((material) => material.id),
+          },
+        },
+        select: {
+          materialId: true,
+          status: true,
+          progressPct: true,
+          lastOpenedAt: true,
+          completedAt: true,
+        },
+      });
+    const progressByMaterialId = buildProgressMap(progressRows);
+    const materialItems = materials.map((material) =>
+      toPlanMaterialItem(material, progressByMaterialId),
+    );
+    const required = materialItems.filter((material) => material.isRequired);
+    const requiredCompleted = required.filter(
+      (material) => material.progress.status === 'completed',
+    ).length;
+
+    return {
+      positionCodes,
+      required,
+      optional: materialItems.filter((material) => !material.isRequired),
+      summary: {
+        requiredTotal: required.length,
+        requiredCompleted,
+        completionPercent: calculateCompletionPercent(
+          required.length,
+          requiredCompleted,
+        ),
+      },
+    };
+  }
+
+  async getStoreProgress(
+    viewer: TrainingStoreViewer,
+  ): Promise<TrainingStoreProgress> {
+    if (!this.canViewStoreProgress(viewer)) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+    }
+
+    const canViewAllStores = hasJobRole(
+      viewer.jobRole,
+      REGIONAL_MANAGER_JOB_ROLE,
+    );
+    const [positions, materials, users] = await Promise.all([
+      this.listActivePositionRows(),
+      this.listRequiredMaterials(),
+      this.prismaService.user.findMany({
+        where: canViewAllStores
+          ? {
+              jobRole: {
+                not: HOLDING_JOB_ROLE,
+              },
+            }
+          : { restaurantId: viewer.restaurantId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          jobRole: true,
+        },
+        orderBy: [{ id: 'asc' }],
+      }),
+    ]);
+    const progressRows =
+      await this.prismaService.trainingMaterialProgress.findMany({
+        where: {
+          userId: {
+            in: users.map((user) => user.id),
+          },
+          materialId: {
+            in: materials.map((material) => material.id),
+          },
+        },
+        select: {
+          userId: true,
+          materialId: true,
+          status: true,
+          progressPct: true,
+          lastOpenedAt: true,
+          completedAt: true,
+        },
+      });
+    const usersProgress = users.map((user) =>
+      this.toStoreProgressUser(user, positions, materials, progressRows),
+    );
+    const completedEmployeeCount = usersProgress.filter(
+      (user) => user.requiredTotal > 0 && user.completionPercent === 100,
+    ).length;
+    const totalCompletionPercent = usersProgress.reduce(
+      (sum, user) => sum + user.completionPercent,
+      0,
+    );
+
+    return {
+      restaurant: {
+        id: canViewAllStores ? 0 : viewer.store.id,
+        name: canViewAllStores ? '全部门店' : viewer.store.name,
+      },
+      users: usersProgress,
+      summary: {
+        employeeCount: usersProgress.length,
+        completedEmployeeCount,
+        averageCompletionPercent:
+          usersProgress.length === 0
+            ? 100
+            : Math.round(totalCompletionPercent / usersProgress.length),
+      },
+    };
+  }
+
+  async updateProgress(
+    userId: number,
+    materialId: number,
+    dto: UpdateTrainingProgressDto,
+  ): Promise<TrainingMaterialProgressItem> {
+    await this.getMaterial(materialId);
+
+    const progressKey = {
+      userId_materialId: {
+        userId,
+        materialId,
+      },
+    };
+    const existing =
+      await this.prismaService.trainingMaterialProgress.findUnique({
+        where: progressKey,
+        select: {
+          status: true,
+          completedAt: true,
+        },
+      });
+    const keepCompleted =
+      existing?.status === 'completed' && dto.status !== 'completed';
+    const progressPct = keepCompleted
+      ? 100
+      : dto.status === 'completed'
+        ? 100
+        : Math.max(dto.progressPct ?? 10, 1);
+    const status = keepCompleted
+      ? 'completed'
+      : (dto.status ?? (progressPct >= 100 ? 'completed' : 'in_progress'));
+    const completedAt = status === 'completed' ? new Date() : null;
+    const finalCompletedAt = keepCompleted
+      ? (existing?.completedAt ?? completedAt)
+      : completedAt;
+
+    const row = await this.prismaService.trainingMaterialProgress.upsert({
+      where: progressKey,
+      create: {
+        userId,
+        materialId,
+        status,
+        progressPct,
+        completedAt: finalCompletedAt,
+      },
+      update: {
+        status,
+        progressPct,
+        completedAt: finalCompletedAt,
+        lastOpenedAt: new Date(),
+      },
+      select: {
+        materialId: true,
+        status: true,
+        progressPct: true,
+        lastOpenedAt: true,
+        completedAt: true,
+      },
+    });
+
+    return toProgressItem(row);
+  }
+
   async createMaterial(
     dto: CreateTrainingMaterialDto,
   ): Promise<TrainingMaterialItem> {
@@ -383,5 +815,90 @@ export class TrainingService {
     }
 
     return row;
+  }
+
+  private async listActivePositionRows(): Promise<TrainingPositionRow[]> {
+    return this.prismaService.trainingPosition.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+    });
+  }
+
+  private async listMaterialsForPositionCodes(
+    positionCodes: string[],
+  ): Promise<TrainingMaterialItem[]> {
+    const rows = await this.prismaService.trainingMaterial.findMany({
+      where: {
+        positionId: {
+          in: positionCodes,
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    return rows.map(toTrainingMaterialItem);
+  }
+
+  private async listRequiredMaterials(): Promise<TrainingMaterialItem[]> {
+    const rows = await this.prismaService.trainingMaterial.findMany({
+      where: { isRequired: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    return rows.map(toTrainingMaterialItem);
+  }
+
+  private canViewStoreProgress(viewer: TrainingStoreViewer): boolean {
+    if (isHoldingJobRole(viewer.jobRole)) {
+      return false;
+    }
+
+    return (
+      hasJobRole(viewer.jobRole, STORE_MANAGER_JOB_ROLE) ||
+      hasJobRole(viewer.jobRole, REGIONAL_MANAGER_JOB_ROLE) ||
+      viewer.permissions.includes('training.progress.view_store')
+    );
+  }
+
+  private toStoreProgressUser(
+    user: TrainingStoreUserRow,
+    positions: TrainingPositionRow[],
+    materials: TrainingMaterialItem[],
+    progressRows: StoreTrainingProgressRow[],
+  ): TrainingStoreProgress['users'][number] {
+    const positionCodes = resolveTrainingPositionCodes(user.jobRole, positions);
+    const requiredMaterials = materials.filter((material) =>
+      positionCodes.includes(material.positionId),
+    );
+    const requiredMaterialIds = new Set(
+      requiredMaterials.map((material) => material.id),
+    );
+    const relevantProgressRows = progressRows.filter(
+      (progress) =>
+        progress.userId === user.id &&
+        requiredMaterialIds.has(progress.materialId),
+    );
+    const completedIds = new Set(
+      relevantProgressRows
+        .filter((progress) => progress.status === 'completed')
+        .map((progress) => progress.materialId),
+    );
+    const requiredCompleted = completedIds.size;
+
+    return {
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      jobRole: user.jobRole,
+      requiredTotal: requiredMaterials.length,
+      requiredCompleted,
+      completionPercent: calculateCompletionPercent(
+        requiredMaterials.length,
+        requiredCompleted,
+      ),
+      lastOpenedAt: getLatestIsoDate(
+        relevantProgressRows.map((progress) => progress.lastOpenedAt),
+      ),
+    };
   }
 }

@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -16,10 +17,15 @@ import { Type } from 'class-transformer';
 const JOB_ROLE_VALUES = [
   'front-of-house',
   'back-of-house',
+  'cash',
   'all-rounder',
   'store-manager',
   'regional-manager',
+  'holding',
 ] as const;
+const JOB_ROLE_PATTERN = new RegExp(
+  `^(${JOB_ROLE_VALUES.join('|')})(,(${JOB_ROLE_VALUES.join('|')}))*$`,
+);
 
 const LANGUAGE_VALUES = ['zh', 'en', 'fr'] as const;
 
@@ -50,8 +56,8 @@ export class RegisterDto {
   birthday?: string;
 
   @IsOptional()
-  @IsIn(JOB_ROLE_VALUES, { message: 'INVALID_JOB_ROLE' })
-  jobRole?: (typeof JOB_ROLE_VALUES)[number];
+  @Matches(JOB_ROLE_PATTERN, { message: 'INVALID_JOB_ROLE' })
+  jobRole?: string;
 
   @IsOptional()
   @IsString()

@@ -63,6 +63,55 @@ export type TrainingMaterialItem = {
   updatedAt: string;
 };
 
+export type TrainingMaterialProgressItem = {
+  materialId: number;
+  status: 'not_started' | 'in_progress' | 'completed';
+  progressPct: number;
+  lastOpenedAt: string | null;
+  completedAt: string | null;
+};
+
+export type TrainingPlanMaterialItem = TrainingMaterialItem & {
+  progress: TrainingMaterialProgressItem;
+};
+
+export type TrainingPlanSummary = {
+  requiredTotal: number;
+  requiredCompleted: number;
+  completionPercent: number;
+};
+
+export type TrainingMyPlan = {
+  positionCodes: string[];
+  required: TrainingPlanMaterialItem[];
+  optional: TrainingPlanMaterialItem[];
+  summary: TrainingPlanSummary;
+};
+
+export type TrainingStoreProgressUserItem = {
+  userId: number;
+  name: string;
+  email: string;
+  jobRole: string | null;
+  requiredTotal: number;
+  requiredCompleted: number;
+  completionPercent: number;
+  lastOpenedAt: string | null;
+};
+
+export type TrainingStoreProgress = {
+  restaurant: {
+    id: number;
+    name: string;
+  };
+  users: TrainingStoreProgressUserItem[];
+  summary: {
+    employeeCount: number;
+    completedEmployeeCount: number;
+    averageCompletionPercent: number;
+  };
+};
+
 export type TrainingPositionItem = {
   code: string;
   name: {

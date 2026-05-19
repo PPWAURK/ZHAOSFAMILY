@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { DashboardNewsModule } from './dashboard-news/dashboard-news.module';
 import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { MediaModule } from './media/media.module';
@@ -20,6 +21,7 @@ import { TrainingModule } from './training/training.module';
     }),
     PrismaModule,
     AuthModule,
+    DashboardNewsModule,
     HealthModule,
     ProductsModule,
     RestaurantsModule,

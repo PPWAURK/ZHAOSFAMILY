@@ -14,8 +14,16 @@ export const TRAINING_POSITION_PERMISSIONS = {
   manage: 'training.position.manage',
 } as const;
 
+export const TRAINING_PROGRESS_PERMISSIONS = {
+  viewStore: 'training.progress.view_store',
+} as const;
+
 export const SYSTEM_PERMISSIONS = {
   managePermissions: 'system.permission.manage',
+} as const;
+
+export const EMPLOYEE_PERMISSIONS = {
+  manageStoreJobRoles: 'employee.job_role.manage_store',
 } as const;
 
 export function RequirePermissions(...permissions: string[]) {

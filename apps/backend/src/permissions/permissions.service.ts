@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { AuthUser } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   BUILT_IN_ROLE_NAMES,
@@ -41,6 +43,27 @@ type PermissionUserRow = {
     };
   }[];
 };
+
+type PermissionUserRoleScope = {
+  id: number;
+  jobRole: string | null;
+  restaurantId: number;
+};
+
+const SUPER_ADMIN_ROLE_NAME = 'super-admin';
+const HOLDING_JOB_ROLE = 'holding';
+const STORE_MANAGER_JOB_ROLE = 'store-manager';
+const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
+const MANAGE_STORE_JOB_ROLES_PERMISSION = 'employee.job_role.manage_store';
+const SYSTEM_PERMISSION_MANAGE = 'system.permission.manage';
+const MANAGEABLE_JOB_ROLE_VALUES = new Set([
+  'front-of-house',
+  'back-of-house',
+  'cash',
+  'all-rounder',
+  'store-manager',
+  'regional-manager',
+]);
 
 const BUILT_IN_ROLE_ORDER = new Map<string, number>(
   BUILT_IN_ROLE_NAMES.map((roleName, index) => [roleName, index]),
@@ -162,7 +185,9 @@ export class PermissionsService {
     userId: number,
     roleNames: string[],
   ): Promise<PermissionUserItem> {
-    await this.ensureUserExists(userId);
+    const user = await this.getUserRoleScope(userId);
+    this.assertRoleAssignmentAllowed(user, roleNames);
+
     const roles = await this.prismaService.role.findMany({
       where: {
         name: {
@@ -199,14 +224,95 @@ export class PermissionsService {
     return this.getUser(userId);
   }
 
-  private async ensureUserExists(userId: number): Promise<void> {
+  async updateUserJobRole(
+    viewer: AuthUser,
+    userId: number,
+    jobRole: string,
+  ): Promise<PermissionUserItem> {
+    const targetUser = await this.getUserRoleScope(userId);
+    this.assertJobRoleUpdateAllowed(viewer, targetUser, jobRole);
+
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: { jobRole },
+    });
+
+    return this.getUser(userId);
+  }
+
+  private assertRoleAssignmentAllowed(
+    user: PermissionUserRoleScope,
+    roleNames: string[],
+  ): void {
+    if (
+      roleNames.includes(SUPER_ADMIN_ROLE_NAME) &&
+      user.jobRole !== HOLDING_JOB_ROLE
+    ) {
+      throw new BadRequestException('SUPER_ADMIN_REQUIRES_HOLDING');
+    }
+  }
+
+  private async getUserRoleScope(
+    userId: number,
+  ): Promise<PermissionUserRoleScope> {
     const user = await this.prismaService.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: {
+        id: true,
+        jobRole: true,
+        restaurantId: true,
+      },
     });
 
     if (!user) {
       throw new NotFoundException('USER_NOT_FOUND');
+    }
+
+    return user;
+  }
+
+  private assertJobRoleUpdateAllowed(
+    viewer: AuthUser,
+    targetUser: PermissionUserRoleScope,
+    jobRole: string,
+  ): void {
+    if (
+      viewer.jobRole === HOLDING_JOB_ROLE &&
+      viewer.permissions.includes(SYSTEM_PERMISSION_MANAGE)
+    ) {
+      return;
+    }
+
+    if (targetUser.jobRole === HOLDING_JOB_ROLE) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+    }
+
+    const viewerRoles = new Set(
+      `${viewer.jobRole || ''}`
+        .split(',')
+        .map((role) => role.trim())
+        .filter(Boolean),
+    );
+    const isRegionalManager = viewerRoles.has(REGIONAL_MANAGER_JOB_ROLE);
+    const canManageStore =
+      isRegionalManager ||
+      viewerRoles.has(STORE_MANAGER_JOB_ROLE) ||
+      viewer.permissions.includes(MANAGE_STORE_JOB_ROLES_PERMISSION);
+
+    if (
+      !canManageStore ||
+      (!isRegionalManager && viewer.restaurantId !== targetUser.restaurantId)
+    ) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+    }
+
+    const nextRoles = jobRole.split(',');
+    const isStoreRoleUpdate = nextRoles.every((role) =>
+      MANAGEABLE_JOB_ROLE_VALUES.has(role),
+    );
+
+    if (!isStoreRoleUpdate) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
     }
   }
 

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   createHmac,
+  createHash,
   randomBytes,
   scrypt as scryptCallback,
   timingSafeEqual,
@@ -14,14 +15,19 @@ import { ConfigService } from '@nestjs/config';
 import { promisify } from 'node:util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RestaurantsService } from '../restaurants/restaurants.service';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateCurrentUserDto } from './dto/update-current-user.dto';
 
 const scrypt = promisify(scryptCallback);
 const SUPPORTED_PROFILE_PHOTO_PATTERN = /^data:image\/[a-zA-Z0-9.+-]+;base64,/;
 const DEFAULT_USER_LEVEL = 0;
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 8;
+const EXPIRED_ACCESS_TOKEN_REFRESH_GRACE_SECONDS = 60 * 60 * 24 * 7;
+const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
 
 export type RegisterResponse = {
   message: 'REGISTRATION_SAVED';
@@ -63,9 +69,36 @@ export type LoginResponse = {
   user: AuthUser;
 };
 
+export type ForgotPasswordResponse = {
+  message: 'PASSWORD_RESET_REQUESTED';
+};
+
 type AccessTokenPayload = {
   sub: number;
   exp: number;
+};
+
+type AuthUserRecord = {
+  id: number;
+  familyName: string;
+  givenName: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  restaurantId: number;
+  restaurant: {
+    id: number;
+    name: string;
+    address: string;
+    photoUrl: string | null;
+  };
+  birthday: Date | null;
+  jobRole: string | null;
+  phone: string | null;
+  address: string | null;
+  profilePhoto: string | null;
+  userLevel: number;
+  preferredLanguage: string;
 };
 
 function buildFullName(familyName: string, givenName: string): string {
@@ -104,6 +137,18 @@ function base64UrlEncode(value: string): string {
 
 function base64UrlDecode(value: string): string {
   return Buffer.from(value, 'base64url').toString('utf8');
+}
+
+function hashOpaqueToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function createOpaqueToken(): string {
+  return randomBytes(32).toString('base64url');
+}
+
+function hasNotExpired(expiresAt: Date | null): boolean {
+  return !!expiresAt && expiresAt.getTime() > Date.now();
 }
 
 @Injectable()
@@ -212,10 +257,24 @@ export class AuthService {
     };
   }
 
-  async getCurrentUser(accessToken: string | undefined): Promise<AuthUser> {
-    const payload = this.verifyAccessToken(accessToken);
-    const user = await this.prismaService.user.findUnique({
-      where: { id: payload.sub },
+  async refresh(accessToken: string | undefined): Promise<LoginResponse> {
+    const payload = this.verifyAccessToken(accessToken, {
+      allowExpiredWithinSeconds: EXPIRED_ACCESS_TOKEN_REFRESH_GRACE_SECONDS,
+    });
+    const user = await this.findAuthUserById(payload.sub);
+
+    return {
+      accessToken: this.signAccessToken({ sub: user.id }),
+      user: this.toAuthUser(user, await this.listUserPermissions(user.id)),
+    };
+  }
+
+  async acceptInvitation(dto: AcceptInvitationDto): Promise<LoginResponse> {
+    const invitationTokenHash = hashOpaqueToken(dto.token);
+    const invitedUser = await this.prismaService.user.findFirst({
+      where: {
+        invitationTokenHash,
+      },
       include: {
         restaurant: {
           select: {
@@ -228,9 +287,101 @@ export class AuthService {
       },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('INVALID_ACCESS_TOKEN');
+    if (!invitedUser || !hasNotExpired(invitedUser.invitationExpiresAt)) {
+      throw new BadRequestException('INVALID_INVITATION_TOKEN');
     }
+
+    const normalizedName = dto.name.trim();
+    const passwordHash = await hashPassword(dto.password);
+    const user = await this.prismaService.user.update({
+      where: { id: invitedUser.id },
+      data: {
+        familyName: normalizedName,
+        givenName: '',
+        name: normalizedName,
+        passwordHash,
+        emailVerified: true,
+        invitationTokenHash: null,
+        invitationExpiresAt: null,
+      },
+      include: {
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            photoUrl: true,
+          },
+        },
+      },
+    });
+
+    return {
+      accessToken: this.signAccessToken({ sub: user.id }),
+      user: this.toAuthUser(user, await this.listUserPermissions(user.id)),
+    };
+  }
+
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+  ): Promise<ForgotPasswordResponse> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const user = await this.prismaService.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true },
+    });
+
+    if (user) {
+      const resetToken = createOpaqueToken();
+      await this.prismaService.user.update({
+        where: { id: user.id },
+        data: {
+          passwordResetTokenHash: hashOpaqueToken(resetToken),
+          passwordResetExpiresAt: new Date(
+            Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+          ),
+        },
+      });
+      // Email delivery is intentionally left outside AuthService. A mailer
+      // integration can read this token generation point and send the URL.
+    }
+
+    return { message: 'PASSWORD_RESET_REQUESTED' };
+  }
+
+  async resetPassword(
+    dto: ResetPasswordDto,
+  ): Promise<{ message: 'PASSWORD_RESET' }> {
+    const passwordResetTokenHash = hashOpaqueToken(dto.token);
+    const user = await this.prismaService.user.findFirst({
+      where: {
+        passwordResetTokenHash,
+      },
+      select: {
+        id: true,
+        passwordResetExpiresAt: true,
+      },
+    });
+
+    if (!user || !hasNotExpired(user.passwordResetExpiresAt)) {
+      throw new BadRequestException('INVALID_RESET_TOKEN');
+    }
+
+    await this.prismaService.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: await hashPassword(dto.password),
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
+      },
+    });
+
+    return { message: 'PASSWORD_RESET' };
+  }
+
+  async getCurrentUser(accessToken: string | undefined): Promise<AuthUser> {
+    const payload = this.verifyAccessToken(accessToken);
+    const user = await this.findAuthUserById(payload.sub);
 
     return this.toAuthUser(user, await this.listUserPermissions(user.id));
   }
@@ -286,6 +437,7 @@ export class AuthService {
 
   private verifyAccessToken(
     accessToken: string | undefined,
+    options: { allowExpiredWithinSeconds?: number } = {},
   ): AccessTokenPayload {
     if (!accessToken) {
       throw new UnauthorizedException('ACCESS_TOKEN_REQUIRED');
@@ -314,11 +466,36 @@ export class AuthService {
       base64UrlDecode(encodedPayload),
     ) as AccessTokenPayload;
 
-    if (!payload.sub || payload.exp < Math.floor(Date.now() / 1000)) {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const minAllowedExp = nowSeconds - (options.allowExpiredWithinSeconds ?? 0);
+
+    if (!payload.sub || payload.exp < minAllowedExp) {
       throw new UnauthorizedException('INVALID_ACCESS_TOKEN');
     }
 
     return payload;
+  }
+
+  private async findAuthUserById(userId: number): Promise<AuthUserRecord> {
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      include: {
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            photoUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('INVALID_ACCESS_TOKEN');
+    }
+
+    return user;
   }
 
   private getAccessTokenSecret(): string {
@@ -360,31 +537,7 @@ export class AuthService {
     ].sort();
   }
 
-  private toAuthUser(
-    user: {
-      id: number;
-      familyName: string;
-      givenName: string;
-      name: string;
-      email: string;
-      emailVerified: boolean;
-      restaurantId: number;
-      restaurant: {
-        id: number;
-        name: string;
-        address: string;
-        photoUrl: string | null;
-      };
-      birthday: Date | null;
-      jobRole: string | null;
-      phone: string | null;
-      address: string | null;
-      profilePhoto: string | null;
-      userLevel: number;
-      preferredLanguage: string;
-    },
-    permissions: string[],
-  ): AuthUser {
+  private toAuthUser(user: AuthUserRecord, permissions: string[]): AuthUser {
     return {
       id: user.id,
       familyName: user.familyName,

@@ -2,10 +2,21 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+const HOLDING_RESTAURANT = {
+  name: 'ZHAO Holding',
+  address: 'Holding',
+  photoUrl: null,
+};
+const LOCAL_SUPER_ADMIN_EMAIL = 'admin@zhao-family.local';
+
 const PERMISSIONS = [
   {
     key: 'system.permission.manage',
     description: 'Manage system role assignments',
+  },
+  {
+    key: 'employee.job_role.manage_store',
+    description: 'Manage job roles for employees in the same store',
   },
   {
     key: 'training.material.read',
@@ -30,6 +41,10 @@ const PERMISSIONS = [
   {
     key: 'training.position.manage',
     description: 'Manage training positions',
+  },
+  {
+    key: 'training.progress.view_store',
+    description: 'View store training progress',
   },
 ];
 
@@ -82,6 +97,14 @@ const TRAINING_POSITIONS = [
     parentCode: null,
     sortOrder: 50,
   },
+  {
+    code: 'HOLDING',
+    nameZh: '总部',
+    nameEn: 'Holding',
+    nameFr: 'Holding',
+    parentCode: null,
+    sortOrder: 60,
+  },
 ];
 
 const ROLES = [
@@ -93,7 +116,12 @@ const ROLES = [
   {
     name: 'store-manager',
     description: 'Store manager baseline access',
-    permissions: ['training.material.read', 'training.material.play'],
+    permissions: [
+      'employee.job_role.manage_store',
+      'training.material.read',
+      'training.material.play',
+      'training.progress.view_store',
+    ],
   },
   {
     name: 'training-admin',
@@ -105,6 +133,7 @@ const ROLES = [
       'training.material.update',
       'training.material.delete',
       'training.position.manage',
+      'training.progress.view_store',
     ],
   },
   {
@@ -191,14 +220,36 @@ async function upsertTrainingPositions() {
   }
 }
 
+async function upsertHoldingRestaurant() {
+  const now = new Date();
+
+  return prisma.restaurant.upsert({
+    where: { name: HOLDING_RESTAURANT.name },
+    update: {
+      address: HOLDING_RESTAURANT.address,
+      photoUrl: HOLDING_RESTAURANT.photoUrl,
+      updatedAt: now,
+    },
+    create: {
+      ...HOLDING_RESTAURANT,
+      updatedAt: now,
+    },
+    select: { id: true },
+  });
+}
+
 async function assignSuperAdminRole() {
-  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+  const superAdminEmail = (
+    process.env.SUPER_ADMIN_EMAIL || LOCAL_SUPER_ADMIN_EMAIL
+  )
+    .trim()
+    .toLowerCase();
 
   if (!superAdminEmail) {
     return;
   }
 
-  const [user, role] = await Promise.all([
+  const [user, role, holdingRestaurant] = await Promise.all([
     prisma.user.findUnique({
       where: { email: superAdminEmail },
       select: { id: true },
@@ -207,33 +258,139 @@ async function assignSuperAdminRole() {
       where: { name: 'super-admin' },
       select: { id: true },
     }),
+    upsertHoldingRestaurant(),
   ]);
 
   if (!user || !role) {
     return;
   }
 
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: {
+        restaurantId: holdingRestaurant.id,
+        jobRole: 'holding',
+      },
+    }),
+    prisma.userRole.upsert({
+      where: {
+        userId_roleId: {
+          userId: user.id,
+          roleId: role.id,
+        },
+      },
+      update: {},
+      create: {
         userId: user.id,
         roleId: role.id,
       },
+    }),
+  ]);
+}
+
+async function removeSuperAdminRoleFromStoreUsers() {
+  const superAdminRole = await prisma.role.findUnique({
+    where: { name: 'super-admin' },
+    select: { id: true },
+  });
+
+  if (!superAdminRole) {
+    return;
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      jobRole: {
+        not: 'holding',
+      },
+      userRoles: {
+        some: {
+          roleId: superAdminRole.id,
+        },
+      },
     },
-    update: {},
-    create: {
-      userId: user.id,
-      roleId: role.id,
+    select: {
+      id: true,
+    },
+  });
+
+  if (users.length === 0) {
+    return;
+  }
+
+  await prisma.userRole.deleteMany({
+    where: {
+      roleId: superAdminRole.id,
+      userId: {
+        in: users.map((user) => user.id),
+      },
+    },
+  });
+}
+
+async function removeStoreManagerRoleFromNonManagers() {
+  const storeManagerRole = await prisma.role.findUnique({
+    where: { name: 'store-manager' },
+    select: { id: true },
+  });
+
+  if (!storeManagerRole) {
+    return;
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      AND: [
+        {
+          jobRole: {
+            not: {
+              contains: 'store-manager',
+            },
+          },
+        },
+        {
+          jobRole: {
+            not: {
+              contains: 'regional-manager',
+            },
+          },
+        },
+      ],
+      userRoles: {
+        some: {
+          roleId: storeManagerRole.id,
+        },
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (users.length === 0) {
+    return;
+  }
+
+  await prisma.userRole.deleteMany({
+    where: {
+      roleId: storeManagerRole.id,
+      userId: {
+        in: users.map((user) => user.id),
+      },
     },
   });
 }
 
 async function main() {
+  await upsertHoldingRestaurant();
   await upsertPermissions();
   await upsertRoles();
   await replaceRolePermissions();
   await upsertTrainingPositions();
   await assignSuperAdminRole();
+  await removeSuperAdminRoleFromStoreUsers();
+  await removeStoreManagerRoleFromNonManagers();
 }
 
 main()
