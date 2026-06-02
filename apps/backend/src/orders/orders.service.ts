@@ -5,10 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { renameSync } from 'fs';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersDocumentService } from './orders-document.service';
 import type { CreateOrderReturnDto } from './dto/create-order-return.dto';
 import type { CreateOrderDto } from './dto/create-order.dto';
+import type { UpdateOrderDto } from './dto/update-order.dto';
 import type { OrderDocumentItem, OrdersRequestContext } from './orders.types';
 
 type OrderActor = {
@@ -48,6 +50,11 @@ type PreparedOrderItem = {
   unit: string | null;
   unitPrice: number;
   lineTotal: number;
+};
+
+type ExistingOrderItemQuantity = {
+  productId: bigint;
+  quantity: number;
 };
 
 const STOCK_ENFORCED_SUPPLIER_IDS = new Set([8]);
@@ -113,7 +120,6 @@ export class OrdersService {
         const orderFileName = this.buildOrderFileName(
           restaurant.name,
           dto.deliveryDate,
-          orderNumber,
         );
 
         await tx.purchaseOrder.update({
@@ -211,6 +217,7 @@ export class OrdersService {
         returns: { select: { id: true } },
       },
       orderBy: { createdAt: 'desc' },
+      take: 120,
     });
 
     return orders.map((order) => {
@@ -233,6 +240,7 @@ export class OrdersService {
         commandeUrl,
         bonUrl: commandeUrl,
         createdAt: order.createdAt.toISOString(),
+        canEdit: order.returns.length === 0,
         returnCount: order.returns.length,
         createdBy: {
           id: order.createdByUser.id,
@@ -241,6 +249,228 @@ export class OrdersService {
         },
       };
     });
+  }
+
+  async getOrder(
+    orderId: number,
+    actor: OrderActor,
+    request: OrdersRequestContext,
+  ): Promise<unknown> {
+    const order = await this.prismaService.purchaseOrder.findUnique({
+      where: { id: orderId },
+      include: {
+        supplier: { select: { id: true, name: true } },
+        restaurant: { select: { id: true, name: true } },
+        createdByUser: { select: { id: true, name: true, email: true } },
+        returns: { select: { id: true } },
+        items: {
+          where: { quantity: { gt: 0 } },
+          orderBy: { id: 'asc' },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('ORDER_NOT_FOUND');
+    }
+
+    this.assertRestaurantScope(actor, order.restaurantId);
+
+    const commandeUrl = this.ordersDocumentService.buildOrderUrl(
+      request,
+      order.id,
+    );
+
+    return {
+      id: order.id,
+      number: order.number,
+      supplierId: order.supplierId,
+      supplierName: order.supplier.name,
+      restaurantId: order.restaurantId,
+      restaurantName: order.restaurant.name,
+      deliveryDate: order.deliveryDate.toISOString().slice(0, 10),
+      deliveryAddress: order.deliveryAddress,
+      totalItems: order.totalItems,
+      totalAmount: Number(order.totalAmount),
+      commandeUrl,
+      bonUrl: commandeUrl,
+      createdAt: order.createdAt.toISOString(),
+      canEdit: order.returns.length === 0,
+      returnCount: order.returns.length,
+      createdBy: {
+        id: order.createdByUser.id,
+        name: order.createdByUser.name,
+        email: order.createdByUser.email,
+      },
+      items: order.items.map((item) => ({
+        purchaseOrderItemId: item.id,
+        productId: item.productId.toString(),
+        specificationSlot: item.specificationSlot,
+        quantity: item.quantity,
+        nameZh: this.ordersDocumentService.sanitizeLabel(item.nameZh),
+        nameFr: this.ordersDocumentService.sanitizeLabel(item.nameFr),
+        specification: this.ordersDocumentService.sanitizeLabel(
+          item.specification,
+        ),
+        unit: this.ordersDocumentService.sanitizeLabel(item.unit),
+        category: item.category,
+      })),
+    };
+  }
+
+  async updateOrder(
+    orderId: number,
+    actor: OrderActor,
+    dto: UpdateOrderDto,
+    request: OrdersRequestContext,
+  ): Promise<unknown> {
+    const deliveryDate = this.parseDeliveryDate(dto.deliveryDate);
+    const selectedItems = await this.prepareSelectedItems(dto.items);
+    const supplierId = this.resolveSingleSupplierId(selectedItems);
+    const order = await this.prismaService.purchaseOrder.findUnique({
+      where: { id: orderId },
+      include: {
+        supplier: {
+          select: { id: true, name: true, includeAllProductsInOrder: true },
+        },
+        restaurant: { select: { id: true, name: true, address: true } },
+        returns: { select: { id: true }, take: 1 },
+        items: { select: { productId: true, quantity: true } },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('ORDER_NOT_FOUND');
+    }
+
+    this.assertRestaurantScope(actor, order.restaurantId);
+
+    if (order.returns.length > 0) {
+      throw new BadRequestException('ORDER_WITH_RETURNS_CANNOT_BE_UPDATED');
+    }
+
+    if (supplierId !== order.supplierId) {
+      throw new BadRequestException('ORDER_SUPPLIER_CANNOT_CHANGE');
+    }
+
+    await this.assertStockAvailableForUpdate(
+      supplierId,
+      selectedItems,
+      order.items,
+    );
+
+    const orderItems = order.supplier.includeAllProductsInOrder
+      ? await this.prepareSupplierCatalogItems(supplierId, selectedItems)
+      : selectedItems;
+    const totals = this.calculateTotals(orderItems);
+    const pdfItems = orderItems.map((item) => this.toOrderDocumentItem(item));
+    const oldOrderFilePath = this.ordersDocumentService.buildOrderFilePath(
+      order.bonFileName,
+    );
+    const orderFileName = this.buildOrderFileName(
+      order.restaurant.name,
+      dto.deliveryDate,
+    );
+    const newOrderFilePath =
+      this.ordersDocumentService.buildOrderFilePath(orderFileName);
+    const temporaryOrderFilePath = `${newOrderFilePath}.tmp-${Date.now()}`;
+    let generatedOrderFilePath: string | null = null;
+
+    try {
+      await this.prismaService.$transaction(async (tx) => {
+        await tx.purchaseOrder.update({
+          where: { id: orderId },
+          data: {
+            deliveryDate,
+            deliveryAddress: order.restaurant.address,
+            totalItems: totals.totalItems,
+            totalAmount: totals.totalAmount,
+            bonFileName: orderFileName,
+          },
+        });
+
+        await tx.purchaseOrderItem.deleteMany({
+          where: { purchaseOrderId: orderId },
+        });
+
+        await tx.purchaseOrderItem.createMany({
+          data: orderItems.map((item) => ({
+            purchaseOrderId: orderId,
+            productId: item.product.id,
+            supplierId,
+            specificationSlot: item.specificationSlot,
+            quantity: item.quantity,
+            unitPriceHt: item.unitPrice,
+            lineTotal: item.lineTotal,
+            nameZh: item.product.nameCn,
+            nameFr: item.product.designationFr,
+            specification: item.specification,
+            unit: item.unit,
+            category: item.product.category,
+          })),
+        });
+
+        if (this.isStockEnforcedSupplier(supplierId)) {
+          await this.createOrderUpdateInventoryMovements(
+            tx,
+            orderId,
+            actor.id,
+            order.items,
+            selectedItems,
+          );
+        }
+
+        generatedOrderFilePath = temporaryOrderFilePath;
+        await this.ordersDocumentService.generateCommandePdf({
+          filePath: temporaryOrderFilePath,
+          orderNumber: order.number,
+          supplierName: order.supplier.name,
+          restaurantName: order.restaurant.name,
+          deliveryDate: dto.deliveryDate,
+          deliveryAddress: order.restaurant.address,
+          items: pdfItems,
+          totalItems: totals.totalItems,
+          totalAmount: totals.totalAmount,
+        });
+        renameSync(temporaryOrderFilePath, newOrderFilePath);
+        generatedOrderFilePath = newOrderFilePath;
+      });
+
+      if (oldOrderFilePath !== newOrderFilePath) {
+        this.ordersDocumentService.deleteFileIfExists(oldOrderFilePath);
+      }
+
+      const commandeUrl = this.ordersDocumentService.buildOrderUrl(
+        request,
+        orderId,
+      );
+
+      return {
+        id: orderId,
+        number: order.number,
+        supplierId,
+        supplierName: order.supplier.name,
+        restaurantId: order.restaurantId,
+        restaurantName: order.restaurant.name,
+        deliveryDate: dto.deliveryDate,
+        deliveryAddress: order.restaurant.address,
+        totalItems: totals.totalItems,
+        totalAmount: totals.totalAmount,
+        commandeUrl,
+        bonUrl: commandeUrl,
+        createdAt: order.createdAt.toISOString(),
+        canEdit: true,
+        returnCount: 0,
+      };
+    } catch (error) {
+      if (
+        generatedOrderFilePath !== oldOrderFilePath &&
+        generatedOrderFilePath !== newOrderFilePath
+      ) {
+        this.ordersDocumentService.deleteFileIfExists(generatedOrderFilePath);
+      }
+      throw error;
+    }
   }
 
   async listOrderReturns(actor: OrderActor): Promise<unknown[]> {
@@ -537,7 +767,9 @@ export class OrdersService {
 
     this.assertRestaurantScope(actor, order.restaurantId);
 
-    return this.ordersDocumentService.resolveExistingOrderFile(order.bonFileName);
+    return this.ordersDocumentService.resolveExistingOrderFile(
+      order.bonFileName,
+    );
   }
 
   private async prepareSelectedItems(
@@ -570,7 +802,11 @@ export class OrdersService {
         throw new BadRequestException('PRODUCT_NOT_FOUND');
       }
 
-      return this.prepareOrderItem(product, item.quantity, item.specificationSlot);
+      return this.prepareOrderItem(
+        product,
+        item.quantity,
+        item.specificationSlot,
+      );
     });
   }
 
@@ -613,7 +849,10 @@ export class OrdersService {
 
     for (const product of products) {
       for (const specification of this.listDocumentSpecifications(product)) {
-        const key = this.buildOrderItemKey(Number(product.id), specification.slot);
+        const key = this.buildOrderItemKey(
+          Number(product.id),
+          specification.slot,
+        );
         const selectedItem = selectedByKey.get(key);
 
         catalogItems.push(
@@ -670,6 +909,39 @@ export class OrdersService {
     }
   }
 
+  private async assertStockAvailableForUpdate(
+    supplierId: number,
+    selectedItems: PreparedOrderItem[],
+    originalItems: ExistingOrderItemQuantity[],
+  ): Promise<void> {
+    if (!this.isStockEnforcedSupplier(supplierId)) {
+      return;
+    }
+
+    const requestedByProductId = this.sumQuantitiesByProductId(selectedItems);
+    const originalByProductId =
+      this.sumExistingQuantitiesByProductId(originalItems);
+    const productIds = Array.from(
+      new Set([...requestedByProductId.keys(), ...originalByProductId.keys()]),
+    );
+    const stockRows = await this.prismaService.inventoryMovement.groupBy({
+      by: ['productId'],
+      where: { productId: { in: productIds.map((id) => BigInt(id)) } },
+      _sum: { delta: true },
+    });
+    const stockByProductId = new Map(
+      stockRows.map((row) => [row.productId.toString(), row._sum.delta ?? 0]),
+    );
+
+    for (const [productId, requestedQuantity] of requestedByProductId) {
+      const currentStock = stockByProductId.get(productId) ?? 0;
+      const originalQuantity = originalByProductId.get(productId) ?? 0;
+      if (requestedQuantity > currentStock + originalQuantity) {
+        throw new BadRequestException('INSUFFICIENT_STOCK');
+      }
+    }
+  }
+
   private async createOrderInventoryMovements(
     tx: Prisma.TransactionClient,
     orderId: number,
@@ -692,6 +964,39 @@ export class OrdersService {
     });
   }
 
+  private async createOrderUpdateInventoryMovements(
+    tx: Prisma.TransactionClient,
+    orderId: number,
+    userId: number,
+    originalItems: ExistingOrderItemQuantity[],
+    selectedItems: PreparedOrderItem[],
+  ): Promise<void> {
+    const originalByProductId =
+      this.sumExistingQuantitiesByProductId(originalItems);
+    const requestedByProductId = this.sumQuantitiesByProductId(selectedItems);
+    const productIds = Array.from(
+      new Set([...originalByProductId.keys(), ...requestedByProductId.keys()]),
+    );
+    const movements = productIds
+      .map((productId) => ({
+        productId: BigInt(productId),
+        delta:
+          (originalByProductId.get(productId) ?? 0) -
+          (requestedByProductId.get(productId) ?? 0),
+        reason: 'Purchase order updated',
+        source: 'order-update',
+        sourceId: String(orderId),
+        userId,
+      }))
+      .filter((movement) => movement.delta !== 0);
+
+    if (movements.length === 0) {
+      return;
+    }
+
+    await tx.inventoryMovement.createMany({ data: movements });
+  }
+
   private sumQuantitiesByProductId(
     items: PreparedOrderItem[],
   ): Map<string, number> {
@@ -703,7 +1008,30 @@ export class OrdersService {
       }
 
       const productId = item.product.id.toString();
-      quantities.set(productId, (quantities.get(productId) ?? 0) + item.quantity);
+      quantities.set(
+        productId,
+        (quantities.get(productId) ?? 0) + item.quantity,
+      );
+    }
+
+    return quantities;
+  }
+
+  private sumExistingQuantitiesByProductId(
+    items: ExistingOrderItemQuantity[],
+  ): Map<string, number> {
+    const quantities = new Map<string, number>();
+
+    for (const item of items) {
+      if (item.quantity <= 0) {
+        continue;
+      }
+
+      const productId = item.productId.toString();
+      quantities.set(
+        productId,
+        (quantities.get(productId) ?? 0) + item.quantity,
+      );
     }
 
     return quantities;
@@ -753,7 +1081,9 @@ export class OrdersService {
       throw new BadRequestException('SPECIFICATION_SLOT_REQUIRED');
     }
 
-    const selected = selectable.find((entry) => entry.slot === specificationSlot);
+    const selected = selectable.find(
+      (entry) => entry.slot === specificationSlot,
+    );
 
     if (!selected) {
       throw new BadRequestException('SPECIFICATION_NOT_FOUND');
@@ -762,7 +1092,9 @@ export class OrdersService {
     return selected;
   }
 
-  private listSelectableSpecifications(product: OrderProduct): ProductSpecification[] {
+  private listSelectableSpecifications(
+    product: OrderProduct,
+  ): ProductSpecification[] {
     return [
       {
         slot: 1,
@@ -784,7 +1116,9 @@ export class OrdersService {
       },
     ].filter(
       (entry) =>
-        entry.specification !== null || entry.unit !== null || entry.unitPrice > 0,
+        entry.specification !== null ||
+        entry.unit !== null ||
+        entry.unitPrice > 0,
     );
   }
 
@@ -798,7 +1132,9 @@ export class OrdersService {
     return {
       nameFr,
       nameZh: this.ordersDocumentService.sanitizeLabel(item.product.nameCn),
-      specification: this.ordersDocumentService.sanitizeLabel(item.specification),
+      specification: this.ordersDocumentService.sanitizeLabel(
+        item.specification,
+      ),
       unit: this.ordersDocumentService.sanitizeLabel(item.unit),
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -861,12 +1197,11 @@ export class OrdersService {
   private buildOrderFileName(
     restaurantName: string,
     deliveryDate: string,
-    orderNumber: string,
   ): string {
     const safeRestaurantName =
       restaurantName.replace(/[/\\?%*:|"<>]/g, '').trim() || 'restaurant';
 
-    return `${safeRestaurantName}-${deliveryDate}-${orderNumber}.pdf`;
+    return `${safeRestaurantName}-${deliveryDate}.pdf`;
   }
 
   private buildOrderItemKey(

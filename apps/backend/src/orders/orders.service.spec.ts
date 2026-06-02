@@ -2,7 +2,79 @@ import { BadRequestException } from '@nestjs/common';
 import { OrdersDocumentService } from './orders-document.service';
 import { OrdersService } from './orders.service';
 
-function createProduct(overrides = {}) {
+type ProductFixture = {
+  id: bigint;
+  supplierId: number;
+  category: string;
+  nameCn: string;
+  designationFr: string;
+  specification: string;
+  specification2: null;
+  specification3: null;
+  unit: string;
+  unit2: null;
+  unit3: null;
+  unitPriceHt: number;
+  unitPriceHt2: null;
+  unitPriceHt3: null;
+};
+
+type AsyncMock = jest.MockedFunction<(...args: unknown[]) => Promise<unknown>>;
+
+type TransactionClientMock = {
+  purchaseOrder: {
+    create: AsyncMock;
+    delete: AsyncMock;
+    update: AsyncMock;
+  };
+  purchaseOrderItem: {
+    createMany: AsyncMock;
+  };
+  inventoryMovement: {
+    createMany: AsyncMock;
+  };
+};
+
+type OrdersPrismaServiceMock = {
+  product: {
+    findMany: AsyncMock;
+  };
+  supplier: {
+    findUnique: AsyncMock;
+  };
+  restaurant: {
+    findUnique: AsyncMock;
+  };
+  inventoryMovement: {
+    groupBy: AsyncMock;
+  };
+  purchaseOrder: {
+    findMany: AsyncMock;
+    findUnique: AsyncMock;
+  };
+  purchaseReturn: {
+    create: AsyncMock;
+    delete: AsyncMock;
+    findMany: AsyncMock;
+    findUnique: AsyncMock;
+  };
+  purchaseReturnItem: {
+    findMany: AsyncMock;
+  };
+  $transaction: jest.MockedFunction<
+    (
+      callback: (tx: TransactionClientMock) => Promise<unknown>,
+    ) => Promise<unknown>
+  >;
+};
+
+function createAsyncMock(): AsyncMock {
+  return jest.fn<Promise<unknown>, unknown[]>();
+}
+
+function createProduct(
+  overrides: Partial<ProductFixture> = {},
+): ProductFixture {
   return {
     id: BigInt(11),
     supplierId: 1,
@@ -23,7 +95,7 @@ function createProduct(overrides = {}) {
 }
 
 describe('OrdersService', () => {
-  let prismaService: any;
+  let prismaService: OrdersPrismaServiceMock;
   let ordersDocumentService: jest.Mocked<
     Pick<
       OrdersDocumentService,
@@ -41,52 +113,54 @@ describe('OrdersService', () => {
   beforeEach(() => {
     prismaService = {
       product: {
-        findMany: jest.fn(),
+        findMany: createAsyncMock(),
       },
       supplier: {
-        findUnique: jest.fn(),
+        findUnique: createAsyncMock(),
       },
       restaurant: {
-        findUnique: jest.fn(),
+        findUnique: createAsyncMock(),
       },
       inventoryMovement: {
-        groupBy: jest.fn(),
+        groupBy: createAsyncMock(),
       },
       purchaseOrder: {
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
+        findMany: createAsyncMock(),
+        findUnique: createAsyncMock(),
       },
       purchaseReturn: {
-        create: jest.fn(),
-        delete: jest.fn(),
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
+        create: createAsyncMock(),
+        delete: createAsyncMock(),
+        findMany: createAsyncMock(),
+        findUnique: createAsyncMock(),
       },
       purchaseReturnItem: {
-        findMany: jest.fn(),
+        findMany: createAsyncMock(),
       },
       $transaction: jest.fn((callback) =>
         callback({
           purchaseOrder: {
-            create: jest.fn().mockResolvedValue({
+            create: createAsyncMock().mockResolvedValue({
               id: 42,
               createdAt: new Date('2026-04-29T10:00:00.000Z'),
             }),
-            delete: jest.fn(),
-            update: jest.fn(),
+            delete: createAsyncMock(),
+            update: createAsyncMock(),
           },
           purchaseOrderItem: {
-            createMany: jest.fn(),
+            createMany: createAsyncMock(),
           },
           inventoryMovement: {
-            createMany: jest.fn(),
+            createMany: createAsyncMock(),
           },
         }),
       ),
     };
     ordersDocumentService = {
       buildOrderFilePath: jest.fn((fileName) => `/tmp/${fileName}`),
-      buildOrderUrl: jest.fn(() => 'http://localhost:3002/api/orders/42/commande'),
+      buildOrderUrl: jest.fn(
+        () => 'http://localhost:3002/api/orders/42/commande',
+      ),
       deleteFileIfExists: jest.fn(),
       generateCommandePdf: jest.fn().mockResolvedValue(undefined),
       makeFrLabel: jest.fn((value) => value),

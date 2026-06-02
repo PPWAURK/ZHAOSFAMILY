@@ -1,0 +1,58 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
+    "jsx": "react-jsx",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@app/*": [
+        "./app/*"
+      ],
+      "@zhao/api": [
+        "../../packages/api/src/index.ts"
+      ],
+      "@zhao/api/*": [
+        "../../packages/api/src/*"
+      ],
+      "@zhao/auth": [
+        "../../packages/auth/src/index.ts"
+      ],
+      "@zhao/auth/*": [
+        "../../packages/auth/src/*"
+      ],
+      "@zhao/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@zhao/types/*": [
+        "../../packages/types/src/*"
+      ],
+      "@zhao/utils": [
+        "../../packages/utils/src/index.ts"
+      ],
+      "@zhao/utils/*": [
+        "../../packages/utils/src/*"
+      ]
+    },
+    "types": [
+      "jest",
+      "nativewind/types"
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/Pods"
+  ]
+}

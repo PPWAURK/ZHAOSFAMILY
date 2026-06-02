@@ -1,8 +1,16 @@
 .DS_Store
 node_modules
 .next
+.expo
 out
 dist
+build
+coverage
+*.tsbuildinfo
+pnpm-debug.log*
+package-lock.json
+npm-shrinkwrap.json
+yarn.lock
 
 # local env files
 .env
@@ -16,7 +24,17 @@ dist
 .vscode
 
 # Prisma
-apps/api/prisma/migrations/dev.db
+apps/backend/prisma/migrations/dev.db
+
+# mobile native build outputs
+android/.gradle
+android/build
+ios/Pods
+ios/build
+DerivedData
 
 # local database backups
 /all_backup.sql
+*.sql
+*.dump
+*.backup

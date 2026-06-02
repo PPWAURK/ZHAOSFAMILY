@@ -1,0 +1,195 @@
+import type { AuthLanguage } from "@/features/auth/authCopy";
+import type { ComponentProps } from "react";
+import type { Ionicons } from "@expo/vector-icons";
+
+export type DashboardPrimaryIconName = ComponentProps<typeof Ionicons>["name"];
+
+export type DashboardNavItem = {
+  id: string;
+  href?: string;
+  icon: DashboardPrimaryIconName;
+  menuIcon: string;
+  permission?: string;
+  label: Record<AuthLanguage, string>;
+};
+
+export type DashboardMenuItem = {
+  id: string;
+  icon: string;
+  permission?: string;
+  label: Record<AuthLanguage, string>;
+};
+
+export type DashboardMenuGroup = {
+  id: string;
+  label: Record<AuthLanguage, string>;
+  items: DashboardMenuItem[];
+};
+
+export const DASHBOARD_PRIMARY_NAV: DashboardNavItem[] = [
+  {
+    id: "home",
+    icon: "home-outline",
+    menuIcon: "首",
+    label: { zh: "首页", en: "Home", fr: "Accueil" },
+  },
+  {
+    id: "stores",
+    icon: "storefront-outline",
+    menuIcon: "店",
+    label: { zh: "门店", en: "Stores", fr: "Boutiques" },
+  },
+  {
+    id: "orders",
+    icon: "receipt-outline",
+    menuIcon: "订",
+    label: { zh: "下单", en: "Order", fr: "Commande" },
+  },
+  {
+    id: "training",
+    icon: "school-outline",
+    menuIcon: "学",
+    label: { zh: "培训", en: "Training", fr: "Formation" },
+  },
+  {
+    id: "more",
+    icon: "ellipsis-horizontal",
+    menuIcon: "···",
+    label: { zh: "更多", en: "More", fr: "Plus" },
+  },
+];
+
+export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
+  {
+    id: "menu",
+    label: { zh: "菜单模块", en: "MENU MODULE", fr: "MODULE MENU" },
+    items: [
+      {
+        id: "profile",
+        icon: "我",
+        label: { zh: "个人资料", en: "Profile", fr: "Profil" },
+      },
+      {
+        id: "permissions",
+        icon: "权",
+        permission: "system.permission.manage",
+        label: { zh: "权限中心", en: "Permissions", fr: "Permissions" },
+      },
+    ],
+  },
+  {
+    id: "learning",
+    label: { zh: "学习模块", en: "LEARNING MODULE", fr: "MODULE FORMATION" },
+    items: [
+      {
+        id: "training-certifications",
+        icon: "证",
+        label: { zh: "认证管理", en: "Certifications", fr: "Certifications" },
+      },
+      {
+        id: "training-materials",
+        icon: "资",
+        label: { zh: "学习资料", en: "Learning materials", fr: "Ressources" },
+      },
+      {
+        id: "training-positions",
+        icon: "岗",
+        permission: "training.position.manage",
+        label: { zh: "岗位管理", en: "Positions", fr: "Postes" },
+      },
+    ],
+  },
+  {
+    id: "orders",
+    label: { zh: "订单模块", en: "ORDER MODULE", fr: "MODULE COMMANDES" },
+    items: [
+      {
+        id: "order-history",
+        icon: "史",
+        label: { zh: "历史订单", en: "Order history", fr: "Historique" },
+      },
+      {
+        id: "suppliers",
+        icon: "供",
+        label: { zh: "供应商管理", en: "Suppliers", fr: "Fournisseurs" },
+      },
+      {
+        id: "inventory",
+        icon: "库",
+        label: { zh: "ZHAO Bureau 库存", en: "ZHAO Bureau stock", fr: "Stock ZHAO Bureau" },
+      },
+    ],
+  },
+];
+
+export const DASHBOARD_COPY = {
+  zh: {
+    topFamily: "FAMILY",
+    topStage: "手机首页",
+    languageLabel: "语言",
+    greetingLabel: "今日首页",
+    greetingPrefix: "你好，",
+    greetingFallback: "ZHAO 伙伴",
+    greetingSuffix: "。",
+    intro: "先看内部资讯，再进入今天的工作模块。",
+    newsTitle: "内部资讯",
+    newsSubtitle: "通知、表彰与运营提醒会显示在这里。",
+    loadingNews: "正在加载动态...",
+    newsError: "动态加载失败，请稍后重试。",
+    emptyNews: "当前暂无内部资讯。",
+    quickActions: "工作入口",
+    moreTitle: "全部入口",
+    moreKicker: "ZHAO · MODULES",
+    close: "关闭",
+    storeLabel: "门店",
+    roleLabel: "岗位",
+    logout: "退出登录",
+    unavailable: "该模块移动端页面尚未接入。",
+  },
+  en: {
+    topFamily: "FAMILY",
+    topStage: "Mobile home",
+    languageLabel: "Language",
+    greetingLabel: "Today home",
+    greetingPrefix: "Hello, ",
+    greetingFallback: "ZHAO partner",
+    greetingSuffix: ".",
+    intro: "Read internal updates first, then jump into today's work.",
+    newsTitle: "Internal updates",
+    newsSubtitle: "Notices, recognition and operational alerts live here.",
+    loadingNews: "Loading updates...",
+    newsError: "Updates could not be loaded. Please try again.",
+    emptyNews: "No internal updates yet.",
+    quickActions: "Work entries",
+    moreTitle: "All entries",
+    moreKicker: "ZHAO · MODULES",
+    close: "Close",
+    storeLabel: "Store",
+    roleLabel: "Role",
+    logout: "Sign out",
+    unavailable: "This mobile module is not connected yet.",
+  },
+  fr: {
+    topFamily: "FAMILY",
+    topStage: "Accueil mobile",
+    languageLabel: "Langue",
+    greetingLabel: "Accueil du jour",
+    greetingPrefix: "Bonjour, ",
+    greetingFallback: "partenaire ZHAO",
+    greetingSuffix: ".",
+    intro: "Lisez d'abord les actualités internes, puis passez aux modules du jour.",
+    newsTitle: "Actualités internes",
+    newsSubtitle: "Annonces, felicitations et alertes operationnelles.",
+    loadingNews: "Chargement des actualites...",
+    newsError: "Les actualites n'ont pas pu charger. Reessayez plus tard.",
+    emptyNews: "Aucune actualite interne pour le moment.",
+    quickActions: "Entrées de travail",
+    moreTitle: "Toutes les entrées",
+    moreKicker: "ZHAO · MODULES",
+    close: "Fermer",
+    storeLabel: "Boutique",
+    roleLabel: "Poste",
+    logout: "Se deconnecter",
+    unavailable: "Ce module mobile n'est pas encore connecte.",
+  },
+};

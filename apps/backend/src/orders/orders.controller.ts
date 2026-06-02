@@ -6,6 +6,7 @@ import {
   Headers,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Req,
   Res,
@@ -15,6 +16,7 @@ import { AuthService, type AuthUser } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { CreateOrderReturnDto } from './dto/create-order-return.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrdersService } from './orders.service';
 
 type OrderActor = {
@@ -57,7 +59,9 @@ export class OrdersController {
   async listOrderReturns(
     @Headers('authorization') authorization: string | undefined,
   ): Promise<unknown> {
-    return this.ordersService.listOrderReturns(await this.getActor(authorization));
+    return this.ordersService.listOrderReturns(
+      await this.getActor(authorization),
+    );
   }
 
   @Get(':id/return-draft')
@@ -90,6 +94,34 @@ export class OrdersController {
     return this.ordersService.deleteOrderReturn(
       returnId,
       await this.getActor(authorization),
+    );
+  }
+
+  @Get(':id')
+  async getOrder(
+    @Headers('authorization') authorization: string | undefined,
+    @Req() request: Request,
+    @Param('id', ParseIntPipe) orderId: number,
+  ): Promise<unknown> {
+    return this.ordersService.getOrder(
+      orderId,
+      await this.getActor(authorization),
+      request,
+    );
+  }
+
+  @Patch(':id')
+  async updateOrder(
+    @Headers('authorization') authorization: string | undefined,
+    @Req() request: Request,
+    @Param('id', ParseIntPipe) orderId: number,
+    @Body() dto: UpdateOrderDto,
+  ): Promise<unknown> {
+    return this.ordersService.updateOrder(
+      orderId,
+      await this.getActor(authorization),
+      dto,
+      request,
     );
   }
 

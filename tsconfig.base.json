@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0",
+    "isolatedModules": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "paths": {
+      "@zhao/api": ["packages/api/src/index.ts"],
+      "@zhao/api/*": ["packages/api/src/*"],
+      "@zhao/auth": ["packages/auth/src/index.ts"],
+      "@zhao/auth/*": ["packages/auth/src/*"],
+      "@zhao/types": ["packages/types/src/index.ts"],
+      "@zhao/types/*": ["packages/types/src/*"],
+      "@zhao/utils": ["packages/utils/src/index.ts"],
+      "@zhao/utils/*": ["packages/utils/src/*"]
+    },
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022"
+  }
+}

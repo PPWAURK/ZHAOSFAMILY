@@ -1,0 +1,38 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  msw: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+overrides:
+  '@babel/parser': 7.29.7
+minimumReleaseAgeExclude:
+  - '@expo/cli@55.0.31'
+  - '@expo/metro-config@55.0.22'
+  - '@expo/router-server@55.0.17'
+  - '@types/node@25.9.1'
+  - '@types/react@19.2.15'
+  - babel-preset-expo@55.0.22
+  - expo-file-system@55.0.21
+  - expo-font@55.0.8
+  - expo-modules-autolinking@55.0.23
+  - expo-router@55.0.15
+  - expo-server@55.0.10
+  - expo-symbols@55.0.9
+  - expo@55.0.25
+  - jest-expo@55.0.18
+  - '@expo/cli@54.0.25'
+  - '@expo/json-file@10.0.16'
+  - '@expo/metro-config@54.0.16'
+  - '@expo/plist@0.4.9'
+  - babel-preset-expo@54.0.11
+  - expo-file-system@19.0.23
+  - expo-font@14.0.12
+  - expo-modules-autolinking@3.0.26
+  - expo-server@1.0.7
+  - expo@54.0.35

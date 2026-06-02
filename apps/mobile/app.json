@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "ZHAO's Family",
+    "slug": "zhao-family-mobile",
+    "scheme": "zhaofamily",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "com.zhaofamily.mobile",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.zhaofamily.mobile"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "选择一张头像用于员工档案。",
+          "cameraPermission": "拍摄一张头像用于员工档案。"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
