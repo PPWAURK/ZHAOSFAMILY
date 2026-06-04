@@ -1,5 +1,6 @@
 .DS_Store
 node_modules
+.pnpm-store
 .next
 .expo
 out
@@ -7,6 +8,7 @@ dist
 build
 coverage
 *.tsbuildinfo
+.turbo
 pnpm-debug.log*
 package-lock.json
 npm-shrinkwrap.json
@@ -26,15 +28,26 @@ yarn.lock
 # Prisma
 apps/backend/prisma/migrations/dev.db
 
+# Runtime data and local backups
+apps/backend/uploads
+backups
+/all_backup.sql
+/webapp2026.sql
+*.sql
+*.dump
+*.backup
+
+# Local assistant/tooling state
+.codex
+skills-lock.json
+
 # mobile native build outputs
+apps/mobile/.bundle
+apps/mobile/vendor
+apps/mobile/ios
+apps/mobile/android
 android/.gradle
 android/build
 ios/Pods
 ios/build
 DerivedData
-
-# local database backups
-/all_backup.sql
-*.sql
-*.dump
-*.backup
