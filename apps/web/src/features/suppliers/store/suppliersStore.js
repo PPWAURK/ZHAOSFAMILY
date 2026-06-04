@@ -7,6 +7,7 @@ import {
   createSupplierApi,
   deleteProductApi,
   deleteSupplierApi,
+  fetchSupplier,
   fetchProductsBySupplier,
   fetchSuppliers,
   updateProductApi,
@@ -87,11 +88,10 @@ export function useSupplierDetail(supplierId) {
     setIsLoading(true);
     setError("");
     try {
-      const [list, items] = await Promise.all([
-        fetchSuppliers(),
+      const [found, items] = await Promise.all([
+        fetchSupplier(supplierId),
         fetchProductsBySupplier(supplierId),
       ]);
-      const found = list.find((s) => String(s.id) === String(supplierId));
       setSupplier(found || null);
       setProducts(items);
     } catch (err) {

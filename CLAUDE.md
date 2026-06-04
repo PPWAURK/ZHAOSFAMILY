@@ -49,7 +49,7 @@ The frontend has **no lint, typecheck, or test scripts** — verify changes by r
 - Web: `http://localhost:3000`
 - Backend: `http://localhost:3002/api` (global prefix is set in [main.ts](apps/backend/src/main.ts); change via `API_PREFIX`)
 - Health: `GET http://localhost:3002/api/health`
-- Frontend reads `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3002/api`) — see [api-client.js](apps/web/src/shared/api/api-client.js).
+- Frontend reads `NEXT_PUBLIC_API_BASE_URL` (defaults to `http://localhost:3002/api`) — see [api-client.ts](apps/web/src/shared/api/api-client.ts).
 - Backend env template: [apps/backend/.env.example](apps/backend/.env.example). Note `DATABASE_URL` defaults to port **3306**, but docker-compose maps MySQL to **3307** on the host — adjust your `.env` accordingly, or run against an existing MySQL.
 
 ## Backend Architecture
@@ -61,7 +61,7 @@ Each module follows the Nest layering enforced by [AGENTS.md](AGENTS.md): `contr
 
 ### Auth & RBAC
 
-[auth.service.ts](apps/backend/src/auth/auth.service.ts) does **not** use a JWT library. Tokens are custom `base64url(payload).hmac-sha256(secret)` strings; passwords use `scrypt` with the format `scrypt$<salt>$<derivedKey>`. Secret comes from `AUTH_ACCESS_TOKEN_SECRET` (falls back to `JWT_SECRET`, then a hardcoded dev default — set the env in any non-dev environment). TTL is 8h.
+[auth.service.ts](apps/backend/src/auth/auth.service.ts) does **not** use a JWT library. Tokens are custom `base64url(payload).hmac-sha256(secret)` strings; passwords use `scrypt` with the format `scrypt$<salt>$<derivedKey>`. Secret comes only from `AUTH_TOKEN_SECRET`; missing configuration is treated as an error. TTL is 8h.
 
 Authorization is RBAC via Prisma tables `Role`, `Permission`, `UserRole`, `RolePermission`. To gate a route:
 

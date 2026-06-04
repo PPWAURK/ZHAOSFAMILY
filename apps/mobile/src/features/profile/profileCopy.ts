@@ -6,6 +6,9 @@ export const PROFILE_COPY: Record<
     accountHeading: string;
     accountHint: string;
     address: string;
+    avatarAction: string;
+    avatarError: string;
+    avatarSaved: string;
     cancel: string;
     contactHeading: string;
     contactHint: string;
@@ -22,6 +25,12 @@ export const PROFILE_COPY: Record<
     phone: string;
     preferencesHeading: string;
     preferencesHint: string;
+    currentPassword: string;
+    newPassword: string;
+    passwordChanged: string;
+    passwordError: string;
+    passwordMismatch: string;
+    passwordTooShort: string;
     role: string;
     save: string;
     saved: string;
@@ -36,8 +45,11 @@ export const PROFILE_COPY: Record<
 > = {
   zh: {
     accountHeading: "账号安全",
-    accountHint: "密码修改入口后续会接入重置流程。",
+    accountHint: "修改密码前需要验证当前密码。",
     address: "地址",
+    avatarAction: "更换头像",
+    avatarError: "头像保存失败，请重新选择。",
+    avatarSaved: "头像已更新",
     cancel: "取消",
     contactHeading: "联系方式",
     contactHint: "用于紧急联系与运营通知。",
@@ -54,6 +66,12 @@ export const PROFILE_COPY: Record<
     phone: "电话",
     preferencesHeading: "偏好",
     preferencesHint: "语言切换只影响当前 App 会话。",
+    currentPassword: "当前密码",
+    newPassword: "新密码",
+    passwordChanged: "密码已修改",
+    passwordError: "密码修改失败，请检查当前密码。",
+    passwordMismatch: "两次密码不能相同。",
+    passwordTooShort: "新密码至少 8 位。",
     role: "岗位",
     save: "保存",
     saved: "已保存",
@@ -67,8 +85,11 @@ export const PROFILE_COPY: Record<
   },
   en: {
     accountHeading: "Account security",
-    accountHint: "Password changes will connect to the reset flow later.",
+    accountHint: "Your current password is required before changing it.",
     address: "Address",
+    avatarAction: "Change photo",
+    avatarError: "Photo could not be saved. Please choose another image.",
+    avatarSaved: "Photo updated",
     cancel: "Cancel",
     contactHeading: "Contact",
     contactHint: "Used for emergencies and operational notices.",
@@ -85,6 +106,12 @@ export const PROFILE_COPY: Record<
     phone: "Phone",
     preferencesHeading: "Preferences",
     preferencesHint: "Language changes only affect this app session.",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    passwordChanged: "Password changed",
+    passwordError: "Password could not be changed. Check your current password.",
+    passwordMismatch: "The new password must be different.",
+    passwordTooShort: "New password must be at least 8 characters.",
     role: "Role",
     save: "Save",
     saved: "Saved",
@@ -98,8 +125,11 @@ export const PROFILE_COPY: Record<
   },
   fr: {
     accountHeading: "Sécurité du compte",
-    accountHint: "Le changement de mot de passe sera relié au flux de réinitialisation.",
+    accountHint: "Le mot de passe actuel est requis avant modification.",
     address: "Adresse",
+    avatarAction: "Changer la photo",
+    avatarError: "La photo n'a pas pu être enregistrée. Choisissez une autre image.",
+    avatarSaved: "Photo mise à jour",
     cancel: "Annuler",
     contactHeading: "Coordonnées",
     contactHint: "Utilisées en cas d'urgence et pour les notifications d'exploitation.",
@@ -116,6 +146,12 @@ export const PROFILE_COPY: Record<
     phone: "Téléphone",
     preferencesHeading: "Préférences",
     preferencesHint: "Le changement de langue ne concerne que cette session.",
+    currentPassword: "Mot de passe actuel",
+    newPassword: "Nouveau mot de passe",
+    passwordChanged: "Mot de passe modifié",
+    passwordError: "Le mot de passe n'a pas pu être modifié. Vérifiez le mot de passe actuel.",
+    passwordMismatch: "Le nouveau mot de passe doit être différent.",
+    passwordTooShort: "Le nouveau mot de passe doit contenir au moins 8 caractères.",
     role: "Poste",
     save: "Enregistrer",
     saved: "Enregistré",

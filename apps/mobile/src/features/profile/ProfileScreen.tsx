@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   StyleSheet,
@@ -8,7 +8,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import type { AuthUser, UpdateMeRequest } from "@zhao/types";
+import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
+import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
@@ -19,6 +20,7 @@ type ProfileScreenProps = {
   user: AuthUser;
   onChangeLanguage: (language: AuthLanguage) => void;
   onLogout: () => Promise<void>;
+  onChangePassword: (input: ChangePasswordRequest) => Promise<void>;
   onUpdateProfile: (input: UpdateMeRequest) => Promise<void>;
 };
 
@@ -30,6 +32,11 @@ type ProfileField = {
 type ContactDraft = {
   address: string;
   phone: string;
+};
+
+type PasswordDraft = {
+  currentPassword: string;
+  nextPassword: string;
 };
 
 function resolveDisplayName(user: AuthUser, fallback: string): string {
@@ -86,16 +93,25 @@ export function ProfileScreen({
   user,
   onChangeLanguage,
   onLogout,
+  onChangePassword,
   onUpdateProfile,
 }: ProfileScreenProps) {
   const copy = PROFILE_COPY[language];
   const displayName = useMemo(() => resolveDisplayName(user, copy.noValue), [copy.noValue, user]);
-  const avatar = user.avatarUrl || user.avatar || null;
+  const [avatar, setAvatar] = useState(user.avatarUrl || user.avatar || null);
   const [contact, setContact] = useState<ContactDraft>(() => buildContactDraft(user));
   const [draft, setDraft] = useState<ContactDraft>(() => buildContactDraft(user));
+  const [passwordDraft, setPasswordDraft] = useState<PasswordDraft>({
+    currentPassword: "",
+    nextPassword: "",
+  });
+  const [isChangingAvatar, setIsChangingAvatar] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [showSaved, setShowSaved] = useState(false);
 
@@ -113,6 +129,7 @@ export function ProfileScreen({
   useEffect(() => {
     const nextContact = buildContactDraft(user);
 
+    setAvatar(user.avatarUrl || user.avatar || null);
     setContact(nextContact);
     setDraft(nextContact);
   }, [user]);
@@ -155,6 +172,73 @@ export function ProfileScreen({
     }
   }
 
+  async function changeAvatar(): Promise<void> {
+    setAvatarMessage("");
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setAvatarMessage(copy.avatarError);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+      mediaTypes: "images",
+      quality: 0.72,
+    });
+
+    if (result.canceled || !result.assets[0]?.base64) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType || "image/jpeg";
+    const profilePhotoDataUrl = `data:${mimeType};base64,${asset.base64}`;
+
+    setIsChangingAvatar(true);
+
+    try {
+      await onUpdateProfile({ profilePhotoDataUrl });
+      setAvatar(profilePhotoDataUrl);
+      setAvatarMessage(copy.avatarSaved);
+    } catch {
+      setAvatarMessage(copy.avatarError);
+    } finally {
+      setIsChangingAvatar(false);
+    }
+  }
+
+  async function savePassword(): Promise<void> {
+    const currentPassword = passwordDraft.currentPassword;
+    const nextPassword = passwordDraft.nextPassword;
+
+    setPasswordMessage("");
+
+    if (nextPassword.length < 8) {
+      setPasswordMessage(copy.passwordTooShort);
+      return;
+    }
+
+    if (currentPassword === nextPassword) {
+      setPasswordMessage(copy.passwordMismatch);
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      await onChangePassword({ currentPassword, nextPassword });
+      setPasswordDraft({ currentPassword: "", nextPassword: "" });
+      setPasswordMessage(copy.passwordChanged);
+    } catch {
+      setPasswordMessage(copy.passwordError);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }
+
   async function handleLogoutPress(): Promise<void> {
     setIsLoggingOut(true);
 
@@ -185,6 +269,18 @@ export function ProfileScreen({
             {copy.titleSuffix}
           </Text>
           <Text style={styles.heroName}>{displayName}</Text>
+          <Pressable
+            disabled={isChangingAvatar}
+            style={styles.avatarButton}
+            onPress={() => void changeAvatar()}
+          >
+            {isChangingAvatar ? (
+              <ZhaoLoadingIndicator variant="button" />
+            ) : (
+              <Text style={styles.avatarButtonText}>{copy.avatarAction}</Text>
+            )}
+          </Pressable>
+          {avatarMessage ? <Text style={styles.inlineMessage}>{avatarMessage}</Text> : null}
         </View>
       </View>
 
@@ -242,7 +338,7 @@ export function ProfileScreen({
                 onPress={() => void saveContact()}
               >
                 {isSaving ? (
-                  <ActivityIndicator color="#ffffff" />
+                  <ZhaoLoadingIndicator tone="light" variant="button" />
                 ) : (
                   <Text style={styles.primaryButtonText}>{copy.save}</Text>
                 )}
@@ -299,6 +395,57 @@ export function ProfileScreen({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{copy.accountHeading}</Text>
         <Text style={styles.sectionHint}>{copy.accountHint}</Text>
+        <View style={styles.fieldList}>
+          <View style={styles.editField}>
+            <TrackingText size={10}>{copy.currentPassword}</TrackingText>
+            <TextInput
+              placeholder="••••••••"
+              placeholderTextColor={authControlStyles.colors.ink20}
+              secureTextEntry
+              style={styles.input}
+              value={passwordDraft.currentPassword}
+              onChangeText={(currentPassword) =>
+                setPasswordDraft((current) => ({ ...current, currentPassword }))
+              }
+            />
+          </View>
+          <View style={styles.editField}>
+            <TrackingText size={10}>{copy.newPassword}</TrackingText>
+            <TextInput
+              placeholder="••••••••"
+              placeholderTextColor={authControlStyles.colors.ink20}
+              secureTextEntry
+              style={styles.input}
+              value={passwordDraft.nextPassword}
+              onChangeText={(nextPassword) =>
+                setPasswordDraft((current) => ({ ...current, nextPassword }))
+              }
+            />
+          </View>
+        </View>
+        {passwordMessage ? <Text style={styles.inlineMessage}>{passwordMessage}</Text> : null}
+        <Pressable
+          disabled={
+            isChangingPassword ||
+            !passwordDraft.currentPassword ||
+            !passwordDraft.nextPassword
+          }
+          style={[
+            styles.primaryButton,
+            isChangingPassword ||
+            !passwordDraft.currentPassword ||
+            !passwordDraft.nextPassword
+              ? styles.disabledButton
+              : null,
+          ]}
+          onPress={() => void savePassword()}
+        >
+          {isChangingPassword ? (
+            <ZhaoLoadingIndicator tone="light" variant="button" />
+          ) : (
+            <Text style={styles.primaryButtonText}>{copy.save}</Text>
+          )}
+        </Pressable>
       </View>
 
       <View style={styles.section}>
@@ -314,7 +461,7 @@ export function ProfileScreen({
           onPress={() => void handleLogoutPress()}
         >
           {isLoggingOut ? (
-            <ActivityIndicator color={authControlStyles.colors.red} />
+            <ZhaoLoadingIndicator variant="button" />
           ) : (
             <Text style={styles.logoutButtonText}>{copy.logout}</Text>
           )}
@@ -344,6 +491,22 @@ const styles = StyleSheet.create({
     fontFamily: "serif",
     fontSize: 26,
     fontWeight: "700",
+  },
+  avatarButton: {
+    alignItems: "center",
+    borderColor: "rgba(193, 22, 22, 0.28)",
+    borderWidth: 1,
+    minHeight: 34,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    alignSelf: "flex-start",
+  },
+  avatarButtonText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
   buttonRow: {
     flexDirection: "row",
@@ -418,6 +581,12 @@ const styles = StyleSheet.create({
     fontSize: 17,
     minHeight: 46,
     paddingHorizontal: 12,
+  },
+  inlineMessage: {
+    color: authControlStyles.colors.red,
+    fontFamily: "serif",
+    fontSize: 13,
+    lineHeight: 19,
   },
   languageButton: {
     alignItems: "center",

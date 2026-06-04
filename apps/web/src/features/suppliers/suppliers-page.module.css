@@ -259,6 +259,54 @@
   align-items: center;
 }
 
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.summaryItem {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--red-soft-2);
+  border-left: 3px solid var(--red);
+  background: var(--paper);
+}
+
+.summaryLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+  font-weight: 700;
+}
+
+.summaryValue {
+  display: block;
+  font-family: var(--mono);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.searchRow,
+.filtersRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.filtersRow {
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
+  margin: 0 0 14px;
+}
+
 /* Cards grid */
 .grid {
   display: grid;
@@ -629,6 +677,29 @@
   white-space: nowrap;
 }
 
+.suppliersTable {
+  min-width: 760px;
+}
+
+.supplierNameCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.supplierNameCell strong {
+  font-family: var(--zh-serif);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.supplierId {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-40);
+}
+
 .rowEmpty {
   padding: 30px 16px;
   text-align: center;
@@ -763,7 +834,15 @@
     grid-template-columns: 1fr;
   }
 
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
   .formGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filtersRow {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -786,6 +865,11 @@
   .toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .searchRow,
+  .filtersRow {
+    grid-template-columns: 1fr;
   }
 
   .cardActions {

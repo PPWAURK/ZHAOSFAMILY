@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -8,6 +7,7 @@ import {
   type TextInputProps,
   View,
 } from "react-native";
+import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import type { AuthCopy, AuthLanguage } from "@/features/auth/authCopy";
 import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
 
@@ -237,7 +237,7 @@ export function PrimaryButton({
       onPress={onPress}
     >
       {isLoading ? (
-        <ActivityIndicator color="#ffffff" />
+        <ZhaoLoadingIndicator tone="light" variant="button" />
       ) : (
         <>
           <Text style={styles.primaryButtonText}>{label}</Text>

@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
 
+import { useAuth } from "@/features/auth/context/AuthContext";
 import Sidebar from "@/features/dashboard/components/Sidebar";
 import {
   DASHBOARD_LANGUAGES,
@@ -13,19 +14,53 @@ import StoreCard from "@/features/stores/components/StoreCard";
 import {
   STORES_COPY,
 } from "@/features/stores/constants/stores-copy";
-import { fetchStoresPageStores } from "@/features/stores/services/restaurantsApi";
+import {
+  createRestaurant,
+  deleteRestaurant,
+  fetchStoresPageStores,
+  updateRestaurant,
+} from "@/features/stores/services/restaurantsApi";
 import styles from "@/features/stores/stores-page.module.css";
 
+const EMPTY_STORE_FORM = {
+  name: "",
+  address: "",
+  photoUrl: "",
+};
+
+function getJobRoleValues(user) {
+  return `${user?.jobRole || user?.position || user?.role || ""}`
+    .split(",")
+    .map((role) => role.trim())
+    .filter(Boolean);
+}
+
+function canManageStoreRecords(user) {
+  const roleValues = getJobRoleValues(user);
+
+  return (
+    roleValues.includes("holding") ||
+    (user?.permissions || []).includes("system.permission.manage")
+  );
+}
+
 export default function StoresPage() {
+  const { user } = useAuth();
   const [lang, setLang] = useState("zh");
   const [menuOpen, setMenuOpen] = useState(false);
   const [stores, setStores] = useState([]);
   const [isLoadingStores, setIsLoadingStores] = useState(true);
   const [storesError, setStoresError] = useState("");
+  const [editingStoreId, setEditingStoreId] = useState(null);
+  const [draft, setDraft] = useState(EMPTY_STORE_FORM);
+  const [formError, setFormError] = useState("");
+  const [isSavingStore, setIsSavingStore] = useState(false);
+  const [deletingStoreId, setDeletingStoreId] = useState(null);
   const t = STORES_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const count = stores.length;
   const countLabel = count > 1 ? t.countPlural : t.countSingular;
+  const canManageStores = canManageStoreRecords(user);
 
   useEffect(() => {
     let isCancelled = false;
@@ -61,6 +96,90 @@ export default function StoresPage() {
       isCancelled = true;
     };
   }, [t.loadError]);
+
+  function resetStoreForm() {
+    setEditingStoreId(null);
+    setDraft(EMPTY_STORE_FORM);
+    setFormError("");
+  }
+
+  function patchDraft(key, value) {
+    setFormError("");
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function startEditStore(store) {
+    setEditingStoreId(store.id);
+    setDraft({
+      name: store.name,
+      address: store.address,
+      photoUrl: store.photoUrl || "",
+    });
+    setFormError("");
+  }
+
+  async function handleSaveStore(event) {
+    event.preventDefault();
+    setFormError("");
+
+    const input = {
+      name: draft.name.trim(),
+      address: draft.address.trim(),
+      photoUrl: draft.photoUrl.trim(),
+    };
+
+    if (!input.name || !input.address) {
+      setFormError(t.formRequired);
+      return;
+    }
+
+    setIsSavingStore(true);
+
+    try {
+      const savedStore = editingStoreId
+        ? await updateRestaurant(editingStoreId, input)
+        : await createRestaurant(input);
+
+      setStores((current) => {
+        if (!editingStoreId) {
+          return [...current, savedStore];
+        }
+
+        return current.map((store) =>
+          store.id === savedStore.id ? savedStore : store,
+        );
+      });
+      resetStoreForm();
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : t.saveError);
+    } finally {
+      setIsSavingStore(false);
+    }
+  }
+
+  async function handleDeleteStore(store) {
+    const confirmed = window.confirm(t.deleteConfirm);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingStoreId(store.id);
+    setStoresError("");
+
+    try {
+      await deleteRestaurant(store.id);
+      setStores((current) => current.filter((item) => item.id !== store.id));
+
+      if (editingStoreId === store.id) {
+        resetStoreForm();
+      }
+    } catch (error) {
+      setStoresError(error instanceof Error ? error.message : t.deleteError);
+    } finally {
+      setDeletingStoreId(null);
+    }
+  }
 
   return (
     <main className={styles.page}>
@@ -128,6 +247,72 @@ export default function StoresPage() {
 
         <p className={styles.lede}>{t.lede}</p>
 
+        {canManageStores ? (
+          <form className={styles.formPanel} onSubmit={handleSaveStore}>
+            <div className={styles.formHead}>
+              <h2 className={styles.formTitle}>
+                {editingStoreId ? t.formTitleEdit : t.formTitleCreate}
+              </h2>
+              {editingStoreId ? (
+                <button
+                  type="button"
+                  className={styles.formGhostButton}
+                  onClick={resetStoreForm}
+                >
+                  {t.cancel}
+                </button>
+              ) : null}
+            </div>
+
+            <div className={styles.formGrid}>
+              <label className={styles.formField}>
+                <span>{t.nameLabel}</span>
+                <input
+                  value={draft.name}
+                  onChange={(event) => patchDraft("name", event.target.value)}
+                  placeholder={t.namePlaceholder}
+                  disabled={isSavingStore}
+                />
+              </label>
+
+              <label className={styles.formField}>
+                <span>{t.addressLabel}</span>
+                <input
+                  value={draft.address}
+                  onChange={(event) => patchDraft("address", event.target.value)}
+                  placeholder={t.addressLabel}
+                  disabled={isSavingStore}
+                />
+              </label>
+
+              <label className={styles.formField}>
+                <span>{t.photoLabel}</span>
+                <input
+                  value={draft.photoUrl}
+                  onChange={(event) => patchDraft("photoUrl", event.target.value)}
+                  placeholder={t.photoPlaceholder}
+                  disabled={isSavingStore}
+                />
+              </label>
+
+            </div>
+
+            {formError ? (
+              <p className={styles.formError} role="alert">
+                {formError}
+              </p>
+            ) : null}
+
+            <button
+              type="submit"
+              className={styles.formPrimaryButton}
+              disabled={isSavingStore}
+            >
+              {editingStoreId ? t.saveEdit : t.saveCreate}
+            </button>
+          </form>
+        ) : null}
+
         <p className={styles.listHeading}>
           <span>{t.listHeading}</span>
           <span className={styles.listHeadingCount}>
@@ -156,8 +341,11 @@ export default function StoresPage() {
                 key={store.id}
                 store={store}
                 index={index}
-                lang={lang}
                 labels={t}
+                onEdit={startEditStore}
+                onDelete={handleDeleteStore}
+                isDeleting={deletingStoreId === store.id}
+                canManageStoreRecords={canManageStores}
               />
             ))}
           </div>

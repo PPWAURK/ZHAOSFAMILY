@@ -1,0 +1,80 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*",
+        "./*"
+      ],
+      "@features/*": [
+        "./src/features/*"
+      ],
+      "@shared/*": [
+        "./src/shared/*"
+      ],
+      "@zhao/api": [
+        "../../packages/api/src/index.ts"
+      ],
+      "@zhao/api/*": [
+        "../../packages/api/src/*"
+      ],
+      "@zhao/auth": [
+        "../../packages/auth/src/index.ts"
+      ],
+      "@zhao/auth/*": [
+        "../../packages/auth/src/*"
+      ],
+      "@zhao/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@zhao/types/*": [
+        "../../packages/types/src/*"
+      ],
+      "@zhao/utils": [
+        "../../packages/utils/src/index.ts"
+      ],
+      "@zhao/utils/*": [
+        "../../packages/utils/src/*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "out"
+  ]
+}

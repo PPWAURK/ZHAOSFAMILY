@@ -179,6 +179,9 @@ export function createApiClient({
         method: "POST",
         url: path,
         data: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       }),
     refresh: refreshAccessToken,
   };

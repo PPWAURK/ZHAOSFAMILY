@@ -23,6 +23,12 @@ export const SUPPLIERS_COPY = {
     count: "家供应商",
     addSupplier: "+ 添加供应商",
     newSupplierTitle: "新增供应商",
+    metricSuppliers: "供应商",
+    metricProducts: "商品",
+    metricDefaultAll: "默认全商品",
+    searchPlaceholder: "搜索供应商名称、排序或 ID",
+    clearSearch: "清空",
+    noSuppliers: "没有匹配的供应商。",
 
     fieldName: "名称",
     fieldSortOrder: "排序",
@@ -54,6 +60,7 @@ export const SUPPLIERS_COPY = {
     noProducts: "还没有商品，点击上方按钮添加第一个。",
 
     colReference: "编号",
+    colSupplier: "供应商",
     colCategory: "类别 *",
     colNameCn: "中文名 *",
     colDesignationFr: "法文名",
@@ -68,6 +75,10 @@ export const SUPPLIERS_COPY = {
     pricePlaceholder: "0.00",
     unitPlaceholder: "袋 / 箱 / 公斤",
     imagePlaceholder: "https://…",
+    productSearchPlaceholder: "搜索编号、名称、规格或单位",
+    categoryFilter: "类别筛选",
+    allCategories: "全部类别",
+    noMatchedProducts: "没有匹配的商品。",
 
     validation: {
       nameRequired: "名称不能为空。",
@@ -104,6 +115,12 @@ export const SUPPLIERS_COPY = {
     count: "suppliers",
     addSupplier: "+ Add supplier",
     newSupplierTitle: "New supplier",
+    metricSuppliers: "Suppliers",
+    metricProducts: "Products",
+    metricDefaultAll: "Default all",
+    searchPlaceholder: "Search supplier name, order or ID",
+    clearSearch: "Clear",
+    noSuppliers: "No matching suppliers.",
 
     fieldName: "Name",
     fieldSortOrder: "Sort order",
@@ -136,6 +153,7 @@ export const SUPPLIERS_COPY = {
     noProducts: "No products yet. Click the button above to add the first one.",
 
     colReference: "Reference",
+    colSupplier: "Supplier",
     colCategory: "Category *",
     colNameCn: "Chinese name *",
     colDesignationFr: "French name",
@@ -150,6 +168,10 @@ export const SUPPLIERS_COPY = {
     pricePlaceholder: "0.00",
     unitPlaceholder: "bag / box / kg",
     imagePlaceholder: "https://…",
+    productSearchPlaceholder: "Search reference, name, spec or unit",
+    categoryFilter: "Category filter",
+    allCategories: "All categories",
+    noMatchedProducts: "No matching products.",
 
     validation: {
       nameRequired: "Name is required.",
@@ -186,6 +208,12 @@ export const SUPPLIERS_COPY = {
     count: "fournisseurs",
     addSupplier: "+ Ajouter un fournisseur",
     newSupplierTitle: "Nouveau fournisseur",
+    metricSuppliers: "Fournisseurs",
+    metricProducts: "Produits",
+    metricDefaultAll: "Tous par défaut",
+    searchPlaceholder: "Rechercher nom, ordre ou ID",
+    clearSearch: "Effacer",
+    noSuppliers: "Aucun fournisseur correspondant.",
 
     fieldName: "Nom",
     fieldSortOrder: "Ordre",
@@ -219,6 +247,7 @@ export const SUPPLIERS_COPY = {
       "Aucun produit pour l'instant. Cliquez sur le bouton pour en ajouter un.",
 
     colReference: "Référence",
+    colSupplier: "Fournisseur",
     colCategory: "Catégorie *",
     colNameCn: "Nom chinois *",
     colDesignationFr: "Nom français",
@@ -233,6 +262,10 @@ export const SUPPLIERS_COPY = {
     pricePlaceholder: "0.00",
     unitPlaceholder: "sac / carton / kg",
     imagePlaceholder: "https://…",
+    productSearchPlaceholder: "Rechercher référence, nom, spec ou unité",
+    categoryFilter: "Filtre catégorie",
+    allCategories: "Toutes catégories",
+    noMatchedProducts: "Aucun produit correspondant.",
 
     validation: {
       nameRequired: "Le nom est obligatoire.",

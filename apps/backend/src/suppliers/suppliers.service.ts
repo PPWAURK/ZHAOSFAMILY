@@ -10,58 +10,63 @@ export type SupplierListItem = {
   includeAllProductsInOrder: boolean;
 };
 
+const SUPPLIER_SELECT = {
+  id: true,
+  name: true,
+  sortOrder: true,
+  includeAllProductsInOrder: true,
+} as const;
+
+type SupplierRow = SupplierListItem;
+
+function toSupplierListItem(supplier: SupplierRow): SupplierListItem {
+  return {
+    id: supplier.id,
+    name: supplier.name,
+    sortOrder: supplier.sortOrder,
+    includeAllProductsInOrder: supplier.includeAllProductsInOrder,
+  };
+}
+
 @Injectable()
 export class SuppliersService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async listSuppliers(): Promise<SupplierListItem[]> {
     const suppliers = await this.prismaService.supplier.findMany({
-      select: {
-        id: true,
-        name: true,
-        sortOrder: true,
-        includeAllProductsInOrder: true,
-      },
+      select: SUPPLIER_SELECT,
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
-    return suppliers;
+    return suppliers.map(toSupplierListItem);
   }
 
   async getSupplier(id: number): Promise<SupplierListItem> {
     const supplier = await this.prismaService.supplier.findUnique({
       where: { id },
-      select: {
-        id: true,
-        name: true,
-        sortOrder: true,
-        includeAllProductsInOrder: true,
-      },
+      select: SUPPLIER_SELECT,
     });
 
     if (!supplier) {
       throw new NotFoundException('SUPPLIER_NOT_FOUND');
     }
 
-    return supplier;
+    return toSupplierListItem(supplier);
   }
 
   async createSupplier(dto: CreateSupplierDto): Promise<SupplierListItem> {
     const nextSortOrder = await this.resolveNextSortOrder(dto.sortOrder);
 
-    return this.prismaService.supplier.create({
+    const supplier = await this.prismaService.supplier.create({
       data: {
         name: dto.name.trim(),
         sortOrder: nextSortOrder,
         includeAllProductsInOrder: dto.includeAllProductsInOrder ?? false,
       },
-      select: {
-        id: true,
-        name: true,
-        sortOrder: true,
-        includeAllProductsInOrder: true,
-      },
+      select: SUPPLIER_SELECT,
     });
+
+    return toSupplierListItem(supplier);
   }
 
   async updateSupplier(
@@ -70,7 +75,7 @@ export class SuppliersService {
   ): Promise<SupplierListItem> {
     await this.getSupplier(id);
 
-    return this.prismaService.supplier.update({
+    const supplier = await this.prismaService.supplier.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
@@ -79,13 +84,10 @@ export class SuppliersService {
           ? { includeAllProductsInOrder: dto.includeAllProductsInOrder }
           : {}),
       },
-      select: {
-        id: true,
-        name: true,
-        sortOrder: true,
-        includeAllProductsInOrder: true,
-      },
+      select: SUPPLIER_SELECT,
     });
+
+    return toSupplierListItem(supplier);
   }
 
   async deleteSupplier(id: number): Promise<void> {

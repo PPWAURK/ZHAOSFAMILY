@@ -70,6 +70,14 @@ export type ResetPasswordRequest = ResetPasswordDto;
 export type UpdateMeDto = {
   phone?: string;
   address?: string;
+  profilePhotoDataUrl?: string;
 };
 
 export type UpdateMeRequest = UpdateMeDto;
+
+export type ChangePasswordDto = {
+  currentPassword: string;
+  nextPassword: string;
+};
+
+export type ChangePasswordRequest = ChangePasswordDto;

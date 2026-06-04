@@ -6,12 +6,17 @@ import { useAuth } from "@/features/auth/context/AuthContext";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
 import {
+  fetchManageableRestaurants,
   fetchPermissionRoles,
   fetchPermissionUsers,
+  updatePermissionUserManagedRestaurants,
   updatePermissionUserRoles,
 } from "@/features/permissions/services/permissionsApi";
 
 const MANAGE_PERMISSION = "system.permission.manage";
+const SUPER_ADMIN_ROLE = "super-admin";
+const HOLDING_JOB_ROLE = "holding";
+const REGIONAL_MANAGER_JOB_ROLE = "regional-manager";
 
 const ROLE_LABELS = {
   "super-admin": {
@@ -41,6 +46,11 @@ const PERMISSION_LABELS = {
     zh: "管理系统权限",
     en: "Manage system permissions",
     fr: "Gérer les permissions système",
+  },
+  "employee.job_role.manage_store": {
+    zh: "管理本店员工岗位",
+    en: "Manage store employee roles",
+    fr: "Gérer les postes de la boutique",
   },
   "training.material.read": {
     zh: "查看培训资料",
@@ -99,18 +109,30 @@ const PERMISSIONS_COPY = {
       emptyUsers: "暂无用户。",
       loadError: "权限数据加载失败",
       saveError: "角色保存失败",
+      roleLocked: "仅 holding 岗位可分配最高管理员",
+      noChanges: "未修改",
+      unassignedStore: "未分配门店",
+      memberCountSuffix: "人",
+      managedStoresUnavailable: "仅区域经理需要设置负责门店",
       table: {
         name: "姓名",
         email: "邮箱",
-        store: "门店",
+        status: "状态",
         jobRole: "岗位",
+        managedStores: "负责门店",
         roles: "角色",
         permissions: "权限摘要",
         action: "操作",
       },
       actions: {
         save: "保存",
+        saveStores: "保存门店",
         saving: "保存中",
+      },
+      status: {
+        pending: "待审批",
+        approved: "已通过",
+        rejected: "已拒绝",
       },
     },
   },
@@ -138,18 +160,30 @@ const PERMISSIONS_COPY = {
       emptyUsers: "No users yet.",
       loadError: "Failed to load permission data",
       saveError: "Failed to save roles",
+      roleLocked: "Only holding users can receive super admin",
+      noChanges: "No changes",
+      unassignedStore: "Unassigned store",
+      memberCountSuffix: "members",
+      managedStoresUnavailable: "Managed stores are only set for regional managers",
       table: {
         name: "Name",
         email: "Email",
-        store: "Store",
+        status: "Status",
         jobRole: "Job role",
+        managedStores: "Managed stores",
         roles: "Roles",
         permissions: "Permission summary",
         action: "Action",
       },
       actions: {
         save: "Save",
+        saveStores: "Save stores",
         saving: "Saving",
+      },
+      status: {
+        pending: "Pending",
+        approved: "Approved",
+        rejected: "Rejected",
       },
     },
   },
@@ -178,18 +212,32 @@ const PERMISSIONS_COPY = {
       emptyUsers: "Aucun utilisateur.",
       loadError: "Échec du chargement des permissions",
       saveError: "Échec de l'enregistrement des rôles",
+      roleLocked:
+        "Seuls les utilisateurs holding peuvent recevoir super admin",
+      noChanges: "Aucun changement",
+      unassignedStore: "Boutique non assignée",
+      memberCountSuffix: "membres",
+      managedStoresUnavailable:
+        "Les boutiques gérées concernent les managers régionaux",
       table: {
         name: "Nom",
         email: "Email",
-        store: "Boutique",
+        status: "Statut",
         jobRole: "Poste",
+        managedStores: "Boutiques gérées",
         roles: "Rôles",
         permissions: "Résumé des permissions",
         action: "Action",
       },
       actions: {
         save: "Enregistrer",
+        saveStores: "Enregistrer boutiques",
         saving: "Enregistrement",
+      },
+      status: {
+        pending: "En attente",
+        approved: "Approuvé",
+        rejected: "Refusé",
       },
     },
   },
@@ -217,25 +265,105 @@ function formatPermissionSummary(permissions, lang, fallback) {
     .join(" / ");
 }
 
-function getSelectedRoleNames(selectElement) {
-  return Array.from(selectElement.selectedOptions).map((option) => option.value);
+function normalizeRoleNames(roleNames) {
+  return [...(roleNames || [])].sort();
+}
+
+function areRoleNamesEqual(leftRoles, rightRoles) {
+  const left = normalizeRoleNames(leftRoles);
+  const right = normalizeRoleNames(rightRoles);
+
+  return (
+    left.length === right.length &&
+    left.every((roleName, index) => roleName === right[index])
+  );
+}
+
+function canAssignRoleToUser(roleName, user) {
+  return roleName !== SUPER_ADMIN_ROLE || user?.jobRole === HOLDING_JOB_ROLE;
+}
+
+function getUserIdKey(userId) {
+  return String(userId);
+}
+
+function getJobRoleValues(jobRole) {
+  return `${jobRole || ""}`
+    .split(",")
+    .map((role) => role.trim())
+    .filter(Boolean);
+}
+
+function isRegionalManager(user) {
+  return getJobRoleValues(user?.jobRole).includes(REGIONAL_MANAGER_JOB_ROLE);
+}
+
+function getUserStoreKey(user) {
+  return user?.restaurant?.id ? `store-${user.restaurant.id}` : "unassigned";
+}
+
+function normalizeRestaurantIds(restaurantIds) {
+  return [...(restaurantIds || [])].map(Number).sort((left, right) => left - right);
+}
+
+function areRestaurantIdsEqual(leftIds, rightIds) {
+  const left = normalizeRestaurantIds(leftIds);
+  const right = normalizeRestaurantIds(rightIds);
+
+  return (
+    left.length === right.length &&
+    left.every((restaurantId, index) => restaurantId === right[index])
+  );
+}
+
+function groupUsersByStore(users, unassignedStoreName) {
+  const groupsByStore = new Map();
+
+  for (const item of users) {
+    const storeKey = getUserStoreKey(item);
+    const storeName = item.restaurant?.name || unassignedStoreName;
+    const currentGroup = groupsByStore.get(storeKey);
+
+    if (currentGroup) {
+      currentGroup.users.push(item);
+      continue;
+    }
+
+    groupsByStore.set(storeKey, {
+      key: storeKey,
+      storeName,
+      users: [item],
+    });
+  }
+
+  return Array.from(groupsByStore.values());
 }
 
 export default function PermissionsPage() {
   const { user, isLoading } = useAuth();
   const canManagePermissions = hasPermission(user, MANAGE_PERMISSION);
   const [roles, setRoles] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
   const [users, setUsers] = useState([]);
   const [draftRolesByUserId, setDraftRolesByUserId] = useState({});
+  const [draftManagedRestaurantsByUserId, setDraftManagedRestaurantsByUserId] =
+    useState({});
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [savingUserId, setSavingUserId] = useState(null);
+  const [savingManagedRestaurantsUserId, setSavingManagedRestaurantsUserId] =
+    useState(null);
 
   useEffect(() => {
     let isActive = true;
 
     async function loadPermissionsData() {
       if (!canManagePermissions) {
+        setRoles([]);
+        setRestaurants([]);
+        setUsers([]);
+        setDraftRolesByUserId({});
+        setDraftManagedRestaurantsByUserId({});
         return;
       }
 
@@ -243,17 +371,34 @@ export default function PermissionsPage() {
       setErrorMessage("");
 
       try {
-        const [nextRoles, nextUsers] = await Promise.all([
+        const [nextRoles, nextUsers, nextRestaurants] = await Promise.all([
           fetchPermissionRoles(),
           fetchPermissionUsers(),
+          fetchManageableRestaurants(),
         ]);
 
         if (isActive) {
           setRoles(nextRoles);
+          setRestaurants(nextRestaurants);
           setUsers(nextUsers);
           setDraftRolesByUserId(
             Object.fromEntries(
-              nextUsers.map((item) => [item.id, item.roles || []]),
+              nextUsers.map((item) => [
+                getUserIdKey(item.id),
+                normalizeRoleNames(item.roles),
+              ]),
+            ),
+          );
+          setDraftManagedRestaurantsByUserId(
+            Object.fromEntries(
+              nextUsers.map((item) => [
+                getUserIdKey(item.id),
+                normalizeRestaurantIds(
+                  (item.managedRestaurants || []).map(
+                    (restaurant) => restaurant.id,
+                  ),
+                ),
+              ]),
             ),
           );
         }
@@ -275,27 +420,47 @@ export default function PermissionsPage() {
     };
   }, [canManagePermissions]);
 
-  function updateDraftRoles(userId, roleNames) {
+  function updateDraftRole(userId, roleName, checked) {
+    const userIdKey = getUserIdKey(userId);
+
     setDraftRolesByUserId((prev) => ({
       ...prev,
-      [userId]: roleNames,
+      [userIdKey]: normalizeRoleNames(
+        checked
+          ? [...(prev[userIdKey] || []), roleName]
+          : (prev[userIdKey] || []).filter((item) => item !== roleName),
+      ),
+    }));
+  }
+
+  function updateDraftManagedRestaurant(userId, restaurantId, checked) {
+    const userIdKey = getUserIdKey(userId);
+
+    setDraftManagedRestaurantsByUserId((prev) => ({
+      ...prev,
+      [userIdKey]: normalizeRestaurantIds(
+        checked
+          ? [...(prev[userIdKey] || []), restaurantId]
+          : (prev[userIdKey] || []).filter((item) => item !== restaurantId),
+      ),
     }));
   }
 
   async function saveUserRoles(userId) {
-    const roleNames = draftRolesByUserId[userId] || [];
+    const userIdKey = getUserIdKey(userId);
+    const roleNames = draftRolesByUserId[userIdKey] || [];
 
     setSavingUserId(userId);
     setErrorMessage("");
 
     try {
-      const updatedUser = await updatePermissionUserRoles(userId, roleNames);
+      const updatedUser = await updatePermissionUserRoles(userIdKey, roleNames);
       setUsers((prev) =>
         prev.map((item) => (item.id === userId ? updatedUser : item)),
       );
       setDraftRolesByUserId((prev) => ({
         ...prev,
-        [userId]: updatedUser.roles || [],
+        [getUserIdKey(updatedUser.id)]: normalizeRoleNames(updatedUser.roles),
       }));
     } catch (error) {
       setErrorMessage(error.message || "角色保存失败");
@@ -304,19 +469,39 @@ export default function PermissionsPage() {
     }
   }
 
+  async function saveManagedRestaurants(userId) {
+    const userIdKey = getUserIdKey(userId);
+    const restaurantIds = draftManagedRestaurantsByUserId[userIdKey] || [];
+
+    setSavingManagedRestaurantsUserId(userId);
+    setErrorMessage("");
+
+    try {
+      const updatedUser = await updatePermissionUserManagedRestaurants(
+        userIdKey,
+        restaurantIds,
+      );
+      setUsers((prev) =>
+        prev.map((item) => (item.id === userId ? updatedUser : item)),
+      );
+      setDraftManagedRestaurantsByUserId((prev) => ({
+        ...prev,
+        [getUserIdKey(updatedUser.id)]: normalizeRestaurantIds(
+          (updatedUser.managedRestaurants || []).map(
+            (restaurant) => restaurant.id,
+          ),
+        ),
+      }));
+    } catch (error) {
+      setErrorMessage(error.message || "角色保存失败");
+    } finally {
+      setSavingManagedRestaurantsUserId(null);
+    }
+  }
+
   return (
     <TrainingLayout pageCopy={PERMISSIONS_COPY}>
       {({ lang, t, styles }) => {
-        const roleOptions = roles.map((role) => ({
-          value: role.name,
-          label: formatRoleLabel(role.name, lang),
-          title: formatPermissionSummary(
-            role.permissions,
-            lang,
-            t.page.noPermission,
-          ),
-        }));
-
         return (
           <>
             <section className={styles.pageHeaderCard}>
@@ -355,75 +540,236 @@ export default function PermissionsPage() {
                     {t.page.loadingData}
                   </div>
                 ) : users.length > 0 ? (
-                  <table className={styles.permissionTable}>
-                    <thead>
-                      <tr>
-                        <th>{t.page.table.name}</th>
-                        <th>{t.page.table.email}</th>
-                        <th>{t.page.table.store}</th>
-                        <th>{t.page.table.jobRole}</th>
-                        <th>{t.page.table.roles}</th>
-                        <th>{t.page.table.permissions}</th>
-                        <th>{t.page.table.action}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((item) => {
-                        const draftRoles = draftRolesByUserId[item.id] || [];
+                  <div className={styles.permissionStoreGroups}>
+                    {groupUsersByStore(users, t.page.unassignedStore).map(
+                      (group) => (
+                        <details
+                          key={group.key}
+                          className={styles.permissionStoreGroup}
+                          open
+                        >
+                          <summary className={styles.permissionStoreSummary}>
+                            <span>{group.storeName}</span>
+                            <span>
+                              {group.users.length} {t.page.memberCountSuffix}
+                            </span>
+                          </summary>
 
-                        return (
-                          <tr key={item.id}>
-                            <td>{item.name}</td>
-                            <td>{item.email}</td>
-                            <td>{item.restaurant?.name || "-"}</td>
-                            <td>{item.jobRole || "-"}</td>
-                            <td>
-                              <select
-                                multiple
-                                value={draftRoles}
-                                disabled={savingUserId === item.id}
-                                onChange={(event) =>
-                                  updateDraftRoles(
-                                    item.id,
-                                    getSelectedRoleNames(event.currentTarget),
-                                  )
-                                }
-                              >
-                                {roleOptions.map((option) => (
-                                  <option
-                                    key={option.value}
-                                    value={option.value}
-                                    title={option.title}
-                                  >
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td title={(item.permissions || []).join(" / ")}>
-                              {formatPermissionSummary(
-                                item.permissions || [],
-                                lang,
-                                t.page.noPermission,
-                              )}
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className={styles.permissionSaveButton}
-                                disabled={savingUserId === item.id}
-                                onClick={() => saveUserRoles(item.id)}
-                              >
-                                {savingUserId === item.id
-                                  ? t.page.actions.saving
-                                  : t.page.actions.save}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                          <table className={styles.permissionTable}>
+                            <thead>
+                              <tr>
+                                <th>{t.page.table.name}</th>
+                                <th>{t.page.table.email}</th>
+                                <th>{t.page.table.status}</th>
+                                <th>{t.page.table.jobRole}</th>
+                                <th>{t.page.table.managedStores}</th>
+                                <th>{t.page.table.roles}</th>
+                                <th>{t.page.table.permissions}</th>
+                                <th>{t.page.table.action}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.users.map((item) => {
+                                const userIdKey = getUserIdKey(item.id);
+                                const currentRoles = normalizeRoleNames(
+                                  item.roles,
+                                );
+                                const draftRoles =
+                                  draftRolesByUserId[userIdKey] || currentRoles;
+                                const currentManagedRestaurantIds =
+                                  normalizeRestaurantIds(
+                                    (item.managedRestaurants || []).map(
+                                      (restaurant) => restaurant.id,
+                                    ),
+                                  );
+                                const draftManagedRestaurantIds =
+                                  draftManagedRestaurantsByUserId[userIdKey] ||
+                                  currentManagedRestaurantIds;
+                                const hasRoleChanges = !areRoleNamesEqual(
+                                  currentRoles,
+                                  draftRoles,
+                                );
+                                const hasManagedRestaurantChanges =
+                                  !areRestaurantIdsEqual(
+                                    currentManagedRestaurantIds,
+                                    draftManagedRestaurantIds,
+                                  );
+                                const canEditManagedRestaurants =
+                                  isRegionalManager(item);
+
+                                return (
+                                  <tr key={item.id}>
+                                    <td>{item.name || "-"}</td>
+                                    <td>{item.email || "-"}</td>
+                                    <td>
+                                      {t.page.status[item.accountStatus] ||
+                                        item.accountStatus ||
+                                        "-"}
+                                    </td>
+                                    <td>{item.jobRole || "-"}</td>
+                                    <td>
+                                      {canEditManagedRestaurants ? (
+                                        <div
+                                          className={
+                                            styles.permissionManagedStorePanel
+                                          }
+                                        >
+                                          <div
+                                            className={
+                                              styles.permissionManagedStoreGrid
+                                            }
+                                          >
+                                            {restaurants.map((restaurant) => {
+                                              const restaurantId = Number(
+                                                restaurant.id,
+                                              );
+                                              const isChecked =
+                                                draftManagedRestaurantIds.includes(
+                                                  restaurantId,
+                                                );
+
+                                              return (
+                                                <label
+                                                  key={restaurant.id}
+                                                  className={
+                                                    styles.permissionManagedStoreOption
+                                                  }
+                                                >
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    disabled={
+                                                      savingManagedRestaurantsUserId ===
+                                                      item.id
+                                                    }
+                                                    onChange={(event) =>
+                                                      updateDraftManagedRestaurant(
+                                                        item.id,
+                                                        restaurantId,
+                                                        event.currentTarget
+                                                          .checked,
+                                                      )
+                                                    }
+                                                  />
+                                                  <span>{restaurant.name}</span>
+                                                </label>
+                                              );
+                                            })}
+                                          </div>
+                                          <button
+                                            type="button"
+                                            className={
+                                              styles.permissionSaveButton
+                                            }
+                                            disabled={
+                                              savingManagedRestaurantsUserId ===
+                                                item.id ||
+                                              !hasManagedRestaurantChanges
+                                            }
+                                            onClick={() =>
+                                              saveManagedRestaurants(item.id)
+                                            }
+                                          >
+                                            {savingManagedRestaurantsUserId ===
+                                            item.id
+                                              ? t.page.actions.saving
+                                              : hasManagedRestaurantChanges
+                                                ? t.page.actions.saveStores
+                                                : t.page.noChanges}
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        t.page.managedStoresUnavailable
+                                      )}
+                                    </td>
+                                    <td>
+                                      <div className={styles.permissionRoleGrid}>
+                                        {roles.map((role) => {
+                                          const isChecked = draftRoles.includes(
+                                            role.name,
+                                          );
+                                          const canAssign =
+                                            canAssignRoleToUser(role.name, item);
+                                          const isDisabled =
+                                            savingUserId === item.id ||
+                                            (!canAssign && !isChecked);
+                                          const permissionTitle =
+                                            formatPermissionSummary(
+                                              role.permissions || [],
+                                              lang,
+                                              t.page.noPermission,
+                                            );
+
+                                          return (
+                                            <label
+                                              key={role.name}
+                                              className={
+                                                isDisabled
+                                                  ? styles.permissionRoleOptionDisabled
+                                                  : styles.permissionRoleOption
+                                              }
+                                              title={
+                                                canAssign
+                                                  ? permissionTitle
+                                                  : t.page.roleLocked
+                                              }
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                disabled={isDisabled}
+                                                onChange={(event) =>
+                                                  updateDraftRole(
+                                                    item.id,
+                                                    role.name,
+                                                    event.currentTarget.checked,
+                                                  )
+                                                }
+                                              />
+                                              <span>
+                                                {formatRoleLabel(
+                                                  role.name,
+                                                  lang,
+                                                )}
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    </td>
+                                    <td title={(item.permissions || []).join(" / ")}>
+                                      {formatPermissionSummary(
+                                        item.permissions || [],
+                                        lang,
+                                        t.page.noPermission,
+                                      )}
+                                    </td>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className={styles.permissionSaveButton}
+                                        disabled={
+                                          savingUserId === item.id ||
+                                          !hasRoleChanges
+                                        }
+                                        onClick={() => saveUserRoles(item.id)}
+                                      >
+                                        {savingUserId === item.id
+                                          ? t.page.actions.saving
+                                          : hasRoleChanges
+                                            ? t.page.actions.save
+                                            : t.page.noChanges}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </details>
+                      ),
+                    )}
+                  </div>
                 ) : (
                   <div className={styles.materialEmpty}>{t.page.emptyUsers}</div>
                 )}

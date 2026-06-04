@@ -307,7 +307,7 @@
 
 .tableHeader {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1.2fr) minmax(0, 1fr) 80px 100px 110px 150px;
+  grid-template-columns: 110px minmax(0, 1.2fr) minmax(0, 1fr) 80px 100px 110px 210px;
   gap: 18px;
   padding: 12px 18px;
   font-family: var(--mono);
@@ -321,7 +321,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1.2fr) minmax(0, 1fr) 80px 100px 110px 150px;
+  grid-template-columns: 110px minmax(0, 1.2fr) minmax(0, 1fr) 80px 100px 110px 210px;
   gap: 18px;
   align-items: center;
   padding: 16px 18px;
@@ -386,6 +386,7 @@
 .rowActions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -410,6 +411,34 @@
   background: var(--red);
   border-color: var(--red);
   color: #fff;
+}
+
+.rowActionDanger {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.rowActionDanger:hover:not(:disabled) {
+  background: var(--red);
+  color: #fff;
+}
+
+.rowAction:disabled {
+  opacity: 0.52;
+  cursor: wait;
+}
+
+.inlineError {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--red-soft);
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
 }
 
 .statusChip {

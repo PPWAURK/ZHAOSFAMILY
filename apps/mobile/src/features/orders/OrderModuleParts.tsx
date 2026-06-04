@@ -1,5 +1,4 @@
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   Text,
@@ -7,6 +6,7 @@ import {
   View,
 } from "react-native";
 import type { ImageSourcePropType } from "react-native";
+import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
@@ -66,8 +66,7 @@ export function SectionTitle({ label }: { label: string }) {
 export function StateRow({ label }: { label: string }) {
   return (
     <View style={styles.stateRow}>
-      <ActivityIndicator color={authControlStyles.colors.red} />
-      <Text style={styles.stateText}>{label}</Text>
+      <ZhaoLoadingIndicator label={label} />
     </View>
   );
 }

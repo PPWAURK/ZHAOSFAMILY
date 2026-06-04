@@ -1,0 +1,78 @@
+export type QuantityMap = Record<string, number | string>;
+
+export type CreateOrderItem = {
+  productId: number;
+  quantity: number;
+  specificationSlot?: number;
+};
+
+export type CreatePurchaseOrderInput = {
+  deliveryDate: string;
+  quantities: QuantityMap;
+};
+
+export type PurchaseOrder = Record<string, unknown>;
+
+export type PurchaseReturn = Record<string, unknown>;
+
+export type CreatePurchaseReturnInput = Record<string, unknown>;
+
+export type OrderSupplier = {
+  id: string;
+  name: string;
+  sortOrder?: number | null;
+  includeAllProductsInOrder?: boolean | null;
+};
+
+export type OrderProductVariant = {
+  id: string;
+  specification: string | null;
+  unit: string | null;
+  price: number | null;
+};
+
+export type OrderProduct = {
+  id: string;
+  supplierId: string;
+  reference?: string | null;
+  category?: string | null;
+  nameCn?: string | null;
+  nameFr?: string | null;
+  unit?: string | null;
+  price: number | null;
+  image?: string | null;
+  specification?: string | null;
+  specification2?: string | null;
+  specification3?: string | null;
+  unit2?: string | null;
+  unit3?: string | null;
+  price2: number | null;
+  price3: number | null;
+  variants: OrderProductVariant[];
+};
+
+export type OrderProductApiRecord = {
+  id: number | string;
+  supplierId: number | string;
+  reference?: string | null;
+  category?: string | null;
+  nameCn?: string | null;
+  designationFr?: string | null;
+  unit?: string | null;
+  unit2?: string | null;
+  unit3?: string | null;
+  unitPriceHt?: number | null;
+  unitPriceHt2?: number | null;
+  unitPriceHt3?: number | null;
+  image?: string | null;
+  specification?: string | null;
+  specification2?: string | null;
+  specification3?: string | null;
+};
+
+export type OrderInventoryLine = {
+  id: number | string;
+  stock?: number | null;
+};
+
+export type OrderStockMap = Record<string, number>;

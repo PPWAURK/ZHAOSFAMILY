@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { DashboardNewsModule } from './dashboard-news/dashboard-news.module';
 import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { MailModule } from './mail/mail.module';
 import { MediaModule } from './media/media.module';
 import { OrdersModule } from './orders/orders.module';
 import { PermissionsModule } from './permissions/permissions.module';
@@ -31,6 +32,7 @@ import { TrainingModule } from './training/training.module';
     PermissionsModule,
     TrainingModule,
     MediaModule,
+    MailModule,
   ],
 })
 export class AppModule {}

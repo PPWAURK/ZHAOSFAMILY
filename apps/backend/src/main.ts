@@ -21,7 +21,8 @@ async function bootstrap(): Promise<void> {
   const apiPrefix = configService.get<string>('API_PREFIX') || 'api';
   const port = Number(configService.get<string>('PORT') || 3002);
   const corsOrigins = parseCorsOrigins(
-    configService.get<string>('CORS_ORIGIN'),
+    configService.get<string>('CORS_ORIGINS') ||
+      configService.get<string>('CORS_ORIGIN'),
   );
 
   app.use(json({ limit: '6mb' }));

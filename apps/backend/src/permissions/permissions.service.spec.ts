@@ -7,21 +7,46 @@ describe('PermissionsService', () => {
       createMany: jest.fn(),
       deleteMany: jest.fn(),
     };
+    const role = {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+    };
+    const user = {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    };
+    const legacyUserManagedRestaurant = {
+      createMany: jest.fn(),
+      deleteMany: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+    };
     const prismaService = {
-      role: {
-        findMany: jest.fn(),
-      },
-      user: {
+      legacyUserManagedRestaurant,
+      restaurant: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
-        update: jest.fn(),
       },
+      role,
+      user,
       userRole,
       $transaction: jest.fn(
-        (callback: (tx: { userRole: typeof userRole }) => unknown) =>
-          Promise.resolve(callback({ userRole })),
+        (
+          callback: (tx: {
+            role: typeof role;
+            user: typeof user;
+            userRole: typeof userRole;
+            legacyUserManagedRestaurant: typeof legacyUserManagedRestaurant;
+          }) => unknown,
+        ) =>
+          Promise.resolve(
+            callback({ legacyUserManagedRestaurant, role, user, userRole }),
+          ),
       ),
     };
+    legacyUserManagedRestaurant.findMany.mockResolvedValue([]);
+    prismaService.restaurant.findMany.mockResolvedValue([]);
 
     return {
       prismaService,
@@ -70,6 +95,7 @@ describe('PermissionsService', () => {
         id: 1,
         name: 'Zhao Admin',
         email: 'admin@zhao.test',
+        accountStatus: 'approved',
         jobRole: 'store-manager',
         restaurant: {
           id: 7,
@@ -101,11 +127,13 @@ describe('PermissionsService', () => {
         id: 1,
         name: 'Zhao Admin',
         email: 'admin@zhao.test',
+        accountStatus: 'approved',
         jobRole: 'store-manager',
         restaurant: {
           id: 7,
           name: 'ZHAO Test',
         },
+        managedRestaurants: [],
         roles: ['super-admin', 'training-admin'],
         permissions: ['system.permission.manage', 'training.material.create'],
       },
@@ -120,6 +148,7 @@ describe('PermissionsService', () => {
         id: 1,
         name: 'Zhao Viewer',
         email: 'viewer@zhao.test',
+        accountStatus: 'approved',
         jobRole: 'front-of-house',
         restaurant: {
           id: 7,
@@ -207,6 +236,7 @@ describe('PermissionsService', () => {
         id: 1,
         name: 'Holding Admin',
         email: 'holding@zhao.test',
+        accountStatus: 'approved',
         jobRole: 'holding',
         restaurant: {
           id: 99,
@@ -248,7 +278,7 @@ describe('PermissionsService', () => {
         id: 12,
         name: 'Store Staff',
         email: 'staff@zhao.test',
-        jobRole: 'front-of-house,cash',
+        jobRole: 'front-of-house,front-assistant',
         restaurant: {
           id: 7,
           name: 'ZHAO Test',
@@ -257,7 +287,7 @@ describe('PermissionsService', () => {
       });
     prismaService.user.update.mockResolvedValue({
       id: 12,
-      jobRole: 'front-of-house,cash',
+      jobRole: 'front-of-house,front-assistant',
     });
 
     await expect(
@@ -292,15 +322,15 @@ describe('PermissionsService', () => {
           permissions: ['employee.job_role.manage_store'],
         },
         12,
-        'front-of-house,cash',
+        'front-of-house,front-assistant',
       ),
     ).resolves.toMatchObject({
       id: 12,
-      jobRole: 'front-of-house,cash',
+      jobRole: 'front-of-house,front-assistant',
     });
     expect(prismaService.user.update).toHaveBeenCalledWith({
       where: { id: 12 },
-      data: { jobRole: 'front-of-house,cash' },
+      data: { jobRole: 'front-of-house,front-assistant' },
     });
   });
 
@@ -390,9 +420,558 @@ describe('PermissionsService', () => {
           permissions: ['employee.job_role.manage_store'],
         },
         12,
-        'holding',
+        'front-of-house,holding',
       ),
     ).rejects.toMatchObject({ status: 403 });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('lists all manageable restaurants for holding users', async () => {
+    const { service, prismaService } = createService();
+    prismaService.restaurant.findMany.mockResolvedValue([
+      {
+        id: 1,
+        name: 'ZHAO Opera',
+        address: 'Paris',
+        photoUrl: null,
+      },
+    ]);
+
+    await expect(
+      service.listManageableRestaurants({
+        id: 1,
+        familyName: 'Zhao',
+        givenName: 'Admin',
+        firstName: 'Admin',
+        lastName: 'Zhao',
+        name: 'Zhao Admin',
+        email: 'admin@zhao.test',
+        emailVerified: true,
+        restaurantId: 99,
+        store: {
+          id: 99,
+          name: 'ZHAO Holding',
+          address: 'HQ',
+          photoUrl: null,
+        },
+        storeName: 'ZHAO Holding',
+        jobRole: 'holding',
+        role: 'holding',
+        position: 'holding',
+        birthday: null,
+        avatar: null,
+        avatarUrl: null,
+        phone: null,
+        address: null,
+        userLevel: 0,
+        preferredLanguage: 'zh',
+        permissions: ['system.permission.manage'],
+      }),
+    ).resolves.toEqual([
+      {
+        id: 1,
+        name: 'ZHAO Opera',
+        address: 'Paris',
+        photoUrl: null,
+      },
+    ]);
+    expect(prismaService.restaurant.findMany).toHaveBeenCalledWith({
+      where: {},
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        photoUrl: true,
+      },
+      orderBy: {
+        id: 'asc',
+      },
+    });
+  });
+
+  it('limits manageable restaurants to the store manager restaurant', async () => {
+    const { service, prismaService } = createService();
+    prismaService.restaurant.findMany.mockResolvedValue([
+      {
+        id: 7,
+        name: 'ZHAO Test',
+        address: 'Test',
+        photoUrl: null,
+      },
+    ]);
+
+    await service.listManageableRestaurants({
+      id: 1,
+      familyName: 'Zhao',
+      givenName: 'Manager',
+      firstName: 'Manager',
+      lastName: 'Zhao',
+      name: 'Zhao Manager',
+      email: 'manager@zhao.test',
+      emailVerified: true,
+      restaurantId: 7,
+      store: {
+        id: 7,
+        name: 'ZHAO Test',
+        address: 'Test',
+        photoUrl: null,
+      },
+      storeName: 'ZHAO Test',
+      jobRole: 'store-manager',
+      role: 'store-manager',
+      position: 'store-manager',
+      birthday: null,
+      avatar: null,
+      avatarUrl: null,
+      phone: null,
+      address: null,
+      userLevel: 0,
+      preferredLanguage: 'zh',
+      permissions: [],
+    });
+
+    expect(prismaService.restaurant.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 7,
+        },
+      }),
+    );
+  });
+
+  it('limits manageable restaurants to regional manager assignments', async () => {
+    const { service, prismaService } = createService();
+    prismaService.legacyUserManagedRestaurant.findMany.mockResolvedValue([
+      { restaurantId: 3 },
+      { restaurantId: 8 },
+    ]);
+    prismaService.restaurant.findMany.mockResolvedValue([
+      {
+        id: 3,
+        name: 'ZHAO Opera',
+        address: 'Paris',
+        photoUrl: null,
+      },
+      {
+        id: 8,
+        name: 'ZHAO Next',
+        address: 'Paris',
+        photoUrl: null,
+      },
+    ]);
+
+    await service.listManageableRestaurants({
+      id: 21,
+      familyName: 'Zhao',
+      givenName: 'Regional',
+      firstName: 'Regional',
+      lastName: 'Zhao',
+      name: 'Zhao Regional',
+      email: 'regional@zhao.test',
+      emailVerified: true,
+      restaurantId: 99,
+      store: {
+        id: 99,
+        name: 'ZHAO Holding',
+        address: 'HQ',
+        photoUrl: null,
+      },
+      storeName: 'ZHAO Holding',
+      jobRole: 'regional-manager',
+      role: 'regional-manager',
+      position: 'regional-manager',
+      birthday: null,
+      avatar: null,
+      avatarUrl: null,
+      phone: null,
+      address: null,
+      userLevel: 0,
+      preferredLanguage: 'zh',
+      permissions: ['employee.job_role.manage_store'],
+    });
+
+    expect(
+      prismaService.legacyUserManagedRestaurant.findMany,
+    ).toHaveBeenCalledWith({
+      where: {
+        userId: 21,
+      },
+      select: {
+        restaurantId: true,
+      },
+      orderBy: {
+        restaurantId: 'asc',
+      },
+    });
+    expect(prismaService.restaurant.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: {
+            in: [3, 8],
+          },
+        },
+      }),
+    );
+  });
+
+  it('limits approvable users to regional manager assignments', async () => {
+    const { service, prismaService } = createService();
+    prismaService.legacyUserManagedRestaurant.findMany.mockResolvedValue([
+      { restaurantId: 3 },
+      { restaurantId: 8 },
+    ]);
+    prismaService.user.findMany.mockResolvedValue([]);
+
+    await service.listApprovableUsers({
+      id: 21,
+      familyName: 'Zhao',
+      givenName: 'Regional',
+      firstName: 'Regional',
+      lastName: 'Zhao',
+      name: 'Zhao Regional',
+      email: 'regional@zhao.test',
+      emailVerified: true,
+      restaurantId: 99,
+      store: {
+        id: 99,
+        name: 'ZHAO Holding',
+        address: 'HQ',
+        photoUrl: null,
+      },
+      storeName: 'ZHAO Holding',
+      jobRole: 'regional-manager',
+      role: 'regional-manager',
+      position: 'regional-manager',
+      birthday: null,
+      avatar: null,
+      avatarUrl: null,
+      phone: null,
+      address: null,
+      userLevel: 0,
+      preferredLanguage: 'zh',
+      permissions: ['employee.job_role.manage_store'],
+    });
+
+    expect(prismaService.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          restaurantId: {
+            in: [3, 8],
+          },
+        },
+      }),
+    );
+  });
+
+  it('rejects store managers approving employees into another restaurant', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-of-house',
+      restaurantId: 7,
+      accountStatus: 'pending',
+    });
+
+    await expect(
+      service.updateUserApproval(
+        {
+          id: 1,
+          familyName: 'Zhao',
+          givenName: 'Manager',
+          firstName: 'Manager',
+          lastName: 'Zhao',
+          name: 'Zhao Manager',
+          email: 'manager@zhao.test',
+          emailVerified: true,
+          restaurantId: 7,
+          store: {
+            id: 7,
+            name: 'ZHAO Test',
+            address: 'Test',
+            photoUrl: null,
+          },
+          storeName: 'ZHAO Test',
+          jobRole: 'store-manager',
+          role: 'store-manager',
+          position: 'store-manager',
+          birthday: null,
+          avatar: null,
+          avatarUrl: null,
+          phone: null,
+          address: null,
+          userLevel: 0,
+          preferredLanguage: 'zh',
+          permissions: [],
+        },
+        12,
+        {
+          accountStatus: 'approved',
+          restaurantId: 8,
+          jobRole: 'front-of-house',
+        },
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects store managers approving holding job roles', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-of-house',
+      restaurantId: 7,
+      accountStatus: 'pending',
+    });
+
+    await expect(
+      service.updateUserApproval(
+        {
+          id: 1,
+          familyName: 'Zhao',
+          givenName: 'Manager',
+          firstName: 'Manager',
+          lastName: 'Zhao',
+          name: 'Zhao Manager',
+          email: 'manager@zhao.test',
+          emailVerified: true,
+          restaurantId: 7,
+          store: {
+            id: 7,
+            name: 'ZHAO Test',
+            address: 'Test',
+            photoUrl: null,
+          },
+          storeName: 'ZHAO Test',
+          jobRole: 'store-manager',
+          role: 'store-manager',
+          position: 'store-manager',
+          birthday: null,
+          avatar: null,
+          avatarUrl: null,
+          phone: null,
+          address: null,
+          userLevel: 0,
+          preferredLanguage: 'zh',
+          permissions: [],
+        },
+        12,
+        {
+          accountStatus: 'approved',
+          restaurantId: 7,
+          jobRole: 'holding',
+        },
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('approves a user with updated restaurant and job role', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({
+        id: 12,
+        jobRole: null,
+        restaurantId: 7,
+        accountStatus: 'pending',
+      })
+      .mockResolvedValueOnce({
+        id: 12,
+        name: 'New Staff',
+        email: 'new@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'front-of-house,back-of-house',
+        restaurant: {
+          id: 8,
+          name: 'ZHAO Next',
+        },
+        userRoles: [],
+      });
+    prismaService.restaurant.findUnique.mockResolvedValue({ id: 8 });
+    prismaService.role.findUnique.mockResolvedValue({ id: 20 });
+    prismaService.user.update.mockResolvedValue({
+      id: 12,
+      accountStatus: 'approved',
+    });
+    prismaService.userRole.createMany.mockResolvedValue({ count: 1 });
+
+    await expect(
+      service.updateUserApproval(
+        {
+          id: 1,
+          familyName: 'Zhao',
+          givenName: 'Admin',
+          firstName: 'Admin',
+          lastName: 'Zhao',
+          name: 'Zhao Admin',
+          email: 'admin@zhao.test',
+          emailVerified: true,
+          restaurantId: 99,
+          store: {
+            id: 99,
+            name: 'ZHAO Holding',
+            address: 'HQ',
+            photoUrl: null,
+          },
+          storeName: 'ZHAO Holding',
+          jobRole: 'holding',
+          role: 'holding',
+          position: 'holding',
+          birthday: null,
+          avatar: null,
+          avatarUrl: null,
+          phone: null,
+          address: null,
+          userLevel: 0,
+          preferredLanguage: 'zh',
+          permissions: ['system.permission.manage'],
+        },
+        12,
+        {
+          accountStatus: 'approved',
+          restaurantId: 8,
+          jobRole: 'front-of-house,back-of-house',
+        },
+      ),
+    ).resolves.toMatchObject({
+      id: 12,
+      accountStatus: 'approved',
+      jobRole: 'front-of-house,back-of-house',
+    });
+    expect(prismaService.user.update).toHaveBeenCalledWith({
+      where: { id: 12 },
+      data: {
+        accountStatus: 'approved',
+        accountReviewedAt: expect.any(Date) as Date,
+        accountReviewedByUserId: 1,
+        restaurantId: 8,
+        jobRole: 'front-of-house,back-of-house',
+      },
+    });
+  });
+
+  it('replaces managed restaurants for a regional manager', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({
+        id: 21,
+        jobRole: 'regional-manager',
+        restaurantId: 99,
+        accountStatus: 'approved',
+      })
+      .mockResolvedValueOnce({
+        id: 21,
+        name: 'Zhao Regional',
+        email: 'regional@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'regional-manager',
+        restaurant: {
+          id: 99,
+          name: 'ZHAO Holding',
+        },
+        userRoles: [],
+      });
+    prismaService.restaurant.findMany
+      .mockResolvedValueOnce([{ id: 3 }, { id: 8 }])
+      .mockResolvedValueOnce([
+        { id: 3, name: 'ZHAO Opera' },
+        { id: 8, name: 'ZHAO Next' },
+      ]);
+    prismaService.legacyUserManagedRestaurant.findMany.mockResolvedValueOnce([
+      { userId: 21, restaurantId: 3 },
+      { userId: 21, restaurantId: 8 },
+    ]);
+
+    await expect(
+      service.updateManagedRestaurants(21, [3, 8]),
+    ).resolves.toMatchObject({
+      id: 21,
+      jobRole: 'regional-manager',
+      managedRestaurants: [
+        { id: 3, name: 'ZHAO Opera' },
+        { id: 8, name: 'ZHAO Next' },
+      ],
+    });
+    expect(
+      prismaService.legacyUserManagedRestaurant.deleteMany,
+    ).toHaveBeenCalledWith({
+      where: { userId: 21 },
+    });
+    expect(
+      prismaService.legacyUserManagedRestaurant.createMany,
+    ).toHaveBeenCalledWith({
+      data: [
+        { userId: 21, restaurantId: 3 },
+        { userId: 21, restaurantId: 8 },
+      ],
+    });
+  });
+
+  it('rejects managed restaurant updates for non-regional users', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 21,
+      jobRole: 'store-manager',
+      restaurantId: 7,
+      accountStatus: 'approved',
+    });
+
+    await expect(
+      service.updateManagedRestaurants(21, [3]),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(
+      prismaService.legacyUserManagedRestaurant.deleteMany,
+    ).not.toHaveBeenCalled();
+    expect(
+      prismaService.legacyUserManagedRestaurant.createMany,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('rejects approving a user without a job role', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: null,
+      restaurantId: 7,
+      accountStatus: 'pending',
+    });
+
+    await expect(
+      service.updateUserApproval(
+        {
+          id: 1,
+          familyName: 'Zhao',
+          givenName: 'Admin',
+          firstName: 'Admin',
+          lastName: 'Zhao',
+          name: 'Zhao Admin',
+          email: 'admin@zhao.test',
+          emailVerified: true,
+          restaurantId: 99,
+          store: {
+            id: 99,
+            name: 'ZHAO Holding',
+            address: 'HQ',
+            photoUrl: null,
+          },
+          storeName: 'ZHAO Holding',
+          jobRole: 'holding',
+          role: 'holding',
+          position: 'holding',
+          birthday: null,
+          avatar: null,
+          avatarUrl: null,
+          phone: null,
+          address: null,
+          userLevel: 0,
+          preferredLanguage: 'zh',
+          permissions: ['system.permission.manage'],
+        },
+        12,
+        {
+          accountStatus: 'approved',
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(prismaService.user.update).not.toHaveBeenCalled();
   });
 

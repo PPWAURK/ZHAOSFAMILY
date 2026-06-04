@@ -1,16 +1,33 @@
 {
-  "name": "web",
+  "name": "@zhao/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "start": "next start"
   },
   "dependencies": {
-    "next": "^16.0.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "motion": "^12.38.0"
+    "@tanstack/react-query": "^5.100.11",
+    "@zhao/api": "workspace:*",
+    "@zhao/auth": "workspace:*",
+    "@zhao/types": "workspace:*",
+    "@zhao/utils": "workspace:*",
+    "axios": "^1.16.1",
+    "motion": "^12.38.0",
+    "next": "^15.5.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^10.4.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4"
   }
 }

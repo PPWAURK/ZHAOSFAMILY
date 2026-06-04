@@ -28,6 +28,10 @@ function getTodayInputValue() {
   return new Date(today.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
 }
 
+function openDatePicker(event) {
+  event.currentTarget.showPicker?.();
+}
+
 export default function RegisterDetailsStep({
   t,
   selectedStore,
@@ -37,6 +41,7 @@ export default function RegisterDetailsStep({
   isSubmitSuccessful,
   submitError,
   onChangeExtraDetail,
+  onToggleRole,
   onChangeAvatar,
   onBack,
   onSubmit,
@@ -136,6 +141,8 @@ export default function RegisterDetailsStep({
               max={maxBirthday}
               value={extraDetails.birthday}
               disabled={isFormDisabled}
+              onClick={openDatePicker}
+              onFocus={openDatePicker}
               onChange={(event) => onChangeExtraDetail("birthday", event.target.value)}
             />
           </div>
@@ -145,9 +152,13 @@ export default function RegisterDetailsStep({
       <div className={styles.field}>
         <div className={styles.fieldCol}>
           <span className={styles.fieldLabel}>{t.labelJobRole}</span>
-          <div className={styles.roleOptionGrid} role="radiogroup" aria-label={t.labelJobRole}>
+          <div
+            className={styles.roleOptionGrid}
+            role="radiogroup"
+            aria-label={t.labelJobRole}
+          >
             {t.roleOptions.map((roleOption) => {
-              const isSelected = extraDetails.role === roleOption.value;
+              const isSelected = (extraDetails.roles || []).includes(roleOption.value);
 
               return (
                 <button
@@ -159,7 +170,7 @@ export default function RegisterDetailsStep({
                   className={`${styles.roleOption} ${
                     isSelected ? styles.roleOptionSelected : ""
                   }`}
-                  onClick={() => onChangeExtraDetail("role", roleOption.value)}
+                  onClick={() => onToggleRole(roleOption.value)}
                 >
                   <span className={styles.roleOptionLabel}>{roleOption.label}</span>
                   <span className={styles.roleOptionDescription}>

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,7 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from "zustand";
-import type { RestaurantSummary, UpdateMeRequest } from "@zhao/types";
+import type { ChangePasswordRequest, RestaurantSummary, UpdateMeRequest } from "@zhao/types";
+import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import {
   AuthHeading,
   FeedbackMessage,
@@ -205,6 +205,10 @@ export function LoginScreen() {
     await mobileAuthActions.updateMe(input);
   }
 
+  async function submitPasswordChange(input: ChangePasswordRequest): Promise<void> {
+    await mobileAuthActions.changePassword(input);
+  }
+
   async function submitRegister(): Promise<void> {
     clearFeedback();
 
@@ -267,8 +271,7 @@ export function LoginScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centeredState}>
-          <ActivityIndicator color={authControlStyles.colors.red} />
-          <Text style={styles.stateText}>{copy.loadingSession}</Text>
+          <ZhaoLoadingIndicator label={copy.loadingSession} />
         </View>
       </SafeAreaView>
     );
@@ -281,6 +284,7 @@ export function LoginScreen() {
         user={authUser}
         onChangeLanguage={setLanguage}
         onLogout={submitLogout}
+        onChangePassword={submitPasswordChange}
         onUpdateProfile={submitProfileUpdate}
       />
     );

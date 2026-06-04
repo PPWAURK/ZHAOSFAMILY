@@ -11,7 +11,6 @@ import RegisterDetailsStep from "@/features/auth/components/RegisterDetailsStep"
 import StoreSelectionStep from "@/features/auth/components/StoreSelectionStep";
 import { AUTH_PANEL_COPY } from "@/features/auth/constants/auth-panel-copy";
 import { useRegisterStores } from "@/features/auth/hooks/useRegisterStores";
-import { registerUser } from "@/features/auth/services/authApi";
 
 const LANGUAGE_OPTIONS = [
   { value: "zh", label: "中文" },
@@ -45,7 +44,7 @@ const INITIAL_EXTRA_DETAILS = {
   avatarFile: null,
   avatarPreviewUrl: "",
   birthday: "",
-  role: "",
+  roles: [],
 };
 
 function revokeObjectUrl(previewUrl) {
@@ -72,6 +71,20 @@ function readFileAsDataUrl(file) {
 
     reader.readAsDataURL(file);
   });
+}
+
+function resolveAuthErrorMessage(error, t) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message === "ACCOUNT_PENDING_APPROVAL") {
+    return t.accountPendingError;
+  }
+
+  if (message === "ACCOUNT_REJECTED") {
+    return t.accountRejectedError;
+  }
+
+  return message || t.detailsUnknownError;
 }
 
 function getStepCopy(t, step) {
@@ -112,9 +125,19 @@ function getStepCopy(t, step) {
   };
 }
 
+function isValidDateInputValue(value) {
+  if (!value) {
+    return true;
+  }
+
+  const parsedDate = new Date(`${value}T00:00:00.000Z`);
+
+  return !Number.isNaN(parsedDate.getTime());
+}
+
 export default function GlassAuthPanel() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { forgotPassword, login, register } = useAuth();
   const [step, setStep] = useState("login");
   const [lang, setLang] = useState("zh");
   const [showPw, setShowPw] = useState(false);
@@ -124,7 +147,10 @@ export default function GlassAuthPanel() {
   const [storeSelectionError, setStoreSelectionError] = useState("");
   const [registrationError, setRegistrationError] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState("");
+  const [forgotPasswordError, setForgotPasswordError] = useState("");
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+  const [isSubmittingForgotPassword, setIsSubmittingForgotPassword] = useState(false);
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
   const [isRegistrationSuccessful, setIsRegistrationSuccessful] = useState(false);
 
@@ -178,6 +204,8 @@ export default function GlassAuthPanel() {
 
   function updateValue(key, value) {
     setLoginError("");
+    setForgotPasswordMessage("");
+    setForgotPasswordError("");
     clearRegistrationFeedback();
     setValues((current) => ({ ...current, [key]: value }));
   }
@@ -186,6 +214,20 @@ export default function GlassAuthPanel() {
     setRegistrationError("");
     setIsRegistrationSuccessful(false);
     setExtraDetails((current) => ({ ...current, [key]: value }));
+  }
+
+  function toggleExtraRole(role) {
+    setRegistrationError("");
+    setIsRegistrationSuccessful(false);
+    setExtraDetails((current) => {
+      const roles = current.roles || [];
+      const nextRoles = roles.includes(role) ? [] : [role];
+
+      return {
+        ...current,
+        roles: nextRoles,
+      };
+    });
   }
 
   function updateAvatar(file) {
@@ -236,10 +278,12 @@ export default function GlassAuthPanel() {
       setIsSubmittingLogin(true);
 
       try {
-        await login(values.email, values.password);
+        await login(values.email, values.password, {
+          rememberDevice: values.remember,
+        });
         router.push("/dashboard");
       } catch (error) {
-        setLoginError(error instanceof Error ? error.message : t.detailsUnknownError);
+        setLoginError(resolveAuthErrorMessage(error, t));
       } finally {
         setIsSubmittingLogin(false);
       }
@@ -249,6 +293,33 @@ export default function GlassAuthPanel() {
     clearRegistrationFeedback();
     setStoreSelectionError("");
     setStep("storeSelection");
+  }
+
+  async function handleForgotPassword() {
+    if (!isLogin || isSubmittingForgotPassword) {
+      return;
+    }
+
+    const email = values.email.trim();
+    setLoginError("");
+    setForgotPasswordMessage("");
+    setForgotPasswordError("");
+
+    if (!email) {
+      setForgotPasswordError(t.forgotEmailRequired);
+      return;
+    }
+
+    setIsSubmittingForgotPassword(true);
+
+    try {
+      await forgotPassword(email, lang);
+      setForgotPasswordMessage(t.forgotSuccess);
+    } catch (error) {
+      setForgotPasswordError(error instanceof Error ? error.message : t.forgotUnknownError);
+    } finally {
+      setIsSubmittingForgotPassword(false);
+    }
   }
 
   function handleContinueToDetails() {
@@ -291,28 +362,36 @@ export default function GlassAuthPanel() {
     setIsSubmittingRegistration(true);
 
     try {
+      if (!isValidDateInputValue(extraDetails.birthday)) {
+        setRegistrationError("INVALID_BIRTHDAY");
+        return;
+      }
+
       const profilePhotoDataUrl = extraDetails.avatarFile
         ? await readFileAsDataUrl(extraDetails.avatarFile)
         : undefined;
 
-      await registerUser({
-        familyName: values.familyName,
-        givenName: values.givenName,
-        email: values.email,
-        password: values.password,
-        restaurantId: Number(selectedStore.id),
-        birthday: extraDetails.birthday || undefined,
-        jobRole: extraDetails.role || undefined,
-        profilePhotoDataUrl,
-        acceptedTerms: values.remember,
-        language: lang,
-      });
+      await register(
+        {
+          familyName: values.familyName,
+          givenName: values.givenName,
+          email: values.email,
+          password: values.password,
+          restaurantId: Number(selectedStore.id),
+          birthday: extraDetails.birthday || undefined,
+          jobRole: extraDetails.roles?.length ? extraDetails.roles.join(",") : undefined,
+          profilePhotoDataUrl,
+          acceptedTerms: values.remember,
+          language: lang,
+        },
+        {
+          rememberDevice: values.remember,
+        },
+      );
 
       setIsRegistrationSuccessful(true);
     } catch (error) {
-      setRegistrationError(
-        error instanceof Error ? error.message : t.detailsUnknownError,
-      );
+      setRegistrationError(error instanceof Error ? error.message : t.detailsUnknownError);
     } finally {
       setIsSubmittingRegistration(false);
     }
@@ -346,6 +425,7 @@ export default function GlassAuthPanel() {
           isSubmitSuccessful={isRegistrationSuccessful}
           submitError={registrationError}
           onChangeExtraDetail={updateExtraDetail}
+          onToggleRole={toggleExtraRole}
           onChangeAvatar={updateAvatar}
           onSubmit={handleRegisterSubmit}
           onBack={() => {
@@ -367,7 +447,11 @@ export default function GlassAuthPanel() {
         onChangeValue={updateValue}
         onSubmit={handleCredentialsSubmit}
         onToggleMode={handleToggleMode}
+        onForgotPassword={handleForgotPassword}
         submitError={loginError}
+        forgotPasswordMessage={forgotPasswordMessage}
+        forgotPasswordError={forgotPasswordError}
+        isSubmittingForgotPassword={isSubmittingForgotPassword}
         isSubmitting={isSubmittingLogin}
       />
     );

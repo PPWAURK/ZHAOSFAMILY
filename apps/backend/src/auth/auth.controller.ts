@@ -2,14 +2,17 @@ import { Body, Controller, Get, Headers, Patch, Post } from '@nestjs/common';
 import {
   AuthService,
   type AuthUser,
+  type AuthSessionResponse,
   type ForgotPasswordResponse,
-  type LoginResponse,
   type RegisterResponse,
 } from './auth.service';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { ChangeCurrentPasswordDto } from './dto/change-current-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { LogoutDto } from './dto/logout.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RefreshSessionDto } from './dto/refresh-session.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateCurrentUserDto } from './dto/update-current-user.dto';
 import { parseBearerToken } from './auth-token.utils';
@@ -19,7 +22,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(@Body() loginDto: LoginDto): Promise<LoginResponse> {
+  login(@Body() loginDto: LoginDto): Promise<AuthSessionResponse> {
     return this.authService.login(loginDto);
   }
 
@@ -29,14 +32,14 @@ export class AuthController {
   }
 
   @Post('refresh')
-  refresh(
-    @Headers('authorization') authorization?: string,
-  ): Promise<LoginResponse> {
-    return this.authService.refresh(parseBearerToken(authorization));
+  refresh(@Body() dto: RefreshSessionDto): Promise<AuthSessionResponse> {
+    return this.authService.refresh(dto.refreshToken);
   }
 
   @Post('accept-invitation')
-  acceptInvitation(@Body() dto: AcceptInvitationDto): Promise<LoginResponse> {
+  acceptInvitation(
+    @Body() dto: AcceptInvitationDto,
+  ): Promise<AuthSessionResponse> {
     return this.authService.acceptInvitation(dto);
   }
 
@@ -75,8 +78,20 @@ export class AuthController {
     );
   }
 
+  @Patch('me/password')
+  changeCurrentPassword(
+    @Headers('authorization') authorization: string | undefined,
+    @Body() dto: ChangeCurrentPasswordDto,
+  ): Promise<{ message: 'PASSWORD_CHANGED' }> {
+    return this.authService.changeCurrentPassword(
+      parseBearerToken(authorization),
+      dto,
+    );
+  }
+
   @Post('logout')
-  logout(): { message: 'LOGGED_OUT' } {
+  async logout(@Body() dto: LogoutDto): Promise<{ message: 'LOGGED_OUT' }> {
+    await this.authService.logout(dto.refreshToken);
     return { message: 'LOGGED_OUT' };
   }
 }

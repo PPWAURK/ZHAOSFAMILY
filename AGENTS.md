@@ -761,33 +761,20 @@
 <claude-mem-context>
 # Memory Context
 
-# [ZHAO's Family] recent context, 2026-04-30 5:00pm GMT+2
+# [ZHAO's Family] recent context, 2026-05-06 4:56pm GMT+2
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (20,582t read) | 1,533,715t work | 99% savings
+Stats: 50 obs (20,092t read) | 1,477,032t work | 99% savings
 
 ### Apr 22, 2026
 S4 New order page feature fully implemented — all 9 files pass syntax validation (Apr 22 at 10:11 AM)
 S3 Build the first post-login page — Stores (门店管理 / Boutiques) for ZHAO's Family dashboard (Apr 22 at 10:11 AM)
 S8 Training course detail route fixed with generateStaticParams (Apr 22 at 10:28 AM)
 ### Apr 24, 2026
-30 2:29p 🔵 Project structure: "ZHAO's Family" monorepo with apps/backend and apps/web
-31 " 🔵 Training module scaffold already exists in apps/web/src/features/training
-32 2:30p 🔵 Training nav links already wired in DASHBOARD_NAV under "learning" group
-33 " 🔵 StoresPage.js is the reference pattern for all feature pages
-34 2:32p 🔵 Training module is 80% scaffolded — frontend complete, backend API missing
-35 " 🔵 Training module scaffold and design reference fully mapped
-36 2:33p 🔵 Training page components are substantially pre-implemented, not empty scaffolds
-37 2:34p 🔵 Training module is ~2200 lines of fully pre-built code with redirect aliases and stub i18n
-38 " ⚖️ Training module completion plan — 3-task roadmap created
-39 2:35p ⚖️ Training module frontend completion plan — 3 tasks identified
-40 2:36p 🟣 TRAINING_COPY trilingual copy fully implemented — zh, en, fr all distinct objects
-41 " 🟣 Training dynamic course route created at /dashboard/training/[id]
-42 2:38p 🟣 TrainingCoursePage component created for course detail view
-43 " 🔵 Training course detail route requires generateStaticParams for static export
+43 2:38p 🔵 Training course detail route requires generateStaticParams for static export
 44 " 🔴 Training course detail route fixed with generateStaticParams
 S9 Training module next steps — planning what to build after discovering pre-built page components (Apr 24 at 2:38 PM)
 45 2:46p 🔵 Backend renamed from apps/api to apps/backend with extensive new modules
@@ -829,6 +816,20 @@ S13 Frontend code quality audit — Next.js app scores 6/10 overall (Apr 27 at 1
 176 1:32p 🔵 WebApp2026 vs ZHAO's Family — side-by-side architecture comparison
 ### Apr 30, 2026
 207 4:59p 🔵 Git repo has 256 uncommitted entries — large backend rename in-flight
+208 5:00p 🔵 ZHAOSFAMILY repo has massive uncommitted working tree on main branch
+209 5:01p 🔵 Root .gitignore still references old apps/api path after rename to apps/backend
+210 5:02p 🔵 Full staged diff: 273 files, +33,750 lines — complete frontend feature refactor and backend migration
+211 " ✅ All 273 staged files committed to main as "Publish ZHAO Family app updates" (816fe34)
+212 5:04p 🔵 apps/backend dev setup: NestJS API on port 3002, MySQL via Docker container webapp2026-mysql
+213 " ✅ Root README.md created for ZHAO's Family monorepo
+### May 6, 2026
+340 2:03p 🔴 TypeScript errors fixed in BrandPanel.tsx and FloatingAssetLayer.tsx
+341 " 🔵 Remaining .js files in auth, orders, and suppliers features
+342 2:04p 🔄 TypeScript migration wave 1 complete — 10 files migrated from .js to .ts/.tsx
+343 2:06p 🔵 apps/web frontend feature structure and file inventory mapped
+344 2:08p 🔵 apps/backend NestJS module inventory fully mapped
+345 " 🔵 Frontend API coverage mapped against backend endpoints
+347 2:13p 🔵 Auth backend uses custom HMAC token signing, not a JWT library; accept-invitation and reset-password endpoints missing from controller
 
-Access 1534k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1477k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

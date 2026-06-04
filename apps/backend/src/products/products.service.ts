@@ -70,6 +70,10 @@ function fixMojibake(value: string | null): string | null {
     return value;
   }
 
+  if (containsCjk(value)) {
+    return value;
+  }
+
   const bytes = new Uint8Array(value.length);
   for (let i = 0; i < value.length; i++) {
     const code = value.charCodeAt(i);
@@ -82,6 +86,10 @@ function fixMojibake(value: string | null): string | null {
   } catch {
     return value;
   }
+}
+
+function containsCjk(value: string): boolean {
+  return /[\u3400-\u9FFF]/.test(value);
 }
 
 const PRODUCT_SELECT = {
@@ -215,7 +223,9 @@ export class ProductsService {
       where: { id: productId },
       data: {
         ...(dto.supplierId !== undefined ? { supplierId: dto.supplierId } : {}),
-        ...(dto.reference !== undefined ? { reference: dto.reference || null } : {}),
+        ...(dto.reference !== undefined
+          ? { reference: dto.reference || null }
+          : {}),
         ...(dto.category !== undefined ? { category: dto.category } : {}),
         ...(dto.nameCn !== undefined ? { nameCn: dto.nameCn } : {}),
         ...(dto.designationFr !== undefined

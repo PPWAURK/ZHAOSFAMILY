@@ -32,6 +32,17 @@ Branch: cleanup-prepare-deploy
   - `apps/backend/assets/logo2024/logo水印.jpg`
 - 保留 `.env`、`.env.local` 为本地文件，不纳入 Git。
 - 保留现有业务代码改动，不做功能扩展。
+- 为 Web app 显式关闭 declaration 输出，避免根 TypeScript 配置影响 Next.js typecheck。
+
+## Verification
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `git status --short --branch` | Executed | 用于确认本地分支和清理范围 |
+| `pnpm --filter backend typecheck` | Passed | `tsc --noEmit -p tsconfig.build.json` 通过 |
+| `pnpm --filter @zhao/web typecheck` | Passed | 初次失败为 TS2883；已通过 Web tsconfig 最小覆盖修复 |
+| `pnpm --filter @zhao/mobile typecheck` | Passed | `tsc --noEmit` 通过 |
+| `pnpm --filter backend test` | Failed | 所有 suite 在执行前失败：`this._moduleMocker.clearMocksOnScope is not a function`，疑似 Jest 运行时版本不匹配 |
 
 ## Next Phases
 

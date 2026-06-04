@@ -33,7 +33,17 @@ function formatMoney(amount, symbol) {
   return `${symbol}${n.toFixed(2)}`;
 }
 
-export default function OrderRow({ order, index, lang, copy, onCreateReturn }) {
+export default function OrderRow({
+  order,
+  index,
+  lang,
+  copy,
+  downloadingPdf,
+  deletingOrder,
+  onOpenPdf,
+  onCreateReturn,
+  onDeleteOrder,
+}) {
   const statusLabel = copy.status[order.status] || order.status;
   const statusClass = STATUS_CLASS[order.status] || styles.statusDraft;
 
@@ -67,20 +77,29 @@ export default function OrderRow({ order, index, lang, copy, onCreateReturn }) {
         </span>
       </span>
       <span className={styles.rowActions}>
-        <a
+        <button
+          type="button"
           className={`${styles.rowAction} ${styles.rowActionPrimary}`}
-          href={order.commandeUrl}
-          target="_blank"
-          rel="noreferrer"
+          onClick={() => onOpenPdf(order)}
+          disabled={downloadingPdf}
         >
-          {copy.downloadPdf}
-        </a>
+          {downloadingPdf ? copy.openingPdf : copy.downloadPdf}
+        </button>
         <button
           type="button"
           className={styles.rowAction}
           onClick={() => onCreateReturn(order)}
+          disabled={deletingOrder}
         >
           {copy.returnOrder}
+        </button>
+        <button
+          type="button"
+          className={`${styles.rowAction} ${styles.rowActionDanger}`}
+          onClick={() => onDeleteOrder(order)}
+          disabled={deletingOrder}
+        >
+          {deletingOrder ? copy.deletingOrder : copy.deleteOrder}
         </button>
       </span>
     </motion.div>

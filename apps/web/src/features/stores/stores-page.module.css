@@ -216,6 +216,101 @@
   font-family: var(--zh-serif);
 }
 
+.formPanel {
+  margin: 0 0 36px;
+  padding: 18px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--red-soft);
+}
+
+.formHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.formTitle {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formField span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-60);
+}
+
+.formField input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0 12px;
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  outline: none;
+}
+
+.formField input:focus {
+  border-color: var(--red);
+}
+
+.formError {
+  margin: 14px 0 0;
+  color: var(--red);
+  font-family: var(--zh-serif);
+  font-size: 13px;
+}
+
+.formPrimaryButton,
+.formGhostButton {
+  min-height: 38px;
+  border: 1px solid var(--red);
+  padding: 0 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.formPrimaryButton {
+  margin-top: 16px;
+  background: var(--red);
+  color: #fff;
+}
+
+.formPrimaryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.formGhostButton {
+  background: var(--paper);
+  color: var(--red);
+}
+
 .listHeading {
   display: flex;
   align-items: center;
@@ -464,6 +559,48 @@
   margin-top: auto;
 }
 
+.cardActions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-right: 42px;
+}
+
+.cardAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--red);
+  padding: 7px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.cardAction:hover {
+  border-color: var(--red);
+}
+
+.cardActionPrimary {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.cardActionPrimary:hover {
+  background: var(--red-deep);
+  border-color: var(--red-deep);
+}
+
+.cardActionDanger {
+  color: var(--ink-60);
+}
+
 .cardTag {
   font-family: var(--mono);
   font-size: 10px;
@@ -494,6 +631,129 @@
 
 .card:hover .cardArrow {
   transform: translateX(8px);
+}
+
+.approvalSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 34px;
+}
+
+.approvalSummary article {
+  border: 1px solid var(--red-soft-2);
+  background: var(--red-soft);
+  padding: 18px;
+}
+
+.approvalSummary span {
+  display: block;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+
+.approvalSummary strong {
+  color: var(--ink);
+  display: block;
+  font-family: var(--zh-serif);
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.approvalTableWrap {
+  border: 1px solid var(--red-soft-2);
+  margin: 0 0 34px;
+  overflow-x: auto;
+}
+
+.approvalTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.approvalTable th,
+.approvalTable td {
+  border-bottom: 1px solid var(--red-soft-2);
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.approvalTable th {
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.approvalTable td {
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.approvalTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.approvalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.approvalSelect {
+  width: 100%;
+  min-width: 150px;
+  min-height: 34px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 13px;
+  padding: 0 10px;
+  outline: none;
+}
+
+.approvalSelect:focus {
+  border-color: var(--red);
+}
+
+.approvalSelect:disabled {
+  color: var(--ink-40);
+  cursor: not-allowed;
+}
+
+.approvalButton {
+  min-height: 34px;
+  border: 1px solid var(--red);
+  background: var(--red);
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  padding: 0 12px;
+  text-transform: uppercase;
+}
+
+.approvalButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.approvalButtonMuted {
+  background: var(--paper);
+  color: var(--red);
 }
 
 /* Footer + back link */
@@ -542,6 +802,14 @@
   }
 
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .approvalSummary {
     grid-template-columns: 1fr;
   }
 

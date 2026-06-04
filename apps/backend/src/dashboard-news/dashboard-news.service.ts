@@ -78,7 +78,7 @@ export class DashboardNewsService {
         summary: dto.summary.trim(),
         body: dto.body.trim(),
         category: dto.category,
-        visibility: dto.visibility,
+        visibility: 'public',
         tagsJson: JSON.stringify(this.normalizeTags(dto.tags ?? [])),
         attachmentName: dto.attachmentName?.trim() || null,
         attachmentMimeType: dto.attachmentMimeType?.trim() || null,
@@ -138,6 +138,7 @@ export class DashboardNewsService {
     return {
       OR: [
         { visibility: 'public' },
+        { author: { jobRole: { contains: HOLDING_JOB_ROLE } } },
         { visibility: 'team', restaurantId: actor.restaurantId },
         ...privateVisibility,
       ],
@@ -212,7 +213,10 @@ export class DashboardNewsService {
   }
 
   private isHoldingActor(actor: DashboardNewsActor): boolean {
-    return `${actor.jobRole || ''}`.toLowerCase() === HOLDING_JOB_ROLE;
+    return `${actor.jobRole || ''}`
+      .split(',')
+      .map((role) => role.trim().toLowerCase())
+      .includes(HOLDING_JOB_ROLE);
   }
 
   private async deleteDashboardAttachment(

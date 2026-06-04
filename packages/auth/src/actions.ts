@@ -1,6 +1,7 @@
 import type { AuthApi } from "@zhao/api";
 import type {
   AcceptInvitationDto,
+  ChangePasswordDto,
   LoginDto,
   RegisterDto,
   RegisterResponse,
@@ -205,19 +206,17 @@ export function createAuthActions({
   async function updateMe(input: UpdateMeDto): Promise<void> {
     const authStore = store.getState();
 
-    try {
-      const user = await authApi.updateMe(input);
-      authStore.setUser(user);
-    } catch (error) {
-      authStore.setError(
-        resolveAuthErrorMessage(error, "Failed to update profile"),
-      );
-      throw error;
-    }
+    const user = await authApi.updateMe(input);
+    authStore.setUser(user);
+  }
+
+  async function changePassword(input: ChangePasswordDto): Promise<void> {
+    await authApi.changePassword(input);
   }
 
   return {
     acceptInvitation,
+    changePassword,
     login,
     logout,
     register,

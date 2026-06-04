@@ -227,6 +227,15 @@ export const TRAINING_POSITIONS = [
     locked: true,
   },
   {
+    id: "HOLDING",
+    code: "POS-06",
+    name: "总部 / Holding",
+    en: "Holding",
+    mine: false,
+    desc: "最高管理、总部支持与跨门店治理资料。",
+    locked: true,
+  },
+  {
     id: "ALL",
     code: "POS-00",
     name: "全岗通用",

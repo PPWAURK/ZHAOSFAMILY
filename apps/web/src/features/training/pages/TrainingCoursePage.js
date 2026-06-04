@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import TrainingLayout from "@/features/training/components/TrainingLayout";
@@ -7,6 +8,7 @@ import {
   TRAINING_COPY,
   TRAINING_COURSES,
 } from "@/features/training/constants/training-copy";
+import { fetchTrainingCourse } from "@/features/training/services/trainingMediaApi";
 
 const COURSE_GLYPHS = {
   VIDEO: "影",
@@ -51,7 +53,47 @@ function findCourse(id) {
 }
 
 export default function TrainingCoursePage({ courseId }) {
-  const course = findCourse(courseId);
+  const fallbackCourse = findCourse(courseId);
+  const [course, setCourse] = useState(fallbackCourse);
+  const [isLoadingCourse, setIsLoadingCourse] = useState(Boolean(courseId));
+  const [courseError, setCourseError] = useState("");
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadCourse() {
+      if (!courseId) {
+        setIsLoadingCourse(false);
+        return;
+      }
+
+      setIsLoadingCourse(true);
+      setCourseError("");
+
+      try {
+        const nextCourse = await fetchTrainingCourse(courseId);
+
+        if (isActive) {
+          setCourse(nextCourse);
+        }
+      } catch (error) {
+        if (isActive) {
+          setCourse(fallbackCourse);
+          setCourseError(error.message || "课程详情加载失败");
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingCourse(false);
+        }
+      }
+    }
+
+    loadCourse();
+
+    return () => {
+      isActive = false;
+    };
+  }, [courseId, fallbackCourse]);
 
   return (
     <TrainingLayout
@@ -62,6 +104,14 @@ export default function TrainingCoursePage({ courseId }) {
       }}
     >
       {({ t, styles }) => {
+        if (isLoadingCourse) {
+          return (
+            <section className={styles.section}>
+              <p className={styles.courseDesc}>课程详情加载中...</p>
+            </section>
+          );
+        }
+
         if (!course) {
           return (
             <section className={styles.section}>
@@ -98,6 +148,9 @@ export default function TrainingCoursePage({ courseId }) {
                 <h2 className={styles.courseTitle}>{course.title}</h2>
                 <p className={styles.courseTitleEn}>{course.en}</p>
                 <p className={styles.courseDesc}>{course.desc}</p>
+                {courseError ? (
+                  <p className={styles.materialLoadError}>{courseError}</p>
+                ) : null}
 
                 {course.tags?.length > 0 && (
                   <div className={styles.courseTags}>
@@ -117,10 +170,10 @@ export default function TrainingCoursePage({ courseId }) {
                   {course.prog}% · {t.shared.courseStatus[course.status]}
                 </p>
 
-                <button type="button" className={styles.onboardingAction}>
+                <Link href="/dashboard/training" className={styles.onboardingAction}>
                   <span>{actionLabel}</span>
                   <span className={styles.onboardingArrow}>→</span>
-                </button>
+                </Link>
               </div>
             </div>
 

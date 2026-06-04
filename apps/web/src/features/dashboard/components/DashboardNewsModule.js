@@ -1,0 +1,932 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
+
+import { useAuth } from "@/features/auth/context/AuthContext";
+import {
+  createDashboardNewsPost,
+  deleteDashboardNewsPost,
+  fetchDashboardNewsPost,
+  fetchDashboardNewsPosts,
+  getDashboardNewsAttachmentUrl,
+  uploadDashboardNewsAttachment,
+} from "@/features/dashboard/services/dashboardNewsApi";
+import styles from "@/features/dashboard/dashboard-page.module.css";
+
+const HOLDING_JOB_ROLE = "holding";
+const SEEN_AT_STORAGE_PREFIX = "zhao_dashboard_news_seen_at";
+const BOARD_CATEGORY_TO_BACKEND_CATEGORY = {
+  news: "operations",
+  congrats: "people",
+  issues: "quality",
+};
+const INITIAL_FORM = {
+  title: "",
+  summary: "",
+  body: "",
+  category: "news",
+  visibility: "team",
+  tags: "",
+};
+
+function resolveColumn(category) {
+  if (category === "people") return "congrats";
+  if (category === "quality") return "issues";
+  return "news";
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function parseTags(tagsInput) {
+  return tagsInput
+    .split(",")
+    .map((tag) => tag.trim().replace(/^#+/, ""))
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function sortPosts(posts, lang, sortKey) {
+  return [...posts].sort((left, right) => {
+    if (sortKey === "oldest") {
+      return String(left.createdAt).localeCompare(String(right.createdAt));
+    }
+
+    if (sortKey === "title") {
+      return left.title.localeCompare(right.title, lang);
+    }
+
+    return String(right.createdAt).localeCompare(String(left.createdAt));
+  });
+}
+
+function groupPostsByColumn(posts) {
+  return posts.reduce(
+    (groups, post) => {
+      groups[resolveColumn(post.category)].push(post);
+      return groups;
+    },
+    { news: [], congrats: [], issues: [] },
+  );
+}
+
+function getLatestPostCreatedAt(posts) {
+  return posts.reduce((latest, post) => {
+    const createdAt = Date.parse(post.createdAt);
+
+    if (Number.isNaN(createdAt)) {
+      return latest;
+    }
+
+    return Math.max(latest, createdAt);
+  }, 0);
+}
+
+function getSeenAtStorageKey(userId) {
+  return `${SEEN_AT_STORAGE_PREFIX}_${userId}`;
+}
+
+function getBoardCategory(category) {
+  return resolveColumn(category);
+}
+
+function getBackendCategory(boardCategory) {
+  return BOARD_CATEGORY_TO_BACKEND_CATEGORY[boardCategory] || "operations";
+}
+
+function getPostCategoryLabel(copy, category) {
+  return copy.categories[getBoardCategory(category)] || category;
+}
+
+function parseMarkdownImageLine(line) {
+  const match = line.match(/^!\[([^\]]*)]\((https?:\/\/[^)\s]+)\)$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    alt: match[1] || "image",
+    src: match[2],
+  };
+}
+
+function renderRichBody(body, styles) {
+  return body.split("\n").map((line, index) => {
+    const image = parseMarkdownImageLine(line.trim());
+    const key = `${index}-${line.slice(0, 16)}`;
+
+    if (image) {
+      return (
+        <figure key={key} className={styles.readerBodyImage}>
+          <img src={image.src} alt={image.alt} loading="lazy" />
+        </figure>
+      );
+    }
+
+    return (
+      <p key={key} className={styles.readerBodyText}>
+        {line || "\u00a0"}
+      </p>
+    );
+  });
+}
+
+function buildMarkdownImage(attachment) {
+  const alt = attachment.name.replace(/[[\]()]/g, "").trim() || "image";
+  const href = getDashboardNewsAttachmentUrl(attachment.objectKey);
+
+  return `![${alt}](${href})`;
+}
+
+export default function DashboardNewsModule({ lang, copy }) {
+  const { user } = useAuth();
+  const bodyTextareaRef = useRef(null);
+  const [posts, setPosts] = useState([]);
+  const [loadError, setLoadError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [attachmentFile, setAttachmentFile] = useState(null);
+  const [attachmentInputKey, setAttachmentInputKey] = useState(0);
+  const [bodyImageInputKey, setBodyImageInputKey] = useState(0);
+  const [isUploadingBodyImage, setIsUploadingBodyImage] = useState(false);
+  const [submitState, setSubmitState] = useState({ isSubmitting: false, message: "" });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedVisibility, setSelectedVisibility] = useState("all");
+  const [selectedSort, setSelectedSort] = useState("newest");
+  const [selectedTag, setSelectedTag] = useState("all");
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [readerError, setReaderError] = useState("");
+  const [deleteState, setDeleteState] = useState({ postId: "", message: "" });
+  const [notificationPosts, setNotificationPosts] = useState([]);
+  const [hasCheckedNotifications, setHasCheckedNotifications] = useState(false);
+  const canPublish = `${user?.jobRole || ""}`.toLowerCase() === HOLDING_JOB_ROLE;
+
+  async function loadPosts() {
+    try {
+      setIsLoading(true);
+      setLoadError("");
+      const nextPosts = await fetchDashboardNewsPosts({
+        q: searchTerm.trim(),
+        visibility: selectedVisibility,
+      });
+      setPosts(nextPosts);
+    } catch (error) {
+      setPosts([]);
+      setLoadError(error instanceof Error ? error.message : copy.loadError);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadVisiblePosts() {
+      try {
+        setIsLoading(true);
+        setLoadError("");
+        const nextPosts = await fetchDashboardNewsPosts({
+          q: searchTerm.trim(),
+          visibility: selectedVisibility,
+        });
+
+        if (!isCancelled) {
+          setPosts(nextPosts);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setPosts([]);
+          setLoadError(error instanceof Error ? error.message : copy.loadError);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadVisiblePosts();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [copy.loadError, searchTerm, selectedVisibility]);
+
+  useEffect(() => {
+    if (hasCheckedNotifications || isLoading || !user?.id || posts.length === 0) {
+      return;
+    }
+
+    const storageKey = getSeenAtStorageKey(user.id);
+    const lastSeenAt = Number(localStorage.getItem(storageKey) || 0);
+    const unseenPosts = sortPosts(
+      posts.filter((post) => {
+        const createdAt = Date.parse(post.createdAt);
+
+        return !Number.isNaN(createdAt) && createdAt > lastSeenAt;
+      }),
+      lang,
+      "newest",
+    ).slice(0, 5);
+
+    setHasCheckedNotifications(true);
+
+    if (unseenPosts.length > 0) {
+      setNotificationPosts(unseenPosts);
+    }
+  }, [hasCheckedNotifications, isLoading, lang, posts, user?.id]);
+
+  const availableTags = useMemo(
+    () => [
+      "all",
+      ...new Set(
+        posts
+          .flatMap((post) => post.tags)
+          .filter(Boolean)
+          .sort((left, right) => left.localeCompare(right, "en")),
+      ),
+    ],
+    [posts],
+  );
+
+  const visiblePosts = useMemo(() => {
+    const tagFiltered =
+      selectedTag === "all"
+        ? posts
+        : posts.filter((post) => post.tags.includes(selectedTag));
+    const categoryFiltered =
+      selectedCategory === "all"
+        ? tagFiltered
+        : tagFiltered.filter(
+            (post) => getBoardCategory(post.category) === selectedCategory,
+          );
+
+    return sortPosts(categoryFiltered, lang, selectedSort);
+  }, [lang, posts, selectedCategory, selectedSort, selectedTag]);
+
+  const postsByColumn = useMemo(
+    () => groupPostsByColumn(visiblePosts),
+    [visiblePosts],
+  );
+
+  function updateForm(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setSubmitState((prev) => ({ ...prev, message: "" }));
+  }
+
+  function insertBodyText(text) {
+    const input = bodyTextareaRef.current;
+    const start = input?.selectionStart ?? form.body.length;
+    const end = input?.selectionEnd ?? form.body.length;
+    const prefix = form.body.slice(0, start);
+    const suffix = form.body.slice(end);
+    const before = prefix && !prefix.endsWith("\n") ? "\n" : "";
+    const after = suffix && !suffix.startsWith("\n") ? "\n" : "";
+    const nextBody = `${prefix}${before}${text}${after}${suffix}`;
+    const nextCursor = `${prefix}${before}${text}`.length;
+
+    updateForm("body", nextBody);
+
+    window.requestAnimationFrame(() => {
+      bodyTextareaRef.current?.focus();
+      bodyTextareaRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  }
+
+  async function handleBodyImageChange(event) {
+    const file = event.target.files?.[0];
+    setBodyImageInputKey((prev) => prev + 1);
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setSubmitState({ isSubmitting: false, message: copy.publish.bodyImageError });
+      return;
+    }
+
+    try {
+      setIsUploadingBodyImage(true);
+      setSubmitState({ isSubmitting: false, message: copy.publish.bodyImageUploading });
+      const attachment = await uploadDashboardNewsAttachment(file);
+      if (!attachment.objectKey) {
+        throw new Error(copy.publish.bodyImageError);
+      }
+      insertBodyText(buildMarkdownImage(attachment));
+      setSubmitState({ isSubmitting: false, message: "" });
+    } catch (error) {
+      setSubmitState({
+        isSubmitting: false,
+        message:
+          error instanceof Error ? error.message : copy.publish.bodyImageError,
+      });
+    } finally {
+      setIsUploadingBodyImage(false);
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!form.title.trim() || !form.summary.trim() || !form.body.trim()) {
+      setSubmitState({ isSubmitting: false, message: copy.publish.required });
+      return;
+    }
+
+    try {
+      setSubmitState({ isSubmitting: true, message: "" });
+      const attachment = attachmentFile
+        ? await uploadDashboardNewsAttachment(attachmentFile)
+        : null;
+      const createdPost = await createDashboardNewsPost({
+        title: form.title.trim(),
+        summary: form.summary.trim(),
+        body: form.body.trim(),
+        category: getBackendCategory(form.category),
+        visibility: form.visibility,
+        tags: parseTags(form.tags),
+        attachment,
+      });
+      setForm(INITIAL_FORM);
+      setAttachmentFile(null);
+      setAttachmentInputKey((prev) => prev + 1);
+      setSelectedTag("all");
+      setSubmitState({ isSubmitting: false, message: copy.publish.success });
+      await loadPosts();
+
+      if (createdPost) {
+        setSelectedPost(createdPost);
+      }
+    } catch (error) {
+      setSubmitState({
+        isSubmitting: false,
+        message: error instanceof Error ? error.message : copy.publish.error,
+      });
+    }
+  }
+
+  async function handleOpenPost(postId) {
+    try {
+      setReaderError("");
+      setSelectedPost(await fetchDashboardNewsPost(postId));
+    } catch (error) {
+      setReaderError(error instanceof Error ? error.message : copy.loadError);
+    }
+  }
+
+  async function handleDeletePost(postId) {
+    if (!window.confirm(copy.reader.deleteConfirm)) {
+      return;
+    }
+
+    try {
+      setDeleteState({ postId, message: "" });
+      await deleteDashboardNewsPost(postId);
+      setPosts((prev) => prev.filter((post) => post.id !== String(postId)));
+      setSelectedPost((prev) =>
+        prev?.id === String(postId) ? null : prev,
+      );
+      setDeleteState({ postId: "", message: copy.reader.deleteSuccess });
+    } catch (error) {
+      setDeleteState({
+        postId: "",
+        message: error instanceof Error ? error.message : copy.reader.deleteError,
+      });
+    }
+  }
+
+  function closeNotification() {
+    if (user?.id) {
+      const latestCreatedAt = getLatestPostCreatedAt(posts);
+
+      if (latestCreatedAt > 0) {
+        localStorage.setItem(getSeenAtStorageKey(user.id), String(latestCreatedAt));
+      }
+    }
+
+    setNotificationPosts([]);
+  }
+
+  async function handleOpenNotificationPost(postId) {
+    closeNotification();
+    await handleOpenPost(postId);
+  }
+
+  function resetFilters() {
+    setSearchTerm("");
+    setSelectedCategory("all");
+    setSelectedVisibility("all");
+    setSelectedSort("newest");
+    setSelectedTag("all");
+  }
+
+  return (
+    <motion.section
+      className={styles.newsModule}
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className={styles.newsHero}>
+        <p className={styles.newsEyebrow}>{copy.kicker}</p>
+        <h2 className={styles.newsTitle}>
+          {copy.title}
+          <span className={styles.newsTitleAccent}>{copy.titleAccent}</span>
+        </h2>
+        <p className={styles.newsSubtitle}>{copy.subtitle}</p>
+      </div>
+
+      {notificationPosts.length > 0 ? (
+        <div
+          className={styles.notificationOverlay}
+          role="dialog"
+          aria-label={copy.notification.title}
+        >
+          <button
+            type="button"
+            className={styles.readerBackdrop}
+            aria-label={copy.notification.close}
+            onClick={closeNotification}
+          />
+          <section className={styles.notificationPanel}>
+            <p className={styles.newsMiniMeta}>{copy.notification.latestLabel}</p>
+            <h3>{copy.notification.title}</h3>
+            <p>{copy.notification.subtitle}</p>
+
+            <div className={styles.notificationList}>
+              {notificationPosts.map((post) => (
+                <button
+                  key={post.id}
+                  type="button"
+                  className={styles.notificationItem}
+                  onClick={() => handleOpenNotificationPost(post.id)}
+                >
+                  <span>{formatDate(post.createdAt)}</span>
+                  <strong>{post.title}</strong>
+                  <small>{post.summary}</small>
+                </button>
+              ))}
+            </div>
+
+            <div className={styles.notificationActions}>
+              <button type="button" onClick={closeNotification}>
+                {copy.notification.close}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {canPublish ? (
+        <form className={styles.publishPanel} onSubmit={handleSubmit}>
+          <div className={styles.publishIntro}>
+            <p className={styles.newsSectionLine}>{copy.publish.title}</p>
+            <p>{copy.publish.subtitle}</p>
+          </div>
+
+          <div className={styles.publishGrid}>
+            <label className={styles.publishField}>
+              <span>{copy.publish.titleLabel}</span>
+              <textarea
+                className={styles.publishTitleInput}
+                value={form.title}
+                onChange={(event) => updateForm("title", event.target.value)}
+                placeholder={copy.publish.titlePlaceholder}
+                maxLength={120}
+                rows={2}
+              />
+            </label>
+
+            <label className={styles.publishField}>
+              <span>{copy.filters.category}</span>
+              <select
+                value={form.category}
+                onChange={(event) => updateForm("category", event.target.value)}
+              >
+                {Object.entries(copy.categories)
+                  .filter(([value]) => value !== "all")
+                  .map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+              </select>
+            </label>
+
+            <label className={styles.publishField}>
+              <span>{copy.filters.visibility}</span>
+              <select
+                value={form.visibility}
+                onChange={(event) => updateForm("visibility", event.target.value)}
+              >
+                {Object.entries(copy.visibility)
+                  .filter(([value]) => value !== "all")
+                  .map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+              </select>
+            </label>
+
+            <label className={styles.publishField}>
+              <span>{copy.publish.tagsLabel}</span>
+              <input
+                value={form.tags}
+                onChange={(event) => updateForm("tags", event.target.value)}
+                placeholder={copy.publish.tagsPlaceholder}
+                maxLength={180}
+              />
+            </label>
+
+            <label className={styles.publishField}>
+              <span>{copy.publish.attachmentLabel}</span>
+              <span className={styles.uploadControl}>
+                <input
+                  key={attachmentInputKey}
+                  type="file"
+                  onChange={(event) =>
+                    setAttachmentFile(event.target.files?.[0] || null)
+                  }
+                />
+                <span className={styles.uploadButton}>
+                  {copy.publish.attachmentLabel}
+                </span>
+                <small className={styles.uploadHint}>
+                  {attachmentFile?.name || copy.publish.attachmentHint}
+                </small>
+              </span>
+            </label>
+
+            <label className={`${styles.publishField} ${styles.publishFieldWide}`}>
+              <span>{copy.publish.summaryLabel}</span>
+              <input
+                value={form.summary}
+                onChange={(event) => updateForm("summary", event.target.value)}
+                placeholder={copy.publish.summaryPlaceholder}
+                maxLength={240}
+              />
+            </label>
+
+            <label className={`${styles.publishField} ${styles.publishFieldWide}`}>
+              <span>{copy.publish.bodyLabel}</span>
+              <textarea
+                ref={bodyTextareaRef}
+                value={form.body}
+                onChange={(event) => updateForm("body", event.target.value)}
+                placeholder={copy.publish.bodyPlaceholder}
+                maxLength={5000}
+                rows={6}
+              />
+              <span className={styles.bodyImageControl}>
+                <span className={styles.uploadControl}>
+                  <input
+                    key={bodyImageInputKey}
+                    type="file"
+                    accept="image/*"
+                    disabled={isUploadingBodyImage}
+                    onChange={handleBodyImageChange}
+                  />
+                  <span className={styles.uploadButton}>
+                    {isUploadingBodyImage
+                      ? copy.publish.bodyImageUploading
+                      : copy.publish.bodyImageLabel}
+                  </span>
+                  <small className={styles.uploadHint}>
+                    {copy.publish.bodyImageHint}
+                  </small>
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className={styles.publishActions}>
+            <p role="status">{submitState.message}</p>
+            <button
+              type="submit"
+              disabled={submitState.isSubmitting || isUploadingBodyImage}
+            >
+              {submitState.isSubmitting ? copy.publish.submitting : copy.publish.submit}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <div className={styles.newsSectionLine}>{copy.overviewLabel}</div>
+
+      <section className={styles.newsStats} aria-label={copy.overviewLabel}>
+        <article className={styles.newsStat}>
+          <p className={styles.newsStatLabel}>{copy.stats.total}</p>
+          <p className={styles.newsStatValue}>{visiblePosts.length}</p>
+        </article>
+        <article className={styles.newsStat}>
+          <p className={styles.newsStatLabel}>{copy.stats.news}</p>
+          <p className={styles.newsStatValue}>{postsByColumn.news.length}</p>
+        </article>
+        <article className={styles.newsStat}>
+          <p className={styles.newsStatLabel}>{copy.stats.congrats}</p>
+          <p className={styles.newsStatValue}>{postsByColumn.congrats.length}</p>
+        </article>
+        <article className={styles.newsStat}>
+          <p className={styles.newsStatLabel}>{copy.stats.issues}</p>
+          <p className={styles.newsStatValue}>{postsByColumn.issues.length}</p>
+        </article>
+      </section>
+
+      <section className={styles.newsFilters} aria-label={copy.filters.reset}>
+        <label className={styles.newsField}>
+          <span className={styles.newsFieldLabel}>{copy.filters.search}</span>
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder={copy.filters.searchPlaceholder}
+          />
+        </label>
+
+        <label className={styles.newsField}>
+          <span className={styles.newsFieldLabel}>{copy.filters.category}</span>
+          <select
+            value={selectedCategory}
+            onChange={(event) => setSelectedCategory(event.target.value)}
+          >
+            {Object.entries(copy.categories).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.newsField}>
+          <span className={styles.newsFieldLabel}>{copy.filters.visibility}</span>
+          <select
+            value={selectedVisibility}
+            onChange={(event) => setSelectedVisibility(event.target.value)}
+          >
+            {Object.entries(copy.visibility).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.newsField}>
+          <span className={styles.newsFieldLabel}>{copy.filters.sort}</span>
+          <select
+            value={selectedSort}
+            onChange={(event) => setSelectedSort(event.target.value)}
+          >
+            {Object.entries(copy.sort).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button type="button" className={styles.resetFilters} onClick={resetFilters}>
+          {copy.filters.reset}
+        </button>
+      </section>
+
+      <div className={styles.tagRow}>
+        {availableTags.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            className={`${styles.tagChip} ${
+              selectedTag === tag ? styles.tagChipActive : ""
+            }`}
+            onClick={() => setSelectedTag(tag)}
+          >
+            {tag === "all" ? copy.categories.all : `#${tag}`}
+          </button>
+        ))}
+      </div>
+
+      {loadError ? (
+        <div className={styles.newsEmpty} role="alert">
+          {loadError}
+        </div>
+      ) : null}
+
+      {readerError ? (
+        <div className={styles.newsEmpty} role="alert">
+          {readerError}
+        </div>
+      ) : null}
+
+      {deleteState.message ? (
+        <div className={styles.newsEmpty} role="status">
+          {deleteState.message}
+        </div>
+      ) : null}
+
+      <div className={styles.newsBoard}>
+        {Object.entries(copy.columns).map(([columnKey, columnMeta], columnIndex) => {
+          const columnPosts = postsByColumn[columnKey];
+
+          return (
+            <section key={columnKey} className={styles.newsColumn}>
+              <div className={styles.newsColumnHead}>
+                <div>
+                  <p className={styles.newsColumnIndex}>
+                    {columnMeta.index} · {columnMeta.title}
+                  </p>
+                  <h3 className={styles.newsColumnTitle}>{columnMeta.title}</h3>
+                  <p className={styles.newsColumnSubtitle}>{columnMeta.subtitle}</p>
+                </div>
+                <p className={styles.newsColumnCount}>
+                  {columnPosts.length} {copy.cardsLabel}
+                </p>
+              </div>
+
+              <div className={styles.newsCardList}>
+                {isLoading ? <div className={styles.newsEmpty}>{copy.loading}</div> : null}
+
+                {!isLoading && columnPosts.length === 0 ? (
+                  <div className={styles.newsEmpty}>{copy.empty}</div>
+                ) : null}
+
+                {!isLoading
+                  ? columnPosts.map((post, itemIndex) => (
+                      <motion.article
+                        key={post.id}
+                        className={styles.newsCard}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.4,
+                          delay: 0.05 * (columnIndex + itemIndex),
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                      >
+                        <div className={styles.newsCardMetaTop}>
+                          <div className={styles.newsCardMetaBlock}>
+                            <p className={styles.newsMiniMeta}>
+                              {copy.dateLabel} · {formatDate(post.createdAt)}
+                            </p>
+                            <h4 className={styles.newsCardTitle}>{post.title}</h4>
+                            <p className={styles.newsAuthorLine}>
+                              {copy.byLabel} · {post.author.name}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`${styles.visibilityBadge} ${
+                              styles[`visibility${post.visibility}`]
+                            }`}
+                          >
+                            {copy.visibility[post.visibility]}
+                          </span>
+                        </div>
+
+                        <p className={styles.newsCardContent}>{post.summary}</p>
+
+                        <div className={styles.newsMetaGrid}>
+                          <span>
+                            {copy.filters.category} ·{" "}
+                            {getPostCategoryLabel(copy, post.category)}
+                          </span>
+                          <span>
+                            {copy.reader.storeLabel} · {post.restaurantName || "-"}
+                          </span>
+                          <span>
+                            {copy.attachmentLabel} ·{" "}
+                            {post.attachment ? post.attachment.name : "-"}
+                          </span>
+                        </div>
+
+                        <div className={styles.newsTags}>
+                          {post.tags.map((tag) => (
+                            <span key={tag} className={styles.newsTag}>
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          className={styles.readButton}
+                          onClick={() => handleOpenPost(post.id)}
+                        >
+                          {copy.reader.open}
+                          <span aria-hidden="true">→</span>
+                        </button>
+
+                        {post.attachment ? (
+                          <a
+                            href={post.attachment.href}
+                            className={styles.attachmentCard}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <div>
+                              <strong>{post.attachment.name}</strong>
+                              <small>
+                                {Math.ceil(post.attachment.sizeBytes / 1024)} KB
+                              </small>
+                            </div>
+                            <span aria-hidden="true">→</span>
+                          </a>
+                        ) : null}
+
+                        {post.canDelete ? (
+                          <button
+                            type="button"
+                            className={styles.deleteButton}
+                            disabled={deleteState.postId === post.id}
+                            onClick={() => handleDeletePost(post.id)}
+                          >
+                            {copy.reader.delete}
+                          </button>
+                        ) : null}
+                      </motion.article>
+                    ))
+                  : null}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      {selectedPost ? (
+        <div className={styles.readerOverlay} role="dialog" aria-label={copy.reader.title}>
+          <button
+            type="button"
+            className={styles.readerBackdrop}
+            aria-label={copy.reader.close}
+            onClick={() => setSelectedPost(null)}
+          />
+          <article className={styles.readerPanel}>
+            <div className={styles.readerTop}>
+              <p className={styles.newsMiniMeta}>
+                {copy.dateLabel} · {formatDate(selectedPost.createdAt)}
+              </p>
+              <div className={styles.readerActions}>
+                {selectedPost.canDelete ? (
+                  <button
+                    type="button"
+                    className={styles.deleteButton}
+                    disabled={deleteState.postId === selectedPost.id}
+                    onClick={() => handleDeletePost(selectedPost.id)}
+                  >
+                    {copy.reader.delete}
+                  </button>
+                ) : null}
+                <button type="button" onClick={() => setSelectedPost(null)}>
+                  {copy.reader.close}
+                </button>
+              </div>
+            </div>
+            <h3 className={styles.readerTitle}>{selectedPost.title}</h3>
+            <p className={styles.readerSummary}>{selectedPost.summary}</p>
+            <div className={styles.readerMeta}>
+              <span>
+                {copy.byLabel} · {selectedPost.author.name}
+              </span>
+              <span>
+                {copy.reader.storeLabel} · {selectedPost.restaurantName || "-"}
+              </span>
+              <span>{copy.visibility[selectedPost.visibility]}</span>
+            </div>
+            <div className={styles.readerBody}>
+              {renderRichBody(selectedPost.body, styles)}
+            </div>
+            {selectedPost.attachment ? (
+              <a
+                href={selectedPost.attachment.href}
+                className={styles.attachmentCard}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <div>
+                  <strong>{selectedPost.attachment.name}</strong>
+                  <small>
+                    {Math.ceil(selectedPost.attachment.sizeBytes / 1024)} KB
+                  </small>
+                </div>
+                <span aria-hidden="true">→</span>
+              </a>
+            ) : null}
+          </article>
+        </div>
+      ) : null}
+    </motion.section>
+  );
+}

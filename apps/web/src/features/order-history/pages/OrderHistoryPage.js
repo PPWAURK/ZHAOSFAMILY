@@ -15,7 +15,9 @@ import {
 } from "@/features/order-history/constants/order-history-copy";
 import {
   createPurchaseReturn,
+  deletePurchaseOrder,
   fetchOrderReturnDraft,
+  fetchPurchaseOrderPdf,
   fetchPurchaseOrders,
   fetchPurchaseReturns,
 } from "@/features/orders/services/ordersApi";
@@ -70,6 +72,10 @@ export default function OrderHistoryPage() {
   const [returnError, setReturnError] = useState("");
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   const [isLoadingReturnDraft, setIsLoadingReturnDraft] = useState(false);
+  const [downloadingPdfOrderId, setDownloadingPdfOrderId] = useState("");
+  const [pdfError, setPdfError] = useState("");
+  const [deletingOrderId, setDeletingOrderId] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const t = ORDER_HISTORY_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -164,6 +170,63 @@ export default function OrderHistoryPage() {
       setReturnError(resolveErrorMessage(nextError, t.returnSubmitError));
     } finally {
       setIsLoadingReturnDraft(false);
+    }
+  }
+
+  async function handleOpenPdf(order) {
+    if (!order?.id) return;
+    const orderId = String(order.id);
+
+    const previewWindow = window.open("about:blank", "_blank");
+    if (previewWindow) {
+      previewWindow.opener = null;
+    }
+    setDownloadingPdfOrderId(orderId);
+    setPdfError("");
+
+    try {
+      const pdfBlob = await fetchPurchaseOrderPdf(orderId);
+      const pdfUrl = URL.createObjectURL(
+        pdfBlob.type === "application/pdf"
+          ? pdfBlob
+          : new Blob([pdfBlob], { type: "application/pdf" }),
+      );
+
+      if (previewWindow) {
+        previewWindow.location.href = pdfUrl;
+      } else {
+        window.location.href = pdfUrl;
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+    } catch (nextError) {
+      if (previewWindow) {
+        previewWindow.close();
+      }
+      setPdfError(resolveErrorMessage(nextError, t.pdfOpenError));
+    } finally {
+      setDownloadingPdfOrderId("");
+    }
+  }
+
+  async function handleDeleteOrder(order) {
+    if (!order?.id) return;
+    const orderId = String(order.id);
+
+    const confirmed = window.confirm(
+      t.confirmDeleteOrder.replace("{number}", order.number || order.id),
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingOrderId(orderId);
+      setDeleteError("");
+      await deletePurchaseOrder(orderId);
+      await refreshOrders();
+    } catch (nextError) {
+      setDeleteError(resolveErrorMessage(nextError, t.deleteOrderError));
+    } finally {
+      setDeletingOrderId("");
     }
   }
 
@@ -374,11 +437,27 @@ export default function OrderHistoryPage() {
                 index={index}
                 lang={lang}
                 copy={t}
+                downloadingPdf={downloadingPdfOrderId === String(order.id)}
+                deletingOrder={deletingOrderId === String(order.id)}
+                onOpenPdf={handleOpenPdf}
                 onCreateReturn={handleOpenReturn}
+                onDeleteOrder={handleDeleteOrder}
               />
             ))}
           </div>
         )}
+
+        {pdfError ? (
+          <div className={styles.inlineError} role="alert">
+            {pdfError}
+          </div>
+        ) : null}
+
+        {deleteError ? (
+          <div className={styles.inlineError} role="alert">
+            {deleteError}
+          </div>
+        ) : null}
 
         <p className={styles.listHeading}>
           <span>{t.returnsHeading}</span>

@@ -63,8 +63,23 @@ type CreateUserArgs = {
     acceptedTerms: boolean;
     preferredLanguage: 'zh' | 'en' | 'fr';
   };
-  select: {
-    id: true;
+  include: {
+    restaurant: {
+      select: {
+        id: true;
+        name: true;
+        address: true;
+        photoUrl: true;
+      };
+    };
+  };
+};
+
+type RefreshSessionCreateCall = {
+  data: {
+    userId: number;
+    tokenHash: string;
+    expiresAt: Date;
   };
 };
 
@@ -116,7 +131,37 @@ function createPrismaServiceMock() {
     },
     user: {
       findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 9 }),
+      create: jest.fn().mockResolvedValue({
+        id: 9,
+        familyName: 'Zhao',
+        givenName: 'Lina',
+        name: 'Zhao Lina',
+        email: 'lina@example.com',
+        emailVerified: false,
+        restaurantId: 1,
+        restaurant: {
+          id: 1,
+          name: 'Paris Opera',
+          address: '10 Rue Example',
+          photoUrl: '/uploads/paris-opera.jpg',
+        },
+        birthday: new Date('1995-03-01T00:00:00.000Z'),
+        jobRole: 'front-of-house',
+        phone: null,
+        address: null,
+        profilePhoto: 'data:image/png;base64,abc123',
+        userLevel: 7,
+        preferredLanguage: 'fr',
+      }),
+    },
+    refreshSession: {
+      create: jest.fn().mockResolvedValue({ id: 1 }),
+      findUnique: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockResolvedValue({ id: 1 }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    userRole: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
   };
 }
@@ -369,12 +414,38 @@ describe('API endpoints (e2e)', () => {
       preferredLanguage: 'fr',
     });
     expect(createCall[0].data.passwordHash).toMatch(/^scrypt\$/);
-    expect(createCall[0].select).toEqual({
-      id: true,
+    expect(createCall[0].include).toEqual({
+      restaurant: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          photoUrl: true,
+        },
+      },
     });
-    expect(response.body).toEqual({
-      message: 'REGISTRATION_SAVED',
-      userId: 9,
+    expect(prismaService.refreshSession.create).toHaveBeenCalledTimes(1);
+    const [refreshSessionCreateCall] = prismaService.refreshSession.create.mock
+      .calls[0] as [RefreshSessionCreateCall];
+    expect(refreshSessionCreateCall.data.userId).toBe(9);
+    expect(refreshSessionCreateCall.data.tokenHash).toHaveLength(64);
+    expect(refreshSessionCreateCall.data.expiresAt).toBeInstanceOf(Date);
+
+    const body = response.body as {
+      accessToken: string;
+      refreshToken: string;
+      user: {
+        id: number;
+        email: string;
+        storeName: string;
+      };
+    };
+    expect(typeof body.accessToken).toBe('string');
+    expect(typeof body.refreshToken).toBe('string');
+    expect(body.user).toMatchObject({
+      id: 9,
+      email: 'lina@example.com',
+      storeName: 'Paris Opera',
     });
   });
 

@@ -46,9 +46,7 @@ export class SuppliersController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteSupplier(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<void> {
+  async deleteSupplier(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.suppliersService.deleteSupplier(id);
   }
 }

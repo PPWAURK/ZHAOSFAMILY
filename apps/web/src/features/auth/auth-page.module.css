@@ -581,6 +581,14 @@
   color: var(--red);
 }
 
+.formSuccess {
+  margin: -8px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #197a3d;
+}
+
 /* Meta row */
 .meta {
   display: flex;
@@ -635,7 +643,13 @@
 }
 
 .forgot {
+  appearance: none;
+  background: none;
+  border: none;
   color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
   text-decoration: none;
   border-bottom: 1px solid var(--ink);
   padding-bottom: 1px;
@@ -645,6 +659,12 @@
 .forgot:hover {
   color: var(--red);
   border-color: var(--red);
+}
+
+.forgot:disabled {
+  color: var(--ink-40);
+  border-color: var(--ink-20);
+  cursor: not-allowed;
 }
 
 /* CTA */

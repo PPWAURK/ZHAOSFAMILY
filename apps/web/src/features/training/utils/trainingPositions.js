@@ -43,6 +43,23 @@ export function findTrainingPosition(positions, code) {
   return flattenTrainingPositions(positions).find((position) => position.code === code);
 }
 
+function getRoleValues(user) {
+  return `${user?.jobRole || user?.position || user?.role || ""}`
+    .split(",")
+    .map((role) => role.trim())
+    .filter(Boolean);
+}
+
+function getStorePositionCodes(positions) {
+  return flattenTrainingPositions(positions)
+    .map((position) => position.code)
+    .filter((code) => !["ALL", "HOLDING", "RM"].includes(code));
+}
+
+function getAllLearningPositionCodes(positions) {
+  return flattenTrainingPositions(positions).map((position) => position.code);
+}
+
 export function mergeMaterialPositionTabs(positions, materials) {
   const codes = new Set(flattenTrainingPositions(positions).map((position) => position.code));
   const missingPositions = materials
@@ -62,33 +79,68 @@ export function mergeMaterialPositionTabs(positions, materials) {
 }
 
 export function getUserTrainingPositionCodes(user, positions) {
-  const roleValue = `${user?.jobRole || user?.position || user?.role || ""}`;
-  const explicitPosition = findTrainingPosition(positions, roleValue.toUpperCase());
+  const codes = new Set();
 
-  if (explicitPosition?.parentCode) {
-    return new Set([explicitPosition.code, explicitPosition.parentCode, "ALL"]);
+  getRoleValues(user).forEach((roleValue) => {
+    const explicitPosition = findTrainingPosition(positions, roleValue.toUpperCase());
+    const role = roleValue.toLowerCase();
+
+    if (role.includes("holding") || role.includes("headquarter") || role.includes("hq")) {
+      codes.add("HOLDING");
+      return;
+    }
+
+    if (
+      role.includes("regional") ||
+      role.includes("rm") ||
+      role === "store-manager" ||
+      role.includes("manager") ||
+      role.includes("store") ||
+      role.includes("sm")
+    ) {
+      getAllLearningPositionCodes(positions).forEach((code) => codes.add(code));
+      return;
+    }
+
+    if (role.includes("all-rounder")) {
+      getStorePositionCodes(positions)
+        .filter((code) => code !== "SM")
+        .forEach((code) => codes.add(code));
+      return;
+    }
+
+    if (role.includes("kitchen") || role.includes("boh") || role.includes("chef")) {
+      codes.add("BOH");
+      return;
+    }
+
+    if (role.includes("cash")) {
+      codes.add("CASH");
+      return;
+    }
+
+    if (explicitPosition?.parentCode) {
+      codes.add(explicitPosition.code);
+      codes.add(explicitPosition.parentCode);
+      return;
+    }
+
+    if (explicitPosition?.code) {
+      codes.add(explicitPosition.code);
+      (explicitPosition.children || []).forEach((child) => codes.add(child.code));
+      return;
+    }
+
+    if (role.includes("front-of-house")) {
+      codes.add("FOH");
+    }
+  });
+
+  if (codes.size === 0) {
+    codes.add("FOH");
   }
 
-  if (explicitPosition?.code) {
-    const childCodes = (explicitPosition.children || []).map((child) => child.code);
-    return new Set([explicitPosition.code, ...childCodes, "ALL"]);
-  }
+  codes.add("ALL");
 
-  const role = roleValue.toLowerCase();
-  let parentCode = "FOH";
-
-  if (role.includes("kitchen") || role.includes("boh") || role.includes("chef")) {
-    parentCode = "BOH";
-  } else if (role.includes("cash")) {
-    parentCode = "CASH";
-  } else if (role.includes("regional") || role.includes("rm")) {
-    parentCode = "RM";
-  } else if (role.includes("manager") || role.includes("store") || role.includes("sm")) {
-    parentCode = "SM";
-  }
-
-  const position = findTrainingPosition(positions, parentCode);
-  const childCodes = (position?.children || []).map((child) => child.code);
-
-  return new Set([parentCode, ...childCodes, "ALL"]);
+  return codes;
 }

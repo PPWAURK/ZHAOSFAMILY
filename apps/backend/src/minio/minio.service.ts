@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -12,10 +13,25 @@ export type UploadedObject = {
   objectKey: string;
 };
 
+type StorageError = Error & {
+  code?: unknown;
+  statusCode?: unknown;
+};
+
+const STORAGE_UNAVAILABLE_ERROR_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+]);
+
 @Injectable()
 export class MinioService implements OnModuleInit {
+  private readonly logger = new Logger(MinioService.name);
   private readonly bucket: string;
   private readonly client: Minio.Client;
+  private isBucketReady = false;
 
   constructor(private readonly configService: ConfigService) {
     this.bucket = this.configService.get<string>('MINIO_BUCKET', '');
@@ -35,9 +51,10 @@ export class MinioService implements OnModuleInit {
       return;
     }
 
-    const exists = await this.client.bucketExists(this.bucket);
-    if (!exists) {
-      await this.client.makeBucket(this.bucket, 'us-east-1');
+    try {
+      await this.prepareBucket();
+    } catch (error) {
+      this.logStorageUnavailable(error);
     }
   }
 
@@ -46,12 +63,18 @@ export class MinioService implements OnModuleInit {
     buffer: Buffer;
     mimeType?: string;
   }): Promise<UploadedObject> {
-    this.assertConfigured();
-
     const { objectKey, buffer, mimeType } = params;
 
-    await this.client.putObject(this.bucket, objectKey, buffer, buffer.length, {
-      'Content-Type': mimeType || 'application/octet-stream',
+    await this.runStorageOperation(async () => {
+      await this.client.putObject(
+        this.bucket,
+        objectKey,
+        buffer,
+        buffer.length,
+        {
+          'Content-Type': mimeType || 'application/octet-stream',
+        },
+      );
     });
 
     return {
@@ -65,12 +88,12 @@ export class MinioService implements OnModuleInit {
     filePath: string;
     mimeType?: string;
   }): Promise<UploadedObject> {
-    this.assertConfigured();
-
     const { objectKey, filePath, mimeType } = params;
 
-    await this.client.fPutObject(this.bucket, objectKey, filePath, {
-      'Content-Type': mimeType || 'application/octet-stream',
+    await this.runStorageOperation(async () => {
+      await this.client.fPutObject(this.bucket, objectKey, filePath, {
+        'Content-Type': mimeType || 'application/octet-stream',
+      });
     });
 
     return {
@@ -80,9 +103,9 @@ export class MinioService implements OnModuleInit {
   }
 
   async getFileStream(objectKey: string): Promise<Readable> {
-    this.assertConfigured();
-
-    return this.client.getObject(this.bucket, objectKey);
+    return this.runStorageOperation(() =>
+      this.client.getObject(this.bucket, objectKey),
+    );
   }
 
   async getPartialFileStream(
@@ -90,23 +113,23 @@ export class MinioService implements OnModuleInit {
     offset: number,
     length: number,
   ): Promise<Readable> {
-    this.assertConfigured();
-
-    return this.client.getPartialObject(this.bucket, objectKey, offset, length);
+    return this.runStorageOperation(() =>
+      this.client.getPartialObject(this.bucket, objectKey, offset, length),
+    );
   }
 
   async statObject(
     objectKey: string,
   ): Promise<Awaited<ReturnType<Minio.Client['statObject']>>> {
-    this.assertConfigured();
-
-    return this.client.statObject(this.bucket, objectKey);
+    return this.runStorageOperation(() =>
+      this.client.statObject(this.bucket, objectKey),
+    );
   }
 
   async removeObject(objectKey: string): Promise<void> {
-    this.assertConfigured();
-
-    await this.client.removeObject(this.bucket, objectKey);
+    await this.runStorageOperation(() =>
+      this.client.removeObject(this.bucket, objectKey),
+    );
   }
 
   private isConfigured(): boolean {
@@ -117,9 +140,71 @@ export class MinioService implements OnModuleInit {
     );
   }
 
-  private assertConfigured(): void {
+  private async runStorageOperation<T>(
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    await this.assertStorageReady();
+
+    try {
+      return await operation();
+    } catch (error) {
+      if (this.isStorageUnavailableError(error)) {
+        this.isBucketReady = false;
+        this.logStorageUnavailable(error);
+        throw new ServiceUnavailableException('MINIO_UNAVAILABLE');
+      }
+
+      throw error;
+    }
+  }
+
+  private async assertStorageReady(): Promise<void> {
     if (!this.isConfigured()) {
       throw new ServiceUnavailableException('MINIO_NOT_CONFIGURED');
     }
+
+    if (this.isBucketReady) {
+      return;
+    }
+
+    try {
+      await this.prepareBucket();
+    } catch (error) {
+      this.logStorageUnavailable(error);
+      throw new ServiceUnavailableException('MINIO_UNAVAILABLE');
+    }
+  }
+
+  private async prepareBucket(): Promise<void> {
+    const exists = await this.client.bucketExists(this.bucket);
+    if (!exists) {
+      await this.client.makeBucket(this.bucket, 'us-east-1');
+    }
+
+    this.isBucketReady = true;
+  }
+
+  private logStorageUnavailable(error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    this.logger.warn(`MinIO storage is unavailable: ${message}`);
+  }
+
+  private isStorageUnavailableError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return true;
+    }
+
+    const storageError = error as StorageError;
+    const code =
+      typeof storageError.code === 'string' ? storageError.code : undefined;
+    const statusCode =
+      typeof storageError.statusCode === 'number'
+        ? storageError.statusCode
+        : undefined;
+
+    return Boolean(
+      (code && STORAGE_UNAVAILABLE_ERROR_CODES.has(code)) ||
+      (statusCode && statusCode >= 500),
+    );
   }
 }

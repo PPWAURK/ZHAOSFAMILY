@@ -11,7 +11,10 @@ function toInputValue(product) {
     nameCn: product.nameCn || "",
     designationFr: product.designationFr || "",
     unit: product.unit || "",
-    price: product.price == null ? "" : String(product.price),
+    price:
+      product.price === null || product.price === undefined
+        ? ""
+        : String(product.price),
     specification: product.specification || "",
     image: product.image || "",
   };

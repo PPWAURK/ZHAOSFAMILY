@@ -1,19 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  ActivityIndicator,
   Image,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { AuthUser } from "@zhao/types";
-import type { UpdateMeRequest } from "@zhao/types";
+import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import { WebView } from "react-native-webview";
+import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import zhaoLogo from "@/features/auth/assets/logozhao正方形.jpg";
 import type { AuthLanguage } from "@/features/auth/authCopy";
@@ -26,20 +29,28 @@ import {
   type DashboardNavItem,
 } from "@/features/dashboard/dashboardCopy";
 import {
+  fetchDashboardNewsPost,
   fetchDashboardNewsPosts,
   type DashboardNewsPost,
 } from "@/features/dashboard/dashboardNewsApi";
 import { OrderModuleScreen } from "@/features/orders/OrderModuleScreen";
 import { ORDER_COPY } from "@/features/orders/orderCopy";
 import { ProfileScreen } from "@/features/profile/ProfileScreen";
+import { StoresModuleScreen } from "@/features/stores/StoresModuleScreen";
 
 type DashboardHomeScreenProps = {
   language: AuthLanguage;
   user: AuthUser;
   onChangeLanguage: (language: AuthLanguage) => void;
   onLogout: () => Promise<void>;
+  onChangePassword: (input: ChangePasswordRequest) => Promise<void>;
   onUpdateProfile: (input: UpdateMeRequest) => Promise<void>;
 };
+
+type NewsDeskCategory = "news" | "congrats" | "issues";
+
+const NEWS_CATEGORY_FILTERS: NewsDeskCategory[] = ["news", "congrats", "issues"];
+const PDF_LOADING_MIN_DURATION_MS = 2000;
 
 function resolveDisplayName(user: AuthUser, fallback: string): string {
   const composedName = [user.familyName, user.givenName].filter(Boolean).join(" ");
@@ -59,6 +70,63 @@ function formatDate(value: string): string {
   return date.toISOString().slice(0, 10);
 }
 
+function formatAttachmentSize(sizeBytes: number): string {
+  if (!sizeBytes) return "-";
+  if (sizeBytes < 1024 * 1024) return `${Math.ceil(sizeBytes / 1024)} KB`;
+
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function postMatchesSearch(post: DashboardNewsPost, searchTerm: string): boolean {
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  if (!normalizedSearch) return true;
+
+  return [
+    post.title,
+    post.summary,
+    post.body,
+    post.authorName,
+    post.restaurantName,
+    ...post.tags,
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedSearch);
+}
+
+function resolveNewsDeskCategory(category: string): NewsDeskCategory {
+  if (category === "people") return "congrats";
+  if (category === "quality") return "issues";
+
+  return "news";
+}
+
+function parseMarkdownImageLine(line: string): { alt: string; src: string } | null {
+  const match = line.match(/^!\[([^\]]*)]\((https?:\/\/[^)\s]+)\)$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    alt: match[1] || "image",
+    src: match[2],
+  };
+}
+
+function isPdfAttachment(post: DashboardNewsPost): boolean {
+  const attachment = post.attachment;
+
+  if (!attachment) {
+    return false;
+  }
+
+  return (
+    attachment.mimeType === "application/pdf" ||
+    attachment.name.toLowerCase().endsWith(".pdf")
+  );
+}
+
 function canSeeNavItem(
   item: DashboardNavItem | DashboardMenuItem,
   permissions: string[],
@@ -71,7 +139,12 @@ function resolveDashboardEntryId(entryId: string): string {
 }
 
 function isConnectedDashboardEntry(entryId: string): boolean {
-  return entryId === "home" || entryId === "orders" || entryId === "profile";
+  return (
+    entryId === "home" ||
+    entryId === "orders" ||
+    entryId === "profile" ||
+    entryId === "stores"
+  );
 }
 
 export function DashboardHomeScreen({
@@ -79,6 +152,7 @@ export function DashboardHomeScreen({
   user,
   onChangeLanguage,
   onLogout,
+  onChangePassword,
   onUpdateProfile,
 }: DashboardHomeScreenProps) {
   const copy = DASHBOARD_COPY[language];
@@ -88,12 +162,30 @@ export function DashboardHomeScreen({
   const [newsPosts, setNewsPosts] = useState<DashboardNewsPost[]>([]);
   const [newsError, setNewsError] = useState("");
   const [isLoadingNews, setIsLoadingNews] = useState(true);
+  const [newsSearchTerm, setNewsSearchTerm] = useState("");
+  const [selectedNewsCategory, setSelectedNewsCategory] =
+    useState<NewsDeskCategory>("news");
+  const [selectedNewsPost, setSelectedNewsPost] =
+    useState<DashboardNewsPost | null>(null);
+  const [pdfPreviewPost, setPdfPreviewPost] =
+    useState<DashboardNewsPost | null>(null);
+  const [isLoadingPdfPreview, setIsLoadingPdfPreview] = useState(false);
+  const [pdfPreviewError, setPdfPreviewError] = useState("");
+  const [isLoadingSelectedNews, setIsLoadingSelectedNews] = useState(false);
+  const [readerError, setReaderError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
+  const newsCarouselRef = useRef<ScrollView>(null);
+  const pdfLoadingStartedAtRef = useRef(0);
+  const pdfLoadingTokenRef = useRef(0);
+  const [newsCarouselIndex, setNewsCarouselIndex] = useState(0);
+  const { width: screenWidth } = useWindowDimensions();
 
   const displayName = resolveDisplayName(user, copy.greetingFallback);
   const moreNavLabel = DASHBOARD_PRIMARY_NAV.find((item) => item.id === "more")?.label[language];
   const permissions = user.permissions ?? [];
+  const newsCarouselCardWidth = Math.max(280, Math.min(screenWidth - 80, 360));
+  const newsCarouselSnapInterval = newsCarouselCardWidth + 12;
   const visibleMoreGroups = useMemo(
     () =>
       DASHBOARD_MORE_NAV_GROUPS.map((group) => ({
@@ -102,7 +194,18 @@ export function DashboardHomeScreen({
       })).filter((group) => group.items.length > 0),
     [permissions],
   );
+  const visibleNewsPosts = useMemo(
+    () =>
+      newsPosts.filter((post) => {
+        const matchesCategory =
+          resolveNewsDeskCategory(post.category) === selectedNewsCategory;
 
+        return matchesCategory && postMatchesSearch(post, newsSearchTerm);
+      }),
+    [newsPosts, newsSearchTerm, selectedNewsCategory],
+  );
+  const canGoToPreviousNews = newsCarouselIndex > 0;
+  const canGoToNextNews = newsCarouselIndex < visibleNewsPosts.length - 1;
   useEffect(() => {
     let isCancelled = false;
 
@@ -134,6 +237,11 @@ export function DashboardHomeScreen({
     };
   }, [copy.newsError]);
 
+  useEffect(() => {
+    setNewsCarouselIndex(0);
+    newsCarouselRef.current?.scrollTo({ x: 0, animated: false });
+  }, [newsSearchTerm, selectedNewsCategory]);
+
   function handleEntryPress(item: DashboardNavItem): void {
     setActionMessage("");
 
@@ -161,6 +269,128 @@ export function DashboardHomeScreen({
   async function handleLogoutPress(): Promise<void> {
     setIsMoreOpen(false);
     await onLogout();
+  }
+
+  async function handleOpenNewsPost(post: DashboardNewsPost): Promise<void> {
+    setReaderError("");
+    setSelectedNewsPost(post);
+    setIsLoadingSelectedNews(true);
+
+    try {
+      const nextPost = await fetchDashboardNewsPost(post.id);
+      setSelectedNewsPost(nextPost ?? post);
+    } catch {
+      setReaderError(copy.readerError);
+    } finally {
+      setIsLoadingSelectedNews(false);
+    }
+  }
+
+  function handleCloseNewsReader(): void {
+    setSelectedNewsPost(null);
+    setReaderError("");
+    setIsLoadingSelectedNews(false);
+  }
+
+  async function handleOpenAttachment(post: DashboardNewsPost): Promise<void> {
+    const attachmentUrl = post.attachment?.href;
+    if (!attachmentUrl) {
+      setReaderError(copy.newsAttachmentOpenError);
+      return;
+    }
+
+    if (isPdfAttachment(post)) {
+      setPdfPreviewError("");
+      setIsLoadingPdfPreview(true);
+      pdfLoadingStartedAtRef.current = Date.now();
+      pdfLoadingTokenRef.current += 1;
+      setSelectedNewsPost(null);
+      setReaderError("");
+      setIsLoadingSelectedNews(false);
+      setTimeout(() => setPdfPreviewPost(post), 120);
+      return;
+    }
+
+    try {
+      await Linking.openURL(attachmentUrl);
+    } catch {
+      setReaderError(copy.newsAttachmentOpenError);
+    }
+  }
+
+  function handleClosePdfPreview(): void {
+    setPdfPreviewPost(null);
+    setIsLoadingPdfPreview(false);
+    setPdfPreviewError("");
+    pdfLoadingStartedAtRef.current = 0;
+    pdfLoadingTokenRef.current += 1;
+  }
+
+  function finishPdfLoading(onFinish?: () => void): void {
+    const token = pdfLoadingTokenRef.current;
+    const elapsed = Date.now() - pdfLoadingStartedAtRef.current;
+    const remaining = Math.max(0, PDF_LOADING_MIN_DURATION_MS - elapsed);
+
+    setTimeout(() => {
+      if (token !== pdfLoadingTokenRef.current) {
+        return;
+      }
+
+      setIsLoadingPdfPreview(false);
+      onFinish?.();
+    }, remaining);
+  }
+
+  function scrollNewsCarousel(direction: "previous" | "next"): void {
+    const nextIndex =
+      direction === "next"
+        ? Math.min(newsCarouselIndex + 1, visibleNewsPosts.length - 1)
+        : Math.max(newsCarouselIndex - 1, 0);
+
+    setNewsCarouselIndex(nextIndex);
+    newsCarouselRef.current?.scrollTo({
+      x: nextIndex * newsCarouselSnapInterval,
+      animated: true,
+    });
+  }
+
+  function handleNewsCarouselScrollEnd(offsetX: number): void {
+    const nextIndex = Math.round(offsetX / newsCarouselSnapInterval);
+    setNewsCarouselIndex(
+      Math.max(0, Math.min(nextIndex, visibleNewsPosts.length - 1)),
+    );
+  }
+
+  function renderNewsReaderBody(post: DashboardNewsPost): ReactNode {
+    const body = post.body || post.summary;
+
+    return body.split("\n").map((line, index) => {
+      const image = parseMarkdownImageLine(line.trim());
+      const key = `${index}-${line.slice(0, 12)}`;
+
+      if (image) {
+        return (
+          <Pressable
+            key={key}
+            accessibilityRole="imagebutton"
+            accessibilityLabel={image.alt}
+            onPress={() => void Linking.openURL(image.src)}
+          >
+            <Image
+              source={{ uri: image.src }}
+              resizeMode="contain"
+              style={styles.readerBodyImage}
+            />
+          </Pressable>
+        );
+      }
+
+      return (
+        <Text key={key} style={styles.readerBodyText}>
+          {line || " "}
+        </Text>
+      );
+    });
   }
 
   return (
@@ -214,12 +444,15 @@ export function DashboardHomeScreen({
               language={language}
               storeName={user.store?.name || user.storeName || user.establishment || undefined}
             />
+          ) : activeEntry === "stores" ? (
+            <StoresModuleScreen language={language} user={user} />
           ) : activeEntry === "profile" ? (
             <ProfileScreen
               language={language}
               user={user}
               onChangeLanguage={onChangeLanguage}
               onLogout={onLogout}
+              onChangePassword={onChangePassword}
               onUpdateProfile={onUpdateProfile}
             />
           ) : (
@@ -254,18 +487,46 @@ export function DashboardHomeScreen({
                 </View>
               </View>
 
-              <View style={styles.newsHeader}>
-                <TrackingText color={authControlStyles.colors.red} size={10.5}>
-                  {copy.newsTitle}
-                </TrackingText>
-                <Text style={styles.newsSubtitle}>{copy.newsSubtitle}</Text>
-              </View>
+              <View style={styles.newsDesk}>
+                <View style={styles.newsHeader}>
+                  <TrackingText color={authControlStyles.colors.red} size={10.5}>
+                    {copy.newsTitle}
+                  </TrackingText>
+                </View>
 
-              <View style={styles.newsList}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.newsCategoryScroller}
+                >
+                  {NEWS_CATEGORY_FILTERS.map((category) => {
+                    const isActive = selectedNewsCategory === category;
+
+                    return (
+                      <Pressable
+                        key={category}
+                        style={[
+                          styles.newsCategoryPill,
+                          isActive ? styles.newsCategoryPillActive : null,
+                        ]}
+                        onPress={() => setSelectedNewsCategory(category)}
+                      >
+                        <Text
+                          style={[
+                            styles.newsCategoryText,
+                            isActive ? styles.newsCategoryTextActive : null,
+                          ]}
+                        >
+                          {copy.newsCategories[category]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
                 {isLoadingNews ? (
                   <View style={styles.stateRow}>
-                    <ActivityIndicator color={authControlStyles.colors.red} />
-                    <Text style={styles.stateText}>{copy.loadingNews}</Text>
+                    <ZhaoLoadingIndicator label={copy.loadingNews} />
                   </View>
                 ) : null}
 
@@ -277,48 +538,274 @@ export function DashboardHomeScreen({
                   <Text style={styles.stateText}>{copy.emptyNews}</Text>
                 ) : null}
 
-                {!isLoadingNews && !newsError
-                  ? newsPosts.map((post) => (
-                      <View key={post.id} style={styles.newsCard}>
+                {!isLoadingNews && !newsError && newsPosts.length > 0 ? (
+                  <>
+                    <TextInput
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={copy.newsSearchPlaceholder}
+                      placeholderTextColor={authControlStyles.colors.ink40}
+                      style={styles.newsSearchInput}
+                      value={newsSearchTerm}
+                      onChangeText={setNewsSearchTerm}
+                    />
+
+                    <View style={styles.newsSectionHeader}>
+                      <Text style={styles.newsSectionTitle}>{copy.newsListLabel}</Text>
+                      <View style={styles.carouselControls}>
+                        <Text style={styles.newsMetaText}>
+                          {visibleNewsPosts.length}
+                        </Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={!canGoToPreviousNews}
+                          style={[
+                            styles.carouselControlButton,
+                            !canGoToPreviousNews
+                              ? styles.carouselControlButtonDisabled
+                              : null,
+                          ]}
+                          onPress={() => scrollNewsCarousel("previous")}
+                        >
+                          <Ionicons
+                            color={authControlStyles.colors.red}
+                            name="arrow-back-outline"
+                            size={16}
+                          />
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={!canGoToNextNews}
+                          style={[
+                            styles.carouselControlButton,
+                            !canGoToNextNews
+                              ? styles.carouselControlButtonDisabled
+                              : null,
+                          ]}
+                          onPress={() => scrollNewsCarousel("next")}
+                        >
+                          <Ionicons
+                            color={authControlStyles.colors.red}
+                            name="arrow-forward-outline"
+                            size={16}
+                          />
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    {visibleNewsPosts.length === 0 ? (
+                      <Text style={styles.stateText}>{copy.newsNoSearchResult}</Text>
+                    ) : (
+                      <View style={styles.newsCarouselFrame}>
+                        <ScrollView
+                          ref={newsCarouselRef}
+                          horizontal
+                          contentContainerStyle={styles.newsCarouselContent}
+                          decelerationRate="fast"
+                          showsHorizontalScrollIndicator={false}
+                          snapToAlignment="start"
+                          snapToInterval={newsCarouselSnapInterval}
+                          style={styles.newsCarousel}
+                          onMomentumScrollEnd={(event) =>
+                            handleNewsCarouselScrollEnd(
+                              event.nativeEvent.contentOffset.x,
+                            )
+                          }
+                        >
+                          {visibleNewsPosts.map((post) => (
+                            <Pressable
+                              key={post.id}
+                              style={[
+                                styles.newsCard,
+                                { width: newsCarouselCardWidth },
+                              ]}
+                              onPress={() => void handleOpenNewsPost(post)}
+                            >
+                              <View style={styles.newsMetaRow}>
+                                <Text style={styles.newsMetaText}>
+                                  {formatDate(post.createdAt)}
+                                </Text>
+                                <Text style={styles.newsMetaText}>
+                                  {copy.newsCategories[
+                                    resolveNewsDeskCategory(post.category)
+                                  ]}
+                                </Text>
+                              </View>
+                              <Text style={styles.newsTitle}>{post.title}</Text>
+                              <Text style={styles.newsSummary} numberOfLines={3}>
+                                {post.summary}
+                              </Text>
+                              <View style={styles.newsCardFooter}>
+                                <Text style={styles.newsAuthor}>
+                                  {post.authorName || "-"} · {post.restaurantName || "-"}
+                                </Text>
+                                <Text style={styles.newsReadMore}>{copy.newsReadMore}</Text>
+                              </View>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </>
+                ) : null}
+              </View>
+
+              <Modal
+                animationType="slide"
+                presentationStyle="overFullScreen"
+                transparent
+                visible={!!selectedNewsPost}
+                onRequestClose={handleCloseNewsReader}
+              >
+                <View style={styles.readerModalRoot}>
+                  <Pressable
+                    style={styles.readerBackdrop}
+                    onPress={handleCloseNewsReader}
+                  />
+                  <SafeAreaView
+                    edges={["left", "right"]}
+                    pointerEvents="box-none"
+                    style={styles.readerSafeArea}
+                  >
+                    {selectedNewsPost ? (
+                      <BlurView intensity={34} tint="light" style={styles.readerSheet}>
+                        <View style={styles.sheetSurface} />
+                        <View style={styles.sheetHandle} />
                         <View style={styles.newsMetaRow}>
-                          <Text style={styles.newsMetaText}>{formatDate(post.createdAt)}</Text>
-                          <Text style={styles.newsMetaText}>{post.visibility}</Text>
+                          <Text style={styles.newsMetaText}>
+                            {copy.newsCategories[
+                              resolveNewsDeskCategory(selectedNewsPost.category)
+                            ]}
+                          </Text>
+                          <Pressable style={styles.readerCloseButton}
+                                     onPress={handleCloseNewsReader}>
+                            <Text style={styles.sheetCloseText}>
+                              {copy.newsReaderClose}
+                            </Text>
+                          </Pressable>
                         </View>
-                        <Text style={styles.newsTitle}>{post.title}</Text>
-                        <Text style={styles.newsSummary}>{post.summary}</Text>
-                        <Text style={styles.newsAuthor}>
-                          {post.authorName || "-"} · {post.restaurantName || "-"}
+                        <ScrollView
+                          showsVerticalScrollIndicator={false}
+                          style={styles.readerScroll}
+                        >
+                          <Text style={styles.readerTitle}>{selectedNewsPost.title}</Text>
+                          <Text style={styles.readerSummary}>
+                            {selectedNewsPost.summary}
+                          </Text>
+                          <View style={styles.readerMetaGrid}>
+                            <Text style={styles.newsMetaText}>
+                              {formatDate(selectedNewsPost.createdAt)}
+                            </Text>
+                            <Text style={styles.newsMetaText}>
+                              {selectedNewsPost.authorName || "-"} ·{" "}
+                              {selectedNewsPost.restaurantName || "-"}
+                            </Text>
+                          </View>
+                          {isLoadingSelectedNews ? (
+                            <View style={styles.stateRow}>
+                              <ZhaoLoadingIndicator label={copy.newsReaderLoading} />
+                            </View>
+                          ) : null}
+                          {readerError ? (
+                            <Text style={styles.stateText}>{readerError}</Text>
+                          ) : null}
+                          {selectedNewsPost.attachment?.href ? (
+                            <Pressable
+                              style={styles.attachmentCard}
+                              onPress={() => void handleOpenAttachment(selectedNewsPost)}
+                            >
+                              <View style={styles.attachmentBody}>
+                                <Text style={styles.newsMetaText}>
+                                  {copy.newsAttachment}
+                                </Text>
+                                <Text style={styles.attachmentName}>
+                                  {selectedNewsPost.attachment.name || "-"}
+                                </Text>
+                                <Text style={styles.stateText}>
+                                  {formatAttachmentSize(
+                                    selectedNewsPost.attachment.sizeBytes,
+                                  )}
+                                </Text>
+                              </View>
+                              <Text style={styles.newsReadMore}>
+                                {copy.newsOpenAttachment}
+                              </Text>
+                            </Pressable>
+                          ) : null}
+                          <View style={styles.readerBody}>
+                            {renderNewsReaderBody(selectedNewsPost)}
+                          </View>
+                          {selectedNewsPost.tags.length > 0 ? (
+                            <View style={styles.newsTagRow}>
+                              {selectedNewsPost.tags.map((tag) => (
+                                <Text key={tag} style={styles.newsTag}>
+                                  #{tag}
+                                </Text>
+                              ))}
+                            </View>
+                          ) : null}
+                        </ScrollView>
+                      </BlurView>
+                    ) : null}
+                  </SafeAreaView>
+                </View>
+              </Modal>
+
+              <Modal
+                animationType="slide"
+                presentationStyle="overFullScreen"
+                transparent
+                visible={!!pdfPreviewPost}
+                onRequestClose={handleClosePdfPreview}
+              >
+                <View style={styles.pdfModalRoot}>
+                  <View style={styles.pdfPanel}>
+                    <View style={styles.pdfHeader}>
+                      <View style={styles.attachmentBody}>
+                        <Text style={styles.newsMetaText}>{copy.newsPdfPreview}</Text>
+                        <Text style={styles.attachmentName}>
+                          {pdfPreviewPost?.attachment?.name || "-"}
                         </Text>
                       </View>
-                    ))
-                  : null}
-              </View>
-
-              <View style={styles.quickSection}>
-                <TrackingText color={authControlStyles.colors.red} size={10.5}>
-                  {copy.quickActions}
-                </TrackingText>
-                <View style={styles.quickGrid}>
-                  {DASHBOARD_PRIMARY_NAV.filter((item) => item.id !== "more").map((item) => (
-                    <Pressable
-                      key={item.id}
-                      style={[
-                        styles.quickAction,
-                        activeEntry === item.id ? styles.quickActionActive : null,
-                      ]}
-                      onPress={() => handleEntryPress(item)}
-                    >
-                      <Ionicons
-                        color={authControlStyles.colors.red}
-                        name={item.icon}
-                        size={22}
-                      />
-                      <Text style={styles.quickText}>{item.label[language]}</Text>
-                    </Pressable>
-                  ))}
+                      <Pressable style={styles.readerCloseButton}
+                          onPress={handleClosePdfPreview}>
+                        <Text style={styles.sheetCloseText}>
+                          {copy.newsReaderClose}
+                        </Text>
+                      </Pressable>
+                    </View>
+                    <View style={styles.pdfViewer}>
+                      {pdfPreviewPost?.attachment?.href ? (
+                        <WebView
+                          originWhitelist={["*"]}
+                          source={{ uri: pdfPreviewPost.attachment.href }}
+                          startInLoadingState
+                          style={styles.pdfWebView}
+                          onError={() => {
+                            finishPdfLoading(() =>
+                              setPdfPreviewError(copy.newsPdfPreviewError),
+                            );
+                          }}
+                          onLoadEnd={() => finishPdfLoading()}
+                        />
+                      ) : null}
+                      {isLoadingPdfPreview ? (
+                        <View style={styles.pdfLoadingOverlay}>
+                          <ZhaoLoadingIndicator
+                            label={copy.newsPdfPreviewLoading}
+                            variant="overlay"
+                          />
+                        </View>
+                      ) : null}
+                      {pdfPreviewError ? (
+                        <View style={styles.pdfLoadingOverlay}>
+                          <Text style={styles.pdfLoadingText}>{pdfPreviewError}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
                 </View>
-              </View>
-
+              </Modal>
               {actionMessage ? <Text style={styles.actionMessage}>{actionMessage}</Text> : null}
             </>
           )}
@@ -326,8 +813,7 @@ export function DashboardHomeScreen({
         </ScrollView>
 
         {!isMoreOpen ? (
-          <BlurView intensity={72} tint="light" style={styles.bottomNav}>
-            <View style={styles.bottomNavHighlight} />
+          <BlurView intensity={80} tint="light" style={styles.bottomNav}>
             <View style={styles.bottomNavDepth} />
             {DASHBOARD_PRIMARY_NAV.filter((item) => item.id !== "more").map((item) => {
               const isActive = activeEntry === item.id;
@@ -344,7 +830,7 @@ export function DashboardHomeScreen({
                   style={styles.bottomNavItem}
                   onPress={() => handleEntryPress(item)}
                 >
-                  <Ionicons color={navColor} name={item.icon} size={21} />
+                  <Ionicons color={navColor} name={item.icon} size={22} />
                   <Text
                     numberOfLines={1}
                     style={[
@@ -481,19 +967,17 @@ const styles = StyleSheet.create({
   bottomNav: {
     backgroundColor: "rgba(255, 255, 255, 0.62)",
     borderColor: authControlStyles.colors.red,
-    borderWidth: 1.2,
-    borderRadius: 30,
+    borderWidth: 1,
     bottom: 0,
     elevation: 24,
     flexDirection: "row",
-    left: 12,
-    minHeight: 80,
     overflow: "hidden",
     paddingHorizontal: 12,
-    paddingTop: 9,
-    paddingBottom: 7,
     position: "absolute",
-    right: 12,
+    minHeight: 62,
+    borderRadius: 20,
+    left: 20,
+    right: 20,
     shadowColor: authControlStyles.colors.red,
     shadowOffset: { width: 0, height: 18 },
     shadowOpacity: 0.2,
@@ -506,21 +990,12 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  bottomNavHighlight: {
-    backgroundColor: "rgba(255, 255, 255, 0.72)",
-    borderRadius: 36,
-    height: 28,
-    left: 26,
-    position: "absolute",
-    right: 26,
-    top: 5,
-  },
   bottomNavItem: {
     alignItems: "center",
     flex: 1,
     gap: 4,
     justifyContent: "center",
-    minHeight: 62,
+    minHeight: 68,
     position: "relative",
   },
   bottomNavActiveDot: {
@@ -611,7 +1086,7 @@ const styles = StyleSheet.create({
   languageText: {
     color: authControlStyles.colors.ink40,
     fontFamily: "monospace",
-    fontSize: 11,
+    fontSize: 16,
     letterSpacing: 0.8,
   },
   moreArrow: {
@@ -654,21 +1129,102 @@ const styles = StyleSheet.create({
     fontFamily: "serif",
     fontSize: 12,
     lineHeight: 18,
-    marginTop: 12,
+  },
+  attachmentBody: {
+    flex: 1,
+    gap: 5,
+  },
+  attachmentCard: {
+    alignItems: "center",
+    backgroundColor: "rgba(193, 22, 22, 0.05)",
+    borderColor: "rgba(193, 22, 22, 0.18)",
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+    marginTop: 18,
+    padding: 14,
+  },
+  attachmentName: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 21,
+  },
+  carouselControlButton: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(193, 22, 22, 0.2)",
+    borderWidth: 1,
+    height: 32,
+    justifyContent: "center",
+    width: 36,
+  },
+  carouselControlButtonDisabled: {
+    opacity: 0.32,
+  },
+  carouselControls: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   newsCard: {
     backgroundColor: "#ffffff",
     borderColor: "rgba(193, 22, 22, 0.16)",
     borderWidth: 1,
+    justifyContent: "space-between",
+    marginRight: 12,
+    minHeight: 206,
     padding: 16,
+  },
+  newsCardFooter: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+    marginTop: 12,
+  },
+  newsCategoryPill: {
+    borderColor: "rgba(10, 10, 10, 0.1)",
+    borderWidth: 1,
+    justifyContent: "center",
+    marginRight: 8,
+    minHeight: 36,
+    paddingHorizontal: 13,
+  },
+  newsCategoryPillActive: {
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: authControlStyles.colors.red,
+  },
+  newsCategoryScroller: {
+    marginTop: 14,
+  },
+  newsCategoryText: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  newsCategoryTextActive: {
+    color: "#ffffff",
+  },
+  newsDesk: {
+    gap: 14,
+    marginTop: 22,
   },
   newsHeader: {
     gap: 8,
-    marginTop: 28,
   },
-  newsList: {
-    gap: 12,
-    marginTop: 14,
+  newsCarousel: {
+    marginHorizontal: -20,
+  },
+  newsCarouselContent: {
+    paddingLeft: 20,
+    paddingRight: 8,
+  },
+  newsCarouselFrame: {
+    position: "relative",
   },
   newsMetaRow: {
     flexDirection: "row",
@@ -681,11 +1237,35 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
-  newsSubtitle: {
-    color: authControlStyles.colors.ink60,
+  newsReadMore: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  newsSearchInput: {
+    backgroundColor: "#ffffff",
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    color: authControlStyles.colors.ink,
     fontFamily: "serif",
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 15,
+    minHeight: 46,
+    paddingHorizontal: 12,
+  },
+  newsSectionHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  newsSectionTitle: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 19,
+    fontWeight: "700",
+    lineHeight: 24,
   },
   newsSummary: {
     color: authControlStyles.colors.ink60,
@@ -694,6 +1274,21 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: 9,
   },
+  newsTag: {
+    borderColor: "rgba(193, 22, 22, 0.18)",
+    borderWidth: 1,
+    color: authControlStyles.colors.red,
+    fontFamily: "serif",
+    fontSize: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+  },
+  newsTagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 18,
+  },
   newsTitle: {
     color: authControlStyles.colors.ink,
     fontFamily: "serif",
@@ -701,6 +1296,132 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     lineHeight: 26,
     marginTop: 10,
+  },
+  pdfHeader: {
+    alignItems: "center",
+    borderBottomColor: "rgba(193, 22, 22, 0.14)",
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 14,
+    justifyContent: "space-between",
+    padding: 16,
+  },
+  pdfLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    gap: 18,
+    justifyContent: "center",
+    padding: 24,
+  },
+  pdfLoadingText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "serif",
+    fontSize: 22,
+    fontWeight: "600",
+    lineHeight: 30,
+    textAlign: "center",
+  },
+  pdfModalRoot: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10, 10, 10, 0.22)",
+    justifyContent: "flex-end",
+  },
+  pdfPanel: {
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(193, 22, 22, 0.22)",
+    borderTopWidth: 1,
+    height: "88%",
+    overflow: "hidden",
+    width: "100%",
+  },
+  pdfViewer: {
+    flex: 1,
+    position: "relative",
+  },
+  pdfWebView: {
+    flex: 1,
+  },
+  readerBackdrop: {
+    backgroundColor: "rgba(10, 10, 10, 0.18)",
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  readerBody: {
+    gap: 8,
+    marginTop: 18,
+  },
+  readerBodyImage: {
+    backgroundColor: "rgba(255, 255, 255, 0.72)",
+    borderColor: "rgba(193, 22, 22, 0.16)",
+    borderWidth: 1,
+    height: 260,
+    marginVertical: 8,
+    width: "100%",
+  },
+  readerBodyText: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 16,
+    lineHeight: 25,
+  },
+  readerMetaGrid: {
+    borderColor: "rgba(193, 22, 22, 0.12)",
+    borderWidth: 1,
+    gap: 8,
+    marginTop: 16,
+    padding: 12,
+  },
+  readerModalRoot: {
+    ...StyleSheet.absoluteFillObject,
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  readerSafeArea: {
+    backgroundColor: "transparent",
+    bottom: 0,
+    justifyContent: "flex-end",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: "100%",
+  },
+  readerScroll: {
+    flexShrink: 1,
+  },
+  readerSheet: {
+    backgroundColor: "rgba(255, 255, 255, 0.88)",
+    borderColor: "rgba(193, 22, 22, 0.22)",
+    borderTopWidth: 1,
+    maxHeight: "82%",
+    overflow: "hidden",
+    paddingBottom: 18,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    shadowColor: authControlStyles.colors.red,
+    shadowOffset: { width: 0, height: -16 },
+    shadowOpacity: 0.14,
+    shadowRadius: 30,
+    width: "100%",
+  },
+  readerSummary: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 16,
+    lineHeight: 24,
+    marginTop: 10,
+  },
+  readerTitle: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 30,
+    fontWeight: "600",
+    lineHeight: 36,
+    marginTop: 16,
   },
   orderJumpButton: {
     alignItems: "center",
@@ -814,6 +1535,15 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1.1,
+  },
+  readerCloseButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(193, 22, 22, 0.18)",
+    backgroundColor: "rgba(255,255,255,0.25)",
+    minHeight: 34,
+    paddingHorizontal: 14,
   },
   sheetHandle: {
     alignSelf: "center",

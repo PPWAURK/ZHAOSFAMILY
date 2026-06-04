@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { motion } from "motion/react";
 
 import Sidebar from "@/features/dashboard/components/Sidebar";
@@ -16,6 +16,11 @@ import { useSupplierDetail } from "@/features/suppliers/store/suppliersStore";
 import styles from "@/features/suppliers/suppliers-page.module.css";
 
 const NEW_PRODUCT_ID = "__new__";
+const ALL_CATEGORIES = "__all__";
+
+function normalizeSearchText(value) {
+  return String(value || "").trim().toLowerCase();
+}
 
 function emptyProduct(supplierId) {
   return {
@@ -43,6 +48,8 @@ export default function SupplierDetailPage({ supplierId }) {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [pageError, setPageError] = useState("");
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES);
 
   const {
     supplier,
@@ -57,6 +64,34 @@ export default function SupplierDetailPage({ supplierId }) {
 
   const t = SUPPLIERS_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
+
+  const categories = useMemo(() => {
+    const names = products
+      .map((product) => product.category)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    return Array.from(new Set(names));
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    const query = normalizeSearchText(search);
+    return products.filter((product) => {
+      const categoryMatches =
+        categoryFilter === ALL_CATEGORIES || product.category === categoryFilter;
+      if (!categoryMatches) return false;
+      if (!query) return true;
+      return [
+        product.reference,
+        product.category,
+        product.nameCn,
+        product.designationFr,
+        product.unit,
+        product.specification,
+      ]
+        .map(normalizeSearchText)
+        .some((value) => value.includes(query));
+    });
+  }, [categoryFilter, products, search]);
 
   async function handleSaveInfo(data) {
     setSavingInfo(true);
@@ -277,6 +312,41 @@ export default function SupplierDetailPage({ supplierId }) {
                 </button>
               </div>
 
+              <div className={styles.filtersRow}>
+                <input
+                  className={styles.input}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t.productSearchPlaceholder}
+                  aria-label={t.productSearchPlaceholder}
+                />
+                <select
+                  className={styles.select}
+                  value={categoryFilter}
+                  onChange={(event) => setCategoryFilter(event.target.value)}
+                  aria-label={t.categoryFilter}
+                >
+                  <option value={ALL_CATEGORIES}>{t.allCategories}</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+                {search || categoryFilter !== ALL_CATEGORIES ? (
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    onClick={() => {
+                      setSearch("");
+                      setCategoryFilter(ALL_CATEGORIES);
+                    }}
+                  >
+                    {t.clearSearch}
+                  </button>
+                ) : null}
+              </div>
+
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
@@ -304,16 +374,18 @@ export default function SupplierDetailPage({ supplierId }) {
                       />
                     ) : null}
 
-                    {products.length === 0 &&
+                    {filteredProducts.length === 0 &&
                     editingProductId !== NEW_PRODUCT_ID ? (
                       <tr>
                         <td colSpan={9} className={styles.rowEmpty}>
-                          {t.noProducts}
+                          {products.length === 0
+                            ? t.noProducts
+                            : t.noMatchedProducts}
                         </td>
                       </tr>
                     ) : null}
 
-                    {products.map((product) => (
+                    {filteredProducts.map((product) => (
                       <ProductEditRow
                         key={product.id}
                         product={product}

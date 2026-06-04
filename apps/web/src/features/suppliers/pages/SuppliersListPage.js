@@ -14,6 +14,10 @@ import { SUPPLIERS_COPY } from "@/features/suppliers/constants/suppliers-copy";
 import { useSuppliersList } from "@/features/suppliers/store/suppliersStore";
 import styles from "@/features/suppliers/suppliers-page.module.css";
 
+function normalizeSearchText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 export default function SuppliersListPage() {
   const [lang, setLang] = useState("zh");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -22,6 +26,7 @@ export default function SuppliersListPage() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [pageError, setPageError] = useState("");
+  const [search, setSearch] = useState("");
 
   const t = SUPPLIERS_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -41,6 +46,25 @@ export default function SuppliersListPage() {
         (a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0),
       ),
     [suppliers],
+  );
+
+  const filtered = useMemo(() => {
+    const query = normalizeSearchText(search);
+    if (!query) return sorted;
+    return sorted.filter((supplier) =>
+      [supplier.name, supplier.sortOrder, supplier.id]
+        .map(normalizeSearchText)
+        .some((value) => value.includes(query)),
+    );
+  }, [search, sorted]);
+
+  const productTotal = useMemo(
+    () =>
+      Object.values(productCounts).reduce(
+        (sum, count) => sum + (Number(count) || 0),
+        0,
+      ),
+    [productCounts],
   );
 
   async function handleCreate(data) {
@@ -137,11 +161,31 @@ export default function SuppliersListPage() {
 
         <p className={styles.lede}>{t.lede}</p>
 
+        <div className={styles.summaryGrid}>
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>{t.metricSuppliers}</span>
+            <strong className={styles.summaryValue}>{sorted.length}</strong>
+          </div>
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>{t.metricProducts}</span>
+            <strong className={styles.summaryValue}>{productTotal}</strong>
+          </div>
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>{t.metricDefaultAll}</span>
+            <strong className={styles.summaryValue}>
+              {
+                sorted.filter((supplier) => supplier.includeAllProductsInOrder)
+                  .length
+              }
+            </strong>
+          </div>
+        </div>
+
         <div className={styles.toolbar}>
           <p className={styles.listHeading} style={{ flex: 1 }}>
             <span>{t.listHeading}</span>
             <span className={styles.listHeadingCount}>
-              {sorted.length} {t.count}
+              {filtered.length} / {sorted.length} {t.count}
             </span>
           </p>
           <div className={styles.toolbarRight}>
@@ -154,6 +198,25 @@ export default function SuppliersListPage() {
               {showForm ? t.cancel : t.addSupplier}
             </button>
           </div>
+        </div>
+
+        <div className={styles.searchRow}>
+          <input
+            className={styles.input}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t.searchPlaceholder}
+            aria-label={t.searchPlaceholder}
+          />
+          {search ? (
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnGhost}`}
+              onClick={() => setSearch("")}
+            >
+              {t.clearSearch}
+            </button>
+          ) : null}
         </div>
 
         {pageError ? (
@@ -176,68 +239,85 @@ export default function SuppliersListPage() {
         ) : error ? (
           <div className={styles.notFound}>{t.loadError}</div>
         ) : (
-          <div className={styles.grid}>
-            {sorted.map((supplier, index) => {
-              const count = productCounts[supplier.id] ?? 0;
-              return (
-                <motion.div
-                  key={supplier.id}
-                  className={styles.card}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.35,
-                    delay: Math.min(index * 0.04, 0.2),
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                >
-                  <div className={styles.cardTop}>
-                    <span className={styles.cardIndex}>
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span
-                      className={`${styles.cardPill} ${supplier.includeAllProductsInOrder ? styles.cardPillOn : ""}`}
+          <div className={styles.tableWrap}>
+            <table className={`${styles.table} ${styles.suppliersTable}`}>
+              <thead>
+                <tr>
+                  <th>{t.colSupplier}</th>
+                  <th>{t.fieldSortOrder}</th>
+                  <th>{t.productsHeading}</th>
+                  <th>{t.fieldIncludeAll}</th>
+                  <th style={{ textAlign: "right" }}>{t.colActions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className={styles.rowEmpty}>
+                      {t.noSuppliers}
+                    </td>
+                  </tr>
+                ) : null}
+
+                {filtered.map((supplier, index) => {
+                  const count = productCounts[supplier.id] ?? 0;
+                  return (
+                    <motion.tr
+                      key={supplier.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.35,
+                        delay: Math.min(index * 0.04, 0.2),
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
                     >
-                      {supplier.includeAllProductsInOrder
-                        ? t.truePill
-                        : t.falsePill}{" "}
-                      · ALL
-                    </span>
-                  </div>
-
-                  <h3 className={styles.cardName}>{supplier.name}</h3>
-
-                  <dl className={styles.cardMeta}>
-                    <div className={styles.cardMetaRow}>
-                      <dt>{t.fieldSortOrder}</dt>
-                      <dd>{supplier.sortOrder}</dd>
-                    </div>
-                    <div className={styles.cardMetaRow}>
-                      <dt>{t.productsHeading}</dt>
-                      <dd>
+                      <td>
+                        <div className={styles.supplierNameCell}>
+                          <span className={styles.cardIndex}>
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+                          <strong>{supplier.name}</strong>
+                          <span className={styles.supplierId}>
+                            #{supplier.id}
+                          </span>
+                        </div>
+                      </td>
+                      <td>{supplier.sortOrder}</td>
+                      <td>
                         {count} {t.productsCount}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <div className={styles.cardActions}>
-                    <a
-                      href={`/dashboard/suppliers?id=${encodeURIComponent(supplier.id)}`}
-                      className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
-                    >
-                      {t.open}
-                    </a>
-                    <button
-                      type="button"
-                      className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`}
-                      onClick={() => setPendingDelete(supplier)}
-                    >
-                      {t.deleteBtn}
-                    </button>
-                  </div>
-                </motion.div>
-              );
-            })}
+                      </td>
+                      <td>
+                        <span
+                          className={`${styles.cardPill} ${supplier.includeAllProductsInOrder ? styles.cardPillOn : ""}`}
+                        >
+                          {supplier.includeAllProductsInOrder
+                            ? t.truePill
+                            : t.falsePill}
+                        </span>
+                      </td>
+                      <td>
+                        <div className={styles.rowActions}>
+                          <a
+                            href={`/dashboard/suppliers?id=${encodeURIComponent(supplier.id)}`}
+                            className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
+                          >
+                            {t.open}
+                          </a>
+                          <button
+                            type="button"
+                            className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`}
+                            onClick={() => setPendingDelete(supplier)}
+                          >
+                            {t.deleteBtn}
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 

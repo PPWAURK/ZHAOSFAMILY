@@ -240,6 +240,9 @@ export default function TrainingMaterialsPage() {
       setMaterials((prev) =>
         prev.filter((item) => item.materialId !== materialId),
       );
+      if (editingMaterialId === materialId) {
+        cancelEditingMaterial();
+      }
     } catch (error) {
       setMaterialsError(error.message || "资料删除失败");
     } finally {

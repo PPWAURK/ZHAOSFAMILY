@@ -1,14 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
 import Link from "next/link";
+import { motion } from "motion/react";
 
 import styles from "@/features/stores/stores-page.module.css";
 
 const DEFAULT_STORE_PHOTO = "/logo2024/logo2024.jpg";
 
-export default function StoreCard({ store, index, lang, labels }) {
+export default function StoreCard({
+  store,
+  index,
+  labels,
+  onEdit,
+  onDelete,
+  canManageStoreRecords = true,
+}) {
   const [imageSrc, setImageSrc] = useState(store.photoPath || DEFAULT_STORE_PHOTO);
   const isOpen = store.status === "open";
   const statusLabel = isOpen ? labels.statusOpen : labels.statusClosed;
@@ -20,7 +27,7 @@ export default function StoreCard({ store, index, lang, labels }) {
   }, [store.photoPath]);
 
   return (
-    <Link href={`/dashboard/stores/${store.id}`} className={styles.card}>
+    <article className={styles.card}>
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
@@ -74,12 +81,37 @@ export default function StoreCard({ store, index, lang, labels }) {
           </dl>
         </div>
 
-        <div className={styles.cardTags} />
+        <div className={styles.cardActions}>
+          <Link
+            className={`${styles.cardAction} ${styles.cardActionPrimary}`}
+            href={`/dashboard/stores/${encodeURIComponent(store.id)}`}
+          >
+            {labels.review}
+          </Link>
+          {canManageStoreRecords ? (
+            <>
+              <button
+                type="button"
+                className={styles.cardAction}
+                onClick={() => onEdit(store)}
+              >
+                {labels.edit}
+              </button>
+              <button
+                type="button"
+                className={`${styles.cardAction} ${styles.cardActionDanger}`}
+                onClick={() => onDelete(store)}
+              >
+                {labels.delete}
+              </button>
+            </>
+          ) : null}
+        </div>
 
         <span className={styles.cardArrow} aria-hidden="true">
           →
         </span>
       </motion.div>
-    </Link>
+    </article>
   );
 }

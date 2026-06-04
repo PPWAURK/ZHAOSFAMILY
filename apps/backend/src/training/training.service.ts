@@ -241,7 +241,8 @@ function resolveSingleTrainingPositionCodes(
     normalizedRole.includes('kitchen') ||
     normalizedRole.includes('boh') ||
     normalizedRole.includes('chef') ||
-    normalizedRole.includes('back-of-house')
+    normalizedRole.includes('back-of-house') ||
+    normalizedRole.includes('back-assistant')
   ) {
     return ['BOH'];
   }
@@ -250,7 +251,10 @@ function resolveSingleTrainingPositionCodes(
     return ['CASH'];
   }
 
-  if (normalizedRole.includes('front-of-house')) {
+  if (
+    normalizedRole.includes('front-of-house') ||
+    normalizedRole.includes('front-assistant')
+  ) {
     return ['FOH'];
   }
 

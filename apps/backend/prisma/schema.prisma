@@ -14,6 +14,9 @@ model User {
   name              String
   email             String                     @unique
   emailVerified     Boolean                    @default(false) @map("email_verified")
+  accountStatus     String                     @default("approved") @map("account_status") @db.VarChar(20)
+  accountReviewedAt DateTime?                  @map("account_reviewed_at")
+  accountReviewedByUserId Int?                 @map("account_reviewed_by_user_id")
   passwordHash      String                     @map("password_hash")
   restaurantId      Int                        @map("restaurant_id")
   restaurant        Restaurant                 @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
@@ -36,11 +39,28 @@ model User {
   purchaseReturns   PurchaseReturn[]           @relation("CreatedByUserReturns")
   trainingProgress  TrainingMaterialProgress[]
   dashboardPosts    DashboardPost[]            @relation("DashboardPostAuthor")
+  refreshSessions   RefreshSession[]
 
   @@index([restaurantId])
+  @@index([accountStatus])
   @@index([invitationTokenHash])
   @@index([passwordResetTokenHash])
   @@map("users")
+}
+
+model RefreshSession {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  tokenHash   String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
 }
 
 model Role {
@@ -126,6 +146,8 @@ model Product {
   unit3          String?  @map("unit_3") @db.VarChar(100)
   unitPriceHt2   Decimal? @map("prix_u_ht_2") @db.Decimal(10, 2)
   unitPriceHt3   Decimal? @map("prix_u_ht_3") @db.Decimal(10, 2)
+  isActive       Boolean  @default(true) @map("is_active")
+  productCategoryId Int?  @map("product_category_id")
 
   supplier            Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   inventoryMovements  InventoryMovement[]
@@ -158,6 +180,7 @@ model Supplier {
   name                      String           @map("nom") @db.VarChar(255)
   sortOrder                 Int              @map("sort_order")
   includeAllProductsInOrder Boolean          @default(false) @map("include_all_products_in_order")
+  orderNotice               String?          @map("order_notice") @db.Text
   products                  Product[]
   purchaseOrders            PurchaseOrder[]
   purchaseReturns           PurchaseReturn[]
@@ -340,4 +363,274 @@ model DashboardPost {
   @@index([restaurantId, createdAt])
   @@index([authorId])
   @@map("dashboard_posts")
+}
+
+model LegacyDocument {
+  id               Int                     @id @default(autoincrement())
+  fileName         String                  @unique(map: "Document_fileName_key")
+  category         LegacyDocumentCategory
+  originalName     String
+  mimeType         String
+  size             Int
+  mediaType        LegacyDocumentMediaType
+  module           LegacyDocumentModule
+  section          LegacyDocumentSection
+  uploadedAt       DateTime                @default(now())
+  uploadedByUserId Int?
+  customCategory   String?                 @map("custom_category") @db.VarChar(80)
+
+  @@index([module, section, customCategory, uploadedAt], map: "Document_module_section_custom_category_uploadedAt_idx")
+  @@index([module, section, mediaType, uploadedAt], map: "Document_module_section_mediaType_uploadedAt_idx")
+  @@index([uploadedByUserId], map: "Document_uploadedByUserId_fkey")
+  @@map("legacy_documents")
+}
+
+model LegacyEmailVerificationToken {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  tokenHash  String    @unique(map: "email_verification_tokens_token_hash_key") @map("token_hash") @db.VarChar(128)
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, expiresAt], map: "email_verification_tokens_user_id_expires_at_idx")
+  @@map("legacy_email_verification_tokens")
+}
+
+model LegacyEmployeeLevelAccessProfile {
+  id            Int                 @id @default(autoincrement())
+  employeeLevel LegacyEmployeeLevel @unique(map: "employee_level_access_profiles_employee_level_key") @map("employee_level")
+  sections      Json?
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @map("updated_at")
+
+  @@map("legacy_employee_level_access_profiles")
+}
+
+model LegacyModuleCategory {
+  id        Int                 @id @default(autoincrement())
+  module    LegacyModule
+  name      String              @db.VarChar(80)
+  section   LegacyModuleSection
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @default(now()) @map("updated_at")
+
+  @@unique([module, name], map: "module_categories_module_name_key")
+  @@index([module, section], map: "module_categories_module_section_idx")
+  @@map("legacy_module_categories")
+}
+
+model LegacyNewsPostRead {
+  id         Int      @id @default(autoincrement())
+  newsPostId Int      @map("news_post_id")
+  userId     Int      @map("user_id")
+  readAt     DateTime @default(now()) @map("read_at") @db.DateTime(0)
+
+  @@unique([newsPostId, userId], map: "news_post_reads_news_post_id_user_id_key")
+  @@index([userId, readAt], map: "news_post_reads_user_id_read_at_idx")
+  @@map("legacy_news_post_reads")
+}
+
+model LegacyNewsPost {
+  id                    Int                    @id @default(autoincrement())
+  title                 String
+  message               String                 @db.Text
+  audience              LegacyNewsPostAudience @default(ALL)
+  module                LegacyModule?
+  section               LegacyModuleSection?
+  attachmentDocumentId  Int?                   @map("attachment_document_id")
+  createdByUserId       Int                    @map("created_by_user_id")
+  createdAt             DateTime               @default(now()) @map("created_at") @db.DateTime(0)
+  tags                  Json?
+  visibleEmployeeLevels Json?                  @map("visible_employee_levels")
+
+  @@index([attachmentDocumentId], map: "news_posts_attachment_document_id_idx")
+  @@index([audience, createdAt], map: "news_posts_audience_created_at_idx")
+  @@index([createdAt], map: "news_posts_created_at_idx")
+  @@index([createdByUserId], map: "news_posts_created_by_user_id_idx")
+  @@index([module, section, createdAt], map: "news_posts_module_section_created_at_idx")
+  @@map("legacy_news_posts")
+}
+
+model LegacyPasswordResetToken {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  tokenHash  String    @unique(map: "password_reset_tokens_token_hash_key") @map("token_hash") @db.VarChar(128)
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, expiresAt], map: "password_reset_tokens_user_id_expires_at_idx")
+  @@map("legacy_password_reset_tokens")
+}
+
+model LegacyProductCategory {
+  id         Int      @id @default(autoincrement())
+  supplierId Int      @map("supplier_id")
+  nameZh     String   @map("name_zh") @db.VarChar(50)
+  nameFr     String   @map("name_fr") @db.VarChar(80)
+  sortOrder  Int      @map("sort_order")
+  isPreset   Boolean  @default(false) @map("is_preset")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamp(0)
+
+  @@unique([supplierId, nameZh], map: "product_categories_supplier_id_name_zh_key")
+  @@index([supplierId, sortOrder], map: "product_categories_supplier_id_sort_order_idx")
+  @@map("legacy_product_categories")
+}
+
+model LegacyPurchaseReturnItemPhoto {
+  id                   Int      @id @default(autoincrement())
+  purchaseReturnItemId Int      @map("purchase_return_item_id")
+  documentId           Int      @map("document_id")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+
+  @@unique([purchaseReturnItemId, documentId], map: "purchase_return_item_photos_item_doc_key")
+  @@index([documentId], map: "purchase_return_item_photos_document_id_idx")
+  @@map("legacy_purchase_return_item_photos")
+}
+
+model LegacyRecruitmentRequest {
+  id                Int                           @id @default(autoincrement())
+  restaurantId      Int                           @map("restaurant_id")
+  createdByUserId   Int                           @map("created_by_user_id")
+  position          String
+  contractType      LegacyRecruitmentContractType @map("contract_type")
+  headcount         Int
+  notes             String?                       @db.Text
+  status            LegacyRecruitmentStatus       @default(PENDING)
+  processedByUserId Int?                          @map("processed_by_user_id")
+  processedAt       DateTime?                     @map("processed_at")
+  createdAt         DateTime                      @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt         DateTime                      @map("updated_at") @db.Timestamp(0)
+
+  @@index([createdByUserId], map: "recruitment_requests_created_by_user_id_idx")
+  @@index([processedByUserId], map: "recruitment_requests_processed_by_user_id_idx")
+  @@index([restaurantId, createdAt], map: "recruitment_requests_restaurant_id_created_at_idx")
+  @@index([status, createdAt], map: "recruitment_requests_status_created_at_idx")
+  @@map("legacy_recruitment_requests")
+}
+
+model LegacyTrainingQuizLink {
+  id        Int                 @id @default(autoincrement())
+  section   LegacyModuleSection
+  language  String              @db.VarChar(5)
+  quizUrl   String              @map("quiz_url") @db.VarChar(2048)
+  createdAt DateTime            @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt DateTime            @map("updated_at") @db.DateTime(0)
+
+  @@unique([section, language], map: "training_quiz_links_section_language_key")
+  @@map("legacy_training_quiz_links")
+}
+
+model LegacyUserManagedRestaurant {
+  userId       Int      @map("user_id")
+  restaurantId Int      @map("restaurant_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@id([userId, restaurantId])
+  @@index([restaurantId], map: "user_managed_restaurants_restaurant_id_idx")
+  @@map("legacy_user_managed_restaurants")
+}
+
+enum LegacyEmployeeLevel {
+  L0_PROBATION
+  L1_PARTNER
+  L2_PARTNER
+  L3_PARTNER
+  L4_EXCELLENT
+  L5_PAM
+  L5_AM
+  L6_PM
+  L6_MA
+  L7_PDI
+  L7_D
+
+  @@map("legacy_employee_level_access_profiles_employee_level")
+}
+
+enum LegacyModule {
+  TRAINING
+  POLICY
+  MANAGEMENT
+  FORMS
+
+  @@map("legacy_module_categories_module")
+}
+
+enum LegacyModuleSection {
+  RECIPE_TRAINING
+  RECIPE
+  MISE_EN_PLACE_SOP
+  RED_RULES
+  BLACK_RULES
+  SALLE_TOOLS
+  CUISINE_TOOLS
+  ORDER_RETURNS
+  MEAT_DATE_FORM
+  CLEANING_FORM
+
+  @@map("legacy_module_categories_section")
+}
+
+enum LegacyDocumentCategory {
+  images
+  videos
+  documents
+
+  @@map("legacy_documents_category")
+}
+
+enum LegacyDocumentMediaType {
+  image
+  video
+  document
+
+  @@map("legacy_documents_mediaType")
+}
+
+enum LegacyDocumentModule {
+  TRAINING
+  POLICY
+  MANAGEMENT
+  FORMS
+
+  @@map("legacy_documents_module")
+}
+
+enum LegacyDocumentSection {
+  RECIPE_TRAINING
+  RECIPE
+  MISE_EN_PLACE_SOP
+  RED_RULES
+  BLACK_RULES
+  SALLE_TOOLS
+  CUISINE_TOOLS
+  ORDER_RETURNS
+  MEAT_DATE_FORM
+  CLEANING_FORM
+
+  @@map("legacy_documents_section")
+}
+
+enum LegacyNewsPostAudience {
+  ALL
+  MANAGERS
+  EMPLOYEES
+
+  @@map("legacy_news_posts_audience")
+}
+
+enum LegacyRecruitmentContractType {
+  PART_TIME
+  FULL_TIME
+
+  @@map("legacy_recruitment_requests_contract_type")
+}
+
+enum LegacyRecruitmentStatus {
+  PENDING
+  PROCESSED
+
+  @@map("legacy_recruitment_requests_status")
 }
