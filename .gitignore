@@ -36,6 +36,7 @@ backups
 *.sql
 *.dump
 *.backup
+!apps/backend/prisma/migrations/**/migration.sql
 
 # Local assistant/tooling state
 .codex
