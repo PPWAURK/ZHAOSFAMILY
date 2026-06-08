@@ -1,45 +1,45 @@
 <p align="center">
-  <img src="apps/web/public/logo2024/logo2024.jpg" alt="ZHAO Logo" width="320" />
+  <img src="apps/web/public/logo2024/logo2024.jpg" alt="Logo ZHAO" width="320" />
 </p>
 
 <h1 align="center">ZHAO's Family</h1>
 
 <p align="center">
-  <strong>餐厅数字化运营与管理平台</strong>
+  <strong>Plateforme de gestion et d'exploitation numérique pour la restauration</strong>
   <br />
   Internal Restaurant Operations Platform
 </p>
 
 <p align="center">
-  <img src="apps/web/public/logo2024/logozhao正方形.jpg" alt="ZHAO Square Logo" width="80" />
+  <img src="apps/web/public/logo2024/logozhao正方形.jpg" alt="Logo ZHAO carré" width="80" />
 </p>
 
 <p align="center">
-  — Since 2011 —
+  — Depuis 2011 —
 </p>
 
 ---
 
-## Overview
+## Vue d'ensemble
 
-ZHAO's Family is a full-stack monorepo powering the daily operations of the ZHAO restaurant group. It connects the **Next.js web dashboard** (for managers and office staff), an **Expo React Native mobile app** (for on-the-ground restaurant teams), and a **NestJS backend API** backed by MySQL.
+ZHAO's Family est un monorepo full-stack qui alimente les opérations quotidiennes du groupe de restaurants ZHAO. Il relie un **tableau de bord web Next.js** (pour les gestionnaires et le personnel administratif), une **application mobile Expo React Native** (pour les équipes en restaurant) et une **API backend NestJS** reposant sur MySQL.
 
-The platform centralises purchasing, inventory, supplier management, staff training, recruitment, internal communication, and administrative workflows — replacing fragmented paper and spreadsheet processes with a unified digital system.
+La plateforme centralise les achats, les stocks, la gestion des fournisseurs, la formation du personnel, le recrutement, la communication interne et les flux administratifs — remplaçant les processus fragmentés sur papier et tableurs par un système numérique unifié.
 
-> **Tech stack**: Next.js 15 (App Router) · Expo React Native · NestJS · MySQL (Prisma ORM) · pnpm workspaces · TypeScript · Turborepo · Zustand · TanStack Query · Axios · MinIO (object storage) · Docker
+> **Stack technique** : Next.js 15 (App Router) · Expo React Native · NestJS · MySQL (Prisma ORM) · pnpm workspaces · TypeScript · Turborepo · Zustand · TanStack Query · Axios · MinIO (stockage objet) · Docker
 
 ---
 
-## Brand Identity
+## Identité de marque
 
-ZHAO (赵 / ZHAO's) is a Chinese restaurant group established in 2011. The brand identity centres on traditional Chinese aesthetics expressed through red-and-white colour schemes, calligraphic typography, and cultural motifs. All platform surfaces — web, mobile, and print exports — carry this visual language consistently.
+ZHAO (赵 / ZHAO's) est un groupe de restaurants chinois fondé en 2011. L'identité de marque s'articule autour de l'esthétique traditionnelle chinoise, exprimée par une palette rouge et blanc, une typographie calligraphique et des motifs culturels. Toutes les surfaces de la plateforme — web, mobile et exports papier — déclinent ce langage visuel de manière cohérente.
 
-| Element | Detail |
+| Élément | Détail |
 |---|---|
-| Brand name | ZHAO / ZHAO's Family / 赵 |
-| Founded | 2011 |
-| Primary colour | Chinese red (#CC0000) |
-| Brand assets | `apps/web/public/logo2024/`, `apps/web/public/ZHAO-元素element/` |
+| Nom de la marque | ZHAO / ZHAO's Family / 赵 |
+| Fondation | 2011 |
+| Couleur principale | Rouge chinois (#CC0000) |
+| Ressources graphiques | `apps/web/public/logo2024/`, `apps/web/public/ZHAO-元素element/` |
 
 ---
 
@@ -48,76 +48,76 @@ ZHAO (赵 / ZHAO's) is a Chinese restaurant group established in 2011. The brand
 ```text
 zhao-family/
 ├── apps/
-│   ├── web/              Next.js dashboard (managers, office)
-│   ├── mobile/           Expo React Native app (restaurant staff)
-│   └── backend/          NestJS REST API + Prisma + MinIO
+│   ├── web/              Dashboard Next.js (gestionnaires, bureau)
+│   ├── mobile/           App Expo React Native (équipes restaurant)
+│   └── backend/          API REST NestJS + Prisma + MinIO
 ├── packages/
-│   ├── api/              Shared Axios client, API modules, query keys
-│   ├── auth/             Shared auth store & orchestration
-│   ├── types/            Shared DTOs, API contracts, view-safe types
-│   └── utils/            Pure utility functions
+│   ├── api/              Client Axios partagé, modules API, clés de requête
+│   ├── auth/             Store d'authentification partagé et orchestration
+│   ├── types/            DTOs partagés, contrats API, types sécurisés
+│   └── utils/            Fonctions utilitaires pures
 ├── docker-compose.yml    MySQL 8.4 + MinIO
-├── turbo.json            Turborepo task orchestration
-└── pnpm-workspace.yaml   Monorepo workspace definition
+├── turbo.json            Orchestration des tâches Turborepo
+└── pnpm-workspace.yaml   Définition du workspace monorepo
 ```
 
-### Design principles
+### Principes de conception
 
-- **Platform-separated UI**: Web and Mobile never share presentational components. Each targets its own device idiom and user role.
-- **Shared logic via packages**: API clients, auth flows, DTOs, and utilities are shared through `packages/*` — ensuring backend contracts are typed end-to-end.
-- **Thin controllers, rich services**: Backend controllers only parse requests and delegate; business logic lives in services.
-- **RBAC**: Role-based access control is enforced at the API layer via reusable guards, with roles and permissions stored in the database.
-
----
-
-## Features
-
-### Purchasing & Supply Chain
-
-| Feature | Description |
-|---|---|
-| **Purchase Orders** | Create, view, and manage supplier purchase orders with PDF generation |
-| **Order History** | Browse and filter past orders across all restaurants |
-| **Returns** | Log purchase returns with reason tracking and item-level photos |
-| **Inventory** | Real-time inventory movement tracking with delta logging |
-| **Suppliers** | Manage supplier catalogues, product references, and pricing |
-| **Products** | Multi-currency, multi-specification product catalogue (Chinese/French) |
-
-### Staff Management
-
-| Feature | Description |
-|---|---|
-| **Authentication** | Email/password login with refresh token rotation and invite flows |
-| **RBAC** | Granular role- and permission-based access control |
-| **Profile** | Personal settings, language preferences (FR/CN), account management |
-| **Recruitment** | Request and approve new hires by contract type and position |
-
-### Training
-
-| Feature | Description |
-|---|---|
-| **Materials Library** | Upload and organise training videos, PDFs, and images per position |
-| **Training Space** | Staff consume assigned materials with progress tracking |
-| **Progress Reporting** | Per-user, per-material completion status and scores |
-| **Positions** | Hierarchical position catalogue with multi-language names (FR/CN/EN) |
-
-### Internal Communication
-
-| Feature | Description |
-|---|---|
-| **Dashboard Posts** | Company announcements, policy updates, and news with attachment support |
-| **Targeted Visibility** | Posts can be scoped by role, restaurant, or employee level |
-
-### Dashboard & Reporting
-
-| Feature | Description |
-|---|---|
-| **Store Overview** | Per-restaurant dashboard with key metrics |
-| **Dashboard News** | Integrated news feed from internal posts |
+- **UI séparée par plateforme** : Web et Mobile ne partagent jamais de composants d'interface. Chacun cible son propre terminal et son rôle utilisateur.
+- **Logique partagée via packages** : Les clients API, les flux d'authentification, les DTOs et les utilitaires sont mutualisés dans `packages/*`, garantissant que les contrats backend sont typés de bout en bout.
+- **Contrôleurs légers, services riches** : Les contrôleurs backend se contentent de parser les requêtes et de déléguer ; la logique métier réside dans les services.
+- **RBAC** : Le contrôle d'accès basé sur les rôles est appliqué au niveau API via des guards réutilisables, les rôles et permissions étant stockés en base de données.
 
 ---
 
-## Data Model (Core Entities)
+## Fonctionnalités
+
+### Achats & Supply Chain
+
+| Fonctionnalité | Description |
+|---|---|
+| **Bons de commande** | Créer, consulter et gérer les bons de commande fournisseurs avec génération PDF |
+| **Historique des commandes** | Parcourir et filtrer les commandes passées par restaurant |
+| **Retours** | Enregistrer les retours fournisseurs avec suivi des motifs et photos par article |
+| **Stocks** | Suivi en temps réel des mouvements de stock avec journalisation des écarts |
+| **Fournisseurs** | Gérer les catalogues fournisseurs, références produits et tarifs |
+| **Produits** | Catalogue produits multi-spécifications et multi-devises (chinois/français) |
+
+### Gestion du personnel
+
+| Fonctionnalité | Description |
+|---|---|
+| **Authentification** | Connexion email/mot de passe avec rotation des refresh tokens et flux d'invitation |
+| **RBAC** | Contrôle d'accès granulaire basé sur les rôles et permissions |
+| **Profil** | Paramètres personnels, préférences linguistiques (FR/CN), gestion du compte |
+| **Recrutement** | Demander et approuver les recrutements par type de contrat et poste |
+
+### Formation
+
+| Fonctionnalité | Description |
+|---|---|
+| **Bibliothèque de matériel** | Téléverser et organiser vidéos, PDFs et images de formation par poste |
+| **Espace de formation** | Les employés consultent le matériel assigné avec suivi de progression |
+| **Rapports de progression** | Statut de complétion et scores par utilisateur et par matériel |
+| **Postes** | Catalogue hiérarchique des postes avec noms multilingues (FR/CN/EN) |
+
+### Communication interne
+
+| Fonctionnalité | Description |
+|---|---|
+| **Publications tableau de bord** | Annonces d'entreprise, mises à jour des politiques et actualités avec pièces jointes |
+| **Visibilité ciblée** | Les publications peuvent être restreintes par rôle, restaurant ou niveau hiérarchique |
+
+### Tableau de bord & Reporting
+
+| Fonctionnalité | Description |
+|---|---|
+| **Vue par restaurant** | Tableau de bord par établissement avec indicateurs clés |
+| **Fil d'actualité** | Flux d'actualités intégré depuis les publications internes |
+
+---
+
+## Modèle de données (Entités principales)
 
 ```
 Restaurant ──┬── User ──┬── UserRole ── Role ── RolePermission ── Permission
@@ -134,98 +134,98 @@ TrainingPosition ─── TrainingMaterial ─── TrainingMaterialProgress
 
 ---
 
-## Quick Start
+## Démarrage rapide
 
-### Prerequisites
+### Prérequis
 
 - Node.js >= 20
-- pnpm (enable via Corepack)
+- pnpm (activable via Corepack)
 - Docker Desktop
 
 ```bash
-# Enable pnpm with Corepack
+# Activer pnpm avec Corepack
 corepack enable
 corepack prepare pnpm@11.1.3 --activate
 
-# Install dependencies
+# Installer les dépendances
 pnpm install
 ```
 
-### Database
+### Base de données
 
 ```bash
-# Start MySQL and MinIO
+# Démarrer MySQL et MinIO
 pnpm db:up
 
-# Generate Prisma client
+# Générer le client Prisma
 pnpm db:generate
 
-# (Optional) Run migrations and seed
+# (Optionnel) Exécuter les migrations et le seed
 pnpm db:migrate
 pnpm db:seed
 ```
 
-### Development
+### Développement
 
 ```bash
-# Start everything (web + API in parallel)
+# Tout démarrer (web + API en parallèle)
 pnpm dev
 
-# Or start individually:
+# Ou séparément :
 pnpm dev:web       # http://localhost:3000
 pnpm dev:api       # http://localhost:3002/api
-pnpm dev:mobile    # Expo development server
+pnpm dev:mobile    # Serveur de développement Expo
 ```
 
-### Mobile builds
+### Builds mobiles
 
 ```bash
-pnpm mobile:android    # Native Android build (requires JDK + Android Studio)
-pnpm mobile:ios        # Native iOS build (requires Xcode + CocoaPods)
+pnpm mobile:android    # Build natif Android (JDK + Android Studio requis)
+pnpm mobile:ios        # Build natif iOS (Xcode + CocoaPods requis)
 ```
 
 ---
 
-## Useful Commands
+## Commandes utiles
 
 ```bash
-pnpm build              # Build all apps
-pnpm build:web          # Build web only
-pnpm build:api          # Build backend only
-pnpm typecheck          # TypeScript check across the monorepo
-pnpm lint               # ESLint across all packages
-pnpm format             # Prettier formatting
+pnpm build              # Builder toutes les apps
+pnpm build:web          # Builder web uniquement
+pnpm build:api          # Builder backend uniquement
+pnpm typecheck          # Vérification TypeScript sur le monorepo
+pnpm lint               # ESLint sur tous les packages
+pnpm format             # Formatage Prettier
 
-# Database
-pnpm db:pull            # Introspect existing DB into Prisma schema
-pnpm db:push            # Push schema to DB without migration
-pnpm db:seed            # Run seed script
-pnpm db:logs            # Tail MySQL container logs
+# Base de données
+pnpm db:pull            # Introspecter la BDD existante dans le schéma Prisma
+pnpm db:push            # Pousser le schéma sans migration
+pnpm db:seed            # Exécuter le script de seed
+pnpm db:logs            # Suivre les logs du conteneur MySQL
 
-# Testing
-pnpm --filter backend test          # Backend unit tests
-pnpm --filter backend test:e2e      # Backend e2e tests
-pnpm mobile:test                    # Mobile tests
-pnpm mobile:lint                    # Mobile lint
+# Tests
+pnpm --filter backend test          # Tests unitaires backend
+pnpm --filter backend test:e2e      # Tests e2e backend
+pnpm mobile:test                    # Tests mobile
+pnpm mobile:lint                    # Lint mobile
 ```
 
 ---
 
-## Local URLs
+## URLs locales
 
 | Service | URL |
 |---|---|
-| Web dashboard | `http://localhost:3000` |
-| Backend API | `http://localhost:3002/api` |
+| Dashboard web | `http://localhost:3000` |
+| API backend | `http://localhost:3002/api` |
 | Health check | `http://localhost:3002/api/health` |
-| MinIO console | `http://localhost:9001` |
-| MySQL CLI | `docker exec -it zhao-backend-mysql mysql -uzhao -pdev_pass zhao_family` |
+| Console MinIO | `http://localhost:9001` |
+| CLI MySQL | `docker exec -it zhao-backend-mysql mysql -uzhao -pdev_pass zhao_family` |
 
 ---
 
-## Environment Variables
+## Variables d'environnement
 
-Copy the example env files and fill in your local values:
+Copier les fichiers d'exemple et renseigner vos valeurs locales :
 
 ```bash
 cp apps/web/.env.example apps/web/.env
@@ -233,40 +233,40 @@ cp apps/backend/.env.example apps/backend/.env
 cp apps/mobile/.env.example apps/mobile/.env
 ```
 
-Key prefixes:
-- `NEXT_PUBLIC_*` — Web client-side env vars
-- `EXPO_PUBLIC_*` — Mobile client-side env vars
+Préfixes clés :
+- `NEXT_PUBLIC_*` — Variables d'environnement côté client web
+- `EXPO_PUBLIC_*` — Variables d'environnement côté client mobile
 
-Do not commit `.env` files or production secrets.
-
----
-
-## Architecture Rules
-
-- **UI stays platform-specific**. Web and Mobile do not share components.
-- **DTOs, API clients, auth, and utilities** are shared through `packages/*`.
-- **Feature API calls** belong in package modules or feature services, not inside screens.
-- **API responses** follow a consistent structure — success, error, and pagination patterns are uniform.
-- **Backend controllers** remain thin; all business logic lives in services.
-- **All external input** is validated via DTOs with `class-validator`.
-- **MinIO** stores training materials, media assets, and document attachments.
-- **Environment variables** are platform-specific by convention.
+Ne pas commiter les fichiers `.env` ni les secrets de production.
 
 ---
 
-## Project Maturity
+## Règles d'architecture
 
-This monorepo represents a production-grade system actively used in restaurant operations. The codebase follows enterprise conventions:
-
-- Strict TypeScript with no `any` abuse
-- Modular NestJS architecture
-- Comprehensive Prisma schema with indexed queries
-- Jest-based testing on the backend (`*.spec.ts` + e2e)
-- Mobile app with NativeWind styling and Expo Router navigation
-- Turborepo caching for fast builds
+- **L'UI reste spécifique à chaque plateforme** : Web et Mobile ne partagent pas de composants.
+- **Les DTOs, clients API, auth et utilitaires** sont mutualisés dans `packages/*`.
+- **Les appels API fonctionnels** appartiennent aux modules de package ou aux services fonctionnels, pas aux écrans.
+- **Les réponses API** suivent une structure cohérente — les motifs succès, erreur et pagination sont uniformes.
+- **Les contrôleurs backend** restent légers ; toute la logique métier réside dans les services.
+- **Toute entrée externe** est validée via les DTOs avec `class-validator`.
+- **MinIO** stocke les supports de formation, les ressources média et les pièces jointes.
+- **Les variables d'environnement** sont spécifiques à chaque plateforme par convention.
 
 ---
 
-## License
+## Maturité du projet
 
-Private — internal use. ZHAO's Family (赵). All rights reserved.
+Ce monorepo est un système de niveau production activement utilisé dans les opérations de restauration. Le codebase suit des conventions professionnelles :
+
+- TypeScript strict sans abus de `any`
+- Architecture NestJS modulaire
+- Schéma Prisma complet avec index optimisés
+- Tests Jest sur le backend (`*.spec.ts` + e2e)
+- Application mobile avec NativeWind et Expo Router
+- Cache Turborepo pour des builds rapides
+
+---
+
+## Licence
+
+Privé — usage interne. ZHAO's Family (赵). Tous droits réservés.
