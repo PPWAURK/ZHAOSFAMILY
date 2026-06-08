@@ -2,7 +2,7 @@
   <img src="apps/web/public/logo2024/logo2024.jpg" alt="ZHAO Logo" width="320" />
 </p>
 
-<h1 align="center">ZHAO's Family — 赵</h1>
+<h1 align="center">ZHAO's Family</h1>
 
 <p align="center">
   <strong>餐厅数字化运营与管理平台</strong>
