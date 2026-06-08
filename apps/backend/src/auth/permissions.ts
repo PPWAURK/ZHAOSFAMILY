@@ -26,6 +26,10 @@ export const EMPLOYEE_PERMISSIONS = {
   manageStoreJobRoles: 'employee.job_role.manage_store',
 } as const;
 
+export const RECRUITMENT_REQUEST_PERMISSIONS = {
+  manage: 'recruitment.request.manage',
+} as const;
+
 export function RequirePermissions(...permissions: string[]) {
   return SetMetadata(PERMISSIONS_KEY, permissions);
 }

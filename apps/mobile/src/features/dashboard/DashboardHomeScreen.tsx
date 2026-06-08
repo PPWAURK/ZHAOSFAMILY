@@ -16,6 +16,7 @@ import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/typ
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { WebView } from "react-native-webview";
+import { ProtectedScreen } from "@/components/ProtectedScreen";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import zhaoLogo from "@/features/auth/assets/logozhao正方形.jpg";
@@ -36,7 +37,9 @@ import {
 import { OrderModuleScreen } from "@/features/orders/OrderModuleScreen";
 import { ORDER_COPY } from "@/features/orders/orderCopy";
 import { ProfileScreen } from "@/features/profile/ProfileScreen";
+import { RecruitmentModuleScreen } from "@/features/recruitment/RecruitmentModuleScreen";
 import { StoresModuleScreen } from "@/features/stores/StoresModuleScreen";
+import { TrainingModuleScreen } from "@/features/training/TrainingModuleScreen";
 
 type DashboardHomeScreenProps = {
   language: AuthLanguage;
@@ -143,7 +146,9 @@ function isConnectedDashboardEntry(entryId: string): boolean {
     entryId === "home" ||
     entryId === "orders" ||
     entryId === "profile" ||
-    entryId === "stores"
+    entryId === "recruitment-requests" ||
+    entryId === "stores" ||
+    entryId === "training"
   );
 }
 
@@ -455,6 +460,10 @@ export function DashboardHomeScreen({
               onChangePassword={onChangePassword}
               onUpdateProfile={onUpdateProfile}
             />
+          ) : activeEntry === "recruitment-requests" ? (
+            <RecruitmentModuleScreen language={language} />
+          ) : activeEntry === "training" ? (
+            <TrainingModuleScreen language={language} />
           ) : (
             <>
               <View style={styles.intro}>
@@ -776,18 +785,20 @@ export function DashboardHomeScreen({
                     </View>
                     <View style={styles.pdfViewer}>
                       {pdfPreviewPost?.attachment?.href ? (
-                        <WebView
-                          originWhitelist={["*"]}
-                          source={{ uri: pdfPreviewPost.attachment.href }}
-                          startInLoadingState
-                          style={styles.pdfWebView}
-                          onError={() => {
-                            finishPdfLoading(() =>
-                              setPdfPreviewError(copy.newsPdfPreviewError),
-                            );
-                          }}
-                          onLoadEnd={() => finishPdfLoading()}
-                        />
+                        <ProtectedScreen>
+                          <WebView
+                            originWhitelist={["*"]}
+                            source={{ uri: pdfPreviewPost.attachment.href }}
+                            startInLoadingState
+                            style={styles.pdfWebView}
+                            onError={() => {
+                              finishPdfLoading(() =>
+                                setPdfPreviewError(copy.newsPdfPreviewError),
+                              );
+                            }}
+                            onLoadEnd={() => finishPdfLoading()}
+                          />
+                        </ProtectedScreen>
                       ) : null}
                       {isLoadingPdfPreview ? (
                         <View style={styles.pdfLoadingOverlay}>

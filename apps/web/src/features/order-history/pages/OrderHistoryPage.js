@@ -21,6 +21,7 @@ import {
   fetchPurchaseOrders,
   fetchPurchaseReturns,
 } from "@/features/orders/services/ordersApi";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/order-history/order-history-page.module.css";
 
 function resolveErrorMessage(error, fallbackMessage) {
@@ -52,11 +53,12 @@ function toOrderRow(order) {
     total: Number(order.totalAmount) || 0,
     status: "recorded",
     commandeUrl: order.commandeUrl,
+    canEdit: order.canEdit !== false,
   };
 }
 
 export default function OrderHistoryPage() {
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [storeFilter, setStoreFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -228,6 +230,14 @@ export default function OrderHistoryPage() {
     } finally {
       setDeletingOrderId("");
     }
+  }
+
+  function handleEditOrder(order) {
+    if (!order?.id || order.canEdit === false) return;
+
+    window.location.href = `/dashboard/orders/new?editOrderId=${encodeURIComponent(
+      order.id,
+    )}`;
   }
 
   function handleCloseReturn() {
@@ -440,6 +450,7 @@ export default function OrderHistoryPage() {
                 downloadingPdf={downloadingPdfOrderId === String(order.id)}
                 deletingOrder={deletingOrderId === String(order.id)}
                 onOpenPdf={handleOpenPdf}
+                onEditOrder={handleEditOrder}
                 onCreateReturn={handleOpenReturn}
                 onDeleteOrder={handleDeleteOrder}
               />

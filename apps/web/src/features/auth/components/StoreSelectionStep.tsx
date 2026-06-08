@@ -85,7 +85,7 @@ export default function StoreSelectionStep({
         </p>
       ) : null}
 
-      <div className={styles.dualActionRow}>
+      <div className={`${styles.dualActionRow} ${styles.storeActionRow}`}>
         <button type="button" className={styles.secondaryAction} onClick={onBack}>
           {t.storeBack}
         </button>

@@ -7,6 +7,7 @@ import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
 import {
   createTrainingPosition,
+  deleteTrainingPosition,
   fetchManagedTrainingPositions,
   updateTrainingPosition,
 } from "@/features/training/services/trainingMediaApi";
@@ -15,6 +16,7 @@ import {
   TRAINING_POSITION_MANAGE_PERMISSION,
   flattenTrainingPositions,
   getTrainingPositionLabel,
+  mergeDefaultTrainingPositions,
 } from "@/features/training/utils/trainingPositions";
 
 const EMPTY_FORM = {
@@ -25,6 +27,15 @@ const EMPTY_FORM = {
   parentCode: "FOH",
   sortOrder: 100,
 };
+
+const PRIMARY_POSITION_GROUP_CODES = ["ALL", "FOH", "BOH"];
+const MANAGEMENT_POSITION_GROUP_CODES = ["SM", "RM", "HOLDING"];
+const HIDDEN_LEGACY_POSITION_CODES = new Set(["CASH", "FOH_SERVER"]);
+const SYSTEM_POSITION_CODES = new Set(
+  flattenTrainingPositions(DEFAULT_TRAINING_POSITION_TREE).map(
+    (position) => position.code,
+  ),
+);
 
 const PAGE_COPY = {
   zh: {
@@ -83,6 +94,213 @@ function toEditablePosition(position) {
   };
 }
 
+function getPrimaryPositionGroups(parentPositions) {
+  return PRIMARY_POSITION_GROUP_CODES.map((code) =>
+    parentPositions.find((position) => position.code === code),
+  ).filter(Boolean);
+}
+
+function getManagementPositionGroups(parentPositions) {
+  return MANAGEMENT_POSITION_GROUP_CODES.map((code) =>
+    parentPositions.find((position) => position.code === code),
+  ).filter(Boolean);
+}
+
+function getCustomPositionGroups(parentPositions) {
+  const knownCodes = new Set([
+    ...PRIMARY_POSITION_GROUP_CODES,
+    ...MANAGEMENT_POSITION_GROUP_CODES,
+  ]);
+
+  return parentPositions.filter(
+    (position) =>
+      !knownCodes.has(position.code) &&
+      !HIDDEN_LEGACY_POSITION_CODES.has(position.code),
+  );
+}
+
+function PositionDetailEditor({
+  editingForm,
+  isGroup,
+  isSaving,
+  onCancel,
+  onChange,
+  onSave,
+  parentPositions,
+  position,
+  styles,
+}) {
+  return (
+    <div className={styles.positionManageEditPanel}>
+      <input
+        value={editingForm.nameZh}
+        onChange={(event) => onChange({ nameZh: event.target.value })}
+      />
+      <input
+        value={editingForm.nameEn}
+        onChange={(event) => onChange({ nameEn: event.target.value })}
+      />
+      <input
+        value={editingForm.nameFr}
+        onChange={(event) => onChange({ nameFr: event.target.value })}
+      />
+      {!isGroup ? (
+        <select
+          value={editingForm.parentCode}
+          onChange={(event) => onChange({ parentCode: event.target.value })}
+        >
+          {parentPositions.map((option) => (
+            <option key={option.code} value={option.code}>
+              {option.code}
+            </option>
+          ))}
+        </select>
+      ) : null}
+      <input
+        type="number"
+        min="0"
+        value={editingForm.sortOrder}
+        onChange={(event) => onChange({ sortOrder: event.target.value })}
+      />
+      <label>
+        <input
+          type="checkbox"
+          checked={editingForm.isActive}
+          disabled={position.code === "ALL"}
+          onChange={(event) => onChange({ isActive: event.target.checked })}
+        />
+        启用
+      </label>
+      <div className={styles.positionManageEditActions}>
+        <button type="button" disabled={isSaving} onClick={() => onSave(position.code)}>
+          {isSaving ? "保存中" : "保存"}
+        </button>
+        <button type="button" disabled={isSaving} onClick={onCancel}>
+          取消
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PositionGroup({
+  deletingCode,
+  editingCode,
+  editingForm,
+  isSaving,
+  onCancelEdit,
+  onChangeEditingForm,
+  onDeletePosition,
+  onSavePosition,
+  onStartEditing,
+  parent,
+  parentPositions,
+  styles,
+}) {
+  const isEditingParent = editingCode === parent.code;
+  const children = (parent.children || []).filter(
+    (position) => !HIDDEN_LEGACY_POSITION_CODES.has(position.code),
+  );
+  const canDeleteParent =
+    !SYSTEM_POSITION_CODES.has(parent.code) && children.length === 0;
+
+  return (
+    <article className={styles.positionManageGroup}>
+      <header className={styles.positionManageGroupHeader}>
+        <div>
+          <b>{parent.code}</b>
+          <strong>{getTrainingPositionLabel(parent, "zh")}</strong>
+          <span>{parent.name.en}</span>
+        </div>
+        <div>
+          <span>{parent.code === "ALL" ? "全员共享" : "共享培训"}</span>
+          <span>{parent.sortOrder}</span>
+          <span>{parent.isActive ? "启用" : "停用"}</span>
+          <button type="button" onClick={() => onStartEditing(parent)}>
+            编辑
+          </button>
+          <button
+            type="button"
+            className={styles.positionManageDeleteButton}
+            disabled={isSaving || deletingCode === parent.code || !canDeleteParent}
+            onClick={() => onDeletePosition(parent)}
+          >
+            {deletingCode === parent.code ? "删除中" : "删除"}
+          </button>
+        </div>
+      </header>
+
+      {isEditingParent ? (
+        <PositionDetailEditor
+          editingForm={editingForm}
+          isGroup
+          isSaving={isSaving}
+          onCancel={onCancelEdit}
+          onChange={onChangeEditingForm}
+          onSave={onSavePosition}
+          parentPositions={parentPositions}
+          position={parent}
+          styles={styles}
+        />
+      ) : null}
+
+      {children.length > 0 ? (
+        <div className={styles.positionManageChildren}>
+          {children.map((position) => {
+            const isEditing = editingCode === position.code;
+            const canDeletePosition = !SYSTEM_POSITION_CODES.has(position.code);
+
+            return (
+              <div key={position.code} className={styles.positionManageRow}>
+                <strong>{position.code}</strong>
+                {isEditing ? (
+                  <PositionDetailEditor
+                    editingForm={editingForm}
+                    isGroup={false}
+                    isSaving={isSaving}
+                    onCancel={onCancelEdit}
+                    onChange={onChangeEditingForm}
+                    onSave={onSavePosition}
+                    parentPositions={parentPositions}
+                    position={position}
+                    styles={styles}
+                  />
+                ) : (
+                  <>
+                    <span>{getTrainingPositionLabel(position, "zh")}</span>
+                    <span>{position.name.en}</span>
+                    <span>{position.name.fr}</span>
+                    <span>{position.parentCode}</span>
+                    <span>{position.sortOrder}</span>
+                    <span>{position.isActive ? "启用" : "停用"}</span>
+                    <button type="button" onClick={() => onStartEditing(position)}>
+                      编辑
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.positionManageDeleteButton}
+                      disabled={
+                        isSaving ||
+                        deletingCode === position.code ||
+                        !canDeletePosition
+                      }
+                      onClick={() => onDeletePosition(position)}
+                    >
+                      {deletingCode === position.code ? "删除中" : "删除"}
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className={styles.positionManageEmpty}>暂无细分岗位</p>
+      )}
+    </article>
+  );
+}
+
 export default function TrainingPositionsPage() {
   const { user, isLoading } = useAuth();
   const [positions, setPositions] = useState(DEFAULT_TRAINING_POSITION_TREE);
@@ -90,6 +308,7 @@ export default function TrainingPositionsPage() {
   const [editingCode, setEditingCode] = useState(null);
   const [editingForm, setEditingForm] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingCode, setDeletingCode] = useState(null);
   const [message, setMessage] = useState("");
 
   const canManagePositions = user?.permissions?.includes(
@@ -97,10 +316,25 @@ export default function TrainingPositionsPage() {
   );
   const flatPositions = useMemo(() => flattenTrainingPositions(positions), [positions]);
   const parentPositions = flatPositions.filter((position) => position.parentCode === null);
+  const visibleFlatPositions = flatPositions.filter(
+    (position) => !HIDDEN_LEGACY_POSITION_CODES.has(position.code),
+  );
+  const primaryPositionGroups = getPrimaryPositionGroups(parentPositions);
+  const managementPositionGroups = getManagementPositionGroups(parentPositions);
+  const customPositionGroups = getCustomPositionGroups(parentPositions);
+  const positionGroups = [
+    ...primaryPositionGroups,
+    ...managementPositionGroups,
+    ...customPositionGroups,
+  ];
 
   async function loadPositions() {
     const nextPositions = await fetchManagedTrainingPositions();
-    setPositions(nextPositions.length > 0 ? nextPositions : DEFAULT_TRAINING_POSITION_TREE);
+    setPositions(
+      mergeDefaultTrainingPositions(
+        nextPositions.length > 0 ? nextPositions : DEFAULT_TRAINING_POSITION_TREE,
+      ),
+    );
   }
 
   useEffect(() => {
@@ -114,7 +348,13 @@ export default function TrainingPositionsPage() {
       try {
         const nextPositions = await fetchManagedTrainingPositions();
         if (isActive) {
-          setPositions(nextPositions.length > 0 ? nextPositions : DEFAULT_TRAINING_POSITION_TREE);
+          setPositions(
+            mergeDefaultTrainingPositions(
+              nextPositions.length > 0
+                ? nextPositions
+                : DEFAULT_TRAINING_POSITION_TREE,
+            ),
+          );
           setMessage("");
         }
       } catch (error) {
@@ -157,6 +397,19 @@ export default function TrainingPositionsPage() {
     setMessage("");
   }
 
+  function cancelEditing() {
+    setEditingCode(null);
+    setEditingForm(null);
+    setMessage("");
+  }
+
+  function patchEditingForm(patch) {
+    setEditingForm((current) => ({
+      ...current,
+      ...patch,
+    }));
+  }
+
   async function savePosition(code) {
     setIsSaving(true);
     setMessage("");
@@ -173,6 +426,31 @@ export default function TrainingPositionsPage() {
       setMessage(error.message || "岗位保存失败");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function deletePosition(position) {
+    const label = getTrainingPositionLabel(position, "zh") || position.code;
+    const confirmed = window.confirm(`确认删除岗位「${label}」？删除后不可恢复。`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingCode(position.code);
+    setMessage("");
+
+    try {
+      await deleteTrainingPosition(position.code);
+      if (editingCode === position.code) {
+        setEditingCode(null);
+        setEditingForm(null);
+      }
+      await loadPositions();
+    } catch (error) {
+      setMessage(error.message || "岗位删除失败");
+    } finally {
+      setDeletingCode(null);
     }
   }
 
@@ -211,16 +489,16 @@ export default function TrainingPositionsPage() {
             </div>
             <div className={styles.metricGrid}>
               <article className={styles.metricCard}>
-                <p className={styles.metricValue}>{parentPositions.length}</p>
+                <p className={styles.metricValue}>{positionGroups.length}</p>
                 <p className={styles.metricLabel}>GROUPS</p>
               </article>
               <article className={styles.metricCard}>
-                <p className={styles.metricValue}>{flatPositions.length}</p>
+                <p className={styles.metricValue}>{visibleFlatPositions.length}</p>
                 <p className={styles.metricLabel}>POSITIONS</p>
               </article>
               <article className={styles.metricCard}>
                 <p className={styles.metricValue}>
-                  {flatPositions.filter((position) => position.isActive).length}
+                  {visibleFlatPositions.filter((position) => position.isActive).length}
                 </p>
                 <p className={styles.metricLabel}>ACTIVE</p>
               </article>
@@ -273,101 +551,22 @@ export default function TrainingPositionsPage() {
           </form>
 
           <section className={styles.positionManageList}>
-            {parentPositions.map((parent) => (
-              <article key={parent.code} className={styles.positionManageGroup}>
-                <header>
-                  <b>{parent.code}</b>
-                  <span>{getTrainingPositionLabel(parent, "zh")}</span>
-                </header>
-                {[parent, ...(parent.children || [])].map((position) => {
-                  const isEditing = editingCode === position.code;
-
-                  return (
-                    <div key={position.code} className={styles.positionManageRow}>
-                      <strong>{position.code}</strong>
-                      {isEditing ? (
-                        <>
-                          <input
-                            value={editingForm.nameZh}
-                            onChange={(event) =>
-                              setEditingForm((prev) => ({ ...prev, nameZh: event.target.value }))
-                            }
-                          />
-                          <input
-                            value={editingForm.nameEn}
-                            onChange={(event) =>
-                              setEditingForm((prev) => ({ ...prev, nameEn: event.target.value }))
-                            }
-                          />
-                          <input
-                            value={editingForm.nameFr}
-                            onChange={(event) =>
-                              setEditingForm((prev) => ({ ...prev, nameFr: event.target.value }))
-                            }
-                          />
-                          {position.parentCode ? (
-                            <select
-                              value={editingForm.parentCode}
-                              onChange={(event) =>
-                                setEditingForm((prev) => ({
-                                  ...prev,
-                                  parentCode: event.target.value,
-                                }))
-                              }
-                            >
-                              {parentPositions.map((option) => (
-                                <option key={option.code} value={option.code}>
-                                  {option.code}
-                                </option>
-                              ))}
-                            </select>
-                          ) : null}
-                          <input
-                            type="number"
-                            min="0"
-                            value={editingForm.sortOrder}
-                            onChange={(event) =>
-                              setEditingForm((prev) => ({
-                                ...prev,
-                                sortOrder: event.target.value,
-                              }))
-                            }
-                          />
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={editingForm.isActive}
-                              disabled={position.code === "ALL"}
-                              onChange={(event) =>
-                                setEditingForm((prev) => ({
-                                  ...prev,
-                                  isActive: event.target.checked,
-                                }))
-                              }
-                            />
-                            启用
-                          </label>
-                          <button type="button" onClick={() => savePosition(position.code)}>
-                            保存
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span>{getTrainingPositionLabel(position, "zh")}</span>
-                          <span>{position.name.en}</span>
-                          <span>{position.name.fr}</span>
-                          <span>{position.parentCode || "GROUP"}</span>
-                          <span>{position.sortOrder}</span>
-                          <span>{position.isActive ? "启用" : "停用"}</span>
-                          <button type="button" onClick={() => startEditing(position)}>
-                            编辑
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </article>
+            {positionGroups.map((parent) => (
+              <PositionGroup
+                key={parent.code}
+                deletingCode={deletingCode}
+                editingCode={editingCode}
+                editingForm={editingForm}
+                isSaving={isSaving}
+                onCancelEdit={cancelEditing}
+                onChangeEditingForm={patchEditingForm}
+                onDeletePosition={deletePosition}
+                onSavePosition={savePosition}
+                onStartEditing={startEditing}
+                parent={parent}
+                parentPositions={parentPositions}
+                styles={styles}
+              />
             ))}
           </section>
         </>

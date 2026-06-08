@@ -41,6 +41,7 @@ export default function OrderRow({
   downloadingPdf,
   deletingOrder,
   onOpenPdf,
+  onEditOrder,
   onCreateReturn,
   onDeleteOrder,
 }) {
@@ -84,6 +85,14 @@ export default function OrderRow({
           disabled={downloadingPdf}
         >
           {downloadingPdf ? copy.openingPdf : copy.downloadPdf}
+        </button>
+        <button
+          type="button"
+          className={styles.rowAction}
+          onClick={() => onEditOrder(order)}
+          disabled={!order.canEdit || deletingOrder}
+        >
+          {copy.editOrder}
         </button>
         <button
           type="button"

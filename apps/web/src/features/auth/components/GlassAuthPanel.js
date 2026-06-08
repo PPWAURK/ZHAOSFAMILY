@@ -11,6 +11,8 @@ import RegisterDetailsStep from "@/features/auth/components/RegisterDetailsStep"
 import StoreSelectionStep from "@/features/auth/components/StoreSelectionStep";
 import { AUTH_PANEL_COPY } from "@/features/auth/constants/auth-panel-copy";
 import { useRegisterStores } from "@/features/auth/hooks/useRegisterStores";
+import { normalizeJobRoleValues } from "@/shared/constants/job-roles";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 
 const LANGUAGE_OPTIONS = [
   { value: "zh", label: "中文" },
@@ -73,18 +75,34 @@ function readFileAsDataUrl(file) {
   });
 }
 
-function resolveAuthErrorMessage(error, t) {
+function splitErrorCodes(message) {
+  return String(message || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getErrorStatus(error) {
+  return typeof error?.status === "number" ? error.status : null;
+}
+
+function resolveAuthErrorMessage(error, t, fallbackMessage) {
   const message = error instanceof Error ? error.message : "";
+  const errorMessages = t.authErrors || {};
+  const translatedCodes = splitErrorCodes(message)
+    .map((code) => errorMessages[code])
+    .filter(Boolean);
 
-  if (message === "ACCOUNT_PENDING_APPROVAL") {
-    return t.accountPendingError;
+  if (translatedCodes.length > 0) {
+    return translatedCodes.join(" ");
   }
 
-  if (message === "ACCOUNT_REJECTED") {
-    return t.accountRejectedError;
+  const status = getErrorStatus(error);
+  if (status && errorMessages[`HTTP_${status}`]) {
+    return errorMessages[`HTTP_${status}`];
   }
 
-  return message || t.detailsUnknownError;
+  return fallbackMessage || errorMessages.UNKNOWN || t.detailsUnknownError;
 }
 
 function getStepCopy(t, step) {
@@ -139,7 +157,7 @@ export default function GlassAuthPanel() {
   const router = useRouter();
   const { forgotPassword, login, register } = useAuth();
   const [step, setStep] = useState("login");
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [showPw, setShowPw] = useState(false);
   const [values, setValues] = useState(INITIAL_VALUES);
   const [extraDetails, setExtraDetails] = useState(INITIAL_EXTRA_DETAILS);
@@ -221,7 +239,9 @@ export default function GlassAuthPanel() {
     setIsRegistrationSuccessful(false);
     setExtraDetails((current) => {
       const roles = current.roles || [];
-      const nextRoles = roles.includes(role) ? [] : [role];
+      const nextRoles = roles.includes(role)
+        ? roles.filter((item) => item !== role)
+        : normalizeJobRoleValues([...roles, role]);
 
       return {
         ...current,
@@ -283,7 +303,7 @@ export default function GlassAuthPanel() {
         });
         router.push("/dashboard");
       } catch (error) {
-        setLoginError(resolveAuthErrorMessage(error, t));
+        setLoginError(resolveAuthErrorMessage(error, t, t.authErrors.UNKNOWN));
       } finally {
         setIsSubmittingLogin(false);
       }
@@ -316,7 +336,7 @@ export default function GlassAuthPanel() {
       await forgotPassword(email, lang);
       setForgotPasswordMessage(t.forgotSuccess);
     } catch (error) {
-      setForgotPasswordError(error instanceof Error ? error.message : t.forgotUnknownError);
+      setForgotPasswordError(resolveAuthErrorMessage(error, t, t.forgotUnknownError));
     } finally {
       setIsSubmittingForgotPassword(false);
     }
@@ -363,7 +383,7 @@ export default function GlassAuthPanel() {
 
     try {
       if (!isValidDateInputValue(extraDetails.birthday)) {
-        setRegistrationError("INVALID_BIRTHDAY");
+        setRegistrationError(resolveAuthErrorMessage(new Error("INVALID_BIRTHDAY"), t));
         return;
       }
 
@@ -391,7 +411,7 @@ export default function GlassAuthPanel() {
 
       setIsRegistrationSuccessful(true);
     } catch (error) {
-      setRegistrationError(error instanceof Error ? error.message : t.detailsUnknownError);
+      setRegistrationError(resolveAuthErrorMessage(error, t, t.detailsUnknownError));
     } finally {
       setIsSubmittingRegistration(false);
     }
@@ -417,6 +437,7 @@ export default function GlassAuthPanel() {
     if (step === "registerDetails" && selectedStore) {
       return (
         <RegisterDetailsStep
+          lang={lang}
           t={t}
           selectedStore={selectedStore}
           extraDetails={extraDetails}

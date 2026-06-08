@@ -5,6 +5,7 @@ export type InventoryApiRecord = {
   category?: string | null;
   nameCn?: string | null;
   designationFr?: string | null;
+  image?: string | null;
   unit?: string | null;
   specification?: string | null;
   stock?: number | null;
@@ -17,6 +18,7 @@ export type InventoryLine = {
   category: string;
   nameCn: string;
   designationFr: string;
+  image: string;
   unit: string;
   specification: string;
   stock: number;

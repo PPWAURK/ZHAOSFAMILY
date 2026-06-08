@@ -12,7 +12,7 @@
 
   display: grid;
   grid-template-columns: minmax(360px, 48vw) 1fr;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--serif);
@@ -22,7 +22,7 @@
   position: relative;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   padding: 40px;
   background:
@@ -292,7 +292,7 @@
 .loading {
   display: grid;
   place-items: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 2rem;
   color: var(--ink-60);
   font-family: var(--serif);
@@ -304,7 +304,7 @@
   }
 
   .brandPanel {
-    min-height: 42vh;
+    min-height: min(42vh, 360px);
   }
 
   .formPanel {
@@ -315,6 +315,21 @@
 @media (max-width: 560px) {
   .brandPanel {
     padding: 28px 24px;
+  }
+
+  .brandTop,
+  .topLine,
+  .headingRow,
+  .passwordRow {
+    flex-wrap: wrap;
+  }
+
+  .formPanel {
+    padding: 28px 20px 40px;
+  }
+
+  .input {
+    font-size: 1.45rem;
   }
 
   .brandPanel::after {
@@ -341,5 +356,10 @@
   .strength {
     grid-template-columns: 1fr;
     gap: 9px;
+  }
+
+  .button {
+    min-height: 64px;
+    padding: 0 22px;
   }
 }

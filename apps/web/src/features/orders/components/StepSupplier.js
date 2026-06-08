@@ -8,6 +8,7 @@ export default function StepSupplier({
   loadError,
   selectedId,
   onSelect,
+  disabled = false,
   copy,
 }) {
   const step = copy.steps.find((item) => item.id === "supplier");
@@ -40,6 +41,7 @@ export default function StepSupplier({
               className={`${styles.choiceCard} ${isActive ? styles.choiceCardActive : ""}`}
               onClick={() => onSelect(supplier.id)}
               aria-pressed={isActive}
+              disabled={disabled}
             >
               <span className={styles.choiceCardIndex}>
                 {String(index + 1).padStart(2, "0")}
@@ -65,6 +67,9 @@ export default function StepSupplier({
       <header className={styles.sectionHeader}>
         <h2 className={styles.sectionHeading}>{step?.title}</h2>
         <p className={styles.sectionHint}>{step?.hint}</p>
+        {disabled ? (
+          <p className={styles.sectionHint}>{copy.editSupplierLocked}</p>
+        ) : null}
       </header>
 
       <p className={styles.listHeading}>{copy.supplierList}</p>

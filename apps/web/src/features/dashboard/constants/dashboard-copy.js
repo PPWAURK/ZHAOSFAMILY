@@ -26,9 +26,9 @@ export const DASHBOARD_NAV = [
       {
         id: "permissions",
         href: "/dashboard/permissions",
-        zh: "权限中心",
-        en: "Permissions",
-        fr: "Permissions",
+        zh: "系统角色",
+        en: "System roles",
+        fr: "Rôles système",
         requiredPermission: "system.permission.manage",
       },
     ],
@@ -100,12 +100,25 @@ export const DASHBOARD_NAV = [
       },
     ],
   },
+  {
+    id: "people",
+    items: [
+      {
+        id: "recruitment-requests",
+        href: "/dashboard/recruitment-requests",
+        zh: "招聘请求",
+        en: "Recruitment requests",
+        fr: "Demandes recrutement",
+        requiredPermission: "recruitment.request.manage",
+      },
+    ],
+  },
 ];
 
 export const DASHBOARD_NAV_GROUP_LABELS = {
-  zh: { menu: "菜单模块", learning: "学习模块", orders: "订单模块" },
-  en: { menu: "MENU MODULE", learning: "LEARNING MODULE", orders: "ORDER MODULE" },
-  fr: { menu: "MODULE MENU", learning: "MODULE FORMATION", orders: "MODULE COMMANDES" },
+  zh: { menu: "菜单模块", learning: "学习模块", orders: "订单模块", people: "人事模块" },
+  en: { menu: "MENU MODULE", learning: "LEARNING MODULE", orders: "ORDER MODULE", people: "PEOPLE MODULE" },
+  fr: { menu: "MODULE MENU", learning: "MODULE FORMATION", orders: "MODULE COMMANDES", people: "MODULE RH" },
 };
 
 export const DASHBOARD_MENU_LABELS = {

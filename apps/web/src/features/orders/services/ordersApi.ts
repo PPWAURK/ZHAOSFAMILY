@@ -53,6 +53,20 @@ export async function createPurchaseOrder({
   });
 }
 
+export async function fetchPurchaseOrder(orderId: string): Promise<PurchaseOrder> {
+  return apiClient.get<PurchaseOrder>(`/orders/${encodeURIComponent(orderId)}`);
+}
+
+export async function updatePurchaseOrder(
+  orderId: string,
+  { deliveryDate, quantities }: CreatePurchaseOrderInput,
+): Promise<PurchaseOrder> {
+  return apiClient.patch<PurchaseOrder>(`/orders/${encodeURIComponent(orderId)}`, {
+    deliveryDate,
+    items: buildCreateOrderItems(quantities),
+  });
+}
+
 export async function fetchPurchaseOrders(): Promise<PurchaseOrder[]> {
   const orders = await apiClient.get<PurchaseOrder[]>("/orders");
 

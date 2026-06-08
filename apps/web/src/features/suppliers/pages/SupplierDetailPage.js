@@ -13,6 +13,7 @@ import ProductEditRow from "@/features/suppliers/components/ProductEditRow";
 import SupplierForm from "@/features/suppliers/components/SupplierForm";
 import { SUPPLIERS_COPY } from "@/features/suppliers/constants/suppliers-copy";
 import { useSupplierDetail } from "@/features/suppliers/store/suppliersStore";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/suppliers/suppliers-page.module.css";
 
 const NEW_PRODUCT_ID = "__new__";
@@ -38,7 +39,7 @@ function emptyProduct(supplierId) {
 }
 
 export default function SupplierDetailPage({ supplierId }) {
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingInfo, setEditingInfo] = useState(false);
   const [savingInfo, setSavingInfo] = useState(false);

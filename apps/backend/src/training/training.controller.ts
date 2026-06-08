@@ -86,6 +86,15 @@ export class TrainingController {
     return this.trainingService.updatePosition(code, dto);
   }
 
+  @Delete('positions/:code')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_POSITION_PERMISSIONS.manage)
+  deletePosition(
+    @Param('code') code: string,
+  ): Promise<{ message: 'TRAINING_POSITION_DELETED' }> {
+    return this.trainingService.deletePosition(code);
+  }
+
   @Get('materials')
   listMaterials(
     @Query() query: ListTrainingMaterialsQueryDto,

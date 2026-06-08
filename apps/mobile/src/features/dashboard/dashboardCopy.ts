@@ -75,6 +75,11 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
         permission: "system.permission.manage",
         label: { zh: "权限中心", en: "Permissions", fr: "Permissions" },
       },
+      {
+        id: "recruitment-requests",
+        icon: "聘",
+        label: { zh: "招聘请求", en: "Recruitment requests", fr: "Demandes recrutement" },
+      },
     ],
   },
   {

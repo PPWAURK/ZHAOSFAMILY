@@ -90,10 +90,42 @@ const ALL_POSITION_CODE = 'ALL';
 const STORE_MANAGER_JOB_ROLE = 'store-manager';
 const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
 const STORE_MANAGER_POSITION_CODE = 'SM';
+const JOB_ROLE_POSITION_CODE_BY_ROLE = new Map<string, string>([
+  ['front-host', 'FRONT_HOST'],
+  ['front-cashier', 'FRONT_CASHIER'],
+  ['front-server', 'FRONT_SERVER'],
+  ['front-packer', 'FRONT_PACKER'],
+  ['front-bar', 'FRONT_BAR'],
+  ['back-dishwasher', 'BACK_DISHWASHER'],
+  ['back-noodle', 'BACK_NOODLE'],
+  ['back-hot-appetizer', 'BACK_HOT_APPETIZER'],
+  ['back-cold-appetizer', 'BACK_COLD_APPETIZER'],
+  ['back-rice', 'BACK_RICE'],
+]);
 const NON_STORE_REQUIRED_POSITION_CODES = new Set([
   ALL_POSITION_CODE,
   'HOLDING',
   'RM',
+]);
+const SYSTEM_POSITION_CODES = new Set([
+  ALL_POSITION_CODE,
+  'FOH',
+  'BOH',
+  'SM',
+  'RM',
+  'HOLDING',
+  'CASH',
+  'FOH_SERVER',
+  'FRONT_HOST',
+  'FRONT_CASHIER',
+  'FRONT_SERVER',
+  'FRONT_PACKER',
+  'FRONT_BAR',
+  'BACK_DISHWASHER',
+  'BACK_NOODLE',
+  'BACK_HOT_APPETIZER',
+  'BACK_COLD_APPETIZER',
+  'BACK_RICE',
 ]);
 
 function toTrainingMaterialItem(
@@ -210,6 +242,18 @@ function resolveSingleTrainingPositionCodes(
 ): string[] {
   const roleValue = jobRole;
   const normalizedRole = roleValue.toLowerCase();
+  const mappedPositionCode = JOB_ROLE_POSITION_CODE_BY_ROLE.get(normalizedRole);
+  const mappedPosition = mappedPositionCode
+    ? rows.find((row) => row.code === mappedPositionCode)
+    : null;
+
+  if (mappedPosition?.parentCode) {
+    return [mappedPosition.code, mappedPosition.parentCode];
+  }
+
+  if (mappedPosition?.code) {
+    return [mappedPosition.code];
+  }
 
   if (
     normalizedRole.includes(HOLDING_JOB_ROLE) ||
@@ -242,18 +286,28 @@ function resolveSingleTrainingPositionCodes(
     normalizedRole.includes('boh') ||
     normalizedRole.includes('chef') ||
     normalizedRole.includes('back-of-house') ||
-    normalizedRole.includes('back-assistant')
+    normalizedRole.includes('back-assistant') ||
+    normalizedRole.includes('back-dishwasher') ||
+    normalizedRole.includes('back-noodle') ||
+    normalizedRole.includes('back-hot-appetizer') ||
+    normalizedRole.includes('back-cold-appetizer') ||
+    normalizedRole.includes('back-rice')
   ) {
     return ['BOH'];
   }
 
-  if (normalizedRole.includes('cash')) {
+  if (normalizedRole === 'cash') {
     return ['CASH'];
   }
 
   if (
     normalizedRole.includes('front-of-house') ||
-    normalizedRole.includes('front-assistant')
+    normalizedRole.includes('front-assistant') ||
+    normalizedRole.includes('front-server') ||
+    normalizedRole.includes('front-host') ||
+    normalizedRole.includes('front-cashier') ||
+    normalizedRole.includes('front-packer') ||
+    normalizedRole.includes('front-bar')
   ) {
     return ['FOH'];
   }
@@ -436,6 +490,39 @@ export class TrainingService {
     });
 
     return toPositionNode(row);
+  }
+
+  async deletePosition(
+    code: string,
+  ): Promise<{ message: 'TRAINING_POSITION_DELETED' }> {
+    await this.getPositionRow(code);
+
+    if (SYSTEM_POSITION_CODES.has(code)) {
+      throw new BadRequestException('TRAINING_SYSTEM_POSITION_CANNOT_DELETE');
+    }
+
+    const [childCount, materialCount] = await Promise.all([
+      this.prismaService.trainingPosition.count({
+        where: { parentCode: code },
+      }),
+      this.prismaService.trainingMaterial.count({
+        where: { positionId: code },
+      }),
+    ]);
+
+    if (childCount > 0) {
+      throw new BadRequestException('TRAINING_POSITION_HAS_CHILDREN');
+    }
+
+    if (materialCount > 0) {
+      throw new BadRequestException('TRAINING_POSITION_HAS_MATERIALS');
+    }
+
+    await this.prismaService.trainingPosition.delete({
+      where: { code },
+    });
+
+    return { message: 'TRAINING_POSITION_DELETED' };
   }
 
   async listMaterials(
@@ -629,51 +716,57 @@ export class TrainingService {
         materialId,
       },
     };
-    const existing =
-      await this.prismaService.trainingMaterialProgress.findUnique({
+
+    // Transaction ensures findUnique + upsert are atomic, preventing
+    // a race condition where two concurrent creates violate the
+    // unique(userId, materialId) constraint.
+    const row = await this.prismaService.$transaction(async (tx) => {
+      const existing = await tx.trainingMaterialProgress.findUnique({
         where: progressKey,
         select: {
           status: true,
           completedAt: true,
         },
       });
-    const keepCompleted =
-      existing?.status === 'completed' && dto.status !== 'completed';
-    const progressPct = keepCompleted
-      ? 100
-      : dto.status === 'completed'
-        ? 100
-        : Math.max(dto.progressPct ?? 10, 1);
-    const status = keepCompleted
-      ? 'completed'
-      : (dto.status ?? (progressPct >= 100 ? 'completed' : 'in_progress'));
-    const completedAt = status === 'completed' ? new Date() : null;
-    const finalCompletedAt = keepCompleted
-      ? (existing?.completedAt ?? completedAt)
-      : completedAt;
 
-    const row = await this.prismaService.trainingMaterialProgress.upsert({
-      where: progressKey,
-      create: {
-        userId,
-        materialId,
-        status,
-        progressPct,
-        completedAt: finalCompletedAt,
-      },
-      update: {
-        status,
-        progressPct,
-        completedAt: finalCompletedAt,
-        lastOpenedAt: new Date(),
-      },
-      select: {
-        materialId: true,
-        status: true,
-        progressPct: true,
-        lastOpenedAt: true,
-        completedAt: true,
-      },
+      const keepCompleted =
+        existing?.status === 'completed' && dto.status !== 'completed';
+      const progressPct = keepCompleted
+        ? 100
+        : dto.status === 'completed'
+          ? 100
+          : Math.max(dto.progressPct ?? 10, 1);
+      const status = keepCompleted
+        ? 'completed'
+        : (dto.status ?? (progressPct >= 100 ? 'completed' : 'in_progress'));
+      const completedAt = status === 'completed' ? new Date() : null;
+      const finalCompletedAt = keepCompleted
+        ? (existing?.completedAt ?? completedAt)
+        : completedAt;
+
+      return tx.trainingMaterialProgress.upsert({
+        where: progressKey,
+        create: {
+          userId,
+          materialId,
+          status,
+          progressPct,
+          completedAt: finalCompletedAt,
+        },
+        update: {
+          status,
+          progressPct,
+          completedAt: finalCompletedAt,
+          lastOpenedAt: new Date(),
+        },
+        select: {
+          materialId: true,
+          status: true,
+          progressPct: true,
+          lastOpenedAt: true,
+          completedAt: true,
+        },
+      });
     });
 
     return toProgressItem(row);

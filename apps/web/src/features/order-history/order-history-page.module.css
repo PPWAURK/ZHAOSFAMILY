@@ -30,7 +30,10 @@
   gap: 24px;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--red);
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--paper);
 }
 
 .top::after {
@@ -302,6 +305,9 @@
 .table {
   display: flex;
   flex-direction: column;
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
   border-top: 1px solid var(--red-soft-2);
 }
 
@@ -317,6 +323,7 @@
   color: var(--red);
   font-weight: 600;
   border-bottom: 1px solid var(--red-soft-2);
+  min-width: 980px;
 }
 
 .row {
@@ -331,6 +338,7 @@
   color: var(--ink);
   text-decoration: none;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  min-width: 980px;
 }
 
 .row:hover {
@@ -772,6 +780,7 @@
   .row {
     grid-template-columns: 1fr auto;
     gap: 8px 18px;
+    min-width: 0;
     grid-template-areas:
       "date status"
       "store store"

@@ -12,6 +12,7 @@ import ConfirmDialog from "@/features/suppliers/components/ConfirmDialog";
 import SupplierForm from "@/features/suppliers/components/SupplierForm";
 import { SUPPLIERS_COPY } from "@/features/suppliers/constants/suppliers-copy";
 import { useSuppliersList } from "@/features/suppliers/store/suppliersStore";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/suppliers/suppliers-page.module.css";
 
 function normalizeSearchText(value) {
@@ -19,7 +20,7 @@ function normalizeSearchText(value) {
 }
 
 export default function SuppliersListPage() {
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);

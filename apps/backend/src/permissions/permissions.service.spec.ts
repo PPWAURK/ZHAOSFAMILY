@@ -278,7 +278,7 @@ describe('PermissionsService', () => {
         id: 12,
         name: 'Store Staff',
         email: 'staff@zhao.test',
-        jobRole: 'front-of-house,front-assistant',
+        jobRole: 'front-server,front-host',
         restaurant: {
           id: 7,
           name: 'ZHAO Test',
@@ -287,7 +287,7 @@ describe('PermissionsService', () => {
       });
     prismaService.user.update.mockResolvedValue({
       id: 12,
-      jobRole: 'front-of-house,front-assistant',
+      jobRole: 'front-server,front-host',
     });
 
     await expect(
@@ -322,15 +322,15 @@ describe('PermissionsService', () => {
           permissions: ['employee.job_role.manage_store'],
         },
         12,
-        'front-of-house,front-assistant',
+        'front-server,front-host',
       ),
     ).resolves.toMatchObject({
       id: 12,
-      jobRole: 'front-of-house,front-assistant',
+      jobRole: 'front-server,front-host',
     });
     expect(prismaService.user.update).toHaveBeenCalledWith({
       where: { id: 12 },
-      data: { jobRole: 'front-of-house,front-assistant' },
+      data: { jobRole: 'front-server,front-host' },
     });
   });
 
@@ -420,7 +420,53 @@ describe('PermissionsService', () => {
           permissions: ['employee.job_role.manage_store'],
         },
         12,
-        'front-of-house,holding',
+        'front-server,holding',
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects store managers assigning store manager job roles', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-server',
+      restaurantId: 7,
+    });
+
+    await expect(
+      service.updateUserJobRole(
+        {
+          id: 1,
+          familyName: 'Zhao',
+          givenName: 'Manager',
+          firstName: 'Manager',
+          lastName: 'Zhao',
+          name: 'Zhao Manager',
+          email: 'manager@zhao.test',
+          emailVerified: true,
+          restaurantId: 7,
+          store: {
+            id: 7,
+            name: 'ZHAO Test',
+            address: 'Test',
+            photoUrl: null,
+          },
+          storeName: 'ZHAO Test',
+          jobRole: 'store-manager',
+          role: 'store-manager',
+          position: 'store-manager',
+          birthday: null,
+          avatar: null,
+          avatarUrl: null,
+          phone: null,
+          address: null,
+          userLevel: 0,
+          preferredLanguage: 'zh',
+          permissions: ['employee.job_role.manage_store'],
+        },
+        12,
+        'store-manager',
       ),
     ).rejects.toMatchObject({ status: 403 });
     expect(prismaService.user.update).not.toHaveBeenCalled();

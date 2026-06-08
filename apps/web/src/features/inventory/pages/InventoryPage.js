@@ -18,6 +18,7 @@ import {
   fetchInventory,
   fetchMovements,
 } from "@/features/inventory/services/inventoryApi";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/inventory/inventory-page.module.css";
 
 function formatDateTime(iso, lang) {
@@ -39,7 +40,7 @@ function formatDateTime(iso, lang) {
 export default function InventoryPage({ supplierId }) {
   const effectiveSupplierId = supplierId || ZHAO_BUREAU_SUPPLIER_ID;
 
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [lines, setLines] = useState([]);
   const [movements, setMovements] = useState([]);

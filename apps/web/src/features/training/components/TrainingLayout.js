@@ -9,10 +9,11 @@ import {
   DASHBOARD_LANGUAGES,
   DASHBOARD_MENU_LABELS,
 } from "@/features/dashboard/constants/dashboard-copy";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/training/training-page.module.css";
 
 export default function TrainingLayout({ pageCopy, children }) {
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const t = pageCopy[lang];

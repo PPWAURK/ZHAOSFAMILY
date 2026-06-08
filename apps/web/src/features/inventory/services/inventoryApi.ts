@@ -18,6 +18,7 @@ function normalizeLine(raw: InventoryApiRecord | null): InventoryLine | null {
     category: raw.category ?? "",
     nameCn: raw.nameCn ?? "",
     designationFr: raw.designationFr ?? "",
+    image: raw.image ?? "",
     unit: raw.unit ?? "",
     specification: raw.specification ?? "",
     stock: Number.isFinite(raw.stock) ? Number(raw.stock) : 0,

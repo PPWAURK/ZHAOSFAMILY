@@ -11,6 +11,7 @@ import {
   DASHBOARD_MENU_LABELS,
 } from "@/features/dashboard/constants/dashboard-copy";
 import { PROFILE_COPY } from "@/features/profile/constants/profile-copy";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/profile/profile-page.module.css";
 
 function initialsOf(name) {
@@ -26,7 +27,7 @@ function initialsOf(name) {
 
 export default function ProfilePage() {
   const { user, isLoading, logout, updateMe } = useAuth();
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);

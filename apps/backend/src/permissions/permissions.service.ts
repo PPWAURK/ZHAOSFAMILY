@@ -69,14 +69,16 @@ const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
 const MANAGE_STORE_JOB_ROLES_PERMISSION = 'employee.job_role.manage_store';
 const SYSTEM_PERMISSION_MANAGE = 'system.permission.manage';
 const MANAGEABLE_JOB_ROLE_VALUES = new Set([
-  'front-of-house',
-  'back-of-house',
-  'front-manager',
-  'back-manager',
-  'front-assistant',
-  'back-assistant',
-  'store-manager',
-  'regional-manager',
+  'front-server',
+  'front-host',
+  'front-cashier',
+  'front-packer',
+  'front-bar',
+  'back-dishwasher',
+  'back-noodle',
+  'back-hot-appetizer',
+  'back-cold-appetizer',
+  'back-rice',
 ]);
 
 const BUILT_IN_ROLE_ORDER = new Map<string, number>(

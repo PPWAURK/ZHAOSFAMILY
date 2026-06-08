@@ -13,6 +13,7 @@ import {
   DASHBOARD_MENU_LABELS,
   DASHBOARD_SHORTCUT_HREFS,
 } from "@/features/dashboard/constants/dashboard-copy";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/dashboard/dashboard-page.module.css";
 
 function resolveDisplayName(user, fallback) {
@@ -24,7 +25,7 @@ function resolveDisplayName(user, fallback) {
 }
 
 export default function DashboardPage() {
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
   const menuLabels = DASHBOARD_MENU_LABELS[lang];

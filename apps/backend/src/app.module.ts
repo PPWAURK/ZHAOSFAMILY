@@ -10,6 +10,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
+import { RecruitmentRequestsModule } from './recruitment-requests/recruitment-requests.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { TrainingModule } from './training/training.module';
@@ -25,6 +26,7 @@ import { TrainingModule } from './training/training.module';
     DashboardNewsModule,
     HealthModule,
     ProductsModule,
+    RecruitmentRequestsModule,
     RestaurantsModule,
     SuppliersModule,
     OrdersModule,

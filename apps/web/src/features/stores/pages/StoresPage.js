@@ -20,6 +20,7 @@ import {
   fetchStoresPageStores,
   updateRestaurant,
 } from "@/features/stores/services/restaurantsApi";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
 
 const EMPTY_STORE_FORM = {
@@ -46,7 +47,7 @@ function canManageStoreRecords(user) {
 
 export default function StoresPage() {
   const { user } = useAuth();
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [stores, setStores] = useState([]);
   const [isLoadingStores, setIsLoadingStores] = useState(true);

@@ -1,8 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import styles from "@/features/inventory/inventory-page.module.css";
+
+function getImageFallbackLabel(line) {
+  const fallback = line.nameCn || line.designationFr || line.reference || "?";
+  return fallback.trim().slice(0, 1).toUpperCase() || "?";
+}
+
+function InventoryProductImage({ line }) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [line.image]);
+
+  if (!line.image || hasError) {
+    return (
+      <span className={styles.productImagePlaceholder} aria-hidden="true">
+        {getImageFallbackLabel(line)}
+      </span>
+    );
+  }
+
+  return (
+    <span className={styles.productImageFrame}>
+      <img
+        src={line.image}
+        alt={line.nameCn || line.designationFr || line.reference || ""}
+        className={styles.productImage}
+        loading="lazy"
+        decoding="async"
+        onError={() => setHasError(true)}
+      />
+    </span>
+  );
+}
 
 export default function InventoryRow({ line, copy, onApply, submitting }) {
   const [mode, setMode] = useState(null); // "in" | "out" | null
@@ -53,10 +87,15 @@ export default function InventoryRow({ line, copy, onApply, submitting }) {
       <tr>
         <td className={styles.cellRef}>{line.reference || "—"}</td>
         <td className={styles.cellProduct}>
-          {line.nameCn || "—"}
-          {line.designationFr ? (
-            <span className={styles.cellProductSub}>{line.designationFr}</span>
-          ) : null}
+          <div className={styles.productCellContent}>
+            <InventoryProductImage line={line} />
+            <span className={styles.productTextGroup}>
+              <span>{line.nameCn || "—"}</span>
+              {line.designationFr ? (
+                <span className={styles.cellProductSub}>{line.designationFr}</span>
+              ) : null}
+            </span>
+          </div>
         </td>
         <td className={styles.cellUnit}>
           {line.unit || "—"}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+
 import OrderProductImage from "@/features/orders/components/OrderProductImage";
 import {
   getOrderProductName,
@@ -8,12 +10,57 @@ import {
 } from "@/features/orders/services/orderCatalogApi";
 import styles from "@/features/orders/new-order-page.module.css";
 
+const ALL_CATEGORIES = "__all__";
+const UNCATEGORIZED_CATEGORY = "__uncategorized__";
+
+function normalizeCategoryKey(category) {
+  return category
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 function formatMoney(amount, symbol) {
   if (!Number.isFinite(amount)) {
     return "—";
   }
 
   return `${amount.toFixed(2)} ${symbol}`;
+}
+
+function getProductCategory(product, fallbackLabel) {
+  return product.category?.trim() || fallbackLabel;
+}
+
+function getProductCategoryLabel(category, copy) {
+  if (category === UNCATEGORIZED_CATEGORY) {
+    return copy.productUncategorized;
+  }
+
+  const normalizedCategory = normalizeCategoryKey(category);
+  return copy.productCategoryNames?.[normalizedCategory] || category;
+}
+
+function getProductCategoryOrder(category, copy) {
+  if (category === UNCATEGORIZED_CATEGORY) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  const normalizedCategory = normalizeCategoryKey(category);
+  const orderIndex = copy.productCategoryOrder?.indexOf(normalizedCategory);
+  return orderIndex >= 0 ? orderIndex : Number.MAX_SAFE_INTEGER - 1;
+}
+
+function scrollToPageTop() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function scrollToPageBottom() {
+  window.scrollTo({
+    top: document.documentElement.scrollHeight,
+    behavior: "smooth",
+  });
 }
 
 export default function StepProducts({
@@ -28,7 +75,34 @@ export default function StepProducts({
   stockMap,
   stockEnforced,
 }) {
+  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const step = copy.steps.find((item) => item.id === "products");
+  const categoryOptions = useMemo(() => {
+    const categories = new Map();
+
+    for (const product of products) {
+      const category = getProductCategory(product, UNCATEGORIZED_CATEGORY);
+      categories.set(category, {
+        value: category,
+        label: getProductCategoryLabel(category, copy),
+        order: getProductCategoryOrder(category, copy),
+      });
+    }
+
+    return Array.from(categories.values()).sort((a, b) =>
+      a.order - b.order || a.label.localeCompare(b.label, lang),
+    );
+  }, [products, copy, lang]);
+  const visibleProducts = useMemo(() => {
+    if (selectedCategory === ALL_CATEGORIES) {
+      return products;
+    }
+
+    return products.filter(
+      (product) =>
+        getProductCategory(product, UNCATEGORIZED_CATEGORY) === selectedCategory,
+    );
+  }, [products, selectedCategory]);
   const total = products.reduce(
     (sum, product) =>
       sum +
@@ -43,6 +117,70 @@ export default function StepProducts({
       }, 0),
     0,
   );
+
+  useEffect(() => {
+    const categoryExists = categoryOptions.some(
+      (category) => category.value === selectedCategory,
+    );
+
+    if (selectedCategory !== ALL_CATEGORIES && !categoryExists) {
+      setSelectedCategory(ALL_CATEGORIES);
+    }
+  }, [categoryOptions, selectedCategory]);
+
+  function renderCategoryFilter() {
+    if (products.length === 0) {
+      return null;
+    }
+
+    return (
+      <label className={styles.listCategoryFilter}>
+        <span>{copy.productCategoryLabel}</span>
+        <select
+          className={styles.listCategorySelect}
+          value={selectedCategory}
+          onChange={(event) => setSelectedCategory(event.target.value)}
+        >
+          <option value={ALL_CATEGORIES}>{copy.productAllCategories}</option>
+          {categoryOptions.map((category) => (
+            <option key={category.value} value={category.value}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  function renderScrollButtons() {
+    if (products.length === 0) {
+      return null;
+    }
+
+    return (
+      <aside
+        className={styles.floatingScrollControls}
+        aria-label={copy.productQuickToolsLabel}
+      >
+        <button
+          type="button"
+          className={styles.floatingScrollButton}
+          onClick={scrollToPageTop}
+          aria-label={copy.scrollToTop}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className={styles.floatingScrollButton}
+          onClick={scrollToPageBottom}
+          aria-label={copy.scrollToBottom}
+        >
+          ↓
+        </button>
+      </aside>
+    );
+  }
 
   function renderContent() {
     if (!supplierId) {
@@ -74,13 +212,12 @@ export default function StepProducts({
             <span>{copy.productImage}</span>
             <span>{copy.productList}</span>
             <span>{copy.productSpecification}</span>
-            <span className={styles.productUnit}>{copy.productUnit}</span>
-            <span className={styles.productPrice}>{copy.productPrice}</span>
             <span>{copy.quantity}</span>
+            <span className={styles.productUnit}>{copy.productUnit}</span>
             <span style={{ textAlign: "right" }}>{copy.subtotal}</span>
           </div>
 
-          {products.map((product) => {
+          {visibleProducts.map((product) => {
             const productName = getOrderProductName(product, lang);
             const productMeta = [product.reference].filter(Boolean).join(" · ");
             const variants = getOrderProductVariants(product);
@@ -119,20 +256,6 @@ export default function StepProducts({
                   {variants.map((variant) => (
                     <span key={variant.id} className={styles.productCellValue}>
                       {variant.specification || "—"}
-                    </span>
-                  ))}
-                </span>
-                <span className={`${styles.productUnit} ${styles.productCellStack}`}>
-                  {variants.map((variant) => (
-                    <span key={variant.id} className={styles.productCellValue}>
-                      {variant.unit || getOrderProductUnit(product)}
-                    </span>
-                  ))}
-                </span>
-                <span className={`${styles.productPrice} ${styles.productCellStack}`}>
-                  {variants.map((variant) => (
-                    <span key={variant.id} className={styles.productCellValue}>
-                      {formatMoney(variant.price, copy.currencySymbol)}
                     </span>
                   ))}
                 </span>
@@ -176,6 +299,13 @@ export default function StepProducts({
                     );
                   })}
                 </span>
+                <span className={`${styles.productUnit} ${styles.productCellStack}`}>
+                  {variants.map((variant) => (
+                    <span key={variant.id} className={styles.productCellValue}>
+                      {variant.unit || getOrderProductUnit(product)}
+                    </span>
+                  ))}
+                </span>
                 <span className={`${styles.productSubtotal} ${styles.productCellStack}`}>
                   {variants.map((variant) => {
                     const qty = Number(quantities[variant.id]) || 0;
@@ -212,9 +342,13 @@ export default function StepProducts({
         <p className={styles.sectionHint}>{step?.hint}</p>
       </header>
 
-      <p className={styles.listHeading}>{copy.productList}</p>
+      <div className={styles.listHeader}>
+        <p className={styles.listHeading}>{copy.productList}</p>
+        {renderCategoryFilter()}
+      </div>
 
       {renderContent()}
+      {renderScrollButtons()}
     </section>
   );
 }

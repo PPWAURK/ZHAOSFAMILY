@@ -12,6 +12,7 @@ import {
   updatePermissionUserManagedRestaurants,
   updatePermissionUserRoles,
 } from "@/features/permissions/services/permissionsApi";
+import { formatJobRoleLabel } from "@/shared/constants/job-roles";
 
 const MANAGE_PERMISSION = "system.permission.manage";
 const SUPER_ADMIN_ROLE = "super-admin";
@@ -88,18 +89,20 @@ const PERMISSIONS_COPY = {
   zh: {
     shared: TRAINING_COPY.zh.shared,
     page: {
-      topStage: "权限中心 · PERMISSIONS",
-      kicker: "System · Roles · Access",
-      title: "全系统",
-      titleEm: "权限中心",
+      topStage: "系统角色 · ADVANCED ACCESS",
+      kicker: "System · Advanced roles",
+      title: "系统",
+      titleEm: "角色中心",
       titleSuffix: "",
-      lede: "管理成员的内置角色。第一版只支持给用户分配多个系统角色。",
+      lede: "只管理少数高级系统角色。日常前厅、后厨和门店岗位请在团队管理或岗位管理里处理。",
       stepLabel: "RBAC",
-      stepDetail: "角色分配会立即影响后端权限校验。",
+      stepDetail: "系统角色会立即影响后端权限校验。",
+      boundaryNote:
+        "岗位决定员工做什么和学习什么；系统角色决定员工能操作哪些后台能力。",
       metrics: [
         { value: "04", label: "BUILT-IN ROLES" },
-        { value: "01", label: "SYSTEM PERMISSION" },
-        { value: "RBAC", label: "ACCESS MODEL" },
+        { value: "RBAC", label: "SYSTEM ACCESS" },
+        { value: "HQ", label: "HOLDING ONLY" },
       ],
       noPermission: "无权限",
       deniedTitle: "无权限访问",
@@ -113,20 +116,20 @@ const PERMISSIONS_COPY = {
       noChanges: "未修改",
       unassignedStore: "未分配门店",
       memberCountSuffix: "人",
-      managedStoresUnavailable: "仅区域经理需要设置负责门店",
+      managedStoresUnavailable: "非区域经理不需要设置门店范围",
       table: {
         name: "姓名",
         email: "邮箱",
         status: "状态",
-        jobRole: "岗位",
-        managedStores: "负责门店",
-        roles: "角色",
-        permissions: "权限摘要",
+        jobRole: "运营岗位（只读）",
+        managedStores: "区域经理门店范围",
+        roles: "系统角色",
+        permissions: "系统权限摘要",
         action: "操作",
       },
       actions: {
         save: "保存",
-        saveStores: "保存门店",
+        saveStores: "保存范围",
         saving: "保存中",
       },
       status: {
@@ -139,18 +142,20 @@ const PERMISSIONS_COPY = {
   en: {
     shared: TRAINING_COPY.en.shared,
     page: {
-      topStage: "Permissions",
-      kicker: "System · Roles · Access",
+      topStage: "System roles",
+      kicker: "System · Advanced roles",
       title: "System",
-      titleEm: "Permissions",
+      titleEm: "Roles",
       titleSuffix: "",
-      lede: "Manage built-in roles for each user. This first version supports multiple roles per user.",
+      lede: "Manage only advanced system roles. Daily front-of-house, kitchen, and store positions are handled in team or position management.",
       stepLabel: "RBAC",
-      stepDetail: "Role assignments affect backend permission checks immediately.",
+      stepDetail: "System roles affect backend permission checks immediately.",
+      boundaryNote:
+        "Positions define what employees do and learn; system roles define which admin capabilities they can use.",
       metrics: [
         { value: "04", label: "BUILT-IN ROLES" },
-        { value: "01", label: "SYSTEM PERMISSION" },
-        { value: "RBAC", label: "ACCESS MODEL" },
+        { value: "RBAC", label: "SYSTEM ACCESS" },
+        { value: "HQ", label: "HOLDING ONLY" },
       ],
       noPermission: "No permissions",
       deniedTitle: "Access denied",
@@ -164,20 +169,20 @@ const PERMISSIONS_COPY = {
       noChanges: "No changes",
       unassignedStore: "Unassigned store",
       memberCountSuffix: "members",
-      managedStoresUnavailable: "Managed stores are only set for regional managers",
+      managedStoresUnavailable: "Store scope is only set for regional managers",
       table: {
         name: "Name",
         email: "Email",
         status: "Status",
-        jobRole: "Job role",
-        managedStores: "Managed stores",
-        roles: "Roles",
-        permissions: "Permission summary",
+        jobRole: "Operations position (read-only)",
+        managedStores: "Regional store scope",
+        roles: "System roles",
+        permissions: "System permission summary",
         action: "Action",
       },
       actions: {
         save: "Save",
-        saveStores: "Save stores",
+        saveStores: "Save scope",
         saving: "Saving",
       },
       status: {
@@ -190,18 +195,20 @@ const PERMISSIONS_COPY = {
   fr: {
     shared: TRAINING_COPY.fr.shared,
     page: {
-      topStage: "Permissions",
-      kicker: "System · Roles · Access",
+      topStage: "Rôles système",
+      kicker: "System · Rôles avancés",
       title: "Centre",
-      titleEm: "Permissions",
+      titleEm: "Rôles",
       titleSuffix: "",
-      lede: "Gérez les rôles intégrés de chaque utilisateur. Cette première version accepte plusieurs rôles par utilisateur.",
+      lede: "Gérez uniquement les rôles système avancés. Les postes salle, cuisine et boutique se gèrent dans l'équipe ou les postes.",
       stepLabel: "RBAC",
-      stepDetail: "Les rôles modifient immédiatement les contrôles côté API.",
+      stepDetail: "Les rôles système modifient immédiatement les contrôles côté API.",
+      boundaryNote:
+        "Les postes définissent le travail et la formation ; les rôles système définissent les capacités d'administration.",
       metrics: [
         { value: "04", label: "BUILT-IN ROLES" },
-        { value: "01", label: "SYSTEM PERMISSION" },
-        { value: "RBAC", label: "ACCESS MODEL" },
+        { value: "RBAC", label: "SYSTEM ACCESS" },
+        { value: "HQ", label: "HOLDING ONLY" },
       ],
       noPermission: "Aucune permission",
       deniedTitle: "Accès refusé",
@@ -218,20 +225,20 @@ const PERMISSIONS_COPY = {
       unassignedStore: "Boutique non assignée",
       memberCountSuffix: "membres",
       managedStoresUnavailable:
-        "Les boutiques gérées concernent les managers régionaux",
+        "Le périmètre boutique concerne uniquement les managers régionaux",
       table: {
         name: "Nom",
         email: "Email",
         status: "Statut",
-        jobRole: "Poste",
-        managedStores: "Boutiques gérées",
-        roles: "Rôles",
-        permissions: "Résumé des permissions",
+        jobRole: "Poste opérationnel (lecture)",
+        managedStores: "Périmètre régional",
+        roles: "Rôles système",
+        permissions: "Résumé permissions système",
         action: "Action",
       },
       actions: {
         save: "Enregistrer",
-        saveStores: "Enregistrer boutiques",
+        saveStores: "Enregistrer périmètre",
         saving: "Enregistrement",
       },
       status: {
@@ -280,7 +287,10 @@ function areRoleNamesEqual(leftRoles, rightRoles) {
 }
 
 function canAssignRoleToUser(roleName, user) {
-  return roleName !== SUPER_ADMIN_ROLE || user?.jobRole === HOLDING_JOB_ROLE;
+  return (
+    roleName !== SUPER_ADMIN_ROLE ||
+    getJobRoleValues(user?.jobRole).includes(HOLDING_JOB_ROLE)
+  );
 }
 
 function getUserIdKey(userId) {
@@ -510,6 +520,9 @@ export default function PermissionsPage() {
                   <span className={styles.stepBadge}>{t.page.stepLabel}</span>
                   <span>{t.page.stepDetail}</span>
                 </p>
+                <p className={styles.permissionBoundaryNote}>
+                  {t.page.boundaryNote}
+                </p>
                 {errorMessage ? (
                   <p className={styles.materialLoadError}>{errorMessage}</p>
                 ) : null}
@@ -606,7 +619,11 @@ export default function PermissionsPage() {
                                         item.accountStatus ||
                                         "-"}
                                     </td>
-                                    <td>{item.jobRole || "-"}</td>
+                                    <td>
+                                      <span className={styles.permissionReadOnlyPill}>
+                                        {formatJobRoleLabel(item.jobRole, lang)}
+                                      </span>
+                                    </td>
                                     <td>
                                       {canEditManagedRestaurants ? (
                                         <div

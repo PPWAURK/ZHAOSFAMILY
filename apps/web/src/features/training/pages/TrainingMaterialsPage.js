@@ -21,6 +21,7 @@ import {
   getTrainingPositionLabel,
   getTrainingPositionSecondaryLabel,
   mergeMaterialPositionTabs,
+  mergeDefaultTrainingPositions,
 } from "@/features/training/utils/trainingPositions";
 
 const MATERIAL_FILTER_TYPES = ["VIDEO", "PDF", "QUIZ", "ARTICLE", "IMAGE", "OTHER"];
@@ -110,7 +111,11 @@ export default function TrainingMaterialsPage() {
         if (isActive) {
           setMaterials(nextMaterials.map(toMaterialListItem));
           const nextTabs = mergeMaterialPositionTabs(
-            nextPositions.length > 0 ? nextPositions : DEFAULT_TRAINING_POSITION_TREE,
+            mergeDefaultTrainingPositions(
+              nextPositions.length > 0
+                ? nextPositions
+                : DEFAULT_TRAINING_POSITION_TREE,
+            ),
             nextMaterials,
           );
           setPositions(nextTabs);

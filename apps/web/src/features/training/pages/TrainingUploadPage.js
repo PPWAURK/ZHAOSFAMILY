@@ -16,6 +16,7 @@ import {
   flattenTrainingPositions,
   getTrainingPositionLabel,
   getTrainingPositionSecondaryLabel,
+  mergeDefaultTrainingPositions,
 } from "@/features/training/utils/trainingPositions";
 
 const UPLOAD_PAGE_COPY = {
@@ -101,10 +102,11 @@ export default function TrainingUploadPage() {
           return;
         }
 
-        const nextOptions = flattenTrainingPositions(nextPositions).filter(
+        const mergedPositions = mergeDefaultTrainingPositions(nextPositions);
+        const nextOptions = flattenTrainingPositions(mergedPositions).filter(
           (position) => position.isActive,
         );
-        setPositions(nextPositions);
+        setPositions(mergedPositions);
         setPositionsError("");
 
         setPositionId((currentPositionId) =>

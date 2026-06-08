@@ -29,7 +29,7 @@ export const PROFILE_COPY = {
     saved: "已保存（模拟）",
 
     preferencesHeading: "偏好",
-    preferencesHint: "界面语言仅影响本次浏览。",
+    preferencesHint: "界面语言会保存到这台设备。",
     fieldLang: "界面语言",
     langOption: { zh: "中文", en: "English", fr: "Français" },
 
@@ -73,7 +73,7 @@ export const PROFILE_COPY = {
     saved: "Saved (mock)",
 
     preferencesHeading: "Preferences",
-    preferencesHint: "Interface language applies to this session only.",
+    preferencesHint: "Interface language is saved on this device.",
     fieldLang: "Interface language",
     langOption: { zh: "中文", en: "English", fr: "Français" },
 
@@ -117,7 +117,7 @@ export const PROFILE_COPY = {
     saved: "Enregistré (simulation)",
 
     preferencesHeading: "Préférences",
-    preferencesHint: "La langue de l'interface s'applique à cette session.",
+    preferencesHint: "La langue de l'interface est enregistrée sur cet appareil.",
     fieldLang: "Langue de l'interface",
     langOption: { zh: "中文", en: "English", fr: "Français" },
 

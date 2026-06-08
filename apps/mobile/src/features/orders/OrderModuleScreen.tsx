@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
+import { Linking, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
+import type { ShareAction } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Sharing from "expo-sharing";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
@@ -12,6 +14,7 @@ import {
   fetchOrderInventory,
   fetchOrderProducts,
   fetchOrderSuppliers,
+  resolveOrderPdfUrl,
   supplierEnforcesStock,
   updatePurchaseOrder,
 } from "@/features/orders/orderApi";
@@ -307,16 +310,10 @@ export function OrderModuleScreen({ language, storeName }: OrderModuleScreenProp
     try {
       setIsSharingPdf(true);
       setShareMessage("");
-      const localPdfUri = await downloadOrderPdfToCache(pdfUrl, pdfFileName);
-      const result = await Share.share({
-        title: pdfFileName,
-        url: localPdfUri,
-      });
+      const result = await shareOrderPdf(pdfUrl, pdfFileName);
 
       setStep("share");
-      setShareMessage(
-        result.action === Share.dismissedAction ? copy.shareCancelled : copy.shareDone,
-      );
+      setShareMessage(result.action === Share.dismissedAction ? copy.shareCancelled : copy.shareDone);
     } catch {
       setShareMessage(copy.shareError);
     } finally {
@@ -787,6 +784,50 @@ export function OrderModuleScreen({ language, storeName }: OrderModuleScreenProp
       ) : null}
     </View>
   );
+}
+
+async function shareOrderPdf(pdfUrl: string, pdfFileName: string): Promise<ShareAction> {
+  const normalizedPdfUrl = resolveOrderPdfUrl(pdfUrl);
+
+  try {
+    const localPdfUri = await downloadOrderPdfToCache(pdfUrl, pdfFileName);
+    const canShareFiles = await Sharing.isAvailableAsync();
+
+    if (canShareFiles) {
+      await Sharing.shareAsync(localPdfUri, {
+        dialogTitle: pdfFileName,
+        mimeType: "application/pdf",
+        UTI: "com.adobe.pdf",
+      });
+
+      return { action: Share.sharedAction };
+    }
+  } catch {
+    return shareOrderPdfLink(normalizedPdfUrl, pdfFileName);
+  }
+
+  return shareOrderPdfLink(normalizedPdfUrl, pdfFileName);
+}
+
+async function shareOrderPdfLink(
+  normalizedPdfUrl: string,
+  pdfFileName: string,
+): Promise<ShareAction> {
+  try {
+    return await Share.share({
+      title: pdfFileName,
+      message: normalizedPdfUrl,
+      url: normalizedPdfUrl,
+    });
+  } catch {
+    try {
+      await Linking.openURL(normalizedPdfUrl);
+    } catch {
+      return { action: Share.dismissedAction };
+    }
+
+    return { action: Share.sharedAction };
+  }
 }
 
 function buildSharedOrderPdfName(

@@ -22,7 +22,13 @@ import {
   fetchOrderSuppliers,
   supplierEnforcesStock,
 } from "@/features/orders/services/orderCatalogApi";
-import { createPurchaseOrder } from "@/features/orders/services/ordersApi";
+import {
+  createPurchaseOrder,
+  fetchPurchaseOrder,
+  fetchPurchaseOrderPdf,
+  updatePurchaseOrder,
+} from "@/features/orders/services/ordersApi";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/orders/new-order-page.module.css";
 
 function getDefaultDeliveryDate() {
@@ -39,9 +45,72 @@ function resolveErrorMessage(error, fallbackMessage) {
   return fallbackMessage;
 }
 
+function getEditOrderIdFromLocation() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return new URLSearchParams(window.location.search).get("editOrderId") || "";
+}
+
+function buildQuantitiesFromOrderItems(items) {
+  if (!Array.isArray(items)) {
+    return {};
+  }
+
+  return items.reduce((nextQuantities, item) => {
+    const productId = item?.productId;
+    const quantity = Number(item?.quantity) || 0;
+
+    if (!productId || quantity <= 0) {
+      return nextQuantities;
+    }
+
+    const slot = Number(item.specificationSlot) || 1;
+
+    return {
+      ...nextQuantities,
+      [`${productId}:${slot}`]: quantity,
+    };
+  }, {});
+}
+
+async function openPurchaseOrderPdf(orderId, previewWindow = null) {
+  const targetWindow = previewWindow || window.open("about:blank", "_blank");
+  if (targetWindow) {
+    targetWindow.opener = null;
+  }
+
+  try {
+    const pdfBlob = await fetchPurchaseOrderPdf(String(orderId));
+    const pdfUrl = URL.createObjectURL(
+      pdfBlob.type === "application/pdf"
+        ? pdfBlob
+        : new Blob([pdfBlob], { type: "application/pdf" }),
+    );
+
+    if (targetWindow) {
+      targetWindow.location.href = pdfUrl;
+    } else {
+      window.location.href = pdfUrl;
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+  } catch (error) {
+    if (targetWindow) {
+      targetWindow.close();
+    }
+
+    throw error;
+  }
+}
+
 export default function NewOrderPage() {
   const { user } = useAuth();
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
+  const [editOrderId] = useState(getEditOrderIdFromLocation);
+  const [editingOrderNumber, setEditingOrderNumber] = useState("");
+  const [isLoadingEditOrder, setIsLoadingEditOrder] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [supplierId, setSupplierId] = useState(null);
@@ -60,6 +129,7 @@ export default function NewOrderPage() {
 
   const t = NEW_ORDER_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
+  const isEditingOrder = Boolean(editOrderId);
   const storeName =
     user?.store?.name || user?.storeName || user?.establishment || "—";
 
@@ -89,6 +159,51 @@ export default function NewOrderPage() {
     }
     return null;
   }, [products, quantities, stockMap, supplierId, lang]);
+
+  useEffect(() => {
+    if (!editOrderId) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    async function loadEditableOrder() {
+      try {
+        setIsLoadingEditOrder(true);
+        setError("");
+        const order = await fetchPurchaseOrder(editOrderId);
+
+        if (isCancelled) {
+          return;
+        }
+
+        if (order?.canEdit === false) {
+          setError(t.orderCannotEdit);
+          return;
+        }
+
+        setEditingOrderNumber(String(order?.number || editOrderId));
+        setSupplierId(String(order?.supplierId || ""));
+        setDeliveryDate(order?.deliveryDate || getDefaultDeliveryDate());
+        setQuantities(buildQuantitiesFromOrderItems(order?.items));
+        setStepIndex(1);
+      } catch (nextError) {
+        if (!isCancelled) {
+          setError(resolveErrorMessage(nextError, t.loadEditOrderError));
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingEditOrder(false);
+        }
+      }
+    }
+
+    void loadEditableOrder();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [editOrderId, t.loadEditOrderError, t.orderCannotEdit]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -196,10 +311,18 @@ export default function NewOrderPage() {
 
   function handlePrev() {
     setError("");
+    if (isEditingOrder && stepIndex <= 1) {
+      return;
+    }
+
     setStepIndex((i) => Math.max(i - 1, 0));
   }
 
   function handleJump(targetIndex) {
+    if (isEditingOrder && targetIndex === 0) {
+      return;
+    }
+
     if (targetIndex < stepIndex) {
       setError("");
       setStepIndex(targetIndex);
@@ -207,6 +330,10 @@ export default function NewOrderPage() {
   }
 
   function handleChangeSupplier(nextId) {
+    if (isEditingOrder) {
+      return;
+    }
+
     setSupplierId(nextId);
     setQuantities({});
   }
@@ -228,17 +355,37 @@ export default function NewOrderPage() {
       );
       return;
     }
+
+    const previewWindow = window.open("about:blank", "_blank");
+    if (previewWindow) {
+      previewWindow.opener = null;
+    }
+
     try {
       setSubmitting(true);
       setError("");
-      await createPurchaseOrder({ deliveryDate, quantities });
+      const savedOrder = isEditingOrder
+        ? await updatePurchaseOrder(editOrderId, { deliveryDate, quantities })
+        : await createPurchaseOrder({ deliveryDate, quantities });
+
+      try {
+        await openPurchaseOrderPdf(savedOrder.id, previewWindow);
+      } catch (pdfError) {
+        setError(resolveErrorMessage(pdfError, t.pdfOpenError));
+      }
+
       setSubmitting(false);
       setToastOpen(true);
-      setSupplierId(null);
-      setQuantities({});
-      setDeliveryDate(getDefaultDeliveryDate());
-      setStepIndex(0);
+      if (!isEditingOrder) {
+        setSupplierId(null);
+        setQuantities({});
+        setDeliveryDate(getDefaultDeliveryDate());
+        setStepIndex(0);
+      }
     } catch (nextError) {
+      if (previewWindow) {
+        previewWindow.close();
+      }
       setError(resolveErrorMessage(nextError, t.submitError));
       setSubmitting(false);
     }
@@ -301,16 +448,26 @@ export default function NewOrderPage() {
       >
         <p className={styles.kicker}>
           <span className={styles.kickerDot} />
-          {t.kicker}
+          {isEditingOrder ? t.editKicker : t.kicker}
         </p>
 
         <h1 className={styles.title}>
-          {t.title}
-          <span className={styles.titleEm}>{t.titleEm}</span>
-          {t.titleSuffix}
+          {isEditingOrder ? t.editTitle : t.title}
+          <span className={styles.titleEm}>
+            {isEditingOrder ? t.editTitleEm : t.titleEm}
+          </span>
+          {isEditingOrder ? t.editTitleSuffix : t.titleSuffix}
         </h1>
 
-        <p className={styles.lede}>{t.lede}</p>
+        <p className={styles.lede}>
+          {isEditingOrder
+            ? t.editLede.replace("{number}", editingOrderNumber || editOrderId)
+            : t.lede}
+        </p>
+
+        {isLoadingEditOrder ? (
+          <div className={styles.statePanel}>{t.loadingEditOrder}</div>
+        ) : null}
 
         <OrderStepper
           steps={t.steps}
@@ -332,6 +489,7 @@ export default function NewOrderPage() {
               loadError={suppliersError}
               selectedId={supplierId}
               onSelect={handleChangeSupplier}
+              disabled={isEditingOrder}
               copy={t}
             />
           ) : null}
@@ -375,7 +533,7 @@ export default function NewOrderPage() {
             type="button"
             className={`${styles.btn} ${styles.btnGhost}`}
             onClick={handlePrev}
-            disabled={stepIndex === 0 || submitting}
+            disabled={stepIndex === 0 || (isEditingOrder && stepIndex <= 1) || submitting}
           >
             {t.prev}
           </button>
@@ -389,7 +547,13 @@ export default function NewOrderPage() {
               onClick={handleSubmit}
               disabled={submitting}
             >
-              {submitting ? t.submitting : t.submit}
+              {submitting
+                ? isEditingOrder
+                  ? t.updating
+                  : t.submitting
+                : isEditingOrder
+                  ? t.updateOrder
+                  : t.submit}
             </button>
           ) : (
             <button
@@ -415,8 +579,8 @@ export default function NewOrderPage() {
 
       <OrderToast
         open={toastOpen}
-        title={t.toastTitle}
-        body={t.toastBody}
+        title={isEditingOrder ? t.updateToastTitle : t.toastTitle}
+        body={isEditingOrder ? t.updateToastBody : t.toastBody}
         closeLabel={t.toastClose}
         onClose={() => setToastOpen(false)}
       />

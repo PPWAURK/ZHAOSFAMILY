@@ -238,12 +238,29 @@ export function getOrderProductVariants(product: OrderProduct): OrderProductVari
       ];
 }
 
-function resolveOrderPdfUrl(pdfUrl: string): string {
+export function resolveOrderPdfUrl(pdfUrl: string): string {
   if (/^https?:\/\//i.test(pdfUrl)) {
-    return pdfUrl;
+    return normalizeOrderPdfProtocol(pdfUrl);
   }
 
   return new URL(pdfUrl, MOBILE_API_URL).toString();
+}
+
+function normalizeOrderPdfProtocol(pdfUrl: string): string {
+  try {
+    const orderPdfUrl = new URL(pdfUrl);
+    const apiUrl = new URL(MOBILE_API_URL);
+    const apiUsesHttps = apiUrl.protocol === "https:";
+    const sameApiHost = orderPdfUrl.host === apiUrl.host;
+
+    if (apiUsesHttps && sameApiHost && orderPdfUrl.protocol === "http:") {
+      orderPdfUrl.protocol = "https:";
+    }
+
+    return orderPdfUrl.toString();
+  } catch {
+    return pdfUrl;
+  }
 }
 
 function buildOrderPdfCacheDirectoryName(): string {

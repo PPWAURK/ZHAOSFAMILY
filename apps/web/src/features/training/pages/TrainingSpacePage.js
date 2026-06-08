@@ -14,20 +14,23 @@ import {
 import {
   TRAINING_POSITION_MANAGE_PERMISSION,
 } from "@/features/training/utils/trainingPositions";
+import {
+  formatJobRoleLabel,
+  getStoreJobRoleGroups,
+  normalizeJobRoleValues,
+} from "@/shared/constants/job-roles";
 
 const TRAINING_STORE_PROGRESS_PERMISSION = "training.progress.view_store";
 const EMPLOYEE_JOB_ROLE_MANAGE_PERMISSION = "employee.job_role.manage_store";
-const STORE_JOB_ROLE_OPTIONS = [
-  ["front-of-house", "前厅"],
-  ["back-of-house", "后厨"],
-  ["cash", "收银"],
-  ["all-rounder", "通岗"],
-  ["store-manager", "店长"],
-  ["regional-manager", "区域经理"],
-];
-const STORE_JOB_ROLE_VALUES = new Set(
-  STORE_JOB_ROLE_OPTIONS.map(([value]) => value),
-);
+const ORGANIZATION_JOB_ROLE_VALUES = new Set([
+  "holding",
+  "regional-manager",
+  "store-manager",
+  "front-manager",
+  "back-manager",
+  "front-assistant",
+  "back-assistant",
+]);
 
 function getUserRoleValues(user) {
   return `${user?.jobRole || ""}`
@@ -41,6 +44,12 @@ function getJobRoleValues(jobRole) {
     .split(",")
     .map((role) => role.trim())
     .filter(Boolean);
+}
+
+function canEditStoreJobRoles(jobRole) {
+  return !getJobRoleValues(jobRole).some((role) =>
+    ORGANIZATION_JOB_ROLE_VALUES.has(role),
+  );
 }
 
 const COURSE_GLYPHS = {
@@ -120,6 +129,7 @@ export default function TrainingSpacePage() {
   const [storeProgressError, setStoreProgressError] = useState("");
   const [draftJobRolesByUserId, setDraftJobRolesByUserId] = useState({});
   const [savingJobRoleUserId, setSavingJobRoleUserId] = useState(null);
+  const storeJobRoleGroups = getStoreJobRoleGroups("zh");
 
   const roleValues = getUserRoleValues(user);
   const isHoldingUser = roleValues.includes("holding");
@@ -192,7 +202,7 @@ export default function TrainingSpacePage() {
       const selectedRoles = current[userId] || [];
       const nextRoles = selectedRoles.includes(roleValue)
         ? selectedRoles.filter((item) => item !== roleValue)
-        : [...selectedRoles, roleValue];
+        : normalizeJobRoleValues([...selectedRoles, roleValue]);
 
       return {
         ...current,
@@ -220,7 +230,7 @@ export default function TrainingSpacePage() {
         Object.fromEntries(
           (nextStoreProgress.users || []).map((employee) => [
             employee.userId,
-            getJobRoleValues(employee.jobRole),
+            normalizeJobRoleValues(getJobRoleValues(employee.jobRole)),
           ]),
         ),
       );
@@ -401,14 +411,14 @@ export default function TrainingSpacePage() {
                           {filteredStoreUsers.map((employee) => {
                             const selectedRoles =
                               draftJobRolesByUserId[employee.userId] ||
-                              getJobRoleValues(employee.jobRole);
+                              normalizeJobRoleValues(
+                                getJobRoleValues(employee.jobRole),
+                              );
                             const isSaving =
                               savingJobRoleUserId === employee.userId;
                             const canEditEmployeeJobRoles =
                               canManageStoreJobRoles &&
-                              selectedRoles.every((role) =>
-                                STORE_JOB_ROLE_VALUES.has(role),
-                              );
+                              canEditStoreJobRoles(employee.jobRole);
 
                             return (
                               <tr key={employee.userId}>
@@ -419,41 +429,51 @@ export default function TrainingSpacePage() {
                                 <td>
                                   {canEditEmployeeJobRoles ? (
                                     <div className={styles.jobRoleEditor}>
-                                      {STORE_JOB_ROLE_OPTIONS.map(
-                                        ([value, label]) => {
-                                          const isSelected =
-                                            selectedRoles.includes(value);
+                                      {storeJobRoleGroups.map((group) => (
+                                        <div
+                                          className={styles.jobRoleGroup}
+                                          key={group.id}
+                                        >
+                                          <span>{group.label}</span>
+                                          <div className={styles.jobRolePillRow}>
+                                            {group.options.map((option) => {
+                                              const isSelected =
+                                                selectedRoles.includes(
+                                                  option.value,
+                                                );
 
-                                          return (
-                                            <button
-                                              key={value}
-                                              type="button"
-                                              className={`${styles.jobRolePill} ${
-                                                isSelected
-                                                  ? styles.jobRolePillActive
-                                                  : ""
-                                              }`}
-                                              disabled={isSaving}
-                                              onClick={() =>
-                                                updateDraftJobRoles(
-                                                  employee.userId,
-                                                  value,
-                                                )
-                                              }
-                                            >
-                                              {label}
-                                            </button>
-                                          );
-                                        },
-                                      )}
+                                              return (
+                                                <button
+                                                  key={option.value}
+                                                  type="button"
+                                                  className={`${styles.jobRolePill} ${
+                                                    isSelected
+                                                      ? styles.jobRolePillActive
+                                                      : ""
+                                                  }`}
+                                                  disabled={isSaving}
+                                                  onClick={() =>
+                                                    updateDraftJobRoles(
+                                                      employee.userId,
+                                                      option.value,
+                                                    )
+                                                  }
+                                                >
+                                                  {option.label}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      ))}
                                     </div>
                                   ) : canManageStoreJobRoles ? (
                                     <span className={styles.jobRoleReadOnly}>
-                                      {employee.jobRole || "-"}
+                                      {formatJobRoleLabel(employee.jobRole, "zh")}
                                       <small>非门店岗位由总部管理</small>
                                     </span>
                                   ) : (
-                                    employee.jobRole || "-"
+                                    formatJobRoleLabel(employee.jobRole, "zh")
                                   )}
                                 </td>
                                 <td>

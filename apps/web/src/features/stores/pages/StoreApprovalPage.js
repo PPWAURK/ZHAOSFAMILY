@@ -16,11 +16,17 @@ import {
   updatePermissionUserApproval,
   updatePermissionUserJobRole,
 } from "@/features/permissions/services/permissionsApi";
-import {
-  STORE_JOB_ROLE_OPTIONS,
-  STORES_COPY,
-} from "@/features/stores/constants/stores-copy";
+import { STORES_COPY } from "@/features/stores/constants/stores-copy";
 import { fetchStoresPageStores } from "@/features/stores/services/restaurantsApi";
+import {
+  formatJobRoleLabel,
+  getOrganizationJobRoleGroups,
+  getStoreJobRoleGroups,
+  normalizeJobRoleString,
+  normalizeJobRoleValues,
+  parseJobRoleValues,
+} from "@/shared/constants/job-roles";
+import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
 
 function getStoreIdParam(params) {
@@ -44,13 +50,8 @@ function formatStatus(status, labels) {
 function getDefaultReviewDraft(user, storeId) {
   return {
     restaurantId: String(user.restaurant?.id ?? storeId),
-    jobRole: user.jobRole || "",
+    jobRole: normalizeJobRoleString(user.jobRole),
   };
-}
-
-function getRoleLabel(jobRole, roleOptions) {
-  const roleOption = roleOptions.find((option) => option.value === jobRole);
-  return roleOption?.label || jobRole || "-";
 }
 
 function getJobRoleValues(user) {
@@ -69,7 +70,16 @@ function canManageHoldingJobRole(user) {
   );
 }
 
-function ApprovalSelect({ ariaLabel, disabled, onChange, options, value }) {
+function toggleJobRoleValue(jobRole, value) {
+  const values = parseJobRoleValues(jobRole);
+  const nextValues = values.includes(value)
+    ? values.filter((item) => item !== value)
+    : [...values, value];
+
+  return normalizeJobRoleValues(nextValues).join(",");
+}
+
+function StoreSelect({ ariaLabel, disabled, onChange, options, value }) {
   return (
     <select
       aria-label={ariaLabel}
@@ -87,6 +97,42 @@ function ApprovalSelect({ ariaLabel, disabled, onChange, options, value }) {
   );
 }
 
+function JobRoleGroupPicker({ disabled, groups, labels, onChange, value }) {
+  const selectedValues = parseJobRoleValues(value);
+
+  return (
+    <div className={styles.jobRoleGroupPicker}>
+      {groups.map((group) => (
+        <div className={styles.jobRoleGroup} key={group.id}>
+          <span className={styles.jobRoleGroupLabel}>{group.label}</span>
+          <div className={styles.jobRoleOptionGrid}>
+            {group.options.map((option) => {
+              const isSelected = selectedValues.includes(option.value);
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  aria-label={`${labels.selectJobRole}: ${option.label}`}
+                  className={`${styles.jobRoleOption} ${
+                    isSelected ? styles.jobRoleOptionSelected : ""
+                  }`}
+                  disabled={disabled}
+                  onClick={() => onChange(toggleJobRoleValue(value, option.value))}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PendingUserTable({
   drafts,
   emptyText,
@@ -94,7 +140,7 @@ function PendingUserTable({
   onPatchDraft,
   onReviewUser,
   reviewingUserId,
-  roleOptions,
+  roleGroups,
   stores,
   users,
 }) {
@@ -125,7 +171,7 @@ function PendingUserTable({
                 <td>{user.name || "-"}</td>
                 <td>{user.email || "-"}</td>
                 <td>
-                  <ApprovalSelect
+                  <StoreSelect
                     ariaLabel={labels.selectStore}
                     disabled={isReviewing}
                     value={draft.restaurantId}
@@ -139,14 +185,11 @@ function PendingUserTable({
                   />
                 </td>
                 <td>
-                  <ApprovalSelect
-                    ariaLabel={labels.selectJobRole}
+                  <JobRoleGroupPicker
                     disabled={isReviewing}
+                    groups={roleGroups}
+                    labels={labels}
                     value={draft.jobRole}
-                    options={[
-                      { value: "", label: labels.selectJobRole },
-                      ...roleOptions,
-                    ]}
                     onChange={(value) => onPatchDraft(user.id, { jobRole: value })}
                   />
                 </td>
@@ -182,10 +225,11 @@ function PendingUserTable({
 
 function TeamUserTable({
   emptyText,
+  lang,
   labels,
   onPatchTeamDraft,
   onSaveJobRole,
-  roleOptions,
+  roleGroups,
   savingUserId,
   teamDrafts,
   users,
@@ -208,10 +252,13 @@ function TeamUserTable({
         </thead>
         <tbody>
           {users.map((user) => {
-            const draftJobRole = teamDrafts[String(user.id)] ?? user.jobRole ?? "";
+            const draftJobRole =
+              teamDrafts[String(user.id)] ?? normalizeJobRoleString(user.jobRole);
             const isApproved = user.accountStatus === "approved";
             const isSaving = savingUserId === user.id;
-            const hasChanged = draftJobRole !== (user.jobRole ?? "");
+            const hasChanged =
+              normalizeJobRoleString(draftJobRole) !==
+              normalizeJobRoleString(user.jobRole);
 
             return (
               <tr key={user.id}>
@@ -219,15 +266,15 @@ function TeamUserTable({
                 <td>{user.email || "-"}</td>
                 <td>
                   {isApproved ? (
-                    <ApprovalSelect
-                      ariaLabel={labels.selectJobRole}
+                    <JobRoleGroupPicker
                       disabled={isSaving}
+                      groups={roleGroups}
+                      labels={labels}
                       value={draftJobRole}
-                      options={roleOptions}
                       onChange={(value) => onPatchTeamDraft(user.id, value)}
                     />
                   ) : (
-                    getRoleLabel(user.jobRole, roleOptions)
+                    formatJobRoleLabel(user.jobRole, lang)
                   )}
                 </td>
                 <td>{formatStatus(user.accountStatus, labels)}</td>
@@ -258,7 +305,7 @@ export default function StoreApprovalPage() {
   const { user } = useAuth();
   const params = useParams();
   const storeId = getStoreIdParam(params);
-  const [lang, setLang] = useState("zh");
+  const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [store, setStore] = useState(null);
   const [stores, setStores] = useState([]);
@@ -273,9 +320,9 @@ export default function StoreApprovalPage() {
 
   const t = STORES_COPY[lang];
   const page = t.approval;
-  const roleOptions = canManageHoldingJobRole(user)
-    ? STORE_JOB_ROLE_OPTIONS[lang]
-    : STORE_JOB_ROLE_OPTIONS[lang].filter((option) => option.value !== "holding");
+  const roleGroups = canManageHoldingJobRole(user)
+    ? getOrganizationJobRoleGroups(lang)
+    : getStoreJobRoleGroups(lang);
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
 
   const storeUsers = useMemo(
@@ -320,7 +367,7 @@ export default function StoreApprovalPage() {
           }
 
           if (user.accountStatus === "approved") {
-            nextTeamDrafts[String(user.id)] = user.jobRole || "";
+            nextTeamDrafts[String(user.id)] = normalizeJobRoleString(user.jobRole);
           }
         });
 
@@ -404,7 +451,7 @@ export default function StoreApprovalPage() {
       if (updatedUser.accountStatus === "approved") {
         setTeamDrafts((current) => ({
           ...current,
-          [String(updatedUser.id)]: updatedUser.jobRole || "",
+          [String(updatedUser.id)]: normalizeJobRoleString(updatedUser.jobRole),
         }));
       }
     } catch (error) {
@@ -438,7 +485,7 @@ export default function StoreApprovalPage() {
       );
       setTeamDrafts((current) => ({
         ...current,
-        [String(updatedUser.id)]: updatedUser.jobRole || "",
+        [String(updatedUser.id)]: normalizeJobRoleString(updatedUser.jobRole),
       }));
       setSuccessMessage(page.roleSaved);
     } catch (error) {
@@ -558,7 +605,7 @@ export default function StoreApprovalPage() {
               emptyText={page.noPending}
               labels={page}
               reviewingUserId={reviewingUserId}
-              roleOptions={roleOptions}
+              roleGroups={roleGroups}
               stores={stores}
               users={pendingUsers}
               onPatchDraft={patchReviewDraft}
@@ -571,8 +618,9 @@ export default function StoreApprovalPage() {
             </p>
             <TeamUserTable
               emptyText={page.noTeam}
+              lang={lang}
               labels={page}
-              roleOptions={roleOptions}
+              roleGroups={roleGroups}
               savingUserId={savingUserId}
               teamDrafts={teamDrafts}
               users={storeUsers}

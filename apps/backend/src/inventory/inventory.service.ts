@@ -13,6 +13,7 @@ export type InventoryLineItem = {
   category: string;
   nameCn: string;
   designationFr: string | null;
+  image: string | null;
   unit: string | null;
   specification: string | null;
   stock: number;
@@ -104,6 +105,7 @@ export class InventoryService {
         category: true,
         nameCn: true,
         designationFr: true,
+        image: true,
         unit: true,
         specification: true,
       },
@@ -130,6 +132,7 @@ export class InventoryService {
       category: fixMojibake(p.category),
       nameCn: fixMojibake(p.nameCn),
       designationFr: fixMojibake(p.designationFr),
+      image: p.image,
       unit: fixMojibake(p.unit),
       specification: fixMojibake(p.specification),
       stock: stockMap.get(p.id.toString()) ?? 0,

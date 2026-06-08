@@ -130,6 +130,10 @@ export async function updateTrainingPosition(
   );
 }
 
+export async function deleteTrainingPosition(code: string): Promise<unknown> {
+  return apiClient.delete(`/training/positions/${encodeURIComponent(code)}`);
+}
+
 export function getTrainingMediaUrl(objectKey: string): string {
   return `${API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
 }

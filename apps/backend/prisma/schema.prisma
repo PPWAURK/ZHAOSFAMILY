@@ -40,6 +40,8 @@ model User {
   trainingProgress  TrainingMaterialProgress[]
   dashboardPosts    DashboardPost[]            @relation("DashboardPostAuthor")
   refreshSessions   RefreshSession[]
+  createdRecruitmentRequests RecruitmentRequest[] @relation("RecruitmentRequestCreatedBy")
+  handledRecruitmentRequests RecruitmentRequest[] @relation("RecruitmentRequestHandledBy")
 
   @@index([restaurantId])
   @@index([accountStatus])
@@ -123,6 +125,7 @@ model Restaurant {
   purchaseOrders  PurchaseOrder[]
   purchaseReturns PurchaseReturn[]
   dashboardPosts  DashboardPost[]
+  recruitmentRequests RecruitmentRequest[]
 
   @@map("restaurants")
 }
@@ -363,6 +366,31 @@ model DashboardPost {
   @@index([restaurantId, createdAt])
   @@index([authorId])
   @@map("dashboard_posts")
+}
+
+model RecruitmentRequest {
+  id              Int        @id @default(autoincrement())
+  restaurantId    Int        @map("restaurant_id")
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  createdByUserId Int        @map("created_by_user_id")
+  createdByUser   User       @relation("RecruitmentRequestCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  contractType    String     @map("contract_type") @db.VarChar(20)
+  position        String     @db.VarChar(40)
+  headcount       Int
+  notes           String?    @db.Text
+  status          String     @default("pending") @db.VarChar(20)
+  handledNotes    String?    @map("handled_notes") @db.Text
+  handledByUserId Int?       @map("handled_by_user_id")
+  handledByUser   User?      @relation("RecruitmentRequestHandledBy", fields: [handledByUserId], references: [id], onDelete: Restrict)
+  handledAt       DateTime?  @map("handled_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([restaurantId, createdAt])
+  @@index([createdByUserId])
+  @@index([handledByUserId])
+  @@map("recruitment_requests")
 }
 
 model LegacyDocument {

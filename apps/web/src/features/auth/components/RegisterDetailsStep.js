@@ -1,5 +1,6 @@
 "use client";
 
+import { getStoreJobRoleGroups } from "@/shared/constants/job-roles";
 import styles from "@/features/auth/auth-page.module.css";
 
 function buildAvatarFallback(name) {
@@ -29,10 +30,25 @@ function getTodayInputValue() {
 }
 
 function openDatePicker(event) {
-  event.currentTarget.showPicker?.();
+  const input = event.currentTarget;
+
+  if (typeof input.showPicker !== "function") {
+    return;
+  }
+
+  try {
+    input.showPicker();
+  } catch (error) {
+    if (error?.name === "NotAllowedError") {
+      return;
+    }
+
+    throw error;
+  }
 }
 
 export default function RegisterDetailsStep({
+  lang,
   t,
   selectedStore,
   extraDetails,
@@ -49,6 +65,7 @@ export default function RegisterDetailsStep({
 }) {
   const avatarFallback = buildAvatarFallback(memberName);
   const maxBirthday = getTodayInputValue();
+  const jobRoleGroups = getStoreJobRoleGroups(lang);
   const panelTitle = isSubmitSuccessful
     ? t.detailsSuccessTitle
     : submitError
@@ -142,7 +159,6 @@ export default function RegisterDetailsStep({
               value={extraDetails.birthday}
               disabled={isFormDisabled}
               onClick={openDatePicker}
-              onFocus={openDatePicker}
               onChange={(event) => onChangeExtraDetail("birthday", event.target.value)}
             />
           </div>
@@ -153,32 +169,40 @@ export default function RegisterDetailsStep({
         <div className={styles.fieldCol}>
           <span className={styles.fieldLabel}>{t.labelJobRole}</span>
           <div
-            className={styles.roleOptionGrid}
-            role="radiogroup"
+            className={styles.roleGroupStack}
+            role="group"
             aria-label={t.labelJobRole}
           >
-            {t.roleOptions.map((roleOption) => {
-              const isSelected = (extraDetails.roles || []).includes(roleOption.value);
+            {jobRoleGroups.map((group) => (
+              <div className={styles.roleGroup} key={group.id}>
+                <span className={styles.roleGroupLabel}>{group.label}</span>
+                <div className={styles.roleOptionGrid}>
+                  {group.options.map((roleOption) => {
+                    const isSelected = (extraDetails.roles || []).includes(
+                      roleOption.value,
+                    );
 
-              return (
-                <button
-                  key={roleOption.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  disabled={isFormDisabled}
-                  className={`${styles.roleOption} ${
-                    isSelected ? styles.roleOptionSelected : ""
-                  }`}
-                  onClick={() => onToggleRole(roleOption.value)}
-                >
-                  <span className={styles.roleOptionLabel}>{roleOption.label}</span>
-                  <span className={styles.roleOptionDescription}>
-                    {roleOption.description}
-                  </span>
-                </button>
-              );
-            })}
+                    return (
+                      <button
+                        key={roleOption.value}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        disabled={isFormDisabled}
+                        className={`${styles.roleOption} ${
+                          isSelected ? styles.roleOptionSelected : ""
+                        }`}
+                        onClick={() => onToggleRole(roleOption.value)}
+                      >
+                        <span className={styles.roleOptionLabel}>
+                          {roleOption.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

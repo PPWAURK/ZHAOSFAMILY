@@ -171,6 +171,11 @@ export default function DashboardNewsModule({ lang, copy }) {
   const [deleteState, setDeleteState] = useState({ postId: "", message: "" });
   const [notificationPosts, setNotificationPosts] = useState([]);
   const [hasCheckedNotifications, setHasCheckedNotifications] = useState(false);
+  const [activePostIndexByColumn, setActivePostIndexByColumn] = useState({
+    news: 0,
+    congrats: 0,
+    issues: 0,
+  });
   const canPublish = `${user?.jobRole || ""}`.toLowerCase() === HOLDING_JOB_ROLE;
 
   async function loadPosts() {
@@ -280,6 +285,36 @@ export default function DashboardNewsModule({ lang, copy }) {
     () => groupPostsByColumn(visiblePosts),
     [visiblePosts],
   );
+
+  useEffect(() => {
+    setActivePostIndexByColumn((prev) =>
+      Object.fromEntries(
+        Object.entries(postsByColumn).map(([columnKey, columnPosts]) => {
+          const maxIndex = Math.max(columnPosts.length - 1, 0);
+          return [columnKey, Math.min(prev[columnKey] || 0, maxIndex)];
+        }),
+      ),
+    );
+  }, [postsByColumn]);
+
+  function moveColumnPost(columnKey, direction) {
+    const columnPosts = postsByColumn[columnKey] || [];
+
+    if (columnPosts.length <= 1) {
+      return;
+    }
+
+    setActivePostIndexByColumn((prev) => {
+      const currentIndex = prev[columnKey] || 0;
+      const nextIndex =
+        (currentIndex + direction + columnPosts.length) % columnPosts.length;
+
+      return {
+        ...prev,
+        [columnKey]: nextIndex,
+      };
+    });
+  }
 
   function updateForm(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -740,6 +775,8 @@ export default function DashboardNewsModule({ lang, copy }) {
       <div className={styles.newsBoard}>
         {Object.entries(copy.columns).map(([columnKey, columnMeta], columnIndex) => {
           const columnPosts = postsByColumn[columnKey];
+          const activeIndex = activePostIndexByColumn[columnKey] || 0;
+          const activePost = columnPosts[activeIndex] || null;
 
           return (
             <section key={columnKey} className={styles.newsColumn}>
@@ -756,6 +793,31 @@ export default function DashboardNewsModule({ lang, copy }) {
                 </p>
               </div>
 
+              <div className={styles.newsCarouselControls}>
+                <button
+                  type="button"
+                  className={styles.newsCarouselArrow}
+                  onClick={() => moveColumnPost(columnKey, -1)}
+                  disabled={columnPosts.length <= 1}
+                  aria-label={`${columnMeta.title} previous`}
+                >
+                  ←
+                </button>
+                <span className={styles.newsCarouselProgress}>
+                  {columnPosts.length > 0 ? activeIndex + 1 : 0} /{" "}
+                  {columnPosts.length}
+                </span>
+                <button
+                  type="button"
+                  className={styles.newsCarouselArrow}
+                  onClick={() => moveColumnPost(columnKey, 1)}
+                  disabled={columnPosts.length <= 1}
+                  aria-label={`${columnMeta.title} next`}
+                >
+                  →
+                </button>
+              </div>
+
               <div className={styles.newsCardList}>
                 {isLoading ? <div className={styles.newsEmpty}>{copy.loading}</div> : null}
 
@@ -763,57 +825,56 @@ export default function DashboardNewsModule({ lang, copy }) {
                   <div className={styles.newsEmpty}>{copy.empty}</div>
                 ) : null}
 
-                {!isLoading
-                  ? columnPosts.map((post, itemIndex) => (
+                {!isLoading && activePost ? (
                       <motion.article
-                        key={post.id}
+                        key={activePost.id}
                         className={styles.newsCard}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{
                           duration: 0.4,
-                          delay: 0.05 * (columnIndex + itemIndex),
+                          delay: 0.05 * columnIndex,
                           ease: [0.22, 1, 0.36, 1],
                         }}
                       >
                         <div className={styles.newsCardMetaTop}>
                           <div className={styles.newsCardMetaBlock}>
                             <p className={styles.newsMiniMeta}>
-                              {copy.dateLabel} · {formatDate(post.createdAt)}
+                              {copy.dateLabel} · {formatDate(activePost.createdAt)}
                             </p>
-                            <h4 className={styles.newsCardTitle}>{post.title}</h4>
+                            <h4 className={styles.newsCardTitle}>{activePost.title}</h4>
                             <p className={styles.newsAuthorLine}>
-                              {copy.byLabel} · {post.author.name}
+                              {copy.byLabel} · {activePost.author.name}
                             </p>
                           </div>
 
                           <span
                             className={`${styles.visibilityBadge} ${
-                              styles[`visibility${post.visibility}`]
+                              styles[`visibility${activePost.visibility}`]
                             }`}
                           >
-                            {copy.visibility[post.visibility]}
+                            {copy.visibility[activePost.visibility]}
                           </span>
                         </div>
 
-                        <p className={styles.newsCardContent}>{post.summary}</p>
+                        <p className={styles.newsCardContent}>{activePost.summary}</p>
 
                         <div className={styles.newsMetaGrid}>
                           <span>
                             {copy.filters.category} ·{" "}
-                            {getPostCategoryLabel(copy, post.category)}
+                            {getPostCategoryLabel(copy, activePost.category)}
                           </span>
                           <span>
-                            {copy.reader.storeLabel} · {post.restaurantName || "-"}
+                            {copy.reader.storeLabel} · {activePost.restaurantName || "-"}
                           </span>
                           <span>
                             {copy.attachmentLabel} ·{" "}
-                            {post.attachment ? post.attachment.name : "-"}
+                            {activePost.attachment ? activePost.attachment.name : "-"}
                           </span>
                         </div>
 
                         <div className={styles.newsTags}>
-                          {post.tags.map((tag) => (
+                          {activePost.tags.map((tag) => (
                             <span key={tag} className={styles.newsTag}>
                               #{tag}
                             </span>
@@ -823,42 +884,41 @@ export default function DashboardNewsModule({ lang, copy }) {
                         <button
                           type="button"
                           className={styles.readButton}
-                          onClick={() => handleOpenPost(post.id)}
+                          onClick={() => handleOpenPost(activePost.id)}
                         >
                           {copy.reader.open}
                           <span aria-hidden="true">→</span>
                         </button>
 
-                        {post.attachment ? (
+                        {activePost.attachment ? (
                           <a
-                            href={post.attachment.href}
+                            href={activePost.attachment.href}
                             className={styles.attachmentCard}
                             target="_blank"
                             rel="noreferrer"
                           >
                             <div>
-                              <strong>{post.attachment.name}</strong>
+                              <strong>{activePost.attachment.name}</strong>
                               <small>
-                                {Math.ceil(post.attachment.sizeBytes / 1024)} KB
+                                {Math.ceil(activePost.attachment.sizeBytes / 1024)} KB
                               </small>
                             </div>
                             <span aria-hidden="true">→</span>
                           </a>
                         ) : null}
 
-                        {post.canDelete ? (
+                        {activePost.canDelete ? (
                           <button
                             type="button"
                             className={styles.deleteButton}
-                            disabled={deleteState.postId === post.id}
-                            onClick={() => handleDeletePost(post.id)}
+                            disabled={deleteState.postId === activePost.id}
+                            onClick={() => handleDeletePost(activePost.id)}
                           >
                             {copy.reader.delete}
                           </button>
                         ) : null}
                       </motion.article>
-                    ))
-                  : null}
+                    ) : null}
               </div>
             </section>
           );

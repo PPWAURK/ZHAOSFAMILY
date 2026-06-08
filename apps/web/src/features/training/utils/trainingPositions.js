@@ -2,25 +2,99 @@ import { TRAINING_POSITIONS } from "@/features/training/constants/training-copy"
 
 export const TRAINING_POSITION_MANAGE_PERMISSION = "training.position.manage";
 
-export const DEFAULT_TRAINING_POSITION_TREE = TRAINING_POSITIONS.map((position) => ({
-  code: position.id,
-  name: {
-    zh: position.name,
-    en: position.en,
-    fr: position.en,
-  },
-  parentCode: null,
-  isActive: true,
-  sortOrder: Number(position.code?.replace("POS-", "")) || 0,
-  desc: position.desc,
-  children: [],
-}));
+function toDefaultTrainingPosition(position) {
+  return {
+    code: position.id,
+    name: {
+      zh: position.name,
+      en: position.en,
+      fr: position.fr || position.en,
+    },
+    parentCode: position.parentCode || null,
+    isActive: true,
+    sortOrder: Number(position.code?.replace("POS-", "")) || 0,
+    desc: position.desc,
+    children: [],
+  };
+}
+
+function buildDefaultTrainingPositionTree(positions) {
+  const nodes = new Map(
+    positions.map((position) => [position.id, toDefaultTrainingPosition(position)]),
+  );
+  const roots = [];
+
+  for (const node of nodes.values()) {
+    if (node.parentCode && nodes.has(node.parentCode)) {
+      nodes.get(node.parentCode).children.push(node);
+      continue;
+    }
+
+    roots.push(node);
+  }
+
+  return roots;
+}
+
+export const DEFAULT_TRAINING_POSITION_TREE =
+  buildDefaultTrainingPositionTree(TRAINING_POSITIONS);
+
+const JOB_ROLE_POSITION_CODE_BY_ROLE = new Map([
+  ["front-host", "FRONT_HOST"],
+  ["front-cashier", "FRONT_CASHIER"],
+  ["front-server", "FRONT_SERVER"],
+  ["front-packer", "FRONT_PACKER"],
+  ["front-bar", "FRONT_BAR"],
+  ["back-dishwasher", "BACK_DISHWASHER"],
+  ["back-noodle", "BACK_NOODLE"],
+  ["back-hot-appetizer", "BACK_HOT_APPETIZER"],
+  ["back-cold-appetizer", "BACK_COLD_APPETIZER"],
+  ["back-rice", "BACK_RICE"],
+]);
 
 export function flattenTrainingPositions(positions) {
   return positions.flatMap((position) => [
     position,
     ...flattenTrainingPositions(position.children || []),
   ]);
+}
+
+function cloneTrainingPosition(position) {
+  return {
+    ...position,
+    name: { ...(position.name || {}) },
+    children: (position.children || []).map(cloneTrainingPosition),
+  };
+}
+
+export function mergeDefaultTrainingPositions(positions) {
+  const positionsByCode = new Map();
+
+  for (const position of [
+    ...flattenTrainingPositions(DEFAULT_TRAINING_POSITION_TREE),
+    ...flattenTrainingPositions(positions || []),
+  ]) {
+    const current = positionsByCode.get(position.code);
+
+    positionsByCode.set(position.code, {
+      ...cloneTrainingPosition(current || position),
+      ...cloneTrainingPosition(position),
+      children: [],
+    });
+  }
+
+  const roots = [];
+
+  for (const node of positionsByCode.values()) {
+    if (node.parentCode && positionsByCode.has(node.parentCode)) {
+      positionsByCode.get(node.parentCode).children.push(node);
+      continue;
+    }
+
+    roots.push(node);
+  }
+
+  return roots.sort((left, right) => left.sortOrder - right.sortOrder);
 }
 
 export function getTrainingPositionLabel(position, lang = "zh") {
@@ -82,8 +156,23 @@ export function getUserTrainingPositionCodes(user, positions) {
   const codes = new Set();
 
   getRoleValues(user).forEach((roleValue) => {
-    const explicitPosition = findTrainingPosition(positions, roleValue.toUpperCase());
     const role = roleValue.toLowerCase();
+    const mappedPositionCode = JOB_ROLE_POSITION_CODE_BY_ROLE.get(role);
+    const mappedPosition = mappedPositionCode
+      ? findTrainingPosition(positions, mappedPositionCode)
+      : null;
+    const explicitPosition = findTrainingPosition(positions, roleValue.toUpperCase());
+
+    if (mappedPosition?.parentCode) {
+      codes.add(mappedPosition.code);
+      codes.add(mappedPosition.parentCode);
+      return;
+    }
+
+    if (mappedPosition?.code) {
+      codes.add(mappedPosition.code);
+      return;
+    }
 
     if (role.includes("holding") || role.includes("headquarter") || role.includes("hq")) {
       codes.add("HOLDING");
@@ -109,12 +198,23 @@ export function getUserTrainingPositionCodes(user, positions) {
       return;
     }
 
-    if (role.includes("kitchen") || role.includes("boh") || role.includes("chef")) {
+    if (
+      role.includes("kitchen") ||
+      role.includes("boh") ||
+      role.includes("chef") ||
+      role.includes("back-of-house") ||
+      role.includes("back-assistant") ||
+      role.includes("back-dishwasher") ||
+      role.includes("back-noodle") ||
+      role.includes("back-hot-appetizer") ||
+      role.includes("back-cold-appetizer") ||
+      role.includes("back-rice")
+    ) {
       codes.add("BOH");
       return;
     }
 
-    if (role.includes("cash")) {
+    if (role === "cash") {
       codes.add("CASH");
       return;
     }
@@ -131,7 +231,15 @@ export function getUserTrainingPositionCodes(user, positions) {
       return;
     }
 
-    if (role.includes("front-of-house")) {
+    if (
+      role.includes("front-of-house") ||
+      role.includes("front-assistant") ||
+      role.includes("front-server") ||
+      role.includes("front-host") ||
+      role.includes("front-cashier") ||
+      role.includes("front-packer") ||
+      role.includes("front-bar")
+    ) {
       codes.add("FOH");
     }
   });

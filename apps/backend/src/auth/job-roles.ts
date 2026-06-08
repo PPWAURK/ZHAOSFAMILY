@@ -7,7 +7,17 @@ export const JOB_ROLE_VALUES = [
   'front-assistant',
   'back-assistant',
   'front-of-house',
+  'front-host',
+  'front-cashier',
+  'front-server',
+  'front-packer',
+  'front-bar',
   'back-of-house',
+  'back-dishwasher',
+  'back-noodle',
+  'back-hot-appetizer',
+  'back-cold-appetizer',
+  'back-rice',
 ] as const;
 
 export type JobRoleValue = (typeof JOB_ROLE_VALUES)[number];

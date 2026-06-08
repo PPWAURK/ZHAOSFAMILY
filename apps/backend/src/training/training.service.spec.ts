@@ -14,6 +14,7 @@ describe('TrainingService', () => {
         findUnique: jest.fn(),
         delete: jest.fn(),
         findMany: jest.fn(),
+        count: jest.fn(),
       },
       trainingMaterialProgress: {
         findUnique: jest.fn(),
@@ -23,8 +24,10 @@ describe('TrainingService', () => {
       trainingPosition: {
         create: jest.fn(),
         update: jest.fn(),
+        delete: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn(),
+        count: jest.fn(),
       },
       user: {
         findUnique: jest.fn(),
@@ -225,6 +228,53 @@ describe('TrainingService', () => {
     expect(mediaService.deleteFile).not.toHaveBeenCalled();
   });
 
+  it('deletes an unused custom training position', async () => {
+    const { service, prismaService } = createService();
+    const row = {
+      code: 'CUSTOM_BARISTA',
+      nameZh: '咖啡师',
+      nameEn: 'Barista',
+      nameFr: 'Barista',
+      parentCode: 'FOH',
+      isActive: true,
+      sortOrder: 90,
+    };
+
+    prismaService.trainingPosition.findUnique.mockResolvedValue(row);
+    prismaService.trainingPosition.count.mockResolvedValue(0);
+    prismaService.trainingMaterial.count.mockResolvedValue(0);
+    prismaService.trainingPosition.delete.mockResolvedValue(row);
+
+    await expect(service.deletePosition('CUSTOM_BARISTA')).resolves.toEqual({
+      message: 'TRAINING_POSITION_DELETED',
+    });
+    expect(prismaService.trainingPosition.delete).toHaveBeenCalledWith({
+      where: { code: 'CUSTOM_BARISTA' },
+    });
+  });
+
+  it('rejects deleting a training position with materials', async () => {
+    const { service, prismaService } = createService();
+    prismaService.trainingPosition.findUnique.mockResolvedValue({
+      code: 'CUSTOM_BARISTA',
+      nameZh: '咖啡师',
+      nameEn: 'Barista',
+      nameFr: 'Barista',
+      parentCode: 'FOH',
+      isActive: true,
+      sortOrder: 90,
+    });
+    prismaService.trainingPosition.count.mockResolvedValue(0);
+    prismaService.trainingMaterial.count.mockResolvedValue(1);
+
+    await expect(
+      service.deletePosition('CUSTOM_BARISTA'),
+    ).rejects.toMatchObject({
+      status: 400,
+    });
+    expect(prismaService.trainingPosition.delete).not.toHaveBeenCalled();
+  });
+
   it('marks a training material as completed for a user', async () => {
     const { service, prismaService } = createService();
     const materialRow = {
@@ -365,6 +415,15 @@ describe('TrainingService', () => {
         sortOrder: 10,
       },
       {
+        code: 'FRONT_HOST',
+        nameZh: '迎宾',
+        nameEn: 'Host',
+        nameFr: 'Accueil',
+        parentCode: 'FOH',
+        isActive: true,
+        sortOrder: 11,
+      },
+      {
         code: 'BOH',
         nameZh: '后厨',
         nameEn: 'Back of House',
@@ -377,7 +436,7 @@ describe('TrainingService', () => {
     prismaService.trainingMaterial.findMany.mockResolvedValue([
       buildMaterialRow({ id: 1, positionId: 'FOH', isRequired: true }),
       buildMaterialRow({ id: 2, positionId: 'ALL', isRequired: true }),
-      buildMaterialRow({ id: 3, positionId: 'FOH', isRequired: false }),
+      buildMaterialRow({ id: 3, positionId: 'FRONT_HOST', isRequired: false }),
     ]);
     prismaService.trainingMaterialProgress.findMany.mockResolvedValue([
       {
@@ -390,9 +449,9 @@ describe('TrainingService', () => {
     ]);
 
     await expect(
-      service.getMyPlan({ id: 7, jobRole: 'front-of-house' }),
+      service.getMyPlan({ id: 7, jobRole: 'front-host' }),
     ).resolves.toMatchObject({
-      positionCodes: ['FOH', 'ALL'],
+      positionCodes: ['FRONT_HOST', 'FOH', 'ALL'],
       summary: {
         requiredTotal: 2,
         requiredCompleted: 1,
@@ -408,7 +467,7 @@ describe('TrainingService', () => {
       expect.objectContaining({
         where: {
           positionId: {
-            in: ['FOH', 'ALL'],
+            in: ['FRONT_HOST', 'FOH', 'ALL'],
           },
         },
       }),
