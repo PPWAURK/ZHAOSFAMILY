@@ -3,6 +3,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import { WebView } from "react-native-webview";
 import { ProtectedScreen } from "@/components/ProtectedScreen";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
+import { crossPlatformShadow } from "@/lib/platform";
 import zhaoLogo from "@/features/auth/assets/logozhao正方形.jpg";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
@@ -976,11 +978,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   bottomNav: {
-    backgroundColor: "rgba(255, 255, 255, 0.62)",
+    backgroundColor: Platform.select({
+      ios: "rgba(255, 255, 255, 0.62)",
+      default: "rgba(255, 255, 255, 0.88)",
+    }),
     borderColor: authControlStyles.colors.red,
     borderWidth: 1,
     bottom: 0,
-    elevation: 24,
     flexDirection: "row",
     overflow: "hidden",
     paddingHorizontal: 12,
@@ -989,10 +993,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     left: 20,
     right: 20,
-    shadowColor: authControlStyles.colors.red,
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.2,
-    shadowRadius: 34,
+    ...crossPlatformShadow({
+      color: authControlStyles.colors.red,
+      offset: { width: 0, height: 18 },
+      opacity: 0.2,
+      radius: 34,
+      elevation: 24,
+    }),
   },
   bottomNavDepth: {
     bottom: 0,
@@ -1405,7 +1412,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   readerSheet: {
-    backgroundColor: "rgba(255, 255, 255, 0.88)",
+    backgroundColor: Platform.select({
+      ios: "rgba(255, 255, 255, 0.88)",
+      default: "rgba(255, 255, 255, 0.96)",
+    }),
     borderColor: "rgba(193, 22, 22, 0.22)",
     borderTopWidth: 1,
     maxHeight: "82%",
@@ -1413,10 +1423,13 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
     paddingHorizontal: 20,
     paddingTop: 10,
-    shadowColor: authControlStyles.colors.red,
-    shadowOffset: { width: 0, height: -16 },
-    shadowOpacity: 0.14,
-    shadowRadius: 30,
+    ...crossPlatformShadow({
+      color: authControlStyles.colors.red,
+      offset: { width: 0, height: -16 },
+      opacity: 0.14,
+      radius: 30,
+      elevation: 24,
+    }),
     width: "100%",
   },
   readerSummary: {
@@ -1441,10 +1454,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 44,
     justifyContent: "center",
-    shadowColor: authControlStyles.colors.red,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
+    ...crossPlatformShadow({
+      color: authControlStyles.colors.red,
+      offset: { width: 0, height: 8 },
+      opacity: 0.12,
+      radius: 18,
+      elevation: 12,
+    }),
     width: 44,
   },
   orderJumpControls: {
@@ -1510,7 +1526,10 @@ const styles = StyleSheet.create({
     paddingTop: 22,
   },
   sheet: {
-    backgroundColor: "rgba(193, 22, 22, 0.07)",
+    backgroundColor: Platform.select({
+      ios: "rgba(193, 22, 22, 0.07)",
+      default: "rgba(255, 255, 255, 0.94)",
+    }),
     borderColor: "rgba(193, 22, 22, 0.22)",
     borderTopWidth: 1,
     borderWidth: 1,
@@ -1519,10 +1538,13 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     paddingHorizontal: 20,
     paddingTop: 10,
-    shadowColor: authControlStyles.colors.red,
-    shadowOffset: { width: 0, height: -16 },
-    shadowOpacity: 0.14,
-    shadowRadius: 30,
+    ...crossPlatformShadow({
+      color: authControlStyles.colors.red,
+      offset: { width: 0, height: -16 },
+      opacity: 0.14,
+      radius: 30,
+      elevation: 24,
+    }),
     width: "100%",
   },
   sheetBackdrop: {
@@ -1611,7 +1633,10 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   sheetSurface: {
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    backgroundColor: Platform.select({
+      ios: "rgba(255, 255, 255, 0.5)",
+      default: "transparent",
+    }),
     bottom: 0,
     left: 0,
     position: "absolute",

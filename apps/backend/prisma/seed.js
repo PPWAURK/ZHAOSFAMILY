@@ -191,6 +191,123 @@ const TRAINING_POSITIONS = [
   },
 ];
 
+const TRAINING_JOB_ROLE_POSITIONS = [
+  {
+    jobRole: 'holding',
+    positionCode: 'HOLDING',
+    includeDescendants: false,
+    grantsAllPositions: true,
+  },
+  {
+    jobRole: 'regional-manager',
+    positionCode: 'RM',
+    includeDescendants: false,
+    grantsAllPositions: true,
+  },
+  {
+    jobRole: 'store-manager',
+    positionCode: 'SM',
+    includeDescendants: false,
+    grantsAllPositions: true,
+  },
+  {
+    jobRole: 'front-manager',
+    positionCode: 'FOH',
+    includeDescendants: true,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'back-manager',
+    positionCode: 'BOH',
+    includeDescendants: true,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'front-assistant',
+    positionCode: 'FOH',
+    includeDescendants: true,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'back-assistant',
+    positionCode: 'BOH',
+    includeDescendants: true,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'front-of-house',
+    positionCode: 'FOH',
+    includeDescendants: true,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'back-of-house',
+    positionCode: 'BOH',
+    includeDescendants: true,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'front-host',
+    positionCode: 'FRONT_HOST',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'front-cashier',
+    positionCode: 'FRONT_CASHIER',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'front-server',
+    positionCode: 'FRONT_SERVER',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'front-packer',
+    positionCode: 'FRONT_PACKER',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'front-bar',
+    positionCode: 'FRONT_BAR',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'back-dishwasher',
+    positionCode: 'BACK_DISHWASHER',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'back-noodle',
+    positionCode: 'BACK_NOODLE',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'back-hot-appetizer',
+    positionCode: 'BACK_HOT_APPETIZER',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'back-cold-appetizer',
+    positionCode: 'BACK_COLD_APPETIZER',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+  {
+    jobRole: 'back-rice',
+    positionCode: 'BACK_RICE',
+    includeDescendants: false,
+    grantsAllPositions: false,
+  },
+];
+
 const ROLES = [
   {
     name: 'super-admin',
@@ -301,6 +418,20 @@ async function upsertTrainingPositions() {
         ...position,
         isActive: true,
       },
+    });
+  }
+}
+
+async function upsertJobRolePositions() {
+  for (const mapping of TRAINING_JOB_ROLE_POSITIONS) {
+    await prisma.trainingJobRolePosition.upsert({
+      where: { jobRole: mapping.jobRole },
+      update: {
+        positionCode: mapping.positionCode,
+        includeDescendants: mapping.includeDescendants,
+        grantsAllPositions: mapping.grantsAllPositions,
+      },
+      create: mapping,
     });
   }
 }
@@ -473,12 +604,12 @@ async function main() {
   await upsertRoles();
   await replaceRolePermissions();
   await upsertTrainingPositions();
+  await upsertJobRolePositions();
   await assignSuperAdminRole();
   await removeSuperAdminRoleFromStoreUsers();
   await removeStoreManagerRoleFromNonManagers();
 }
 
-main()
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().finally(async () => {
+  await prisma.$disconnect();
+});

@@ -324,6 +324,19 @@ model TrainingMaterialProgress {
   @@map("training_material_progress")
 }
 
+model TrainingJobRolePosition {
+  id                 Int      @id @default(autoincrement())
+  jobRole            String   @unique @map("job_role") @db.VarChar(40)
+  positionCode       String   @map("position_code") @db.VarChar(40)
+  includeDescendants Boolean  @default(false) @map("include_descendants")
+  grantsAllPositions Boolean  @default(false) @map("grants_all_positions")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@index([positionCode])
+  @@map("training_job_role_positions")
+}
+
 model TrainingPosition {
   id         Int      @id @default(autoincrement())
   code       String   @unique @db.VarChar(40)

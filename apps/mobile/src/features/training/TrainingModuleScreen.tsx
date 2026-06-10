@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Image, Modal, Pressable, Text, View } from "react-native";
+import { Image, Modal, Platform, Pressable, Text, View } from "react-native";
 import { WebView } from "react-native-webview";
+import { Directory, File } from "expo-file-system";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
@@ -48,6 +49,52 @@ function isImageMaterial(material: TrainingPlanMaterial | null): boolean {
   return (
     material.type.toLowerCase() === "image" ||
     material.mimeType.toLowerCase().startsWith("image/")
+  );
+}
+
+function buildPdfViewerHtml(pdfFileUri: string): string {
+  return `<!DOCTYPE html>
+<html style="height:100%">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+*{margin:0;padding:0}
+html,body{height:100%;background:#525659;overflow:hidden}
+embed{width:100%;height:100%;border:none}
+</style>
+</head>
+<body>
+<embed src="${pdfFileUri}" type="application/pdf">
+</body>
+</html>`;
+}
+
+function buildVideoPlayerHtml(videoFileUri: string): string {
+  return `<!DOCTYPE html>
+<html style="height:100%">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+*{margin:0;padding:0}
+html,body{height:100%;background:#000;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+video{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
+</style>
+</head>
+<body>
+<video controls autoplay playsinline webkit-playsinline disablePictureInPicture src="${videoFileUri}"></video>
+</body>
+</html>`;
+}
+
+function isVideoMaterial(material: TrainingPlanMaterial | null): boolean {
+  if (!material) return false;
+
+  return (
+    material.type.toLowerCase() === "video" ||
+    material.mimeType.toLowerCase().startsWith("video/")
   );
 }
 
@@ -130,6 +177,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
   const [previewError, setPreviewError] = useState("");
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewFileUri, setPreviewFileUri] = useState("");
+  const [previewBaseUri, setPreviewBaseUri] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const positionLabels = useMemo(
@@ -161,6 +209,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
   const completionPercent = clampPercent(plan?.summary.completionPercent ?? 0);
   const canShowPreview = Boolean(previewMaterial && previewFileUri);
   const shouldShowImagePreview = canShowPreview && isImageMaterial(previewMaterial);
+  const shouldShowWebPreview = canShowPreview && !shouldShowImagePreview;
 
   async function handleOpenMaterial(material: TrainingPlanMaterial): Promise<void> {
     if (!material.objectKey) {
@@ -171,6 +220,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     setPreviewError("");
     setIsLoadingPreview(true);
     setPreviewFileUri("");
+    setPreviewBaseUri("");
     setPreviewMaterial(material);
 
     try {
@@ -188,7 +238,34 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
 
     try {
       const localFileUri = await downloadTrainingMaterialToCache(material);
-      setPreviewFileUri(localFileUri);
+
+      if (isVideoMaterial(material)) {
+        const videoDirPath = localFileUri.substring(
+          0,
+          localFileUri.lastIndexOf("/"),
+        );
+        const videoDir = new Directory(videoDirPath);
+        const playerFile = new File(videoDir, "player.html");
+        await playerFile.write(buildVideoPlayerHtml(localFileUri));
+        setPreviewFileUri(playerFile.uri);
+        setPreviewBaseUri(videoDir.uri);
+      } else if (
+        material.type.toLowerCase() === "pdf" ||
+        material.mimeType.toLowerCase() === "application/pdf"
+      ) {
+        const pdfDirPath = localFileUri.substring(
+          0,
+          localFileUri.lastIndexOf("/"),
+        );
+        const pdfDir = new Directory(pdfDirPath);
+        const viewerFile = new File(pdfDir, "pdf-viewer.html");
+        await viewerFile.write(buildPdfViewerHtml(localFileUri));
+        setPreviewFileUri(viewerFile.uri);
+        setPreviewBaseUri(pdfDir.uri);
+      } else {
+        setPreviewFileUri(localFileUri);
+      }
+
     } catch {
       setPreviewError(copy.previewError);
     } finally {
@@ -201,6 +278,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     setPreviewError("");
     setIsLoadingPreview(false);
     setPreviewFileUri("");
+    setPreviewBaseUri("");
   }
 
   return (
@@ -315,9 +393,14 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
                   style={styles.previewImage}
                 />
               ) : null}
-              {canShowPreview && !shouldShowImagePreview ? (
+              {shouldShowWebPreview ? (
                 <WebView
-                  allowingReadAccessToURL={previewFileUri}
+                  allowFileAccess
+                  allowFileAccessFromFileURLs
+                  allowingReadAccessToURL={previewBaseUri || previewFileUri}
+                  allowsFullscreenVideo
+                  allowsInlineMediaPlayback={Platform.OS === "ios"}
+                  mediaPlaybackRequiresUserAction={false}
                   originWhitelist={["*"]}
                   source={{
                     uri: previewFileUri,

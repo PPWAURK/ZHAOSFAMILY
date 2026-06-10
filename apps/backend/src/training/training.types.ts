@@ -112,6 +112,24 @@ export type TrainingStoreProgress = {
   };
 };
 
+export type TrainingDiagnostics = {
+  unmappedJobRoles: string[];
+  positionsWithoutMaterials: string[];
+  orphanMaterials: string[];
+  rolesResolvingToEmpty: string[];
+};
+
+export type TrainingResolvePreview = {
+  jobRole: string | null;
+  positionCodes: string[];
+  requiredCount: number;
+  optionalCount: number;
+  warnings: {
+    jobRole: string;
+    reason: string;
+  }[];
+};
+
 export type TrainingPositionItem = {
   code: string;
   name: {

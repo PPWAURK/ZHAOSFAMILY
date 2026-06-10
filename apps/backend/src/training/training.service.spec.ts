@@ -1,4 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
+import {
+  resolveTrainingPositionCodes,
+  type TrainingJobRolePositionRow,
+  type TrainingPositionResolverPositionRow,
+} from './training-position-resolver';
 import { TrainingService } from './training.service';
 
 describe('TrainingService', () => {
@@ -29,6 +34,10 @@ describe('TrainingService', () => {
         findMany: jest.fn(),
         count: jest.fn(),
       },
+      trainingJobRolePosition: {
+        findMany: jest.fn(),
+        count: jest.fn(),
+      },
       user: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -37,11 +46,26 @@ describe('TrainingService', () => {
         findMany: jest.fn(),
       },
       userRole,
-      $transaction: jest.fn(
-        (callback: (tx: { userRole: typeof userRole }) => unknown) =>
-          Promise.resolve(callback({ userRole })),
-      ),
+      $transaction: jest.fn(),
     };
+    prismaService.$transaction.mockImplementation(
+      (
+        callback: (tx: {
+          userRole: typeof userRole;
+          trainingMaterialProgress: typeof prismaService.trainingMaterialProgress;
+        }) => unknown,
+      ) =>
+        Promise.resolve(
+          callback({
+            userRole,
+            trainingMaterialProgress: prismaService.trainingMaterialProgress,
+          }),
+        ),
+    );
+    prismaService.trainingJobRolePosition.findMany.mockResolvedValue(
+      TRAINING_JOB_ROLE_POSITIONS,
+    );
+    prismaService.trainingJobRolePosition.count.mockResolvedValue(0);
     const mediaService = {
       deleteFile: jest.fn(),
     };
@@ -56,7 +80,168 @@ describe('TrainingService', () => {
     };
   }
 
+  const TRAINING_JOB_ROLE_POSITIONS: TrainingJobRolePositionRow[] = [
+    {
+      jobRole: 'holding',
+      positionCode: 'HOLDING',
+      includeDescendants: false,
+      grantsAllPositions: true,
+    },
+    {
+      jobRole: 'regional-manager',
+      positionCode: 'RM',
+      includeDescendants: false,
+      grantsAllPositions: true,
+    },
+    {
+      jobRole: 'store-manager',
+      positionCode: 'SM',
+      includeDescendants: false,
+      grantsAllPositions: true,
+    },
+    {
+      jobRole: 'front-manager',
+      positionCode: 'FOH',
+      includeDescendants: true,
+      grantsAllPositions: false,
+    },
+    {
+      jobRole: 'back-manager',
+      positionCode: 'BOH',
+      includeDescendants: true,
+      grantsAllPositions: false,
+    },
+    {
+      jobRole: 'front-assistant',
+      positionCode: 'FOH',
+      includeDescendants: true,
+      grantsAllPositions: false,
+    },
+    {
+      jobRole: 'back-assistant',
+      positionCode: 'BOH',
+      includeDescendants: true,
+      grantsAllPositions: false,
+    },
+    {
+      jobRole: 'front-of-house',
+      positionCode: 'FOH',
+      includeDescendants: true,
+      grantsAllPositions: false,
+    },
+    {
+      jobRole: 'back-of-house',
+      positionCode: 'BOH',
+      includeDescendants: true,
+      grantsAllPositions: false,
+    },
+    {
+      jobRole: 'front-host',
+      positionCode: 'FRONT_HOST',
+      includeDescendants: false,
+      grantsAllPositions: false,
+    },
+    {
+      jobRole: 'back-rice',
+      positionCode: 'BACK_RICE',
+      includeDescendants: false,
+      grantsAllPositions: false,
+    },
+  ];
+
   const service = createService().service;
+
+  describe('training position resolver', () => {
+    const positions: TrainingPositionResolverPositionRow[] = [
+      { code: 'ALL', parentCode: null },
+      { code: 'FOH', parentCode: null },
+      { code: 'FRONT_HOST', parentCode: 'FOH' },
+      { code: 'FRONT_CASHIER', parentCode: 'FOH' },
+      { code: 'BOH', parentCode: null },
+      { code: 'BACK_RICE', parentCode: 'BOH' },
+      { code: 'SM', parentCode: null },
+    ];
+
+    it('includes the leaf position, ancestors, and all-position code', () => {
+      const result = resolveTrainingPositionCodes(
+        'front-host',
+        positions,
+        TRAINING_JOB_ROLE_POSITIONS,
+      );
+
+      expect(result).toEqual({
+        positionCodes: ['FRONT_HOST', 'FOH', 'ALL'],
+        warnings: [],
+      });
+    });
+
+    it('includes descendants for branch roles', () => {
+      const result = resolveTrainingPositionCodes(
+        'front-manager',
+        positions,
+        TRAINING_JOB_ROLE_POSITIONS,
+      );
+
+      expect(result.positionCodes).toEqual([
+        'FOH',
+        'FRONT_HOST',
+        'FRONT_CASHIER',
+        'ALL',
+      ]);
+    });
+
+    it('includes every active position for all-position roles', () => {
+      const result = resolveTrainingPositionCodes(
+        'store-manager',
+        positions,
+        TRAINING_JOB_ROLE_POSITIONS,
+      );
+
+      expect(result.positionCodes).toEqual([
+        'ALL',
+        'FOH',
+        'FRONT_HOST',
+        'FRONT_CASHIER',
+        'BOH',
+        'BACK_RICE',
+        'SM',
+      ]);
+    });
+
+    it('deduplicates multiple roles while preserving role order', () => {
+      const result = resolveTrainingPositionCodes(
+        'front-host,back-rice',
+        positions,
+        TRAINING_JOB_ROLE_POSITIONS,
+      );
+
+      expect(result.positionCodes).toEqual([
+        'FRONT_HOST',
+        'FOH',
+        'BACK_RICE',
+        'BOH',
+        'ALL',
+      ]);
+    });
+
+    it('falls back to all-position only when a role is unmapped', () => {
+      const result = resolveTrainingPositionCodes(
+        'unknown-role',
+        positions,
+        TRAINING_JOB_ROLE_POSITIONS,
+      );
+
+      expect(result).toEqual({
+        positionCodes: ['ALL'],
+        warnings: [
+          {
+            jobRole: 'unknown-role',
+            reason: 'JOB_ROLE_MAPPING_NOT_FOUND',
+          },
+        ],
+      });
+    });
+  });
 
   it('returns all training courses ordered by catalog priority', () => {
     const result = service.listCourses({});
@@ -266,6 +451,29 @@ describe('TrainingService', () => {
     });
     prismaService.trainingPosition.count.mockResolvedValue(0);
     prismaService.trainingMaterial.count.mockResolvedValue(1);
+
+    await expect(
+      service.deletePosition('CUSTOM_BARISTA'),
+    ).rejects.toMatchObject({
+      status: 400,
+    });
+    expect(prismaService.trainingPosition.delete).not.toHaveBeenCalled();
+  });
+
+  it('rejects deleting a training position used by job role mappings', async () => {
+    const { service, prismaService } = createService();
+    prismaService.trainingPosition.findUnique.mockResolvedValue({
+      code: 'CUSTOM_BARISTA',
+      nameZh: '咖啡师',
+      nameEn: 'Barista',
+      nameFr: 'Barista',
+      parentCode: 'FOH',
+      isActive: true,
+      sortOrder: 90,
+    });
+    prismaService.trainingPosition.count.mockResolvedValue(0);
+    prismaService.trainingMaterial.count.mockResolvedValue(0);
+    prismaService.trainingJobRolePosition.count.mockResolvedValue(1);
 
     await expect(
       service.deletePosition('CUSTOM_BARISTA'),
@@ -506,7 +714,7 @@ describe('TrainingService', () => {
     await expect(
       service.getMyPlan({ id: 7, jobRole: 'holding' }),
     ).resolves.toMatchObject({
-      positionCodes: ['HOLDING', 'ALL'],
+      positionCodes: ['ALL', 'HOLDING'],
       summary: {
         requiredTotal: 2,
         requiredCompleted: 0,
@@ -517,7 +725,7 @@ describe('TrainingService', () => {
       expect.objectContaining({
         where: {
           positionId: {
-            in: ['HOLDING', 'ALL'],
+            in: ['ALL', 'HOLDING'],
           },
         },
       }),

@@ -28,11 +28,13 @@ import { UpdateTrainingPositionDto } from './dto/update-training-position.dto';
 import { UpdateTrainingProgressDto } from './dto/update-training-progress.dto';
 import { TrainingService } from './training.service';
 import type {
+  TrainingDiagnostics,
   TrainingCourseItem,
   TrainingMaterialItem,
   TrainingMaterialProgressItem,
   TrainingMyPlan,
   TrainingPositionItem,
+  TrainingResolvePreview,
   TrainingStoreProgress,
 } from './training.types';
 
@@ -93,6 +95,22 @@ export class TrainingController {
     @Param('code') code: string,
   ): Promise<{ message: 'TRAINING_POSITION_DELETED' }> {
     return this.trainingService.deletePosition(code);
+  }
+
+  @Get('diagnostics')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_POSITION_PERMISSIONS.manage)
+  getDiagnostics(): Promise<TrainingDiagnostics> {
+    return this.trainingService.getDiagnostics();
+  }
+
+  @Get('resolve-preview')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_POSITION_PERMISSIONS.manage)
+  getResolvePreview(
+    @Query('jobRole') jobRole?: string,
+  ): Promise<TrainingResolvePreview> {
+    return this.trainingService.getResolvePreview(jobRole ?? null);
   }
 
   @Get('materials')

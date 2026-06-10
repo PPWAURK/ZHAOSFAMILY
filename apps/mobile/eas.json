@@ -1,0 +1,26 @@
+{
+  "cli": {
+    "version": ">= 3.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "node": "22.22.3",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaoplatforme.com/backend3"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "node": "22.22.3",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

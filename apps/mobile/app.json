@@ -6,13 +6,26 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"],
+    "icon": "./assets/logo2024/logozhao正方形.jpg",
+    "splash": {
+      "backgroundColor": "#6F0D10"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "bundleIdentifier": "com.zhaofamily.mobile",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.zhaofamily.mobile"
+      "package": "com.zhaofamily.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo2024/logozhao正方形.jpg",
+        "backgroundColor": "#6F0D10"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -23,10 +36,18 @@
           "photosPermission": "选择一张头像用于员工档案。",
           "cameraPermission": "拍摄一张头像用于员工档案。"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c17788a6-0cf8-491f-a706-5a41349cd914"
+      }
+    },
+    "owner": "panned"
   }
 }

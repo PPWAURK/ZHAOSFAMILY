@@ -14,16 +14,12 @@ export async function fetchTrainingMyPlan(): Promise<TrainingPlan> {
   return mobileApiClient.get<TrainingPlan>("/training/my-plan");
 }
 
-function getApiOrigin(): string {
-  try {
-    return new URL(MOBILE_API_URL).origin;
-  } catch {
-    return MOBILE_API_URL.replace(/\/api\/?$/, "");
-  }
+function getApiBaseUrl(): string {
+  return MOBILE_API_URL.replace(/\/+$/, "");
 }
 
 export function getTrainingMaterialFileUrl(objectKey: string): string {
-  return `${getApiOrigin()}/api/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  return `${getApiBaseUrl()}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
 }
 
 export async function updateTrainingMaterialProgress(

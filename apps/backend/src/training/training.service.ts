@@ -8,6 +8,7 @@ import {
 import { MediaService } from '../media/media.service';
 import { fixMojibakeFileName } from '../media/media-filename.utils';
 import { PrismaService } from '../prisma/prisma.service';
+import { JOB_ROLE_VALUES } from '../auth/job-roles';
 import { TRAINING_COURSE_CATALOG } from './training-catalog';
 import type { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
 import type { CreateTrainingPositionDto } from './dto/create-training-position.dto';
@@ -17,14 +18,22 @@ import type { UpdateTrainingMaterialDto } from './dto/update-training-material.d
 import type { UpdateTrainingPositionDto } from './dto/update-training-position.dto';
 import type { UpdateTrainingProgressDto } from './dto/update-training-progress.dto';
 import type {
+  TrainingDiagnostics,
   TrainingCourseItem,
   TrainingMaterialItem,
   TrainingMaterialProgressItem,
   TrainingMyPlan,
   TrainingPlanMaterialItem,
   TrainingPositionItem,
+  TrainingResolvePreview,
   TrainingStoreProgress,
 } from './training.types';
+import {
+  ALL_POSITION_CODE,
+  getRoleValues,
+  resolveTrainingPositionCodes,
+} from './training-position-resolver';
+import type { TrainingJobRolePositionRow } from './training-position-resolver';
 
 type TrainingMaterialRow = {
   id: number;
@@ -86,27 +95,8 @@ type TrainingStoreUserRow = {
 };
 
 const HOLDING_JOB_ROLE = 'holding';
-const ALL_POSITION_CODE = 'ALL';
 const STORE_MANAGER_JOB_ROLE = 'store-manager';
 const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
-const STORE_MANAGER_POSITION_CODE = 'SM';
-const JOB_ROLE_POSITION_CODE_BY_ROLE = new Map<string, string>([
-  ['front-host', 'FRONT_HOST'],
-  ['front-cashier', 'FRONT_CASHIER'],
-  ['front-server', 'FRONT_SERVER'],
-  ['front-packer', 'FRONT_PACKER'],
-  ['front-bar', 'FRONT_BAR'],
-  ['back-dishwasher', 'BACK_DISHWASHER'],
-  ['back-noodle', 'BACK_NOODLE'],
-  ['back-hot-appetizer', 'BACK_HOT_APPETIZER'],
-  ['back-cold-appetizer', 'BACK_COLD_APPETIZER'],
-  ['back-rice', 'BACK_RICE'],
-]);
-const NON_STORE_REQUIRED_POSITION_CODES = new Set([
-  ALL_POSITION_CODE,
-  'HOLDING',
-  'RM',
-]);
 const SYSTEM_POSITION_CODES = new Set([
   ALL_POSITION_CODE,
   'FOH',
@@ -202,145 +192,8 @@ function buildPositionTree(
   return roots;
 }
 
-function getChildPositionCodes(
-  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
-  parentCode: string,
-): string[] {
-  return rows
-    .filter((row) => row.parentCode === parentCode)
-    .map((row) => row.code);
-}
-
-function getRoleValues(jobRole: string | null): string[] {
-  return `${jobRole || ''}`
-    .split(',')
-    .map((role) => role.trim())
-    .filter(Boolean);
-}
-
-function getStoreRequiredPositionCodes(
-  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
-): string[] {
-  return rows
-    .filter((row) => !NON_STORE_REQUIRED_POSITION_CODES.has(row.code))
-    .map((row) => row.code);
-}
-
-function getAllLearningPositionCodes(
-  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
-): string[] {
-  return rows.map((row) => row.code);
-}
-
 function hasJobRole(jobRole: string | null, expectedRole: string): boolean {
   return getRoleValues(jobRole).includes(expectedRole);
-}
-
-function resolveSingleTrainingPositionCodes(
-  jobRole: string,
-  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
-): string[] {
-  const roleValue = jobRole;
-  const normalizedRole = roleValue.toLowerCase();
-  const mappedPositionCode = JOB_ROLE_POSITION_CODE_BY_ROLE.get(normalizedRole);
-  const mappedPosition = mappedPositionCode
-    ? rows.find((row) => row.code === mappedPositionCode)
-    : null;
-
-  if (mappedPosition?.parentCode) {
-    return [mappedPosition.code, mappedPosition.parentCode];
-  }
-
-  if (mappedPosition?.code) {
-    return [mappedPosition.code];
-  }
-
-  if (
-    normalizedRole.includes(HOLDING_JOB_ROLE) ||
-    normalizedRole.includes('headquarter') ||
-    normalizedRole.includes('hq')
-  ) {
-    return ['HOLDING'];
-  }
-
-  if (
-    normalizedRole === REGIONAL_MANAGER_JOB_ROLE ||
-    normalizedRole.includes('regional') ||
-    normalizedRole.includes('rm') ||
-    normalizedRole === STORE_MANAGER_JOB_ROLE ||
-    normalizedRole.includes('manager') ||
-    normalizedRole.includes('store') ||
-    normalizedRole.includes('sm')
-  ) {
-    return getAllLearningPositionCodes(rows);
-  }
-
-  if (normalizedRole.includes('all-rounder')) {
-    return getStoreRequiredPositionCodes(rows).filter(
-      (code) => code !== STORE_MANAGER_POSITION_CODE,
-    );
-  }
-
-  if (
-    normalizedRole.includes('kitchen') ||
-    normalizedRole.includes('boh') ||
-    normalizedRole.includes('chef') ||
-    normalizedRole.includes('back-of-house') ||
-    normalizedRole.includes('back-assistant') ||
-    normalizedRole.includes('back-dishwasher') ||
-    normalizedRole.includes('back-noodle') ||
-    normalizedRole.includes('back-hot-appetizer') ||
-    normalizedRole.includes('back-cold-appetizer') ||
-    normalizedRole.includes('back-rice')
-  ) {
-    return ['BOH'];
-  }
-
-  if (normalizedRole === 'cash') {
-    return ['CASH'];
-  }
-
-  if (
-    normalizedRole.includes('front-of-house') ||
-    normalizedRole.includes('front-assistant') ||
-    normalizedRole.includes('front-server') ||
-    normalizedRole.includes('front-host') ||
-    normalizedRole.includes('front-cashier') ||
-    normalizedRole.includes('front-packer') ||
-    normalizedRole.includes('front-bar')
-  ) {
-    return ['FOH'];
-  }
-
-  const explicitPosition = rows.find(
-    (row) => row.code === roleValue.toUpperCase(),
-  );
-
-  if (explicitPosition?.parentCode) {
-    return [explicitPosition.code, explicitPosition.parentCode];
-  }
-
-  if (explicitPosition?.code) {
-    return [
-      explicitPosition.code,
-      ...getChildPositionCodes(rows, explicitPosition.code),
-    ];
-  }
-
-  return [];
-}
-
-function resolveTrainingPositionCodes(
-  jobRole: string | null,
-  rows: Pick<TrainingPositionRow, 'code' | 'parentCode'>[],
-): string[] {
-  const roleValues = getRoleValues(jobRole);
-  const matchedCodes = roleValues.flatMap((roleValue) =>
-    resolveSingleTrainingPositionCodes(roleValue, rows),
-  );
-  const positionCodes = matchedCodes.length > 0 ? matchedCodes : ['FOH'];
-
-  return [...new Set([...positionCodes, ALL_POSITION_CODE])];
 }
 
 function isHoldingJobRole(jobRole: string | null): boolean {
@@ -501,12 +354,15 @@ export class TrainingService {
       throw new BadRequestException('TRAINING_SYSTEM_POSITION_CANNOT_DELETE');
     }
 
-    const [childCount, materialCount] = await Promise.all([
+    const [childCount, materialCount, mappingCount] = await Promise.all([
       this.prismaService.trainingPosition.count({
         where: { parentCode: code },
       }),
       this.prismaService.trainingMaterial.count({
         where: { positionId: code },
+      }),
+      this.prismaService.trainingJobRolePosition.count({
+        where: { positionCode: code },
       }),
     ]);
 
@@ -516,6 +372,10 @@ export class TrainingService {
 
     if (materialCount > 0) {
       throw new BadRequestException('TRAINING_POSITION_HAS_MATERIALS');
+    }
+
+    if (mappingCount > 0) {
+      throw new BadRequestException('TRAINING_POSITION_HAS_JOB_ROLE_MAPPINGS');
     }
 
     await this.prismaService.trainingPosition.delete({
@@ -582,8 +442,15 @@ export class TrainingService {
   }
 
   async getMyPlan(user: TrainingUserScope): Promise<TrainingMyPlan> {
-    const positions = await this.listActivePositionRows();
-    const positionCodes = resolveTrainingPositionCodes(user.jobRole, positions);
+    const [positions, mappings] = await Promise.all([
+      this.listActivePositionRows(),
+      this.listJobRolePositionRows(),
+    ]);
+    const { positionCodes } = resolveTrainingPositionCodes(
+      user.jobRole,
+      positions,
+      mappings,
+    );
     const materials = await this.listMaterialsForPositionCodes(positionCodes);
     const progressRows =
       await this.prismaService.trainingMaterialProgress.findMany({
@@ -636,8 +503,9 @@ export class TrainingService {
       viewer.jobRole,
       REGIONAL_MANAGER_JOB_ROLE,
     );
-    const [positions, materials, users] = await Promise.all([
+    const [positions, mappings, materials, users] = await Promise.all([
       this.listActivePositionRows(),
+      this.listJobRolePositionRows(),
       this.listRequiredMaterials(),
       this.prismaService.user.findMany({
         where: canViewAllStores
@@ -676,7 +544,13 @@ export class TrainingService {
         },
       });
     const usersProgress = users.map((user) =>
-      this.toStoreProgressUser(user, positions, materials, progressRows),
+      this.toStoreProgressUser(
+        user,
+        positions,
+        mappings,
+        materials,
+        progressRows,
+      ),
     );
     const completedEmployeeCount = usersProgress.filter(
       (user) => user.requiredTotal > 0 && user.completionPercent === 100,
@@ -770,6 +644,64 @@ export class TrainingService {
     });
 
     return toProgressItem(row);
+  }
+
+  async getDiagnostics(): Promise<TrainingDiagnostics> {
+    const [positions, mappings, materials] = await Promise.all([
+      this.listActivePositionRows(),
+      this.listJobRolePositionRows(),
+      this.prismaService.trainingMaterial.findMany({
+        select: { id: true, positionId: true, isRequired: true },
+      }),
+    ]);
+    const mappedRoles = new Set(mappings.map((mapping) => mapping.jobRole));
+    const positionCodes = new Set(positions.map((position) => position.code));
+    const materialPositionCodes = new Set(
+      materials.map((material) => material.positionId),
+    );
+
+    return {
+      unmappedJobRoles: JOB_ROLE_VALUES.filter(
+        (role) => !mappedRoles.has(role),
+      ),
+      positionsWithoutMaterials: positions
+        .filter((position) => !materialPositionCodes.has(position.code))
+        .map((position) => position.code),
+      orphanMaterials: [
+        ...new Set(
+          materials
+            .filter((material) => !positionCodes.has(material.positionId))
+            .map((material) => material.positionId),
+        ),
+      ],
+      rolesResolvingToEmpty: this.getRolesResolvingToEmpty(
+        positions,
+        mappings,
+        materials,
+      ),
+    };
+  }
+
+  async getResolvePreview(
+    jobRole: string | null,
+  ): Promise<TrainingResolvePreview> {
+    const [positions, mappings] = await Promise.all([
+      this.listActivePositionRows(),
+      this.listJobRolePositionRows(),
+    ]);
+    const result = resolveTrainingPositionCodes(jobRole, positions, mappings);
+    const materials = await this.listMaterialsForPositionCodes(
+      result.positionCodes,
+    );
+
+    return {
+      jobRole,
+      positionCodes: result.positionCodes,
+      requiredCount: materials.filter((material) => material.isRequired).length,
+      optionalCount: materials.filter((material) => !material.isRequired)
+        .length,
+      warnings: result.warnings,
+    };
   }
 
   async createMaterial(
@@ -898,7 +830,7 @@ export class TrainingService {
     });
 
     if (!position || !position.isActive) {
-      throw new BadRequestException('INVALID_TRAINING_POSITION');
+      throw new BadRequestException('TRAINING_POSITION_NOT_FOUND');
     }
   }
 
@@ -918,6 +850,20 @@ export class TrainingService {
     return this.prismaService.trainingPosition.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+    });
+  }
+
+  private async listJobRolePositionRows(): Promise<
+    TrainingJobRolePositionRow[]
+  > {
+    return this.prismaService.trainingJobRolePosition.findMany({
+      select: {
+        jobRole: true,
+        positionCode: true,
+        includeDescendants: true,
+        grantsAllPositions: true,
+      },
+      orderBy: [{ jobRole: 'asc' }],
     });
   }
 
@@ -960,10 +906,15 @@ export class TrainingService {
   private toStoreProgressUser(
     user: TrainingStoreUserRow,
     positions: TrainingPositionRow[],
+    mappings: TrainingJobRolePositionRow[],
     materials: TrainingMaterialItem[],
     progressRows: StoreTrainingProgressRow[],
   ): TrainingStoreProgress['users'][number] {
-    const positionCodes = resolveTrainingPositionCodes(user.jobRole, positions);
+    const { positionCodes } = resolveTrainingPositionCodes(
+      user.jobRole,
+      positions,
+      mappings,
+    );
     const requiredMaterials = materials.filter((material) =>
       positionCodes.includes(material.positionId),
     );
@@ -997,5 +948,21 @@ export class TrainingService {
         relevantProgressRows.map((progress) => progress.lastOpenedAt),
       ),
     };
+  }
+
+  private getRolesResolvingToEmpty(
+    positions: TrainingPositionRow[],
+    mappings: TrainingJobRolePositionRow[],
+    materials: { positionId: string; isRequired: boolean }[],
+  ): string[] {
+    return JOB_ROLE_VALUES.filter((role) => {
+      const result = resolveTrainingPositionCodes(role, positions, mappings);
+
+      return !materials.some(
+        (material) =>
+          material.isRequired &&
+          result.positionCodes.includes(material.positionId),
+      );
+    });
   }
 }
