@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Image, Modal, Platform, Pressable, Text, View } from "react-native";
-import { WebView } from "react-native-webview";
+import { Pressable, Text, View } from "react-native";
 import { Directory, File } from "expo-file-system";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText } from "@/features/auth/AuthFormControls";
@@ -11,10 +10,22 @@ import {
   updateTrainingMaterialProgress,
 } from "@/features/training/trainingApi";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
+import { TrainingAchievements } from "@/features/training/TrainingAchievements";
+import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
+import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
+import { applyMaterialProgress } from "@/features/training/trainingProgressRules";
 import { trainingStyles as styles } from "@/features/training/trainingStyles";
+import {
+  buildPdfViewerHtml,
+  buildVideoPlayerHtml,
+  isPdfMaterial,
+  isVideoMaterial,
+} from "@/features/training/trainingViewer";
 import type {
+  TrainingMaterialProgress,
   TrainingPlan,
   TrainingPlanMaterial,
+  UpdateTrainingProgressInput,
 } from "@/features/training/trainingTypes";
 
 type TrainingModuleScreenProps = {
@@ -43,61 +54,6 @@ function getPositionLabel(
   return labels[code] || code;
 }
 
-function isImageMaterial(material: TrainingPlanMaterial | null): boolean {
-  if (!material) return false;
-
-  return (
-    material.type.toLowerCase() === "image" ||
-    material.mimeType.toLowerCase().startsWith("image/")
-  );
-}
-
-function buildPdfViewerHtml(pdfFileUri: string): string {
-  return `<!DOCTYPE html>
-<html style="height:100%">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<style>
-*{margin:0;padding:0}
-html,body{height:100%;background:#525659;overflow:hidden}
-embed{width:100%;height:100%;border:none}
-</style>
-</head>
-<body>
-<embed src="${pdfFileUri}" type="application/pdf">
-</body>
-</html>`;
-}
-
-function buildVideoPlayerHtml(videoFileUri: string): string {
-  return `<!DOCTYPE html>
-<html style="height:100%">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<style>
-*{margin:0;padding:0}
-html,body{height:100%;background:#000;overflow:hidden}
-body{display:flex;align-items:center;justify-content:center}
-video{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
-</style>
-</head>
-<body>
-<video controls autoplay playsinline webkit-playsinline disablePictureInPicture src="${videoFileUri}"></video>
-</body>
-</html>`;
-}
-
-function isVideoMaterial(material: TrainingPlanMaterial | null): boolean {
-  if (!material) return false;
-
-  return (
-    material.type.toLowerCase() === "video" ||
-    material.mimeType.toLowerCase().startsWith("video/")
-  );
-}
-
 function TrainingMaterialCard({
   copy,
   material,
@@ -124,6 +80,7 @@ function TrainingMaterialCard({
       </Text>
       <Text style={styles.cardMeta}>
         {material.positionId} · {materialType} · {formatSize(material.sizeBytes)}
+        {material.hasQuiz ? ` · ${copy.quizTag}` : ""}
       </Text>
       <Text style={styles.cardOpenText}>{copy.open}</Text>
       <View style={styles.cardProgressTrack}>
@@ -179,6 +136,9 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
   const [previewFileUri, setPreviewFileUri] = useState("");
   const [previewBaseUri, setPreviewBaseUri] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [activeView, setActiveView] = useState<"plan" | "achievements">("plan");
+  const [quizMaterialId, setQuizMaterialId] = useState<number | null>(null);
+  const [achievementsRefresh, setAchievementsRefresh] = useState(0);
 
   const positionLabels = useMemo(
     () =>
@@ -207,9 +167,26 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
   }, [copy.error]);
 
   const completionPercent = clampPercent(plan?.summary.completionPercent ?? 0);
-  const canShowPreview = Boolean(previewMaterial && previewFileUri);
-  const shouldShowImagePreview = canShowPreview && isImageMaterial(previewMaterial);
-  const shouldShowWebPreview = canShowPreview && !shouldShowImagePreview;
+
+  async function syncMaterialProgress(
+    materialId: number,
+    input: UpdateTrainingProgressInput,
+  ): Promise<TrainingMaterialProgress | null> {
+    try {
+      const progress = await updateTrainingMaterialProgress(materialId, input);
+      setPlan((previous) =>
+        previous ? applyMaterialProgress(previous, materialId, progress) : previous,
+      );
+
+      return progress;
+    } catch (progressError) {
+      if (__DEV__) {
+        console.warn("Training progress sync failed", progressError);
+      }
+
+      return null;
+    }
+  }
 
   async function handleOpenMaterial(material: TrainingPlanMaterial): Promise<void> {
     if (!material.objectKey) {
@@ -223,17 +200,12 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     setPreviewBaseUri("");
     setPreviewMaterial(material);
 
-    try {
-      await updateTrainingMaterialProgress(material.id, {
-        status:
-          material.progress.status === "completed" ? "completed" : "in_progress",
+    if (material.progress.status !== "completed") {
+      // Opening the content is more important than blocking on progress sync.
+      void syncMaterialProgress(material.id, {
+        status: "in_progress",
         progressPct: Math.max(material.progress.progressPct, 5),
       });
-    } catch (progressError) {
-      if (__DEV__) {
-        console.warn("Training progress sync failed", progressError);
-      }
-      // Opening the content is more important than blocking on progress sync.
     }
 
     try {
@@ -246,26 +218,27 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         );
         const videoDir = new Directory(videoDirPath);
         const playerFile = new File(videoDir, "player.html");
-        await playerFile.write(buildVideoPlayerHtml(localFileUri));
+        const resumePct =
+          material.progress.status === "in_progress"
+            ? material.progress.progressPct
+            : 0;
+        await playerFile.write(buildVideoPlayerHtml(localFileUri, resumePct));
         setPreviewFileUri(playerFile.uri);
         setPreviewBaseUri(videoDir.uri);
-      } else if (
-        material.type.toLowerCase() === "pdf" ||
-        material.mimeType.toLowerCase() === "application/pdf"
-      ) {
+      } else if (isPdfMaterial(material)) {
         const pdfDirPath = localFileUri.substring(
           0,
           localFileUri.lastIndexOf("/"),
         );
         const pdfDir = new Directory(pdfDirPath);
         const viewerFile = new File(pdfDir, "pdf-viewer.html");
-        await viewerFile.write(buildPdfViewerHtml(localFileUri));
+        const base64 = await new File(localFileUri).base64();
+        await viewerFile.write(buildPdfViewerHtml(base64));
         setPreviewFileUri(viewerFile.uri);
         setPreviewBaseUri(pdfDir.uri);
       } else {
         setPreviewFileUri(localFileUri);
       }
-
     } catch {
       setPreviewError(copy.previewError);
     } finally {
@@ -281,6 +254,16 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     setPreviewBaseUri("");
   }
 
+  function handleStartQuiz(material: TrainingPlanMaterial): void {
+    handleClosePreview();
+    setQuizMaterialId(material.id);
+  }
+
+  function handleQuizPassed(): void {
+    void loadPlan();
+    setAchievementsRefresh((value) => value + 1);
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -289,9 +272,41 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         <Text style={styles.intro}>{copy.intro}</Text>
       </View>
 
-      {isLoading ? <ZhaoLoadingIndicator label={copy.loading} /> : null}
+      <View style={styles.segment}>
+        {(["plan", "achievements"] as const).map((key) => (
+          <Pressable
+            key={key}
+            style={[
+              styles.segmentItem,
+              activeView === key ? styles.segmentItemActive : null,
+            ]}
+            onPress={() => setActiveView(key)}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeView === key ? styles.segmentTextActive : null,
+              ]}
+            >
+              {key === "plan" ? copy.tabPlan : copy.tabAchievements}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
-      {!isLoading && errorMessage ? (
+      {activeView === "achievements" ? (
+        <TrainingAchievements
+          copy={copy}
+          language={language}
+          refreshToken={achievementsRefresh}
+        />
+      ) : null}
+
+      {activeView === "plan" && isLoading ? (
+        <ZhaoLoadingIndicator label={copy.loading} />
+      ) : null}
+
+      {activeView === "plan" && !isLoading && errorMessage ? (
         <>
           <Text style={styles.message}>{errorMessage}</Text>
           <Pressable style={styles.refreshButton} onPress={() => void loadPlan()}>
@@ -300,7 +315,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         </>
       ) : null}
 
-      {!isLoading && !errorMessage && plan ? (
+      {activeView === "plan" && !isLoading && !errorMessage && plan ? (
         <>
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
@@ -363,71 +378,33 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         </>
       ) : null}
 
-      <Modal
-        animationType="slide"
-        presentationStyle="overFullScreen"
-        transparent
-        visible={!!previewMaterial}
-        onRequestClose={handleClosePreview}
-      >
-        <View style={styles.previewModalRoot}>
-          <View style={styles.previewPanel}>
-            <View style={styles.previewHeader}>
-              <View style={styles.previewTitleGroup}>
-                <Text style={styles.cardMeta}>
-                  {previewMaterial?.positionId || "-"}
-                </Text>
-                <Text style={styles.previewTitle} numberOfLines={2}>
-                  {previewMaterial?.title || "-"}
-                </Text>
-              </View>
-              <Pressable style={styles.previewCloseButton} onPress={handleClosePreview}>
-                <Text style={styles.refreshButtonText}>{copy.close}</Text>
-              </Pressable>
-            </View>
-            <View style={styles.previewBody}>
-              {shouldShowImagePreview ? (
-                <Image
-                  resizeMode="contain"
-                  source={{ uri: previewFileUri }}
-                  style={styles.previewImage}
-                />
-              ) : null}
-              {shouldShowWebPreview ? (
-                <WebView
-                  allowFileAccess
-                  allowFileAccessFromFileURLs
-                  allowingReadAccessToURL={previewBaseUri || previewFileUri}
-                  allowsFullscreenVideo
-                  allowsInlineMediaPlayback={Platform.OS === "ios"}
-                  mediaPlaybackRequiresUserAction={false}
-                  originWhitelist={["*"]}
-                  source={{
-                    uri: previewFileUri,
-                  }}
-                  startInLoadingState
-                  style={styles.previewWebView}
-                  onLoadEnd={() => setIsLoadingPreview(false)}
-                  onError={() => {
-                    setPreviewError(copy.previewError);
-                    setIsLoadingPreview(false);
-                  }}
-                />
-              ) : null}
-              {isLoadingPreview ? (
-                <View style={styles.previewOverlay}>
-                  <ZhaoLoadingIndicator label={copy.previewLoading} variant="overlay" />
-                </View>
-              ) : null}
-              {previewError ? (
-                <View style={styles.previewOverlay}>
-                  <Text style={styles.message}>{previewError}</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <TrainingPreviewModal
+        copy={copy}
+        material={previewMaterial}
+        fileUri={previewFileUri}
+        baseUri={previewBaseUri}
+        isLoading={isLoadingPreview}
+        errorMessage={previewError}
+        onClose={handleClosePreview}
+        onRetry={() => {
+          if (previewMaterial) void handleOpenMaterial(previewMaterial);
+        }}
+        onWebViewLoadEnd={() => setIsLoadingPreview(false)}
+        onWebViewError={() => {
+          setPreviewError(copy.previewError);
+          setIsLoadingPreview(false);
+        }}
+        onStartQuiz={handleStartQuiz}
+        syncProgress={syncMaterialProgress}
+      />
+
+      <TrainingQuizModal
+        copy={copy}
+        language={language}
+        materialId={quizMaterialId}
+        onClose={() => setQuizMaterialId(null)}
+        onPassed={handleQuizPassed}
+      />
     </View>
   );
 }

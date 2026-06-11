@@ -19,6 +19,50 @@ type TrainingCopy = {
   previewLoading: string;
   previewError: string;
   openError: string;
+  retry: string;
+  markComplete: string;
+  markCompleteHintVideo: string;
+  markCompleteHintPdf: string;
+  markCompleteHintImage: string;
+  markCompleteConfirmTitle: string;
+  markCompleteConfirmMessage: string;
+  markCompleteConfirmCancel: string;
+  markCompleteConfirmOk: string;
+  progressSyncFailed: string;
+  trackingVideo: string;
+  trackingPdf: string;
+  trackingImage: string;
+  tabPlan: string;
+  tabAchievements: string;
+  quizTag: string;
+  startQuiz: string;
+  reviewQuiz: string;
+  quizGateReady: string;
+  quizGateHint: string;
+  quiz: string;
+  quizKicker: string;
+  quizLoading: string;
+  quizLoadError: string;
+  quizSubmitError: string;
+  quizIntro: string;
+  quizAttempts: string;
+  quizMultipleHint: string;
+  quizPassed: string;
+  quizFailed: string;
+  quizPassMark: string;
+  quizTitleUnlocked: string;
+  quizSubmit: string;
+  quizSubmitting: string;
+  quizAnswerAllHint: string;
+  quizDone: string;
+  quizRetake: string;
+  quizNoAttemptsLeft: string;
+  myTitles: string;
+  titlesEmpty: string;
+  titlesLocked: string;
+  myRecords: string;
+  recordsEmpty: string;
+  completedOn: string;
   materialTypes: Record<string, string>;
   statuses: Record<string, string>;
   positionLabels: Record<string, string>;
@@ -44,6 +88,50 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     previewLoading: "正在打开学习内容...",
     previewError: "学习内容加载失败，请稍后重试。",
     openError: "学习内容打不开，请稍后重试。",
+    retry: "重试",
+    markComplete: "标记完成",
+    markCompleteHintVideo: "看完视频 90% 后即可标记完成。",
+    markCompleteHintPdf: "阅读到最后一页并稍作停留后即可标记完成。",
+    markCompleteHintImage: "查看资料几秒后即可标记完成。",
+    markCompleteConfirmTitle: "确认完成？",
+    markCompleteConfirmMessage: "确认后该资料将记录为已完成。",
+    markCompleteConfirmCancel: "取消",
+    markCompleteConfirmOk: "确认完成",
+    progressSyncFailed: "进度同步失败，关闭后将自动重试。",
+    trackingVideo: "已观看 {watched}%，达到 {required}% 后自动完成。",
+    trackingPdf: "已读 {maxPage}/{numPages} 页 · 阅读 {readSeconds}/{requiredSeconds} 秒。",
+    trackingImage: "已查看 {seconds} 秒，满 {required} 秒后可标记完成。",
+    tabPlan: "培训任务",
+    tabAchievements: "我的成就",
+    quizTag: "含测验",
+    startQuiz: "开始测验",
+    reviewQuiz: "重新测验",
+    quizGateReady: "学习达标，开始测验完成本资料。",
+    quizGateHint: "建议先学习本资料，再开始测验。",
+    quiz: "测验",
+    quizKicker: "ZHAO · 考核",
+    quizLoading: "正在加载测验...",
+    quizLoadError: "测验加载失败，请稍后重试。",
+    quizSubmitError: "提交失败，请检查网络后重试。",
+    quizIntro: "答完全部题目后提交，达到及格分即视为通过。",
+    quizAttempts: "已用次数",
+    quizMultipleHint: "多选",
+    quizPassed: "通过",
+    quizFailed: "未通过",
+    quizPassMark: "及格线 ",
+    quizTitleUnlocked: "🎉 解锁新称号",
+    quizSubmit: "提交答卷",
+    quizSubmitting: "提交中...",
+    quizAnswerAllHint: "请回答所有题目后再提交。",
+    quizDone: "完成",
+    quizRetake: "重新测验",
+    quizNoAttemptsLeft: "已无剩余测验次数。",
+    myTitles: "我的称号",
+    titlesEmpty: "完成对应岗位的全部必修后即可解锁称号。",
+    titlesLocked: "待解锁",
+    myRecords: "培训记录",
+    recordsEmpty: "还没有已完成的培训。",
+    completedOn: "完成于",
     materialTypes: {
       VIDEO: "视频",
       PDF: "PDF",
@@ -95,6 +183,50 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     previewLoading: "Opening material...",
     previewError: "Material could not be loaded. Please try again.",
     openError: "Material could not be opened. Please try again.",
+    retry: "Retry",
+    markComplete: "Mark as complete",
+    markCompleteHintVideo: "Watch at least 90% of the video to mark it complete.",
+    markCompleteHintPdf: "Read to the last page to mark it complete.",
+    markCompleteHintImage: "View the material for a few seconds to mark it complete.",
+    markCompleteConfirmTitle: "Confirm completion?",
+    markCompleteConfirmMessage: "This material will be recorded as completed.",
+    markCompleteConfirmCancel: "Cancel",
+    markCompleteConfirmOk: "Confirm",
+    progressSyncFailed: "Progress sync failed. It will retry when you close.",
+    trackingVideo: "Watched {watched}% — completes automatically at {required}%.",
+    trackingPdf: "Read {maxPage}/{numPages} pages · {readSeconds}/{requiredSeconds}s.",
+    trackingImage: "Viewed for {seconds}s — mark complete after {required}s.",
+    tabPlan: "Tasks",
+    tabAchievements: "Achievements",
+    quizTag: "Quiz",
+    startQuiz: "Start quiz",
+    reviewQuiz: "Retake quiz",
+    quizGateReady: "Material studied — take the quiz to complete it.",
+    quizGateHint: "Best to study this material first, then take the quiz.",
+    quiz: "Quiz",
+    quizKicker: "ZHAO · Assessment",
+    quizLoading: "Loading quiz...",
+    quizLoadError: "Quiz could not be loaded. Please try again.",
+    quizSubmitError: "Submission failed. Check your connection and retry.",
+    quizIntro: "Answer all questions, then submit. Reach the pass mark to complete.",
+    quizAttempts: "Attempts",
+    quizMultipleHint: "multiple",
+    quizPassed: "Passed",
+    quizFailed: "Not passed",
+    quizPassMark: "Pass mark ",
+    quizTitleUnlocked: "🎉 New title unlocked",
+    quizSubmit: "Submit answers",
+    quizSubmitting: "Submitting...",
+    quizAnswerAllHint: "Please answer all questions before submitting.",
+    quizDone: "Done",
+    quizRetake: "Retake quiz",
+    quizNoAttemptsLeft: "No attempts left.",
+    myTitles: "My titles",
+    titlesEmpty: "Complete all required training for a position to unlock its title.",
+    titlesLocked: "Locked",
+    myRecords: "Training records",
+    recordsEmpty: "No completed training yet.",
+    completedOn: "Completed",
     materialTypes: {
       VIDEO: "Video",
       PDF: "PDF",
@@ -146,6 +278,50 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     previewLoading: "Ouverture du support...",
     previewError: "Impossible de charger le support. Réessayez plus tard.",
     openError: "Impossible d'ouvrir le support. Réessayez plus tard.",
+    retry: "Réessayer",
+    markComplete: "Marquer comme terminé",
+    markCompleteHintVideo: "Regardez au moins 90 % de la vidéo pour la marquer terminée.",
+    markCompleteHintPdf: "Lisez jusqu'à la dernière page pour marquer terminé.",
+    markCompleteHintImage: "Consultez le support quelques secondes pour marquer terminé.",
+    markCompleteConfirmTitle: "Confirmer la fin ?",
+    markCompleteConfirmMessage: "Ce support sera enregistré comme terminé.",
+    markCompleteConfirmCancel: "Annuler",
+    markCompleteConfirmOk: "Confirmer",
+    progressSyncFailed: "Échec de la synchronisation. Nouvel essai à la fermeture.",
+    trackingVideo: "Visionné {watched} % — terminé automatiquement à {required} %.",
+    trackingPdf: "Lu {maxPage}/{numPages} pages · {readSeconds}/{requiredSeconds} s.",
+    trackingImage: "Consulté {seconds} s — marquage possible après {required} s.",
+    tabPlan: "Tâches",
+    tabAchievements: "Réussites",
+    quizTag: "Quiz",
+    startQuiz: "Démarrer le quiz",
+    reviewQuiz: "Refaire le quiz",
+    quizGateReady: "Support étudié — passez le quiz pour le terminer.",
+    quizGateHint: "Étudiez de préférence ce support, puis passez le quiz.",
+    quiz: "Quiz",
+    quizKicker: "ZHAO · Évaluation",
+    quizLoading: "Chargement du quiz...",
+    quizLoadError: "Impossible de charger le quiz. Réessayez plus tard.",
+    quizSubmitError: "Échec de l'envoi. Vérifiez la connexion et réessayez.",
+    quizIntro: "Répondez à toutes les questions puis validez. Atteignez la note pour terminer.",
+    quizAttempts: "Tentatives",
+    quizMultipleHint: "choix multiple",
+    quizPassed: "Réussi",
+    quizFailed: "Échoué",
+    quizPassMark: "Seuil ",
+    quizTitleUnlocked: "🎉 Nouveau titre débloqué",
+    quizSubmit: "Valider les réponses",
+    quizSubmitting: "Envoi...",
+    quizAnswerAllHint: "Répondez à toutes les questions avant de valider.",
+    quizDone: "Terminé",
+    quizRetake: "Refaire le quiz",
+    quizNoAttemptsLeft: "Plus de tentatives disponibles.",
+    myTitles: "Mes titres",
+    titlesEmpty: "Terminez toute la formation obligatoire d'un poste pour débloquer son titre.",
+    titlesLocked: "À débloquer",
+    myRecords: "Historique de formation",
+    recordsEmpty: "Aucune formation terminée pour l'instant.",
+    completedOn: "Terminé le",
     materialTypes: {
       VIDEO: "Vidéo",
       PDF: "PDF",
