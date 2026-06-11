@@ -1,11 +1,11 @@
 import {
-  Image,
   Pressable,
   Text,
   TextInput,
   View,
 } from "react-native";
-import type { ImageSourcePropType } from "react-native";
+import { Image } from "expo-image";
+import type { ImageSource } from "expo-image";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
@@ -16,6 +16,7 @@ import {
 import { translateOrderCategory } from "@/features/orders/orderCategories";
 import type { OrderCopy } from "@/features/orders/orderCopy";
 import { orderStyles as styles } from "@/features/orders/orderStyles";
+import { isTablet } from "@/lib/responsive";
 import type { SelectedOrderLine } from "@/features/orders/orderFlow";
 import type {
   OrderProduct,
@@ -25,6 +26,30 @@ import type {
 import { MOBILE_API_URL } from "@/lib/env";
 
 const API_ORIGIN = resolveApiOrigin();
+
+// On tablets show 3 products per row (47% → 31%) instead of 2; the list switches
+// to flex-start so an incomplete last row stays left-aligned.
+const productCardTabletStyle = isTablet
+  ? ({ width: "31%", minWidth: "31%" } as const)
+  : null;
+
+// On tablets the product card is far wider, so swap the fixed image height for
+// an aspect ratio: the picture grows with the card instead of staying squat.
+const productImageTabletStyle = isTablet
+  ? ({ height: undefined, aspectRatio: 1.7 } as const)
+  : null;
+
+const MAX_QUANTITY = 9999;
+
+// Step the quantity string by ±1, clamped to [0, MAX_QUANTITY]; 0 clears the
+// field so it matches the "empty" (unselected) state.
+function stepQuantity(current: string | undefined, delta: number): string {
+  const parsed = Number.parseInt(current || "0", 10);
+  const base = Number.isNaN(parsed) ? 0 : parsed;
+  const next = Math.min(MAX_QUANTITY, Math.max(0, base + delta));
+
+  return next === 0 ? "" : String(next);
+}
 
 function resolveApiOrigin(): string {
   try {
@@ -50,7 +75,7 @@ function resolveProductImageUrl(image: string | null | undefined): string | null
     : `${API_ORIGIN}/${image.replace(/^\/+/, "")}`;
 }
 
-function buildProductImageSource(image: string | null | undefined): ImageSourcePropType | null {
+function buildProductImageSource(image: string | null | undefined): ImageSource | null {
   const resolvedImageUrl = resolveProductImageUrl(image);
   return resolvedImageUrl ? { uri: resolvedImageUrl } : null;
 }
@@ -93,13 +118,20 @@ export function ProductQuantityRow({
   const variants = getOrderProductVariants(product);
 
   return (
-    <View style={styles.productCard}>
+    <View style={[styles.productCard, productCardTabletStyle]}>
       <View style={styles.productHeader}>
-        <View style={styles.productImageFrame}>
+        <View style={[styles.productImageFrame, productImageTabletStyle]}>
           {imageSource ? (
-            <Image source={imageSource} style={styles.productImage} resizeMode="cover" />
+            <Image
+              source={imageSource}
+              style={[styles.productImage, productImageTabletStyle]}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
+              recyclingKey={String(product.id)}
+            />
           ) : (
-            <View style={[styles.productImage, styles.imagePlaceholder]}>
+            <View style={[styles.productImage, styles.imagePlaceholder, productImageTabletStyle]}>
               <Text style={styles.imagePlaceholderText}>{productName.slice(0, 1)}</Text>
             </View>
           )}
@@ -126,13 +158,45 @@ export function ProductQuantityRow({
       </View>
       {variants.map((variant) => (
         <View key={variant.id} style={styles.variantRow}>
-          <TextInput
-            keyboardType="number-pad"
-            maxLength={4}
-            style={styles.quantityInput}
-            value={quantities[variant.id] || ""}
-            onChangeText={(value) => onChangeQuantity(variant.id, value)}
-          />
+          <View style={styles.quantityStepper}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="-"
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.stepperButton,
+                styles.stepperButtonLeft,
+                pressed ? styles.stepperButtonPressed : null,
+              ]}
+              onPress={() =>
+                onChangeQuantity(variant.id, stepQuantity(quantities[variant.id], -1))
+              }
+            >
+              <Text style={styles.stepperButtonText}>−</Text>
+            </Pressable>
+            <TextInput
+              keyboardType="number-pad"
+              maxLength={4}
+              style={styles.quantityInput}
+              value={quantities[variant.id] || ""}
+              onChangeText={(value) => onChangeQuantity(variant.id, value)}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="+"
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.stepperButton,
+                styles.stepperButtonRight,
+                pressed ? styles.stepperButtonPressed : null,
+              ]}
+              onPress={() =>
+                onChangeQuantity(variant.id, stepQuantity(quantities[variant.id], 1))
+              }
+            >
+              <Text style={styles.stepperButtonText}>+</Text>
+            </Pressable>
+          </View>
           <Text style={styles.unitText}>{variant.unit || product.unit || "-"}</Text>
         </View>
       ))}

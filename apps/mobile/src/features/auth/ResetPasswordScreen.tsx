@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -306,7 +307,7 @@ export function ResetPasswordScreen(): ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(scaleStyles({
   backButton: {
     alignItems: "center",
     marginTop: 22,
@@ -421,4 +422,4 @@ const styles = StyleSheet.create({
     lineHeight: 50,
     marginTop: 22,
   },
-});
+}));

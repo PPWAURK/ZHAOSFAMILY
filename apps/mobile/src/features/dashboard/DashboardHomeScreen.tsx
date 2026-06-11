@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -969,7 +970,7 @@ export function DashboardHomeScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(scaleStyles({
   actionMessage: {
     color: authControlStyles.colors.ink60,
     fontFamily: "serif",
@@ -1699,4 +1700,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 34,
   },
-});
+}));

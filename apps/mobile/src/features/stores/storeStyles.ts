@@ -1,7 +1,8 @@
 import { StyleSheet } from "react-native";
+import { isTablet, scaleStyles } from "@/lib/responsive";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 
-export const storeStyles = StyleSheet.create({
+export const storeStyles = StyleSheet.create(scaleStyles({
   actionButton: {
     alignItems: "center",
     borderColor: "rgba(193, 22, 22, 0.34)",
@@ -60,7 +61,9 @@ export const storeStyles = StyleSheet.create({
   cardImage: {
     alignItems: "center",
     backgroundColor: "rgba(193, 22, 22, 0.08)",
-    height: 118,
+    // On tablets the photo gets an extra bump on top of the global 1.25x
+    // scale (final ~500pt) so it reads larger in the wider layout.
+    height: isTablet ? 400 : 118,
     justifyContent: "center",
     overflow: "hidden",
   },
@@ -302,4 +305,4 @@ export const storeStyles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 23,
   },
-});
+}));

@@ -1,7 +1,8 @@
 import { StyleSheet } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 
-export const orderStyles = StyleSheet.create({
+export const orderStyles = StyleSheet.create(scaleStyles({
   dateInput: {
     borderBottomColor: authControlStyles.colors.ink,
     borderBottomWidth: 1,
@@ -261,15 +262,45 @@ export const orderStyles = StyleSheet.create({
     height: 6,
   },
   quantityInput: {
-    borderColor: authControlStyles.colors.ink20,
-    borderWidth: 1,
     color: authControlStyles.colors.ink,
     fontFamily: "monospace",
     fontSize: 15,
-    minHeight: 40,
-    minWidth: 54,
-    paddingHorizontal: 8,
+    minHeight: 42,
+    minWidth: 46,
+    paddingHorizontal: 6,
     textAlign: "center",
+  },
+  quantityStepper: {
+    alignItems: "stretch",
+    alignSelf: "flex-start",
+    borderColor: authControlStyles.colors.ink20,
+    borderWidth: 1,
+    flexDirection: "row",
+    overflow: "hidden",
+  },
+  stepperButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 42,
+    width: 34,
+  },
+  stepperButtonPressed: {
+    backgroundColor: authControlStyles.colors.ink05,
+  },
+  stepperButtonLeft: {
+    borderRightColor: authControlStyles.colors.ink10,
+    borderRightWidth: 1,
+  },
+  stepperButtonRight: {
+    borderLeftColor: authControlStyles.colors.ink10,
+    borderLeftWidth: 1,
+  },
+  stepperButtonText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 17,
+    fontWeight: "600",
+    lineHeight: 19,
   },
   secondaryButton: {
     alignItems: "center",
@@ -407,4 +438,4 @@ export const orderStyles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 10,
   },
-});
+}));

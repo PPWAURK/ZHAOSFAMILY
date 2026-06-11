@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
@@ -471,7 +472,7 @@ export function ProfileScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(scaleStyles({
   avatar: {
     alignItems: "center",
     backgroundColor: "rgba(193, 22, 22, 0.08)",
@@ -706,4 +707,4 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     fontWeight: "400",
   },
-});
+}));

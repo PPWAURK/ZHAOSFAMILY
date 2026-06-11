@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import type { ImageSourcePropType } from "react-native";
 import type { RestaurantSummary } from "@zhao/types";
 import {
@@ -586,7 +587,7 @@ function RolePicker({ label, roles, selectedRoles, onToggleRole }: RolePickerPro
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(scaleStyles({
   avatarAction: {
     borderColor: authControlStyles.colors.ink10,
     borderWidth: 1,
@@ -775,4 +776,4 @@ const styles = StyleSheet.create({
   termsRow: {
     marginTop: 24,
   },
-});
+}));
