@@ -761,75 +761,7 @@
 <claude-mem-context>
 # Memory Context
 
-# [ZHAO's Family] recent context, 2026-05-06 4:56pm GMT+2
+# [zhao-family] recent context, 2026-06-10 10:22am GMT+2
 
-Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
-Format: ID TIME TYPE TITLE
-Fetch details: get_observations([IDs]) | Search: mem-search skill
-
-Stats: 50 obs (20,092t read) | 1,477,032t work | 99% savings
-
-### Apr 22, 2026
-S4 New order page feature fully implemented — all 9 files pass syntax validation (Apr 22 at 10:11 AM)
-S3 Build the first post-login page — Stores (门店管理 / Boutiques) for ZHAO's Family dashboard (Apr 22 at 10:11 AM)
-S8 Training course detail route fixed with generateStaticParams (Apr 22 at 10:28 AM)
-### Apr 24, 2026
-43 2:38p 🔵 Training course detail route requires generateStaticParams for static export
-44 " 🔴 Training course detail route fixed with generateStaticParams
-S9 Training module next steps — planning what to build after discovering pre-built page components (Apr 24 at 2:38 PM)
-45 2:46p 🔵 Backend renamed from apps/api to apps/backend with extensive new modules
-46 2:47p ⚖️ Training module backend development initiated
-47 " ⚖️ Training module backend development selected as next step
-48 2:48p 🟣 Training module NestJS backend scaffold initiated
-49 " 🟣 NestJS TrainingModule implemented with REST API endpoints and static course catalog
-50 2:49p ⚖️ Training module backend development initiated
-51 " 🟣 TrainingModule wired into NestJS AppModule — backend implementation started
-52 2:50p 🔵 Backend infrastructure audit before training module API build
-54 2:52p 🔄 MinioService hardened with graceful degradation and MediaModule re-enabled in AppModule
-53 " 🔵 Full monorepo feature/module map confirmed for architecture diagram
-55 2:58p 🔵 Backend ESLint, TypeScript, and Jest all pass after Minio/Media refactor
-56 " ✅ Minio service added to docker-compose.yml and started successfully
-57 " 🔵 Minio container reachable from host but not from Claude Code sandbox network
-58 3:12p 🟣 Media upload system: disk storage + 5GB limit + folder routing
-59 " 🟣 Training upload UI: position + media type classifiers
-60 " 🔵 NestJS backend confirmed running on port 3002 with full route map
-61 3:53p 🔵 Auth backend gap identified — only register existed, no login/me/logout
-62 " 🟣 NestJS auth backend — login, me, logout endpoints with custom HMAC token signing
-63 " 🟣 Frontend AuthContext wired to real backend with localStorage token persistence
-64 " 🟣 ProfilePage wired to real auth data with loading state and user sync
-### Apr 27, 2026
-81 10:38a 🔵 ZHAO's Family monorepo top-level structure identified
-84 10:40a 🔵 Code quality review initiated — "ZHAO's Family" monorepo structure assessed
-89 10:41a 🔵 Frontend code quality audit — Next.js app scores 6/10 overall
-90 " 🔵 Backend code quality audit — NestJS app scores 7/10 with critical auth gaps
-91 " 🔵 Monorepo-level security and config issues identified
-92 " ⚖️ Overall codebase scored 6.2/10 — professional intent but significant functional gaps
-S13 Frontend code quality audit — Next.js app scores 6/10 overall (Apr 27 at 10:41 AM)
-### Apr 29, 2026
-169 1:27p 🔵 WebApp2026 comparison initiated — two versions found alongside current project
-170 " 🔵 两个项目架构对比 — ZHAO's Family vs WebApp2026
-171 1:28p 🔵 Cross-project backend architecture comparison: ZHAO's Family vs WebApp2026
-172 " 🔵 Cross-project frontend architecture comparison: ZHAO's Family (Next.js) vs WebApp2026 (React Native / Expo)
-173 1:29p 🔵 Database migration history comparison: ZHAO's Family (2 migrations) vs WebApp2026 (25 migrations)
-174 " 🔵 Prisma schema comparison: ZHAO's Family RBAC model vs WebApp2026 enum-based role model with full order/return/document schema
-175 " 🔵 Backend test coverage comparison: WebApp2026 has 16 spec files vs ZHAO's Family 7
-176 1:32p 🔵 WebApp2026 vs ZHAO's Family — side-by-side architecture comparison
-### Apr 30, 2026
-207 4:59p 🔵 Git repo has 256 uncommitted entries — large backend rename in-flight
-208 5:00p 🔵 ZHAOSFAMILY repo has massive uncommitted working tree on main branch
-209 5:01p 🔵 Root .gitignore still references old apps/api path after rename to apps/backend
-210 5:02p 🔵 Full staged diff: 273 files, +33,750 lines — complete frontend feature refactor and backend migration
-211 " ✅ All 273 staged files committed to main as "Publish ZHAO Family app updates" (816fe34)
-212 5:04p 🔵 apps/backend dev setup: NestJS API on port 3002, MySQL via Docker container webapp2026-mysql
-213 " ✅ Root README.md created for ZHAO's Family monorepo
-### May 6, 2026
-340 2:03p 🔴 TypeScript errors fixed in BrandPanel.tsx and FloatingAssetLayer.tsx
-341 " 🔵 Remaining .js files in auth, orders, and suppliers features
-342 2:04p 🔄 TypeScript migration wave 1 complete — 10 files migrated from .js to .ts/.tsx
-343 2:06p 🔵 apps/web frontend feature structure and file inventory mapped
-344 2:08p 🔵 apps/backend NestJS module inventory fully mapped
-345 " 🔵 Frontend API coverage mapped against backend endpoints
-347 2:13p 🔵 Auth backend uses custom HMAC token signing, not a JWT library; accept-invitation and reset-password endpoints missing from controller
-
-Access 1477k tokens of past work via get_observations([IDs]) or mem-search skill.
+No previous sessions found.
 </claude-mem-context>
