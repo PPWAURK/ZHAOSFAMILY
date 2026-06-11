@@ -10,6 +10,7 @@ import { fixMojibakeFileName } from '../media/media-filename.utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { JOB_ROLE_VALUES } from '../auth/job-roles';
 import { TRAINING_COURSE_CATALOG } from './training-catalog';
+import { TrainingTitleService } from './training-title.service';
 import type { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
 import type { CreateTrainingPositionDto } from './dto/create-training-position.dto';
 import type { ListTrainingCoursesQueryDto } from './dto/list-training-courses-query.dto';
@@ -219,11 +220,13 @@ function getDefaultProgress(materialId: number): TrainingMaterialProgressItem {
 function toPlanMaterialItem(
   material: TrainingMaterialItem,
   progressByMaterialId: Map<number, TrainingMaterialProgressItem>,
+  quizMaterialIds: Set<number>,
 ): TrainingPlanMaterialItem {
   return {
     ...material,
     progress:
       progressByMaterialId.get(material.id) ?? getDefaultProgress(material.id),
+    hasQuiz: quizMaterialIds.has(material.id),
   };
 }
 
@@ -248,6 +251,7 @@ export class TrainingService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly mediaService: MediaService,
+    private readonly titleService: TrainingTitleService,
   ) {}
 
   listCourses(query: ListTrainingCoursesQueryDto): TrainingCourseItem[] {
@@ -468,9 +472,14 @@ export class TrainingService {
           completedAt: true,
         },
       });
+    const quizRows = await this.prismaService.trainingQuiz.findMany({
+      where: { materialId: { in: materials.map((material) => material.id) } },
+      select: { materialId: true },
+    });
+    const quizMaterialIds = new Set(quizRows.map((quiz) => quiz.materialId));
     const progressByMaterialId = buildProgressMap(progressRows);
     const materialItems = materials.map((material) =>
-      toPlanMaterialItem(material, progressByMaterialId),
+      toPlanMaterialItem(material, progressByMaterialId, quizMaterialIds),
     );
     const required = materialItems.filter((material) => material.isRequired);
     const requiredCompleted = required.filter(
@@ -584,6 +593,16 @@ export class TrainingService {
   ): Promise<TrainingMaterialProgressItem> {
     await this.getMaterial(materialId);
 
+    // A material gated by a quiz can only be completed by passing the quiz
+    // (see TrainingQuizService); the viewer flow may only advance it to
+    // "in_progress" so watching alone never marks it done.
+    const quiz = await this.prismaService.trainingQuiz.findUnique({
+      where: { materialId },
+      select: { id: true },
+    });
+    const requestedStatus =
+      quiz && dto.status === 'completed' ? 'in_progress' : dto.status;
+
     const progressKey = {
       userId_materialId: {
         userId,
@@ -604,15 +623,19 @@ export class TrainingService {
       });
 
       const keepCompleted =
-        existing?.status === 'completed' && dto.status !== 'completed';
+        existing?.status === 'completed' && requestedStatus !== 'completed';
+      const cappedPct = quiz
+        ? Math.min(dto.progressPct ?? 10, 99)
+        : dto.progressPct;
       const progressPct = keepCompleted
         ? 100
-        : dto.status === 'completed'
+        : requestedStatus === 'completed'
           ? 100
-          : Math.max(dto.progressPct ?? 10, 1);
+          : Math.max(cappedPct ?? 10, 1);
       const status = keepCompleted
         ? 'completed'
-        : (dto.status ?? (progressPct >= 100 ? 'completed' : 'in_progress'));
+        : (requestedStatus ??
+          (progressPct >= 100 ? 'completed' : 'in_progress'));
       const completedAt = status === 'completed' ? new Date() : null;
       const finalCompletedAt = keepCompleted
         ? (existing?.completedAt ?? completedAt)
@@ -642,6 +665,20 @@ export class TrainingService {
         },
       });
     });
+
+    // Completing the last required material of a position may unlock a title.
+    if (row.status === 'completed') {
+      const material = await this.prismaService.trainingMaterial.findUnique({
+        where: { id: materialId },
+        select: { positionId: true },
+      });
+      if (material) {
+        await this.titleService.evaluateForPosition(
+          userId,
+          material.positionId,
+        );
+      }
+    }
 
     return toProgressItem(row);
   }

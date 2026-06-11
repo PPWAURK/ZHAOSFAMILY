@@ -436,6 +436,120 @@ async function upsertJobRolePositions() {
   }
 }
 
+const TRAINING_TITLES = [
+  {
+    code: 'TITLE_ALL_ONBOARDED',
+    nameZh: 'ZHAO 入门',
+    nameEn: 'ZHAO Onboarded',
+    nameFr: 'ZHAO Initié',
+    frameStyle: 'red',
+    unlockPositionCode: 'ALL',
+    sortOrder: 1,
+  },
+  {
+    code: 'TITLE_FOH_CERTIFIED',
+    nameZh: '前厅认证',
+    nameEn: 'Front Certified',
+    nameFr: 'Salle Certifié',
+    frameStyle: 'gold',
+    unlockPositionCode: 'FOH',
+    sortOrder: 2,
+  },
+  {
+    code: 'TITLE_BOH_CERTIFIED',
+    nameZh: '后厨认证',
+    nameEn: 'Kitchen Certified',
+    nameFr: 'Cuisine Certifié',
+    frameStyle: 'jade',
+    unlockPositionCode: 'BOH',
+    sortOrder: 3,
+  },
+];
+
+const SAMPLE_QUIZ_QUESTIONS = [
+  {
+    type: 'single',
+    prompt: '处理生熟食材时，正确的做法是？',
+    options: [
+      { key: 'a', label: '使用同一块砧板节省时间' },
+      { key: 'b', label: '生熟分开，使用不同砧板和刀具' },
+      { key: 'c', label: '只要看起来干净即可' },
+    ],
+    correctKeys: ['b'],
+    explanation: '生熟分开可避免交叉污染，是食品安全的基本要求。',
+    sortOrder: 1,
+  },
+  {
+    type: 'multiple',
+    prompt: '以下哪些属于洗手的关键时刻？（多选）',
+    options: [
+      { key: 'a', label: '接触生肉后' },
+      { key: 'b', label: '上洗手间后' },
+      { key: 'c', label: '处理即食食品前' },
+      { key: 'd', label: '下班离店时' },
+    ],
+    correctKeys: ['a', 'b', 'c'],
+    explanation: '接触污染源后和接触即食食品前都必须洗手。',
+    sortOrder: 2,
+  },
+  {
+    type: 'boolean',
+    prompt: '冷藏区温度应保持在 4°C 或以下。',
+    options: [
+      { key: 'true', label: '正确' },
+      { key: 'false', label: '错误' },
+    ],
+    correctKeys: ['true'],
+    explanation: '冷藏温度应保持在 4°C 或以下以抑制细菌繁殖。',
+    sortOrder: 3,
+  },
+];
+
+async function upsertTrainingTitles() {
+  for (const title of TRAINING_TITLES) {
+    await prisma.trainingTitle.upsert({
+      where: { code: title.code },
+      update: {
+        nameZh: title.nameZh,
+        nameEn: title.nameEn,
+        nameFr: title.nameFr,
+        frameStyle: title.frameStyle,
+        unlockPositionCode: title.unlockPositionCode,
+        sortOrder: title.sortOrder,
+      },
+      create: title,
+    });
+  }
+}
+
+// Attaches a demo quiz to the first required "ALL" material that has none, so
+// the mobile quiz flow can be exercised once at least one material exists.
+async function seedSampleQuiz() {
+  const material = await prisma.trainingMaterial.findFirst({
+    where: { positionId: 'ALL', isRequired: true, quiz: { is: null } },
+    orderBy: { id: 'asc' },
+    select: { id: true, title: true },
+  });
+
+  if (!material) {
+    console.log('[seed] no eligible ALL material without a quiz; sample quiz skipped');
+    return;
+  }
+
+  const quiz = await prisma.trainingQuiz.create({
+    data: {
+      materialId: material.id,
+      passingScore: 80,
+      maxAttempts: null,
+      questions: { create: SAMPLE_QUIZ_QUESTIONS },
+    },
+  });
+
+  console.log(
+    `[seed] attached sample quiz ${quiz.id} to material ${material.id} ("${material.title}")`,
+  );
+}
+
 async function upsertHoldingRestaurant() {
   const now = new Date();
 
@@ -605,6 +719,8 @@ async function main() {
   await replaceRolePermissions();
   await upsertTrainingPositions();
   await upsertJobRolePositions();
+  await upsertTrainingTitles();
+  await seedSampleQuiz();
   await assignSuperAdminRole();
   await removeSuperAdminRoleFromStoreUsers();
   await removeStoreManagerRoleFromNonManagers();

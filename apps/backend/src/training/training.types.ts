@@ -73,6 +73,119 @@ export type TrainingMaterialProgressItem = {
 
 export type TrainingPlanMaterialItem = TrainingMaterialItem & {
   progress: TrainingMaterialProgressItem;
+  hasQuiz: boolean;
+};
+
+export const TRAINING_QUIZ_QUESTION_TYPES = [
+  'single',
+  'multiple',
+  'boolean',
+] as const;
+export type TrainingQuizQuestionType =
+  (typeof TRAINING_QUIZ_QUESTION_TYPES)[number];
+
+export type TrainingQuizOption = {
+  key: string;
+  label: string;
+};
+
+// Sent to the employee while taking the quiz — never includes correct answers.
+export type TrainingQuizQuestionPublic = {
+  id: number;
+  type: TrainingQuizQuestionType;
+  prompt: string;
+  options: TrainingQuizOption[];
+};
+
+export type TrainingQuizForTaking = {
+  quizId: number;
+  materialId: number;
+  materialTitle: string;
+  passingScore: number;
+  maxAttempts: number | null;
+  attemptsUsed: number;
+  bestScore: number | null;
+  passed: boolean;
+  questions: TrainingQuizQuestionPublic[];
+};
+
+export type TrainingQuizQuestionResult = {
+  questionId: number;
+  correct: boolean;
+  correctKeys: string[];
+  explanation: string | null;
+};
+
+export type TrainingTitleItem = {
+  code: string;
+  name: {
+    zh: string;
+    en: string;
+    fr: string;
+  };
+  frameStyle: string;
+  unlockPositionCode: string;
+  earned: boolean;
+  earnedAt: string | null;
+};
+
+export type TrainingQuizAttemptResult = {
+  score: number;
+  passed: boolean;
+  attemptsUsed: number;
+  materialCompleted: boolean;
+  results: TrainingQuizQuestionResult[];
+  newTitles: TrainingTitleItem[];
+};
+
+export type TrainingMyTitles = {
+  earned: TrainingTitleItem[];
+  available: TrainingTitleItem[];
+};
+
+// Management view — includes the correct answers, gated by manager permission.
+export type TrainingQuizQuestionAdmin = {
+  id: number;
+  type: TrainingQuizQuestionType;
+  prompt: string;
+  options: TrainingQuizOption[];
+  correctKeys: string[];
+  explanation: string | null;
+  sortOrder: number;
+};
+
+export type TrainingQuizAdminView = {
+  quizId: number;
+  materialId: number;
+  materialTitle: string;
+  passingScore: number;
+  questionCount: number;
+  maxAttempts: number | null;
+  questions: TrainingQuizQuestionAdmin[];
+};
+
+export type TrainingQuizDraftQuestion = {
+  type: TrainingQuizQuestionType;
+  prompt: string;
+  options: TrainingQuizOption[];
+  correctKeys: string[];
+  explanation: string | null;
+};
+
+export type TrainingRecordItem = {
+  materialId: number;
+  title: string;
+  positionId: string;
+  type: string;
+  isRequired: boolean;
+  completedAt: string | null;
+  quizScore: number | null;
+};
+
+export type TrainingMyRecords = {
+  records: TrainingRecordItem[];
+  titles: TrainingTitleItem[];
+  completedCount: number;
 };
 
 export type TrainingPlanSummary = {
