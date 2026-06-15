@@ -110,6 +110,9 @@ export const DASHBOARD_NAV = [
         en: "Recruitment requests",
         fr: "Demandes recrutement",
         requiredPermission: "recruitment.request.manage",
+        // Store managers (by job role) also see the entry — the backend scopes
+        // their list to their own store and the page is read-only for them.
+        visibleForJobRoles: ["store-manager"],
       },
     ],
   },

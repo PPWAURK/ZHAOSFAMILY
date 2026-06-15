@@ -48,13 +48,25 @@ export default function Sidebar({ open, onClose, lang }) {
   const userLabels = USER_CARD_LABELS[lang];
   const userCard = resolveUserCard(user, userLabels);
   const userPermissions = user?.permissions || [];
+  const userJobRoles = `${user?.jobRole || user?.position || ""}`
+    .split(",")
+    .map((role) => role.trim())
+    .filter(Boolean);
+  const canSeeNavItem = (item) => {
+    if (
+      item.visibleForJobRoles?.some((role) => userJobRoles.includes(role))
+    ) {
+      return true;
+    }
+
+    return (
+      !item.requiredPermission ||
+      userPermissions.includes(item.requiredPermission)
+    );
+  };
   const visibleNavGroups = DASHBOARD_NAV.map((group) => ({
     ...group,
-    items: group.items.filter(
-      (item) =>
-        !item.requiredPermission ||
-        userPermissions.includes(item.requiredPermission),
-    ),
+    items: group.items.filter(canSeeNavItem),
   })).filter((group) => group.items.length > 0);
 
   useEffect(() => {
