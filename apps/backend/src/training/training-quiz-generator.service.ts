@@ -80,7 +80,7 @@ function streamToBuffer(stream: Readable): Promise<Buffer> {
 
 // Maps an AI provider/SDK error to a specific code the UI can explain — most
 // importantly "out of credits" vs rate-limited vs bad key vs generic failure.
-function classifyAiError(error: unknown): string {
+export function classifyAiError(error: unknown): string {
   const status =
     typeof (error as { status?: unknown })?.status === 'number'
       ? (error as { status: number }).status
@@ -125,7 +125,7 @@ function classifyAiError(error: unknown): string {
   return 'TRAINING_QUIZ_AI_REQUEST_FAILED';
 }
 
-function buildGenerationBatches(count: number): GenerationBatch[] {
+export function buildGenerationBatches(count: number): GenerationBatch[] {
   const totalCount = Math.max(1, Math.floor(count));
   const total = Math.ceil(totalCount / GENERATION_BATCH_SIZE);
   const batches: GenerationBatch[] = [];
@@ -192,7 +192,7 @@ function normalizeOptions(value: unknown): TrainingQuizDraftOption[] {
 
 // Pull the first JSON array out of the model output, tolerating code fences
 // or stray prose around it.
-function parseDrafts(content: string): TrainingQuizDraftQuestion[] {
+export function parseDrafts(content: string): TrainingQuizDraftQuestion[] {
   const start = content.indexOf('[');
   const end = content.lastIndexOf(']');
 
