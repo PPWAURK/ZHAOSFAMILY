@@ -12,9 +12,9 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 
 | 端 | 完成度 | 主要缺口 |
 |---|---|---|
-| 后端 `apps/backend` | **~95%**（P0-2 已补测+验证） | — |
-| Web `apps/web` | **~90%** | 改密码接线、岗位映射管理 UI、门店排行榜验证 |
-| Mobile `apps/mobile` | **~85%** | 店长改员工岗位窄屏未做 + 培训真机验证未做 |
+| 后端 `apps/backend` | **~95%**（P0-2 已补测+验证，P1-6 映射端点已加） | — |
+| Web `apps/web` | **~93%** | 改密码接线、门店排行榜验证（岗位映射 UI 已完成 P1-6） |
+| Mobile `apps/mobile` | **~90%** | 培训真机验证未做（店长改岗位 P1-4 已修复可用） |
 | 共享包 | **~95%** | — |
 
 **Mobile 定位（2026-06-15 锁定）:** Mobile 面向一线/店长日常使用,**不做管理后台**。inventory / suppliers / order-history / 完整权限管理留在 Web。mobile 上唯一的管理类能力是「店长改本店员工岗位」。据此 mobile 完成度从原估 ~70%(按"4 模块未接线")上调到 ~85%,因为那 3 个模块本就不在 mobile 范围内。
@@ -59,13 +59,11 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 
 ## 3. 🟠 P1 — 核心体验补全(预估 3–5 天)
 
-### P1-4 Mobile 店长改员工岗位（范围已收窄）
-- **范围决策（2026-06-15 锁定）:** Mobile **不做管理后台**。inventory / suppliers / order-history / 完整 permissions 管理**留在 Web，不上 mobile**,其"更多"菜单占位保持现状（或后续移除入口）。mobile 上唯一要补的管理类能力是:**店长(store-manager)修改本店员工的岗位(jobRole)**。
-- **做什么:** mobile 加一个窄屏:店长看到本店员工列表,逐个改 jobRole。复用现有后端,无需改后端 —— `GET /permissions/users`(按本店过滤)+ `PATCH /permissions/users/:id/job-role`。
-- **后端已就绪:** `assertJobRoleUpdateAllowed`([permissions.service.ts:622](../apps/backend/src/permissions/permissions.service.ts)) 已允许店长改**同店**员工岗位,且限制为店内可管理岗位(不能动 holding、不能越权授予)。
-- **为什么现在不是 100%:** mobile "更多"里的 permissions 入口被 `isConnectedDashboardEntry`([DashboardHomeScreen.tsx](../apps/mobile/src/features/dashboard/DashboardHomeScreen.tsx)) 排除,无任何岗位编辑界面。纯 mobile UI。
-- **验证:** 店长账号在真机改一名本店员工岗位成功;非店长/跨店操作被后端 403;改完该员工 `my-plan` 随新岗位更新。
-- **工作量:** ~1 天（窄屏,远小于原"4 模块"估计）。
+### P1-4 Mobile 店长改员工岗位 ✅ 已完成（2026-06-15）
+- **范围决策:** Mobile **不做管理后台**。inventory / suppliers / order-history / 完整 permissions 管理留在 Web。mobile 唯一的管理类能力是店长改本店员工岗位。
+- **结果:** 该能力其实早已在 mobile **Stores 模块（门店 tab → 团队视图）**里实现(列本店员工、搜索/按岗位筛选、逐人岗位选择器 + 保存,调 `PATCH /permissions/users/:id/job-role`)。但发现一个真 bug:岗位选择器只列**管理类**岗位(holding/店长/经理…),全部不在后端 `MANAGEABLE_JOB_ROLE_VALUES` 内 → 店长每次保存都被 **403**,功能实际是坏的。
+- **修复(提交 685c451):** 给 mobile 补齐**一线岗位**选项(迎宾/收银/服务生/打包/吧台 + 洗碗/打面/热前菜/冷前菜/饭),并让非 holding 视图只展示后端可赋集;holding/admin 仍可见全部。mobile typecheck/lint/test 全绿。
+- **仍待:** 真机端到端确认一次(随 P1-5 一起做)。
 
 ### P1-5 Mobile 培训真机验证
 - **做什么:** 真机跑通学习闭环(标记完成 + 进度)、quiz 答题闭环、称号(TrainingTitle)展示、防截屏(`useScreenCaptureProtection`)。
@@ -73,10 +71,9 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 - **验证:** EAS/真机上完整走一遍学习→测验→获得称号;iOS/Android 防截屏生效。
 - **工作量:** 1 天。
 
-### P1-6 训练岗位映射闭环 Phase 4(Web 管理 UI)
-- **做什么:** `TrainingPositionsPage.js` 增加「岗位映射」编辑区(列出/编辑 `jobRole ↔ positionCode ↔ includeDescendants / grantsAllPositions`);`PermissionsPage` 配岗位时调 `GET /training/resolve-preview` 显示「将获得 N 必修 / M 选修」;诊断结果(`/training/diagnostics`)在页顶以告警条呈现。
-- **为什么不是 100%:** 后端 Phase 0–3 **已落地**(migration `20260609150000_add_job_role_position_map` + `training-position-resolver.ts` + `diagnostics` / `resolve-preview` 端点都在),但映射目前只能改种子 / 数据库,**运营无法在界面维护** → 闭环"可运营性"缺口。详见 [`docs/training-assignment-loop-plan.md`](./training-assignment-loop-plan.md) §4 Phase 4。
-- **验证:** 界面增改一条映射后,对应 jobRole 的 `my-plan` 立即正确;预览数与实际分配一致。
+### P1-6 训练岗位映射闭环 Phase 4(Web 管理 UI)✅ 已完成（2026-06-15）
+- **做了什么:** 后端补齐映射管理端点 `GET/PUT/DELETE /training/job-role-positions`(受 `training.position.manage` 保护,校验 jobRole ∈ JOB_ROLE_VALUES 且锚点岗位 active);Web `TrainingPositionsPage` 新增 `JobRolePositionPanel` —— 可编辑的 `jobRole → 锚点岗位 + includeDescendants + grantsAllPositions` 表格、逐行 `resolve-preview`(「N 必修 / M 选修」)、页内诊断条(未映射/解析为空/无资料岗位/孤儿)。提交 d685404。
+- **结果:** 映射现在可在界面维护,闭环"可运营性"补齐。后端 +5 单测(124 全绿)。
 - **工作量:** 1–1.5 天。
 
 ---
@@ -128,8 +125,8 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 | 里程碑 | 包含 | 累计工作量 | 达成后状态 |
 |---|---|---|---|
 | **M1 可部署** ✅ | P0-1 ~ P0-3 | 已完成 | 现有功能可干净部署上线 |
-| **M2 运营闭环** | + P1-6 | ~1–1.5 天 | 培训岗位分配可在界面运营 |
-| **M3 移动端到位** | + P1-4 / P1-5 | ~+2 天 | 店长可在 mobile 改员工岗位 + 培训真机验证通过 |
+| **M2 运营闭环** ✅ | + P1-6 | 已完成 | 培训岗位分配可在界面运营 |
+| **M3 移动端到位** | + P1-4 ✅ / P1-5 | 仅剩真机验证 | 店长可在 mobile 改员工岗位(已修) + 培训真机验证(待) |
 | **M4 100%** | + P2 全部 | ~+2–3 天 | 全功能完成 + 测试/回归到位 |
 
 > M3 已按"mobile 不做管理后台"收窄:不再追求 mobile 与 web 功能对齐,只补「店长改员工岗位」窄屏 + 培训真机验证。
