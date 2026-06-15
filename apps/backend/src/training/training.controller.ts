@@ -8,6 +8,7 @@ import {
   Patch,
   ParseIntPipe,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -27,12 +28,14 @@ import { SubmitQuizAttemptDto } from './dto/submit-quiz-attempt.dto';
 import { UpdateTrainingMaterialDto } from './dto/update-training-material.dto';
 import { UpdateTrainingPositionDto } from './dto/update-training-position.dto';
 import { UpdateTrainingProgressDto } from './dto/update-training-progress.dto';
+import { UpsertJobRolePositionDto } from './dto/upsert-job-role-position.dto';
 import { TrainingService } from './training.service';
 import { TrainingQuizService } from './training-quiz.service';
 import { TrainingTitleService } from './training-title.service';
 import type {
   TrainingDiagnostics,
   TrainingCourseItem,
+  TrainingJobRolePositionItem,
   TrainingMaterialItem,
   TrainingMaterialProgressItem,
   TrainingMyPlan,
@@ -104,6 +107,32 @@ export class TrainingController {
     @Param('code') code: string,
   ): Promise<{ message: 'TRAINING_POSITION_DELETED' }> {
     return this.trainingService.deletePosition(code);
+  }
+
+  @Get('job-role-positions')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_POSITION_PERMISSIONS.manage)
+  listJobRolePositions(): Promise<TrainingJobRolePositionItem[]> {
+    return this.trainingService.listJobRolePositions();
+  }
+
+  @Put('job-role-positions/:jobRole')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_POSITION_PERMISSIONS.manage)
+  upsertJobRolePosition(
+    @Param('jobRole') jobRole: string,
+    @Body() dto: UpsertJobRolePositionDto,
+  ): Promise<TrainingJobRolePositionItem> {
+    return this.trainingService.upsertJobRolePosition(jobRole, dto);
+  }
+
+  @Delete('job-role-positions/:jobRole')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_POSITION_PERMISSIONS.manage)
+  deleteJobRolePosition(
+    @Param('jobRole') jobRole: string,
+  ): Promise<{ message: 'TRAINING_JOB_ROLE_POSITION_DELETED' }> {
+    return this.trainingService.deleteJobRolePosition(jobRole);
   }
 
   @Get('diagnostics')

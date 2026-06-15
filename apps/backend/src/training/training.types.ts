@@ -287,3 +287,10 @@ export type TrainingPositionItem = {
   sortOrder: number;
   children: TrainingPositionItem[];
 };
+
+export type TrainingJobRolePositionItem = {
+  jobRole: string;
+  positionCode: string;
+  includeDescendants: boolean;
+  grantsAllPositions: boolean;
+};

@@ -23,6 +23,7 @@ import type {
   TrainingCourseItem,
   TrainingMaterialItem,
   TrainingMaterialProgressItem,
+  TrainingJobRolePositionItem,
   TrainingMyPlan,
   TrainingPlanMaterialItem,
   TrainingPositionItem,
@@ -739,6 +740,69 @@ export class TrainingService {
         .length,
       warnings: result.warnings,
     };
+  }
+
+  async listJobRolePositions(): Promise<TrainingJobRolePositionItem[]> {
+    return this.listJobRolePositionRows();
+  }
+
+  async upsertJobRolePosition(
+    jobRole: string,
+    dto: {
+      positionCode: string;
+      includeDescendants?: boolean;
+      grantsAllPositions?: boolean;
+    },
+  ): Promise<TrainingJobRolePositionItem> {
+    this.ensureKnownJobRole(jobRole);
+    await this.ensureActiveMaterialPosition(dto.positionCode);
+
+    const data = {
+      positionCode: dto.positionCode,
+      includeDescendants: dto.includeDescendants ?? false,
+      grantsAllPositions: dto.grantsAllPositions ?? false,
+    };
+
+    return this.prismaService.trainingJobRolePosition.upsert({
+      where: { jobRole },
+      create: { jobRole, ...data },
+      update: data,
+      select: {
+        jobRole: true,
+        positionCode: true,
+        includeDescendants: true,
+        grantsAllPositions: true,
+      },
+    });
+  }
+
+  async deleteJobRolePosition(
+    jobRole: string,
+  ): Promise<{ message: 'TRAINING_JOB_ROLE_POSITION_DELETED' }> {
+    this.ensureKnownJobRole(jobRole);
+    const existing =
+      await this.prismaService.trainingJobRolePosition.findUnique({
+        where: { jobRole },
+        select: { jobRole: true },
+      });
+
+    if (!existing) {
+      throw new NotFoundException('TRAINING_JOB_ROLE_POSITION_NOT_FOUND');
+    }
+
+    await this.prismaService.trainingJobRolePosition.delete({
+      where: { jobRole },
+    });
+
+    return { message: 'TRAINING_JOB_ROLE_POSITION_DELETED' };
+  }
+
+  private ensureKnownJobRole(jobRole: string): void {
+    if (
+      !JOB_ROLE_VALUES.includes(jobRole as (typeof JOB_ROLE_VALUES)[number])
+    ) {
+      throw new BadRequestException('INVALID_JOB_ROLE');
+    }
   }
 
   async createMaterial(

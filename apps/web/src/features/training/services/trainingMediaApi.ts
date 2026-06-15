@@ -9,11 +9,15 @@ import type {
   TrainingMediaUploadResult,
   TrainingPlan,
   TrainingPosition,
+  TrainingDiagnostics,
+  TrainingJobRolePosition,
   TrainingProgress,
+  TrainingResolvePreview,
   TrainingStoreProgress,
   UpdateTrainingMaterialInput,
   UpdateTrainingPositionInput,
   UpdateTrainingProgressInput,
+  UpsertJobRolePositionInput,
 } from "@/features/training/types/training";
 
 export async function uploadTrainingMedia(
@@ -132,6 +136,42 @@ export async function updateTrainingPosition(
 
 export async function deleteTrainingPosition(code: string): Promise<unknown> {
   return apiClient.delete(`/training/positions/${encodeURIComponent(code)}`);
+}
+
+export async function fetchJobRolePositions(): Promise<TrainingJobRolePosition[]> {
+  const rows = await apiClient.get<TrainingJobRolePosition[]>(
+    "/training/job-role-positions",
+  );
+
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function upsertJobRolePosition(
+  jobRole: string,
+  input: UpsertJobRolePositionInput,
+): Promise<TrainingJobRolePosition> {
+  return apiClient.put<TrainingJobRolePosition>(
+    `/training/job-role-positions/${encodeURIComponent(jobRole)}`,
+    input,
+  );
+}
+
+export async function deleteJobRolePosition(jobRole: string): Promise<unknown> {
+  return apiClient.delete(
+    `/training/job-role-positions/${encodeURIComponent(jobRole)}`,
+  );
+}
+
+export async function fetchTrainingResolvePreview(
+  jobRole: string,
+): Promise<TrainingResolvePreview> {
+  return apiClient.get<TrainingResolvePreview>(
+    `/training/resolve-preview?jobRole=${encodeURIComponent(jobRole)}`,
+  );
+}
+
+export async function fetchTrainingDiagnostics(): Promise<TrainingDiagnostics> {
+  return apiClient.get<TrainingDiagnostics>("/training/diagnostics");
 }
 
 export function getTrainingMediaUrl(objectKey: string): string {

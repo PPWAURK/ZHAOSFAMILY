@@ -36,6 +36,9 @@ describe('TrainingService', () => {
       },
       trainingJobRolePosition: {
         findMany: jest.fn(),
+        findUnique: jest.fn(),
+        upsert: jest.fn(),
+        delete: jest.fn(),
         count: jest.fn(),
       },
       trainingQuiz: {
@@ -1042,6 +1045,75 @@ describe('TrainingService', () => {
         permissions: ['training.progress.view_store'],
       }),
     ).rejects.toMatchObject({ status: 403 });
+  });
+
+  describe('job-role position mapping', () => {
+    it('upserts a mapping after validating the role and position', async () => {
+      const { service, prismaService } = createService();
+      prismaService.trainingPosition.findUnique.mockResolvedValue({
+        isActive: true,
+      });
+      prismaService.trainingJobRolePosition.upsert.mockResolvedValue({
+        jobRole: 'front-host',
+        positionCode: 'FRONT_HOST',
+        includeDescendants: false,
+        grantsAllPositions: false,
+      });
+
+      const result = await service.upsertJobRolePosition('front-host', {
+        positionCode: 'FRONT_HOST',
+      });
+
+      expect(result.positionCode).toBe('FRONT_HOST');
+      const [upsertArg] = prismaService.trainingJobRolePosition.upsert.mock
+        .calls[0] as [{ create: Record<string, unknown> }];
+      expect(upsertArg.create).toMatchObject({
+        jobRole: 'front-host',
+        positionCode: 'FRONT_HOST',
+        includeDescendants: false,
+        grantsAllPositions: false,
+      });
+    });
+
+    it('rejects an unknown job role', async () => {
+      const { service } = createService();
+
+      await expect(
+        service.upsertJobRolePosition('not-a-role', {
+          positionCode: 'FRONT_HOST',
+        }),
+      ).rejects.toThrow('INVALID_JOB_ROLE');
+    });
+
+    it('rejects a position that is missing or inactive', async () => {
+      const { service, prismaService } = createService();
+      prismaService.trainingPosition.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.upsertJobRolePosition('front-host', { positionCode: 'GHOST' }),
+      ).rejects.toThrow('TRAINING_POSITION_NOT_FOUND');
+    });
+
+    it('deletes an existing mapping', async () => {
+      const { service, prismaService } = createService();
+      prismaService.trainingJobRolePosition.findUnique.mockResolvedValue({
+        jobRole: 'front-host',
+      });
+      prismaService.trainingJobRolePosition.delete.mockResolvedValue({});
+
+      await expect(
+        service.deleteJobRolePosition('front-host'),
+      ).resolves.toEqual({ message: 'TRAINING_JOB_ROLE_POSITION_DELETED' });
+    });
+
+    it('throws when deleting a mapping that does not exist', async () => {
+      const { service, prismaService } = createService();
+      prismaService.trainingJobRolePosition.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteJobRolePosition('front-host')).rejects.toThrow(
+        'TRAINING_JOB_ROLE_POSITION_NOT_FOUND',
+      );
+    });
   });
 });
 

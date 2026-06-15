@@ -69,3 +69,31 @@ export type TrainingPosition = {
 export type CreateTrainingPositionInput = Record<string, unknown>;
 
 export type UpdateTrainingPositionInput = Record<string, unknown>;
+
+export type TrainingJobRolePosition = {
+  jobRole: string;
+  positionCode: string;
+  includeDescendants: boolean;
+  grantsAllPositions: boolean;
+};
+
+export type UpsertJobRolePositionInput = {
+  positionCode: string;
+  includeDescendants: boolean;
+  grantsAllPositions: boolean;
+};
+
+export type TrainingResolvePreview = {
+  jobRole: string | null;
+  positionCodes: string[];
+  requiredCount: number;
+  optionalCount: number;
+  warnings: { jobRole: string; reason: string }[];
+};
+
+export type TrainingDiagnostics = {
+  unmappedJobRoles: string[];
+  positionsWithoutMaterials: string[];
+  orphanMaterials: string[];
+  rolesResolvingToEmpty: string[];
+};
