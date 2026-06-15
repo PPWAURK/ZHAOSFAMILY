@@ -5,9 +5,11 @@ services:
     restart: unless-stopped
     command:
       - mysqld
+      # utf8mb4 server defaults are enough; MySQL 8.4 removed the old
+      # --skip-character-set-client-handshake flag (and rejects the variable
+      # form at startup), so it is intentionally omitted.
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --skip-character-set-client-handshake
     environment:
       MYSQL_ROOT_PASSWORD: dev_root
       MYSQL_DATABASE: zhao_family
