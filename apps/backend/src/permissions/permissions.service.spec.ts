@@ -768,6 +768,9 @@ describe('PermissionsService', () => {
       restaurantId: 7,
       accountStatus: 'pending',
     });
+    // Restaurant exists so the flow reaches the job-role authorization check
+    // (granting a holding role is forbidden for a store manager).
+    prismaService.restaurant.findUnique.mockResolvedValue({ id: 7 });
 
     await expect(
       service.updateUserApproval(

@@ -51,14 +51,6 @@ type UpdateUserCall = {
   data: Record<string, unknown>;
 };
 
-type RefreshSessionCreateCall = {
-  data: {
-    userId: number;
-    tokenHash: string;
-    expiresAt: Date;
-  };
-};
-
 type PasswordResetMailCall = {
   email: string;
   language: string;
@@ -200,6 +192,7 @@ describe('AuthService', () => {
       name: 'Zhao Lina',
       email: 'lina@example.com',
       emailVerified: false,
+      accountStatus: 'pending',
       restaurantId: 3,
       birthday: new Date('1995-03-01T00:00:00.000Z'),
       jobRole: 'front-of-house',
@@ -219,14 +212,10 @@ describe('AuthService', () => {
         },
       },
     });
-    expect(prismaService.refreshSession.create).toHaveBeenCalledTimes(1);
-    const [refreshSessionCreateCall] = prismaService.refreshSession.create.mock
-      .calls[0] as [RefreshSessionCreateCall];
-    expect(refreshSessionCreateCall.data.userId).toBe(7);
-    expect(refreshSessionCreateCall.data.tokenHash).toHaveLength(64);
-    expect(refreshSessionCreateCall.data.expiresAt).toBeInstanceOf(Date);
-    expect(typeof result.accessToken).toBe('string');
-    expect(typeof result.refreshToken).toBe('string');
+    // Registration creates a pending account that requires HQ approval;
+    // no session is issued until the account is approved.
+    expect(prismaService.refreshSession.create).not.toHaveBeenCalled();
+    expect(result.message).toBe('REGISTRATION_PENDING_APPROVAL');
     expect(result.user).toMatchObject({
       id: 7,
       email: 'lina@example.com',

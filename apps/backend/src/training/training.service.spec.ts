@@ -38,6 +38,10 @@ describe('TrainingService', () => {
         findMany: jest.fn(),
         count: jest.fn(),
       },
+      trainingQuiz: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+      },
       user: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -66,16 +70,25 @@ describe('TrainingService', () => {
       TRAINING_JOB_ROLE_POSITIONS,
     );
     prismaService.trainingJobRolePosition.count.mockResolvedValue(0);
+    // No quiz gating by default — quiz-specific behavior is covered in
+    // training-quiz.service.spec.ts; these plan/progress tests predate quizzes.
+    prismaService.trainingQuiz.findUnique.mockResolvedValue(null);
+    prismaService.trainingQuiz.findMany.mockResolvedValue([]);
     const mediaService = {
       deleteFile: jest.fn(),
+    };
+    const titleService = {
+      evaluateForPosition: jest.fn().mockResolvedValue(undefined),
     };
 
     return {
       prismaService,
       mediaService,
+      titleService,
       service: new TrainingService(
         prismaService as never,
         mediaService as never,
+        titleService as never,
       ),
     };
   }
