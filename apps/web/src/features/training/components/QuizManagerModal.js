@@ -1,16 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   addTrainingQuizQuestion,
   deleteTrainingQuiz,
   deleteTrainingQuizQuestion,
   fetchTrainingQuizAdmin,
-  generateTrainingQuizDraft,
+  generateTrainingQuizDraftSSE,
   updateTrainingQuizQuestion,
   upsertTrainingQuiz,
 } from "@/features/training/services/trainingQuizApi";
+import AiConfigPanel from "@/features/training/components/AiConfigPanel";
 import styles from "@/features/training/components/quiz-manager.module.css";
 
 const OPTION_LETTERS = "ABCDEFGH";
@@ -61,6 +62,79 @@ function questionToForm(question) {
   };
 }
 
+const QUIZ_LANGS = ["zh", "fr", "bn"];
+const QUIZ_LANG_LABELS = { zh: "中", fr: "Fr", bn: "বাং" };
+
+// Maps a generation error code to a clear, actionable Chinese message.
+function aiErrorMessage(code) {
+  if (code.includes("INSUFFICIENT_CREDITS")) {
+    return "❌ 生成失败：模型供应商额度不足或已用尽。请到供应商后台充值，或在「AI 出题设置」里换一个有额度的 key / 服务商。";
+  }
+  if (code.includes("RATE_LIMITED")) {
+    return "⏳ 生成失败：触发供应商限流（请求过大或过于频繁）。请稍等一会儿重试，或换用额度更高的服务商。";
+  }
+  if (code.includes("UNAUTHORIZED")) {
+    return "🔑 生成失败：API Key 无效或与服务地址不匹配。请在「AI 出题设置」里检查 key 和 baseURL。";
+  }
+  if (code.includes("NOT_CONFIGURED")) {
+    return "AI 出题尚未配置。请在「AI 出题设置」里填好 API Key、服务地址和模型。";
+  }
+  if (code.includes("NO_SOURCE")) {
+    return "无法读取该资料内容（仅支持有文字的 PDF），请改用手动加题。";
+  }
+  return "AI 生成失败，请稍后再试。";
+}
+
+// AI drafts arrive as {zh,fr,bn} objects; pick the primary rendering for the
+// base columns / single-language editor.
+function pickPrimary(localized) {
+  if (!localized || typeof localized !== "object") return "";
+  return localized.zh || localized.fr || localized.bn || "";
+}
+
+function localizedLanguages(localized) {
+  if (!localized || typeof localized !== "object") return [];
+  return QUIZ_LANGS.filter((lang) => localized[lang]);
+}
+
+// Renders a localized field across all its languages so HQ can review zh/fr/bn.
+function LocalizedLines({ localized, textClassName, inline }) {
+  const langs = localizedLanguages(localized);
+  if (langs.length === 0) return null;
+  return (
+    <span className={inline ? styles.localizedInline : styles.localizedBlock}>
+      {langs.map((lang) => (
+        <span key={lang} className={textClassName || styles.localizedLine}>
+          <span className={styles.langPrefix}>{QUIZ_LANG_LABELS[lang]}</span>
+          {localized[lang]}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// Maps a trilingual draft into the question input: base columns hold the
+// primary language, `translations` carries all languages for the employee toggle.
+function draftToQuestionInput(draft) {
+  return {
+    type: draft.type,
+    prompt: pickPrimary(draft.prompt),
+    options: draft.options.map((option) => ({
+      key: option.key,
+      label: pickPrimary(option.label),
+    })),
+    correctKeys: draft.correctKeys,
+    explanation: draft.explanation ? pickPrimary(draft.explanation) : null,
+    translations: {
+      prompt: draft.prompt || {},
+      options: Object.fromEntries(
+        draft.options.map((option) => [option.key, option.label || {}]),
+      ),
+      explanation: draft.explanation || null,
+    },
+  };
+}
+
 export default function QuizManagerModal({ materialId, materialTitle, onClose }) {
   const [view, setView] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +148,10 @@ export default function QuizManagerModal({ materialId, materialTitle, onClose })
   const [editingId, setEditingId] = useState(null);
   const [isBusy, setIsBusy] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
+  const [aiDrafts, setAiDrafts] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(null);
+  const abortRef = useRef(null);
 
   const applyView = useCallback((nextView) => {
     setView(nextView);
@@ -177,24 +255,72 @@ export default function QuizManagerModal({ materialId, materialTitle, onClose })
     await runMutation(() => deleteTrainingQuizQuestion(questionId));
   }
 
-  async function handleGenerate() {
+  function handleGenerate() {
     setAiMessage("");
-    setIsBusy(true);
-    try {
-      const draft = await generateTrainingQuizDraft(materialId);
-      setAiMessage(`AI 生成了 ${draft.length} 道草稿题，请审核后保存。`);
-    } catch (generateError) {
-      const code = generateError.message || "";
-      setAiMessage(
-        code.includes("NOT_CONFIGURED")
-          ? "AI 出题尚未配置（需要在后端设置 Claude API Key）。"
-          : code.includes("NOT_IMPLEMENTED")
-            ? "AI 出题接口已就绪，等待接入 Claude（需要 API Key）。"
-            : "AI 生成失败，请稍后再试。",
-      );
-    } finally {
-      setIsBusy(false);
+    setAiDrafts([]);
+    setGenerationProgress({ generated: 0, total: 10, batchesDone: 0, batchesTotal: 2 });
+    setIsGenerating(true);
+
+    const controller = generateTrainingQuizDraftSSE(materialId, {
+      onProgress(progress) {
+        setGenerationProgress(progress);
+      },
+      onComplete(drafts) {
+        setAiDrafts(drafts);
+        setAiMessage(
+          drafts.length > 0
+            ? `AI 生成了 ${drafts.length} 道草稿题，请逐条审核后采用。`
+            : "AI 未能从该资料生成题目，请检查资料内容或改用手动加题。",
+        );
+        setIsGenerating(false);
+        setGenerationProgress(null);
+      },
+      onError(error) {
+        const msg = error.message || "";
+        setAiDrafts([]);
+        setAiMessage(aiErrorMessage(msg));
+        setIsGenerating(false);
+        setGenerationProgress(null);
+      },
+    });
+
+    abortRef.current = controller;
+  }
+
+  // Cleanup SSE on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  async function adoptDraft(index) {
+    const draft = aiDrafts[index];
+    if (!draft) return;
+    const ok = await runMutation(() =>
+      addTrainingQuizQuestion(materialId, draftToQuestionInput(draft)),
+    );
+    if (ok) {
+      setAiDrafts((prev) => prev.filter((_, draftIndex) => draftIndex !== index));
     }
+  }
+
+  function editDraft(index) {
+    const draft = aiDrafts[index];
+    if (!draft) return;
+    setEditingId(null);
+    // The manual editor is single-language; load the primary rendering.
+    setQuestionForm({
+      type: draft.type,
+      prompt: pickPrimary(draft.prompt),
+      options: draft.options.map((option) => ({
+        key: option.key,
+        label: pickPrimary(option.label),
+      })),
+      correctKeys: [...draft.correctKeys],
+      explanation: pickPrimary(draft.explanation),
+    });
+    setAiDrafts((prev) => prev.filter((_, draftIndex) => draftIndex !== index));
   }
 
   function startNewQuestion() {
@@ -232,6 +358,8 @@ export default function QuizManagerModal({ materialId, materialTitle, onClose })
         ) : (
           <div className={styles.body}>
             {error ? <p className={styles.error}>{error}</p> : null}
+
+            <AiConfigPanel />
 
             <section className={styles.settings}>
               <h3 className={styles.sectionTitle}>测验设置</h3>
@@ -317,11 +445,11 @@ export default function QuizManagerModal({ materialId, materialTitle, onClose })
                   <button
                     type="button"
                     className={styles.secondaryButton}
-                    disabled={isBusy}
+                    disabled={isBusy || isGenerating}
                     onClick={handleGenerate}
-                    title="根据 PDF 内容用 AI 生成草稿题（需配置 API Key）"
+                    title="根据 PDF 内容用 AI 生成草稿题（需配置 AI_API_KEY 或 OPENROUTER_API_KEY）"
                   >
-                    AI 生成草稿
+                    {isGenerating ? "AI 生成中…" : "AI 生成草稿"}
                   </button>
                   <button
                     type="button"
@@ -333,7 +461,96 @@ export default function QuizManagerModal({ materialId, materialTitle, onClose })
                   </button>
                 </div>
               </div>
+              {isGenerating && generationProgress ? (
+                <div className={styles.progressBar}>
+                  <div className={styles.progressTrack}>
+                    <div
+                      className={styles.progressFill}
+                      style={{
+                        width: `${Math.round((generationProgress.generated / generationProgress.total) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <span className={styles.progressLabel}>
+                    {generationProgress.generated}/{generationProgress.total}
+                  </span>
+                </div>
+              ) : null}
+
               {aiMessage ? <p className={styles.hint}>{aiMessage}</p> : null}
+
+              {aiDrafts.length > 0 ? (
+                <div className={styles.draftPanel}>
+                  <p className={styles.draftHeader}>
+                    AI 草稿（待审核 {aiDrafts.length}）—— 采用前请核对答案
+                  </p>
+                  <ol className={styles.questionList}>
+                    {aiDrafts.map((draft, index) => (
+                      <li key={index} className={styles.questionItem}>
+                        <div className={styles.questionMain}>
+                          <span className={styles.typeTag}>
+                            {QUESTION_TYPE_LABELS[draft.type]}
+                          </span>
+                          <LocalizedLines
+                            localized={draft.prompt}
+                            textClassName={styles.questionPrompt}
+                          />
+                        </div>
+                        <ul className={styles.optionList}>
+                          {draft.options.map((option) => (
+                            <li
+                              key={option.key}
+                              className={
+                                draft.correctKeys.includes(option.key)
+                                  ? styles.optionCorrect
+                                  : styles.option
+                              }
+                            >
+                              {draft.correctKeys.includes(option.key) ? "✓ " : ""}
+                              <LocalizedLines localized={option.label} inline />
+                            </li>
+                          ))}
+                        </ul>
+                        {draft.explanation ? (
+                          <div className={styles.hint}>
+                            解析：
+                            <LocalizedLines localized={draft.explanation} inline />
+                          </div>
+                        ) : null}
+                        <div className={styles.questionActions}>
+                          <button
+                            type="button"
+                            className={styles.linkAdopt}
+                            disabled={isBusy}
+                            onClick={() => adoptDraft(index)}
+                          >
+                            采用
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => editDraft(index)}
+                          >
+                            编辑后采用
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.linkDanger}
+                            disabled={isBusy}
+                            onClick={() =>
+                              setAiDrafts((prev) =>
+                                prev.filter((_, i) => i !== index),
+                              )
+                            }
+                          >
+                            忽略
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
 
               {questions.length === 0 ? (
                 <p className={styles.muted}>还没有题目，点「手动加题」或「AI 生成草稿」开始。</p>

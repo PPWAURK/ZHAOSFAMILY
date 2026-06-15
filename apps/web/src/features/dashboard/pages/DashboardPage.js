@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import DashboardNewsModule from "@/features/dashboard/components/DashboardNewsModule";
 import Sidebar from "@/features/dashboard/components/Sidebar";
+import StoreScoreLeaderboard from "@/features/dashboard/components/StoreScoreLeaderboard";
 import {
   DASHBOARD_COPY,
   DASHBOARD_LANGUAGES,
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const t = DASHBOARD_COPY[lang];
   const newsCopy = t.newsModule;
+  const scoreLeaderboardCopy = t.scoreLeaderboard;
   const displayName = resolveDisplayName(user, t.greetingFallback);
 
   return (
@@ -137,6 +139,8 @@ export default function DashboardPage() {
       </motion.section>
 
       <DashboardNewsModule lang={lang} copy={newsCopy} />
+
+      <StoreScoreLeaderboard copy={scoreLeaderboardCopy} />
 
       <footer className={styles.footer}>{t.footer}</footer>
 

@@ -1,16 +1,21 @@
 import {
   BadRequestException,
   Injectable,
+  MessageEvent,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import type { OnGenerationProgress } from './training-quiz-generator.service';
+import { TrainingQuizGeneratorService } from './training-quiz-generator.service';
 import type {
   CreateTrainingQuizQuestionDto,
   UpdateTrainingQuizQuestionDto,
 } from './dto/training-quiz-question.dto';
 import type { UpsertTrainingQuizDto } from './dto/upsert-training-quiz.dto';
+import { parseTranslations, toTranslationsInput } from './training-quiz-i18n';
 import type {
   TrainingQuizAdminView,
   TrainingQuizDraftQuestion,
@@ -20,6 +25,7 @@ import type {
 } from './training.types';
 
 const DEFAULT_PASSING_SCORE = 80;
+const DEFAULT_AI_DRAFT_QUESTION_COUNT = 6;
 
 type QuestionRow = {
   id: number;
@@ -28,6 +34,7 @@ type QuestionRow = {
   options: unknown;
   correctKeys: unknown;
   explanation: string | null;
+  translations: unknown;
   sortOrder: number;
 };
 
@@ -66,6 +73,7 @@ function toAdminQuestion(row: QuestionRow): TrainingQuizQuestionAdmin {
     correctKeys: parseKeys(row.correctKeys),
     explanation: row.explanation,
     sortOrder: row.sortOrder,
+    translations: parseTranslations(row.translations),
   };
 }
 
@@ -92,7 +100,10 @@ function validateAnswerShape(
 
 @Injectable()
 export class TrainingQuizAdminService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly generatorService: TrainingQuizGeneratorService,
+  ) {}
 
   async getQuizAdminView(
     materialId: number,
@@ -153,6 +164,7 @@ export class TrainingQuizAdminService {
         options: toOptionsJson(dto.options),
         correctKeys: dto.correctKeys,
         explanation: dto.explanation ?? null,
+        translations: toTranslationsInput(dto.translations),
         sortOrder,
       },
     });
@@ -189,6 +201,9 @@ export class TrainingQuizAdminService {
           dto.explanation === undefined
             ? existing.explanation
             : dto.explanation,
+        ...(dto.translations === undefined
+          ? {}
+          : { translations: toTranslationsInput(dto.translations) }),
         sortOrder: dto.sortOrder ?? existing.sortOrder,
       },
     });
@@ -213,19 +228,64 @@ export class TrainingQuizAdminService {
     return this.requireAdminView(existing.quiz.materialId);
   }
 
-  // AI draft generation — wired but inert until ANTHROPIC_API_KEY is configured.
+  // AI draft generation — reads the material's PDF text and asks the model
+  // (OpenRouter/DeepSeek via the OpenAI-compatible API) for review-ready drafts.
   async generateDraftQuestions(
     materialId: number,
+    count = DEFAULT_AI_DRAFT_QUESTION_COUNT,
+    onProgress?: OnGenerationProgress,
   ): Promise<TrainingQuizDraftQuestion[]> {
-    await this.ensureMaterialExists(materialId);
-
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!(await this.generatorService.isConfigured())) {
       throw new ServiceUnavailableException('TRAINING_QUIZ_AI_NOT_CONFIGURED');
     }
 
-    // TODO: extract the material's PDF text and call the Claude API to draft
-    // questions for HQ review. Reachable once a key is set.
-    throw new ServiceUnavailableException('TRAINING_QUIZ_AI_NOT_IMPLEMENTED');
+    const material = await this.prismaService.trainingMaterial.findUnique({
+      where: { id: materialId },
+      select: {
+        objectKey: true,
+        mimeType: true,
+        title: true,
+        description: true,
+      },
+    });
+
+    if (!material) {
+      throw new NotFoundException('TRAINING_MATERIAL_NOT_FOUND');
+    }
+
+    return this.generatorService.generate(material, count, onProgress);
+  }
+
+  /** SSE variant — returns an Observable that emits progress events then the complete result. */
+  generateDraftQuestionsStream(
+    materialId: number,
+    count = DEFAULT_AI_DRAFT_QUESTION_COUNT,
+  ): Observable<MessageEvent> {
+    return new Observable<MessageEvent>((subscriber) => {
+      this.generateDraftQuestions(materialId, count, (progress) => {
+        subscriber.next({
+          type: 'progress',
+          data: progress,
+        });
+      })
+        .then((drafts) => {
+          subscriber.next({
+            type: 'complete',
+            data: drafts,
+          });
+          subscriber.complete();
+        })
+        .catch((error: unknown) => {
+          // Emit a readable error event (the browser can't read a closed SSE
+          // stream's error), then complete so the client surfaces the reason.
+          const code =
+            error instanceof Error && error.message
+              ? error.message
+              : 'TRAINING_QUIZ_AI_REQUEST_FAILED';
+          subscriber.next({ type: 'error', data: { code } });
+          subscriber.complete();
+        });
+    });
   }
 
   private async ensureMaterialExists(materialId: number): Promise<void> {

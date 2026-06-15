@@ -366,6 +366,29 @@ export const trainingStyles = StyleSheet.create(scaleStyles({
     gap: 16,
     padding: 16,
   },
+  quizLangRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  quizLangChip: {
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  quizLangChipActive: {
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: authControlStyles.colors.red,
+  },
+  quizLangChipText: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  quizLangChipTextActive: {
+    color: "#ffffff",
+  },
   quizCenter: {
     alignItems: "center",
     flex: 1,

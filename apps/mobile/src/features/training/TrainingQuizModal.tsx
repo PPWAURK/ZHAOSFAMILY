@@ -9,13 +9,58 @@ import {
 } from "@/features/training/trainingApi";
 import type { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { trainingStyles as styles } from "@/features/training/trainingStyles";
-import type {
-  TrainingQuiz,
-  TrainingQuizAttemptResult,
-  TrainingQuizQuestion,
+import {
+  QUIZ_LANGUAGES,
+  type QuizLanguage,
+  type TrainingQuiz,
+  type TrainingQuizAttemptResult,
+  type TrainingQuizQuestion,
 } from "@/features/training/trainingTypes";
 
 type TrainingCopySet = (typeof TRAINING_COPY)["zh"];
+
+const QUIZ_LANGUAGE_LABELS: Record<QuizLanguage, string> = {
+  zh: "中文",
+  fr: "Français",
+  bn: "বাংলা",
+};
+
+function localizedPrompt(
+  question: TrainingQuizQuestion,
+  lang: QuizLanguage,
+): string {
+  return question.translations?.prompt?.[lang] || question.prompt;
+}
+
+function localizedOptionLabel(
+  question: TrainingQuizQuestion,
+  key: string,
+  fallback: string,
+  lang: QuizLanguage,
+): string {
+  return question.translations?.options?.[key]?.[lang] || fallback;
+}
+
+function localizedExplanation(
+  question: TrainingQuizQuestion,
+  lang: QuizLanguage,
+  fallback: string | null,
+): string | null {
+  return question.translations?.explanation?.[lang] || fallback;
+}
+
+// Which content languages this quiz actually carries (beyond the base text).
+function availableQuizLanguages(quiz: TrainingQuiz | null): QuizLanguage[] {
+  if (!quiz) return [];
+
+  const langs = QUIZ_LANGUAGES.filter((lang) =>
+    quiz.questions.some((question) =>
+      Boolean(question.translations?.prompt?.[lang]),
+    ),
+  );
+
+  return langs.length > 0 ? langs : ["zh"];
+}
 
 type TrainingQuizModalProps = {
   copy: TrainingCopySet;
@@ -44,6 +89,7 @@ function toggleSelection(
 function QuestionBlock({
   copy,
   question,
+  lang,
   index,
   selectedKeys,
   result,
@@ -51,6 +97,7 @@ function QuestionBlock({
 }: {
   copy: TrainingCopySet;
   question: TrainingQuizQuestion;
+  lang: QuizLanguage;
   index: number;
   selectedKeys: string[];
   result: TrainingQuizAttemptResult["results"][number] | undefined;
@@ -58,11 +105,14 @@ function QuestionBlock({
 }) {
   const isMultiple = question.type === "multiple";
   const locked = Boolean(result);
+  const explanation = result
+    ? localizedExplanation(question, lang, result.explanation)
+    : null;
 
   return (
     <View style={styles.quizQuestion}>
       <Text style={styles.quizPrompt}>
-        {index + 1}. {question.prompt}
+        {index + 1}. {localizedPrompt(question, lang)}
         {isMultiple ? `  (${copy.quizMultipleHint})` : ""}
       </Text>
       {question.options.map((option) => {
@@ -89,14 +139,16 @@ function QuestionBlock({
                 selected ? styles.quizMarkSelected : null,
               ]}
             />
-            <Text style={styles.quizOptionLabel}>{option.label}</Text>
+            <Text style={styles.quizOptionLabel}>
+              {localizedOptionLabel(question, option.key, option.label, lang)}
+            </Text>
           </Pressable>
         );
       })}
-      {locked && result?.explanation ? (
+      {locked && explanation ? (
         <Text style={styles.quizExplanation}>
-          {result.correct ? "✓ " : "✕ "}
-          {result.explanation}
+          {result?.correct ? "✓ " : "✕ "}
+          {explanation}
         </Text>
       ) : null}
     </View>
@@ -116,6 +168,7 @@ export function TrainingQuizModal({
   const [result, setResult] = useState<TrainingQuizAttemptResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [quizLang, setQuizLang] = useState<QuizLanguage>("zh");
 
   const loadQuiz = useCallback(async (): Promise<void> => {
     if (materialId === null) return;
@@ -129,12 +182,17 @@ export function TrainingQuizModal({
     try {
       const nextQuiz = await fetchTrainingQuiz(materialId);
       setQuiz(nextQuiz);
+      // Default to the employee's app language if the quiz has it, else the
+      // first available content language.
+      const available = availableQuizLanguages(nextQuiz);
+      const preferred = language === "fr" ? "fr" : "zh";
+      setQuizLang(available.includes(preferred) ? preferred : available[0]);
       setPhase("taking");
     } catch {
       setErrorMessage(copy.quizLoadError);
       setPhase("error");
     }
-  }, [materialId, copy.quizLoadError]);
+  }, [materialId, copy.quizLoadError, language]);
 
   useEffect(() => {
     void loadQuiz();
@@ -155,6 +213,7 @@ export function TrainingQuizModal({
       : null;
   const canRetake =
     !result?.passed && (attemptsLeft === null || attemptsLeft > 0);
+  const quizLanguages = availableQuizLanguages(quiz);
 
   async function handleSubmit(): Promise<void> {
     if (!quiz || !allAnswered || isSubmitting) return;
@@ -228,6 +287,31 @@ export function TrainingQuizModal({
                 contentContainerStyle={styles.quizScroll}
                 showsVerticalScrollIndicator={false}
               >
+                {quizLanguages.length > 1 ? (
+                  <View style={styles.quizLangRow}>
+                    {quizLanguages.map((lang) => (
+                      <Pressable
+                        key={lang}
+                        style={[
+                          styles.quizLangChip,
+                          quizLang === lang ? styles.quizLangChipActive : null,
+                        ]}
+                        onPress={() => setQuizLang(lang)}
+                      >
+                        <Text
+                          style={[
+                            styles.quizLangChipText,
+                            quizLang === lang
+                              ? styles.quizLangChipTextActive
+                              : null,
+                          ]}
+                        >
+                          {QUIZ_LANGUAGE_LABELS[lang]}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
                 {result ? (
                   <View
                     style={[
@@ -274,6 +358,7 @@ export function TrainingQuizModal({
                     key={question.id}
                     copy={copy}
                     question={question}
+                    lang={quizLang}
                     index={index}
                     selectedKeys={answers[question.id] ?? []}
                     result={resultByQuestion.get(question.id)}

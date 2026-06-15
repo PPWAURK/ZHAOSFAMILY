@@ -49,11 +49,22 @@ export type TrainingQuizOption = {
   label: string;
 };
 
+export const QUIZ_LANGUAGES = ["zh", "fr", "bn"] as const;
+export type QuizLanguage = (typeof QUIZ_LANGUAGES)[number];
+export type LocalizedText = Partial<Record<QuizLanguage, string>>;
+
+export type TrainingQuizTranslations = {
+  prompt: LocalizedText;
+  options: Record<string, LocalizedText>;
+  explanation?: LocalizedText | null;
+};
+
 export type TrainingQuizQuestion = {
   id: number;
   type: TrainingQuizQuestionType;
   prompt: string;
   options: TrainingQuizOption[];
+  translations: TrainingQuizTranslations | null;
 };
 
 export type TrainingQuiz = {

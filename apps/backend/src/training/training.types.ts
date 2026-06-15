@@ -89,12 +89,27 @@ export type TrainingQuizOption = {
   label: string;
 };
 
+// Quiz content can be authored/generated in several languages; employees pick
+// which one to answer in. App UI stays zh/en/fr, but quiz content is zh/fr/bn.
+export const QUIZ_LANGUAGES = ['zh', 'fr', 'bn'] as const;
+export type QuizLanguage = (typeof QUIZ_LANGUAGES)[number];
+export type LocalizedText = Partial<Record<QuizLanguage, string>>;
+
+export type TrainingQuizTranslations = {
+  prompt: LocalizedText;
+  options: Record<string, LocalizedText>;
+  explanation?: LocalizedText | null;
+};
+
 // Sent to the employee while taking the quiz — never includes correct answers.
+// `translations` carries the other-language renderings so the client can switch
+// languages without another request; base fields stay as the primary fallback.
 export type TrainingQuizQuestionPublic = {
   id: number;
   type: TrainingQuizQuestionType;
   prompt: string;
   options: TrainingQuizOption[];
+  translations: TrainingQuizTranslations | null;
 };
 
 export type TrainingQuizForTaking = {
@@ -143,6 +158,16 @@ export type TrainingMyTitles = {
   available: TrainingTitleItem[];
 };
 
+// HQ-facing view of the AI quiz-generation config — the key is always masked.
+export type AiQuizConfigView = {
+  hasApiKey: boolean;
+  apiKeyMasked: string;
+  apiKeySource: 'db' | 'env' | 'none';
+  baseUrl: string;
+  model: string;
+  maxTokens: number;
+};
+
 // Management view — includes the correct answers, gated by manager permission.
 export type TrainingQuizQuestionAdmin = {
   id: number;
@@ -152,6 +177,7 @@ export type TrainingQuizQuestionAdmin = {
   correctKeys: string[];
   explanation: string | null;
   sortOrder: number;
+  translations: TrainingQuizTranslations | null;
 };
 
 export type TrainingQuizAdminView = {
@@ -164,12 +190,18 @@ export type TrainingQuizAdminView = {
   questions: TrainingQuizQuestionAdmin[];
 };
 
+export type TrainingQuizDraftOption = {
+  key: string;
+  label: LocalizedText;
+};
+
+// AI drafts are generated in all quiz languages at once.
 export type TrainingQuizDraftQuestion = {
   type: TrainingQuizQuestionType;
-  prompt: string;
-  options: TrainingQuizOption[];
+  prompt: LocalizedText;
+  options: TrainingQuizDraftOption[];
   correctKeys: string[];
-  explanation: string | null;
+  explanation: LocalizedText | null;
 };
 
 export type TrainingRecordItem = {

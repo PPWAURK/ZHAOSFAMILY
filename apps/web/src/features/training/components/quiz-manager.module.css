@@ -77,6 +77,34 @@
   color: var(--ink);
 }
 
+.aiConfig {
+  border: 1px solid var(--ink-10);
+  background: var(--ink-05);
+}
+
+.aiConfigToggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.aiConfigBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 14px 16px;
+  border-top: 1px solid var(--ink-10);
+}
+
 .settingsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -217,6 +245,42 @@
   padding: 1px 6px;
 }
 
+.langTag {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-family: monospace;
+  font-size: 10px;
+  color: var(--ink-50);
+}
+
+.localizedBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.localizedInline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.localizedLine {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.langPrefix {
+  display: inline-block;
+  min-width: 30px;
+  margin-right: 6px;
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--red);
+}
+
 .questionPrompt {
   font-size: 14px;
   font-weight: 700;
@@ -270,6 +334,62 @@
   font-size: 12px;
   cursor: pointer;
   padding: 0;
+}
+
+.linkAdopt {
+  border: none;
+  background: none;
+  color: var(--ok);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.progressBar {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--ink-10);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--red);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progressLabel {
+  flex-shrink: 0;
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red);
+  min-width: 48px;
+  text-align: right;
+}
+
+.draftPanel {
+  margin-top: 14px;
+  border: 1px dashed var(--red);
+  background: var(--red-soft);
+  padding: 14px;
+}
+
+.draftHeader {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--red-deep);
 }
 
 .editor {

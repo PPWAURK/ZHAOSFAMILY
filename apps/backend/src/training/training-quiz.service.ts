@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { SubmitQuizAttemptDto } from './dto/submit-quiz-attempt.dto';
 import { TrainingTitleService } from './training-title.service';
+import { parseTranslations } from './training-quiz-i18n';
 import type {
   TrainingMyRecords,
   TrainingQuizAttemptResult,
@@ -27,6 +28,7 @@ type QuestionRow = {
   options: unknown;
   correctKeys: unknown;
   explanation: string | null;
+  translations: unknown;
   sortOrder: number;
 };
 
@@ -66,6 +68,7 @@ function toPublicQuestion(row: QuestionRow): TrainingQuizQuestionPublic {
     type: normalizeType(row.type),
     prompt: row.prompt,
     options: parseOptions(row.options),
+    translations: parseTranslations(row.translations),
   };
 }
 

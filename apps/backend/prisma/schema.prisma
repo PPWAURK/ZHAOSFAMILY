@@ -307,6 +307,19 @@ model TrainingMaterial {
   @@map("training_materials")
 }
 
+// Singleton (id = 1) holding HQ-configurable AI quiz-generation settings.
+// The API key is stored AES-256-GCM encrypted, never in plaintext.
+model AiQuizConfig {
+  id        Int      @id @default(1)
+  apiKeyEnc String?  @map("api_key_enc") @db.Text
+  baseUrl   String?  @map("base_url") @db.VarChar(300)
+  model     String?  @db.VarChar(150)
+  maxTokens Int?     @map("max_tokens")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("ai_quiz_config")
+}
+
 model TrainingQuiz {
   id            Int                    @id @default(autoincrement())
   materialId    Int                    @unique @map("material_id")
@@ -324,16 +337,17 @@ model TrainingQuiz {
 }
 
 model TrainingQuizQuestion {
-  id          Int      @id @default(autoincrement())
-  quizId      Int      @map("quiz_id")
-  type        String   @default("single") @db.VarChar(20)
-  prompt      String   @db.VarChar(500)
-  options     Json
-  correctKeys Json     @map("correct_keys")
-  explanation String?  @db.VarChar(500)
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           Int      @id @default(autoincrement())
+  quizId       Int      @map("quiz_id")
+  type         String   @default("single") @db.VarChar(20)
+  prompt       String   @db.VarChar(500)
+  options      Json
+  correctKeys  Json     @map("correct_keys")
+  explanation  String?  @db.VarChar(500)
+  translations Json?
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   quiz TrainingQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
 

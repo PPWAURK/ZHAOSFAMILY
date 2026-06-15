@@ -4,13 +4,17 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { TRAINING_QUIZ_QUESTION_TYPES } from '../training.types';
+import {
+  TRAINING_QUIZ_QUESTION_TYPES,
+  type TrainingQuizTranslations,
+} from '../training.types';
 
 export class QuizOptionDto {
   @IsString({ message: 'INVALID_QUIZ_OPTION_KEY' })
@@ -46,6 +50,11 @@ export class CreateTrainingQuizQuestionDto {
   @MaxLength(500, { message: 'INVALID_QUIZ_EXPLANATION' })
   explanation?: string | null;
 
+  // Per-language renderings (zh/fr/bn); validated/sanitized in the service.
+  @IsOptional()
+  @IsObject({ message: 'INVALID_QUIZ_TRANSLATIONS' })
+  translations?: TrainingQuizTranslations | null;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'INVALID_QUIZ_SORT_ORDER' })
@@ -80,6 +89,10 @@ export class UpdateTrainingQuizQuestionDto {
   @IsString({ message: 'INVALID_QUIZ_EXPLANATION' })
   @MaxLength(500, { message: 'INVALID_QUIZ_EXPLANATION' })
   explanation?: string | null;
+
+  @IsOptional()
+  @IsObject({ message: 'INVALID_QUIZ_TRANSLATIONS' })
+  translations?: TrainingQuizTranslations | null;
 
   @IsOptional()
   @Type(() => Number)

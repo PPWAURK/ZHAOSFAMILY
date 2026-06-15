@@ -3,25 +3,31 @@ import {
   Controller,
   Delete,
   Get,
+  MessageEvent,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Put,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import {
   RequirePermissions,
   TRAINING_MATERIAL_PERMISSIONS,
 } from '../auth/permissions';
+import { UpdateAiConfigDto } from './dto/update-ai-config.dto';
 import {
   CreateTrainingQuizQuestionDto,
   UpdateTrainingQuizQuestionDto,
 } from './dto/training-quiz-question.dto';
 import { UpsertTrainingQuizDto } from './dto/upsert-training-quiz.dto';
+import { TrainingAiConfigService } from './training-ai-config.service';
 import { TrainingQuizAdminService } from './training-quiz-admin.service';
 import type {
+  AiQuizConfigView,
   TrainingQuizAdminView,
   TrainingQuizDraftQuestion,
 } from './training.types';
@@ -30,7 +36,20 @@ import type {
 @UseGuards(PermissionGuard)
 @RequirePermissions(TRAINING_MATERIAL_PERMISSIONS.update)
 export class TrainingQuizAdminController {
-  constructor(private readonly quizAdminService: TrainingQuizAdminService) {}
+  constructor(
+    private readonly quizAdminService: TrainingQuizAdminService,
+    private readonly aiConfigService: TrainingAiConfigService,
+  ) {}
+
+  @Get('ai-config')
+  getAiConfig(): Promise<AiQuizConfigView> {
+    return this.aiConfigService.getConfigView();
+  }
+
+  @Put('ai-config')
+  updateAiConfig(@Body() dto: UpdateAiConfigDto): Promise<AiQuizConfigView> {
+    return this.aiConfigService.updateConfig(dto);
+  }
 
   @Get('materials/:id/quiz/manage')
   getQuiz(
@@ -67,6 +86,13 @@ export class TrainingQuizAdminController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<TrainingQuizDraftQuestion[]> {
     return this.quizAdminService.generateDraftQuestions(id);
+  }
+
+  @Sse('materials/:id/quiz/generate/sse')
+  generateDraftSSE(
+    @Param('id', ParseIntPipe) id: number,
+  ): Observable<MessageEvent> {
+    return this.quizAdminService.generateDraftQuestionsStream(id);
   }
 
   @Patch('quiz-questions/:questionId')

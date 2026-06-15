@@ -532,7 +532,9 @@ async function seedSampleQuiz() {
   });
 
   if (!material) {
-    console.log('[seed] no eligible ALL material without a quiz; sample quiz skipped');
+    console.log(
+      '[seed] no eligible ALL material without a quiz; sample quiz skipped',
+    );
     return;
   }
 
@@ -551,18 +553,28 @@ async function seedSampleQuiz() {
 }
 
 async function upsertHoldingRestaurant() {
-  const now = new Date();
-
-  return prisma.restaurant.upsert({
+  const existing = await prisma.restaurant.findUnique({
     where: { name: HOLDING_RESTAURANT.name },
-    update: {
-      address: HOLDING_RESTAURANT.address,
-      photoUrl: HOLDING_RESTAURANT.photoUrl,
-      updatedAt: now,
-    },
-    create: {
+    select: { id: true },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // Only bootstrap the synthetic holding store on a fresh/empty database.
+  // On an already-populated DB the real HQ restaurant already exists, so
+  // creating "ZHAO Holding" here would just add an orphan row.
+  const restaurantCount = await prisma.restaurant.count();
+
+  if (restaurantCount > 0) {
+    return null;
+  }
+
+  return prisma.restaurant.create({
+    data: {
       ...HOLDING_RESTAURANT,
-      updatedAt: now,
+      updatedAt: new Date(),
     },
     select: { id: true },
   });
@@ -599,7 +611,7 @@ async function assignSuperAdminRole() {
     prisma.user.update({
       where: { id: user.id },
       data: {
-        restaurantId: holdingRestaurant.id,
+        ...(holdingRestaurant ? { restaurantId: holdingRestaurant.id } : {}),
         jobRole: 'holding',
       },
     }),

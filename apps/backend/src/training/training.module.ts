@@ -7,6 +7,8 @@ import { TrainingQuizAdminController } from './training-quiz-admin.controller';
 import { TrainingService } from './training.service';
 import { TrainingQuizService } from './training-quiz.service';
 import { TrainingQuizAdminService } from './training-quiz-admin.service';
+import { TrainingQuizGeneratorService } from './training-quiz-generator.service';
+import { TrainingAiConfigService } from './training-ai-config.service';
 import { TrainingTitleService } from './training-title.service';
 
 @Module({
@@ -16,6 +18,8 @@ import { TrainingTitleService } from './training-title.service';
     TrainingService,
     TrainingQuizService,
     TrainingQuizAdminService,
+    TrainingQuizGeneratorService,
+    TrainingAiConfigService,
     TrainingTitleService,
   ],
 })
