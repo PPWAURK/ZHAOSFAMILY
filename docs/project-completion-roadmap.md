@@ -12,12 +12,14 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 
 | 端 | 完成度 | 主要缺口 |
 |---|---|---|
-| 后端 `apps/backend` | **~90%** | AI 出题模块缺测 + 未端到端验证 |
+| 后端 `apps/backend` | **~95%**（P0-2 已补测+验证） | — |
 | Web `apps/web` | **~90%** | 改密码接线、岗位映射管理 UI、门店排行榜验证 |
-| Mobile `apps/mobile` | **~70%**(最大短板) | 4 个管理模块未接线 + 培训真机验证未做 |
+| Mobile `apps/mobile` | **~85%** | 店长改员工岗位窄屏未做 + 培训真机验证未做 |
 | 共享包 | **~95%** | — |
 
-**关键约束:** 当前分支为 `cleanup-prepare-deploy`,有 **34 个未提交改动**(含 2 个新 migration:训练测验翻译、AI 出题配置)。因此收尾逻辑是 **「让现有代码真正可上线」优先于「补新功能」**。
+**Mobile 定位（2026-06-15 锁定）:** Mobile 面向一线/店长日常使用,**不做管理后台**。inventory / suppliers / order-history / 完整权限管理留在 Web。mobile 上唯一的管理类能力是「店长改本店员工岗位」。据此 mobile 完成度从原估 ~70%(按"4 模块未接线")上调到 ~85%,因为那 3 个模块本就不在 mobile 范围内。
+
+**收尾逻辑:** P0 已全部完成(分支固化、AI 出题测试+验证、部署冒烟)。「让现有代码真正可上线」已达成(M1),后续按价值补 P1/P2。
 
 ---
 
@@ -57,11 +59,13 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 
 ## 3. 🟠 P1 — 核心体验补全(预估 3–5 天)
 
-### P1-4 Mobile 4 个管理模块接线
-- **做什么:** 把 permissions / inventory / suppliers / order-history 从"更多"菜单占位接到后端 API,渲染真实模块。
-- **为什么不是 100%:** **有意分期**。后端 API 齐全、Web 已实现,但 `apps/mobile/src/features/dashboard/DashboardHomeScreen.tsx` 的 `isConnectedDashboardEntry` 明确把这 4 个排除,点进去提示"This mobile module is not connected yet"。纯 mobile UI 工作。
-- **验证:** 4 个模块在真机/模拟器可打开并拉到真实数据;移出 `unavailable` 文案。
-- **工作量:** 2–3 天。
+### P1-4 Mobile 店长改员工岗位（范围已收窄）
+- **范围决策（2026-06-15 锁定）:** Mobile **不做管理后台**。inventory / suppliers / order-history / 完整 permissions 管理**留在 Web，不上 mobile**,其"更多"菜单占位保持现状（或后续移除入口）。mobile 上唯一要补的管理类能力是:**店长(store-manager)修改本店员工的岗位(jobRole)**。
+- **做什么:** mobile 加一个窄屏:店长看到本店员工列表,逐个改 jobRole。复用现有后端,无需改后端 —— `GET /permissions/users`(按本店过滤)+ `PATCH /permissions/users/:id/job-role`。
+- **后端已就绪:** `assertJobRoleUpdateAllowed`([permissions.service.ts:622](../apps/backend/src/permissions/permissions.service.ts)) 已允许店长改**同店**员工岗位,且限制为店内可管理岗位(不能动 holding、不能越权授予)。
+- **为什么现在不是 100%:** mobile "更多"里的 permissions 入口被 `isConnectedDashboardEntry`([DashboardHomeScreen.tsx](../apps/mobile/src/features/dashboard/DashboardHomeScreen.tsx)) 排除,无任何岗位编辑界面。纯 mobile UI。
+- **验证:** 店长账号在真机改一名本店员工岗位成功;非店长/跨店操作被后端 403;改完该员工 `my-plan` 随新岗位更新。
+- **工作量:** ~1 天（窄屏,远小于原"4 模块"估计）。
 
 ### P1-5 Mobile 培训真机验证
 - **做什么:** 真机跑通学习闭环(标记完成 + 进度)、quiz 答题闭环、称号(TrainingTitle)展示、防截屏(`useScreenCaptureProtection`)。
@@ -123,7 +127,9 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 
 | 里程碑 | 包含 | 累计工作量 | 达成后状态 |
 |---|---|---|---|
-| **M1 可部署** | P0-1 ~ P0-3 | ~1.5–2 天 | 现有功能可干净部署上线 |
-| **M2 运营闭环** | + P1-6 | ~3–3.5 天 | 培训岗位分配可在界面运营 |
-| **M3 移动端齐平** | + P1-4 / P1-5 | ~6–7.5 天 | mobile 与 web 功能基本对齐 |
-| **M4 100%** | + P2 全部 | ~8–10 天 | 全功能完成 + 测试/回归到位 |
+| **M1 可部署** ✅ | P0-1 ~ P0-3 | 已完成 | 现有功能可干净部署上线 |
+| **M2 运营闭环** | + P1-6 | ~1–1.5 天 | 培训岗位分配可在界面运营 |
+| **M3 移动端到位** | + P1-4 / P1-5 | ~+2 天 | 店长可在 mobile 改员工岗位 + 培训真机验证通过 |
+| **M4 100%** | + P2 全部 | ~+2–3 天 | 全功能完成 + 测试/回归到位 |
+
+> M3 已按"mobile 不做管理后台"收窄:不再追求 mobile 与 web 功能对齐,只补「店长改员工岗位」窄屏 + 培训真机验证。
