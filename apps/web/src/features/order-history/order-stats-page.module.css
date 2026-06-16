@@ -29,7 +29,8 @@
   color: var(--ink);
 }
 
-.field input {
+.field input,
+.field select {
   min-height: 38px;
   padding: 8px 11px;
   border: 1px solid var(--red-soft-2);
@@ -118,6 +119,34 @@
   padding: 24px 0;
   color: var(--ink-soft, rgba(0, 0, 0, 0.5));
   font-size: 14px;
+}
+
+.supplier {
+  margin-bottom: 28px;
+}
+
+.supplierHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  border-bottom: 2px solid var(--red);
+}
+
+.supplierName {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.supplierTotals {
+  font-size: 13px;
+  color: var(--ink-soft, rgba(0, 0, 0, 0.6));
+  font-variant-numeric: tabular-nums;
 }
 
 .table {

@@ -23,23 +23,30 @@ const COPY = {
     title: "商品下单",
     titleEm: "统计",
     titleSuffix: "。",
-    lede: "按商品汇总本店的下单数量与采购金额，可按日期范围筛选。默认按采购金额从高到低排序。",
+    lede: "按供应商分组汇总本店的下单数量与采购金额，可按日期范围筛选。每个供应商单独成表，按采购金额从高到低排序。",
     from: "起始日期",
     to: "结束日期",
+    store: "门店",
+    storeAll: "全部门店",
     apply: "查询",
     clear: "清除",
+    exportCsv: "导出 CSV",
     backToHistory: "← 返回订单历史",
     cardProducts: "商品种类",
     cardQuantity: "总下单数量",
     cardAmount: "总采购金额 (HT)",
     sortAmount: "按金额",
     sortQuantity: "按数量",
+    supplierTotal: "供应商合计",
     colRank: "#",
     colProduct: "商品",
     colCategory: "类别",
     colQuantity: "数量",
     colLines: "下单次数",
     colAmount: "金额 (HT)",
+    csvSupplier: "供应商",
+    csvProductZh: "商品(中)",
+    csvProductFr: "商品(法)",
     empty: "该时间范围内暂无下单记录。",
     loadError: "统计加载失败，请稍后重试。",
     loading: "正在统计…",
@@ -52,23 +59,30 @@ const COPY = {
     title: "Product order",
     titleEm: "stats",
     titleSuffix: ".",
-    lede: "Quantities ordered and amount spent per product for your store, filterable by date range. Sorted by spend (high to low) by default.",
+    lede: "Quantities ordered and amount spent, grouped by supplier, for the selected store. Each supplier gets its own table, sorted by spend.",
     from: "From",
     to: "To",
+    store: "Store",
+    storeAll: "All stores",
     apply: "Apply",
     clear: "Clear",
+    exportCsv: "Export CSV",
     backToHistory: "← Back to order history",
     cardProducts: "Products",
     cardQuantity: "Total quantity",
     cardAmount: "Total spend (excl. tax)",
     sortAmount: "By amount",
     sortQuantity: "By quantity",
+    supplierTotal: "Supplier total",
     colRank: "#",
     colProduct: "Product",
     colCategory: "Category",
     colQuantity: "Qty",
     colLines: "Times ordered",
     colAmount: "Amount (excl. tax)",
+    csvSupplier: "Supplier",
+    csvProductZh: "Product (ZH)",
+    csvProductFr: "Product (FR)",
     empty: "No orders in this date range.",
     loadError: "Failed to load stats. Please try again.",
     loading: "Crunching numbers…",
@@ -81,23 +95,30 @@ const COPY = {
     title: "Statistiques",
     titleEm: "produits",
     titleSuffix: ".",
-    lede: "Quantités commandées et montant dépensé par produit pour votre boutique, filtrables par période. Triées par dépense (décroissant) par défaut.",
+    lede: "Quantités commandées et montant dépensé, groupés par fournisseur, pour la boutique sélectionnée. Chaque fournisseur a son tableau, trié par dépense.",
     from: "Du",
     to: "Au",
+    store: "Boutique",
+    storeAll: "Toutes les boutiques",
     apply: "Appliquer",
     clear: "Effacer",
+    exportCsv: "Exporter CSV",
     backToHistory: "← Retour à l'historique",
     cardProducts: "Produits",
     cardQuantity: "Quantité totale",
     cardAmount: "Dépense totale (HT)",
     sortAmount: "Par montant",
     sortQuantity: "Par quantité",
+    supplierTotal: "Total fournisseur",
     colRank: "#",
     colProduct: "Produit",
     colCategory: "Catégorie",
     colQuantity: "Qté",
     colLines: "Nb commandes",
     colAmount: "Montant (HT)",
+    csvSupplier: "Fournisseur",
+    csvProductZh: "Produit (ZH)",
+    csvProductFr: "Produit (FR)",
     empty: "Aucune commande sur cette période.",
     loadError: "Échec du chargement. Veuillez réessayer.",
     loading: "Calcul en cours…",
@@ -115,11 +136,52 @@ function formatNumber(value) {
   return Number(value || 0).toLocaleString();
 }
 
+function csvCell(value) {
+  const text = value === null || value === undefined ? "" : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function buildCsv(stats, t) {
+  const header = [
+    t.csvSupplier,
+    t.csvProductZh,
+    t.csvProductFr,
+    t.colCategory,
+    "Unit",
+    t.colQuantity,
+    t.colLines,
+    t.colAmount,
+  ];
+  const rows = [header.map(csvCell).join(",")];
+
+  for (const supplier of stats.suppliers) {
+    for (const item of supplier.items) {
+      rows.push(
+        [
+          supplier.supplierName,
+          item.nameZh,
+          item.nameFr || "",
+          item.category,
+          item.unit || "",
+          item.totalQuantity,
+          item.orderLineCount,
+          item.totalAmount.toFixed(2),
+        ]
+          .map(csvCell)
+          .join(","),
+      );
+    }
+  }
+
+  return rows.join("\r\n");
+}
+
 export default function OrderStatsPage() {
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [storeId, setStoreId] = useState("");
   const [appliedRange, setAppliedRange] = useState({ from: "", to: "" });
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -139,6 +201,7 @@ export default function OrderStatsPage() {
         const result = await fetchProductOrderStats({
           from: appliedRange.from || undefined,
           to: appliedRange.to || undefined,
+          restaurantId: storeId ? Number(storeId) : undefined,
         });
         if (!isCancelled) {
           setStats(result);
@@ -159,15 +222,18 @@ export default function OrderStatsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [appliedRange, t.loadError]);
+  }, [appliedRange, storeId, t.loadError]);
 
-  const sortedItems = useMemo(() => {
-    const items = stats?.items ? [...stats.items] : [];
-    return items.sort((left, right) =>
-      sortBy === "quantity"
-        ? right.totalQuantity - left.totalQuantity
-        : right.totalAmount - left.totalAmount,
-    );
+  const sortedSuppliers = useMemo(() => {
+    const suppliers = stats?.suppliers ? [...stats.suppliers] : [];
+    return suppliers.map((supplier) => ({
+      ...supplier,
+      items: [...supplier.items].sort((left, right) =>
+        sortBy === "quantity"
+          ? right.totalQuantity - left.totalQuantity
+          : right.totalAmount - left.totalAmount,
+      ),
+    }));
   }, [stats, sortBy]);
 
   function applyRange() {
@@ -179,6 +245,25 @@ export default function OrderStatsPage() {
     setTo("");
     setAppliedRange({ from: "", to: "" });
   }
+
+  function exportCsv() {
+    if (!stats || stats.suppliers.length === 0) return;
+    const csv = buildCsv(stats, t);
+    // Prepend a UTF-8 BOM so Excel opens Chinese/French text correctly.
+    const bom = String.fromCharCode(0xfeff);
+    const blob = new Blob([bom, csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const range = [stats.from, stats.to].filter(Boolean).join("_") || "all";
+    link.href = url;
+    link.download = `order-stats_${range}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const hasData = sortedSuppliers.length > 0;
 
   return (
     <main className={shell.page}>
@@ -251,6 +336,22 @@ export default function OrderStatsPage() {
         </Link>
 
         <div className={styles.controls}>
+          {stats?.canViewAllStores ? (
+            <label className={styles.field}>
+              <span>{t.store}</span>
+              <select
+                value={storeId}
+                onChange={(event) => setStoreId(event.target.value)}
+              >
+                <option value="">{t.storeAll}</option>
+                {stats.stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className={styles.field}>
             <span>{t.from}</span>
             <input
@@ -281,6 +382,14 @@ export default function OrderStatsPage() {
               {t.clear}
             </button>
           ) : null}
+          <button
+            type="button"
+            className={styles.btnGhost}
+            onClick={exportCsv}
+            disabled={!hasData}
+          >
+            {t.exportCsv}
+          </button>
         </div>
 
         {loadError ? <p className={styles.error}>{loadError}</p> : null}
@@ -323,41 +432,57 @@ export default function OrderStatsPage() {
 
         {isLoading ? (
           <p className={styles.muted}>{t.loading}</p>
-        ) : sortedItems.length === 0 ? (
+        ) : !hasData ? (
           <p className={styles.muted}>{t.empty}</p>
         ) : (
-          <div className={styles.table}>
-            <div className={`${styles.row} ${styles.headRow}`}>
-              <span>{t.colRank}</span>
-              <span>{t.colProduct}</span>
-              <span>{t.colCategory}</span>
-              <span className={styles.numCol}>{t.colQuantity}</span>
-              <span className={styles.numCol}>{t.colLines}</span>
-              <span className={styles.numCol}>{t.colAmount}</span>
-            </div>
-            {sortedItems.map((item, index) => (
-              <div key={item.productId} className={styles.row}>
-                <span className={styles.rank}>{index + 1}</span>
-                <span className={styles.product}>
-                  <strong>{item.nameZh || item.nameFr || item.productId}</strong>
-                  {item.nameFr && item.nameFr !== item.nameZh ? (
-                    <small>{item.nameFr}</small>
-                  ) : null}
+          sortedSuppliers.map((supplier) => (
+            <section key={supplier.supplierId} className={styles.supplier}>
+              <header className={styles.supplierHead}>
+                <h2 className={styles.supplierName}>{supplier.supplierName}</h2>
+                <span className={styles.supplierTotals}>
+                  {t.supplierTotal}: {formatNumber(supplier.totalQuantity)} ·{" "}
+                  <strong>{formatAmount(supplier.totalAmount)}</strong>
                 </span>
-                <span className={styles.category}>{item.category || "-"}</span>
-                <span className={styles.numCol}>
-                  {formatNumber(item.totalQuantity)}
-                  {item.unit ? ` ${item.unit}` : ""}
-                </span>
-                <span className={styles.numCol}>
-                  {formatNumber(item.orderLineCount)}
-                </span>
-                <span className={`${styles.numCol} ${styles.amount}`}>
-                  {formatAmount(item.totalAmount)}
-                </span>
+              </header>
+
+              <div className={styles.table}>
+                <div className={`${styles.row} ${styles.headRow}`}>
+                  <span>{t.colRank}</span>
+                  <span>{t.colProduct}</span>
+                  <span>{t.colCategory}</span>
+                  <span className={styles.numCol}>{t.colQuantity}</span>
+                  <span className={styles.numCol}>{t.colLines}</span>
+                  <span className={styles.numCol}>{t.colAmount}</span>
+                </div>
+                {supplier.items.map((item, index) => (
+                  <div key={item.productId} className={styles.row}>
+                    <span className={styles.rank}>{index + 1}</span>
+                    <span className={styles.product}>
+                      <strong>
+                        {item.nameZh || item.nameFr || item.productId}
+                      </strong>
+                      {item.nameFr && item.nameFr !== item.nameZh ? (
+                        <small>{item.nameFr}</small>
+                      ) : null}
+                    </span>
+                    <span className={styles.category}>
+                      {item.category || "-"}
+                    </span>
+                    <span className={styles.numCol}>
+                      {formatNumber(item.totalQuantity)}
+                      {item.unit ? ` ${item.unit}` : ""}
+                    </span>
+                    <span className={styles.numCol}>
+                      {formatNumber(item.orderLineCount)}
+                    </span>
+                    <span className={`${styles.numCol} ${styles.amount}`}>
+                      {formatAmount(item.totalAmount)}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </section>
+          ))
         )}
       </motion.section>
 

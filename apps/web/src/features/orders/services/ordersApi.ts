@@ -87,6 +87,7 @@ export async function fetchProductOrderStats(
   const search = new URLSearchParams();
   if (params.from) search.set("from", params.from);
   if (params.to) search.set("to", params.to);
+  if (params.restaurantId) search.set("restaurantId", String(params.restaurantId));
   const query = search.toString();
 
   return apiClient.get<ProductOrderStats>(

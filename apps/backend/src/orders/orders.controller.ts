@@ -24,6 +24,8 @@ import { OrdersService } from './orders.service';
 type OrderActor = {
   id: number;
   restaurantId: number;
+  jobRole?: string | null;
+  permissions?: string[];
 };
 
 @Controller('orders')
@@ -173,6 +175,8 @@ export class OrdersController {
     return {
       id: user.id,
       restaurantId: this.getRestaurantId(user),
+      jobRole: user.jobRole,
+      permissions: user.permissions,
     };
   }
 

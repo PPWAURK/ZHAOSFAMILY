@@ -16,6 +16,8 @@ import type { OrderDocumentItem, OrdersRequestContext } from './orders.types';
 type OrderActor = {
   id: number;
   restaurantId: number;
+  jobRole?: string | null;
+  permissions?: string[];
 };
 
 type ProductOrderStatItem = {
@@ -29,13 +31,24 @@ type ProductOrderStatItem = {
   orderLineCount: number;
 };
 
-type ProductOrderStats = {
-  from: string | null;
-  to: string | null;
-  totalProducts: number;
+type SupplierOrderStatGroup = {
+  supplierId: number;
+  supplierName: string;
   totalQuantity: number;
   totalAmount: number;
   items: ProductOrderStatItem[];
+};
+
+type ProductOrderStats = {
+  from: string | null;
+  to: string | null;
+  restaurantId: number | null;
+  canViewAllStores: boolean;
+  stores: { id: number; name: string }[];
+  totalProducts: number;
+  totalQuantity: number;
+  totalAmount: number;
+  suppliers: SupplierOrderStatGroup[];
 };
 
 type OrderProduct = {
@@ -271,10 +284,28 @@ export class OrdersService {
     });
   }
 
+  private hasHoldingScope(actor: OrderActor): boolean {
+    const roles = `${actor.jobRole ?? ''}`
+      .split(',')
+      .map((role) => role.trim());
+
+    return (
+      roles.includes('holding') ||
+      (actor.permissions ?? []).includes('system.permission.manage')
+    );
+  }
+
   async getProductOrderStats(
     actor: OrderActor,
-    query: { from?: string; to?: string },
+    query: { from?: string; to?: string; restaurantId?: number },
   ): Promise<ProductOrderStats> {
+    const canViewAllStores = this.hasHoldingScope(actor);
+    // A store user is always pinned to their own restaurant; only holding may
+    // target another store (or all stores when no restaurantId is given).
+    const targetRestaurantId = canViewAllStores
+      ? (query.restaurantId ?? null)
+      : actor.restaurantId;
+
     const createdAt: Prisma.DateTimeFilter = {};
     if (query.from) {
       createdAt.gte = new Date(query.from);
@@ -290,14 +321,16 @@ export class OrdersService {
 
     const where: Prisma.PurchaseOrderItemWhereInput = {
       purchaseOrder: {
-        restaurantId: actor.restaurantId,
+        ...(targetRestaurantId !== null
+          ? { restaurantId: targetRestaurantId }
+          : {}),
         ...(query.from || query.to ? { createdAt } : {}),
       },
     };
 
-    const [grouped, names] = await Promise.all([
+    const [grouped, names, stores] = await Promise.all([
       this.prismaService.purchaseOrderItem.groupBy({
-        by: ['productId'],
+        by: ['supplierId', 'productId'],
         where,
         _sum: { quantity: true, lineTotal: true },
         _count: { _all: true },
@@ -313,36 +346,81 @@ export class OrdersService {
           category: true,
         },
       }),
+      canViewAllStores
+        ? this.prismaService.restaurant.findMany({
+            select: { id: true, name: true },
+            orderBy: { id: 'asc' },
+          })
+        : Promise.resolve([]),
     ]);
 
     const nameByProductId = new Map(
       names.map((row) => [row.productId.toString(), row]),
     );
+    const supplierIds = [...new Set(grouped.map((row) => row.supplierId))];
+    const suppliers = await this.prismaService.supplier.findMany({
+      where: { id: { in: supplierIds } },
+      select: { id: true, name: true },
+    });
+    const supplierNameById = new Map(
+      suppliers.map((row) => [row.id, row.name]),
+    );
 
-    const items: ProductOrderStatItem[] = grouped
-      .map((row) => {
-        const meta = nameByProductId.get(row.productId.toString());
+    const groupsBySupplier = new Map<number, SupplierOrderStatGroup>();
+    for (const row of grouped) {
+      const meta = nameByProductId.get(row.productId.toString());
+      const item: ProductOrderStatItem = {
+        productId: row.productId.toString(),
+        nameZh: meta?.nameZh ?? '',
+        nameFr: meta?.nameFr ?? null,
+        unit: meta?.unit ?? null,
+        category: meta?.category ?? '',
+        totalQuantity: row._sum.quantity ?? 0,
+        totalAmount: Number(row._sum.lineTotal ?? 0),
+        orderLineCount: row._count._all,
+      };
+      const group =
+        groupsBySupplier.get(row.supplierId) ??
+        groupsBySupplier
+          .set(row.supplierId, {
+            supplierId: row.supplierId,
+            supplierName:
+              supplierNameById.get(row.supplierId) ?? `#${row.supplierId}`,
+            totalQuantity: 0,
+            totalAmount: 0,
+            items: [],
+          })
+          .get(row.supplierId)!;
+      group.items.push(item);
+      group.totalQuantity += item.totalQuantity;
+      group.totalAmount += item.totalAmount;
+    }
 
-        return {
-          productId: row.productId.toString(),
-          nameZh: meta?.nameZh ?? '',
-          nameFr: meta?.nameFr ?? null,
-          unit: meta?.unit ?? null,
-          category: meta?.category ?? '',
-          totalQuantity: row._sum.quantity ?? 0,
-          totalAmount: Number(row._sum.lineTotal ?? 0),
-          orderLineCount: row._count._all,
-        };
-      })
+    const supplierGroups = [...groupsBySupplier.values()]
+      .map((group) => ({
+        ...group,
+        items: group.items.sort(
+          (left, right) => right.totalAmount - left.totalAmount,
+        ),
+      }))
       .sort((left, right) => right.totalAmount - left.totalAmount);
 
     return {
       from: query.from ?? null,
       to: query.to ?? null,
-      totalProducts: items.length,
-      totalQuantity: items.reduce((sum, item) => sum + item.totalQuantity, 0),
-      totalAmount: items.reduce((sum, item) => sum + item.totalAmount, 0),
-      items,
+      restaurantId: targetRestaurantId,
+      canViewAllStores,
+      stores,
+      totalProducts: nameByProductId.size,
+      totalQuantity: supplierGroups.reduce(
+        (sum, group) => sum + group.totalQuantity,
+        0,
+      ),
+      totalAmount: supplierGroups.reduce(
+        (sum, group) => sum + group.totalAmount,
+        0,
+      ),
+      suppliers: supplierGroups,
     };
   }
 
