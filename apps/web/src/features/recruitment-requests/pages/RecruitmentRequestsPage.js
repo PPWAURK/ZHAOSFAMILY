@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 
+import { useAuth } from "@/features/auth/context/AuthContext";
 import Sidebar from "@/features/dashboard/components/Sidebar";
 import {
   DASHBOARD_LANGUAGES,
@@ -37,6 +38,10 @@ function resolveErrorMessage(error, fallbackMessage) {
 }
 
 export default function RecruitmentRequestsPage() {
+  const { user } = useAuth();
+  const canManage = (user?.permissions || []).includes(
+    "recruitment.request.manage",
+  );
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -298,21 +303,27 @@ export default function RecruitmentRequestsPage() {
                     {request.headcount} {t.peopleUnit}
                   </div>
                   <div>
-                    <select
-                      className={styles.rowSelect}
-                      value={draft.status}
-                      onChange={(event) =>
-                        patchDraft(request.id, "status", event.target.value)
-                      }
-                    >
-                      {RECRUITMENT_REQUEST_STATUSES.filter(
-                        (status) => status !== "all",
-                      ).map((status) => (
-                        <option key={status} value={status}>
-                          {t.statuses[status]}
-                        </option>
-                      ))}
-                    </select>
+                    {canManage ? (
+                      <select
+                        className={styles.rowSelect}
+                        value={draft.status}
+                        onChange={(event) =>
+                          patchDraft(request.id, "status", event.target.value)
+                        }
+                      >
+                        {RECRUITMENT_REQUEST_STATUSES.filter(
+                          (status) => status !== "all",
+                        ).map((status) => (
+                          <option key={status} value={status}>
+                            {t.statuses[status]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={styles.rowStatusBadge}>
+                        {t.statuses[request.status]}
+                      </span>
+                    )}
                   </div>
                   <div className={styles.rowNotes}>
                     {request.notes ? <p>{request.notes}</p> : null}
@@ -321,28 +332,36 @@ export default function RecruitmentRequestsPage() {
                         {t.handledByLabel}: {request.handledBy.name}
                       </small>
                     ) : null}
-                    <textarea
-                      placeholder={t.handledNotesPlaceholder}
-                      value={draft.handledNotes}
-                      onChange={(event) =>
-                        patchDraft(
-                          request.id,
-                          "handledNotes",
-                          event.target.value,
-                        )
-                      }
-                    />
+                    {canManage ? (
+                      <textarea
+                        placeholder={t.handledNotesPlaceholder}
+                        value={draft.handledNotes}
+                        onChange={(event) =>
+                          patchDraft(
+                            request.id,
+                            "handledNotes",
+                            event.target.value,
+                          )
+                        }
+                      />
+                    ) : request.handledNotes ? (
+                      <small>{request.handledNotes}</small>
+                    ) : null}
                   </div>
-                  <div className={styles.rowActions}>
-                    <button
-                      type="button"
-                      className={`${styles.btn} ${styles.btnPrimary}`}
-                      disabled={isSaving}
-                      onClick={() => void handleSave(request)}
-                    >
-                      {isSaving ? t.saving : t.save}
-                    </button>
-                  </div>
+                  {canManage ? (
+                    <div className={styles.rowActions}>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnPrimary}`}
+                        disabled={isSaving}
+                        onClick={() => void handleSave(request)}
+                      >
+                        {isSaving ? t.saving : t.save}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={styles.rowActions} />
+                  )}
                 </article>
               );
             })}

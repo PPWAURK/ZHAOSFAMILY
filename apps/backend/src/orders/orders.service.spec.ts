@@ -41,9 +41,11 @@ type OrdersPrismaServiceMock = {
   };
   supplier: {
     findUnique: AsyncMock;
+    findMany: AsyncMock;
   };
   restaurant: {
     findUnique: AsyncMock;
+    findMany: AsyncMock;
   };
   inventoryMovement: {
     groupBy: AsyncMock;
@@ -51,6 +53,10 @@ type OrdersPrismaServiceMock = {
   purchaseOrder: {
     findMany: AsyncMock;
     findUnique: AsyncMock;
+  };
+  purchaseOrderItem: {
+    groupBy: AsyncMock;
+    findMany: AsyncMock;
   };
   purchaseReturn: {
     create: AsyncMock;
@@ -117,9 +123,11 @@ describe('OrdersService', () => {
       },
       supplier: {
         findUnique: createAsyncMock(),
+        findMany: createAsyncMock(),
       },
       restaurant: {
         findUnique: createAsyncMock(),
+        findMany: createAsyncMock(),
       },
       inventoryMovement: {
         groupBy: createAsyncMock(),
@@ -127,6 +135,10 @@ describe('OrdersService', () => {
       purchaseOrder: {
         findMany: createAsyncMock(),
         findUnique: createAsyncMock(),
+      },
+      purchaseOrderItem: {
+        groupBy: createAsyncMock(),
+        findMany: createAsyncMock(),
       },
       purchaseReturn: {
         create: createAsyncMock(),
@@ -327,5 +339,119 @@ describe('OrdersService', () => {
     await expect(
       service.deleteOrder(42, { id: 7, restaurantId: 3 }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('groups product stats by supplier, scoped to the store user own restaurant', async () => {
+    prismaService.purchaseOrderItem.groupBy.mockResolvedValue([
+      {
+        supplierId: 1,
+        productId: BigInt(10),
+        _sum: { quantity: 5, lineTotal: 50 },
+        _count: { _all: 2 },
+      },
+      {
+        supplierId: 2,
+        productId: BigInt(20),
+        _sum: { quantity: 8, lineTotal: 120 },
+        _count: { _all: 1 },
+      },
+    ]);
+    prismaService.purchaseOrderItem.findMany.mockResolvedValue([
+      {
+        productId: BigInt(10),
+        nameZh: '番茄',
+        nameFr: 'Tomate',
+        unit: 'kg',
+        category: 'veg',
+      },
+      {
+        productId: BigInt(20),
+        nameZh: '牛肉',
+        nameFr: 'Boeuf',
+        unit: 'kg',
+        category: 'meat',
+      },
+    ]);
+    prismaService.supplier.findMany.mockResolvedValue([
+      { id: 1, name: 'Metro' },
+      { id: 2, name: 'Boucherie' },
+    ]);
+
+    const result = await service.getProductOrderStats(
+      { id: 7, restaurantId: 3, jobRole: 'store-manager', permissions: [] },
+      { from: '2026-06-01', to: '2026-06-30' },
+    );
+
+    // Suppliers sorted by spend desc.
+    expect(result.suppliers.map((group) => group.supplierName)).toEqual([
+      'Boucherie',
+      'Metro',
+    ]);
+    expect(result.suppliers[0]).toMatchObject({
+      supplierId: 2,
+      totalAmount: 120,
+      totalQuantity: 8,
+    });
+    expect(result.canViewAllStores).toBe(false);
+    expect(result.stores).toEqual([]);
+    expect(result.totalAmount).toBe(170);
+    expect(result.totalQuantity).toBe(13);
+    expect(result.totalProducts).toBe(2);
+
+    // Store user is pinned to their own restaurant; whole day included for the
+    // date-only upper bound.
+    const where = prismaService.purchaseOrderItem.groupBy.mock.calls[0][0] as {
+      where: {
+        purchaseOrder: { restaurantId: number; createdAt: { lte: Date } };
+      };
+    };
+    expect(where.where.purchaseOrder.restaurantId).toBe(3);
+    expect(where.where.purchaseOrder.createdAt.lte.toISOString()).toContain(
+      '2026-06-30T23:59:59',
+    );
+    // No store list query for a non-holding viewer.
+    expect(prismaService.restaurant.findMany).not.toHaveBeenCalled();
+  });
+
+  it('lets holding target any store and lists stores', async () => {
+    prismaService.purchaseOrderItem.groupBy.mockResolvedValue([]);
+    prismaService.purchaseOrderItem.findMany.mockResolvedValue([]);
+    prismaService.supplier.findMany.mockResolvedValue([]);
+    prismaService.restaurant.findMany.mockResolvedValue([
+      { id: 3, name: 'ZHAO Opera' },
+      { id: 5, name: 'ZHAO Bastille' },
+    ]);
+
+    const result = await service.getProductOrderStats(
+      { id: 1, restaurantId: 99, jobRole: 'holding', permissions: [] },
+      { restaurantId: 5 },
+    );
+
+    expect(result.canViewAllStores).toBe(true);
+    expect(result.restaurantId).toBe(5);
+    expect(result.stores).toHaveLength(2);
+
+    // Holding's own restaurantId (99) is ignored in favour of the requested store.
+    const where = prismaService.purchaseOrderItem.groupBy.mock.calls[0][0] as {
+      where: { purchaseOrder: { restaurantId?: number } };
+    };
+    expect(where.where.purchaseOrder.restaurantId).toBe(5);
+  });
+
+  it('aggregates all stores for holding when no store is specified', async () => {
+    prismaService.purchaseOrderItem.groupBy.mockResolvedValue([]);
+    prismaService.purchaseOrderItem.findMany.mockResolvedValue([]);
+    prismaService.supplier.findMany.mockResolvedValue([]);
+    prismaService.restaurant.findMany.mockResolvedValue([]);
+
+    await service.getProductOrderStats(
+      { id: 1, restaurantId: 99, jobRole: 'holding', permissions: [] },
+      {},
+    );
+
+    const where = prismaService.purchaseOrderItem.groupBy.mock.calls[0][0] as {
+      where: { purchaseOrder: Record<string, unknown> };
+    };
+    expect(where.where.purchaseOrder.restaurantId).toBeUndefined();
   });
 });

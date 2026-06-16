@@ -14,7 +14,11 @@ body {
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
+  /* `clip` prevents horizontal overflow without creating a scroll container,
+     so sticky top bars (position: sticky; top: 0) keep pinning to the
+     viewport. Plain `overflow-x: hidden` makes overflow-y compute to `auto`,
+     which establishes a scroll container and breaks sticky positioning. */
+  overflow-x: clip;
 }
 
 body {

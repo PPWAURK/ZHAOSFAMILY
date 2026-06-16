@@ -5,13 +5,44 @@ import { MOBILE_API_URL } from "@/lib/env";
 import { secureTokenStorage } from "@/lib/tokenStorage";
 import type {
   TrainingMaterialProgress,
+  TrainingMyRecords,
+  TrainingMyTitles,
   TrainingPlanMaterial,
   TrainingPlan,
+  TrainingQuiz,
+  TrainingQuizAnswer,
+  TrainingQuizAttemptResult,
   UpdateTrainingProgressInput,
 } from "@/features/training/trainingTypes";
 
 export async function fetchTrainingMyPlan(): Promise<TrainingPlan> {
   return mobileApiClient.get<TrainingPlan>("/training/my-plan");
+}
+
+export async function fetchTrainingQuiz(
+  materialId: number | string,
+): Promise<TrainingQuiz> {
+  return mobileApiClient.get<TrainingQuiz>(
+    `/training/materials/${encodeURIComponent(String(materialId))}/quiz`,
+  );
+}
+
+export async function submitTrainingQuiz(
+  materialId: number | string,
+  answers: TrainingQuizAnswer[],
+): Promise<TrainingQuizAttemptResult> {
+  return mobileApiClient.post<TrainingQuizAttemptResult>(
+    `/training/materials/${encodeURIComponent(String(materialId))}/quiz/attempts`,
+    { answers },
+  );
+}
+
+export async function fetchTrainingMyTitles(): Promise<TrainingMyTitles> {
+  return mobileApiClient.get<TrainingMyTitles>("/training/my-titles");
+}
+
+export async function fetchTrainingMyRecords(): Promise<TrainingMyRecords> {
+  return mobileApiClient.get<TrainingMyRecords>("/training/my-records");
 }
 
 function getApiBaseUrl(): string {

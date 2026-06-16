@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
+import JobRolePositionPanel from "@/features/training/components/JobRolePositionPanel";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
 import {
@@ -477,7 +478,7 @@ export default function TrainingPositionsPage() {
 
   return (
     <TrainingLayout pageCopy={PAGE_COPY}>
-      {({ t, styles }) => (
+      {({ lang, t, styles }) => (
         <>
           <section className={styles.pageHeaderCard}>
             <div>
@@ -569,6 +570,8 @@ export default function TrainingPositionsPage() {
               />
             ))}
           </section>
+
+          <JobRolePositionPanel lang={lang} />
         </>
       )}
     </TrainingLayout>

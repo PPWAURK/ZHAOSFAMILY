@@ -38,6 +38,8 @@ model User {
   purchaseOrders    PurchaseOrder[]            @relation("CreatedByUser")
   purchaseReturns   PurchaseReturn[]           @relation("CreatedByUserReturns")
   trainingProgress  TrainingMaterialProgress[]
+  trainingQuizAttempts TrainingQuizAttempt[]
+  trainingTitles    UserTrainingTitle[]
   dashboardPosts    DashboardPost[]            @relation("DashboardPostAuthor")
   refreshSessions   RefreshSession[]
   createdRecruitmentRequests RecruitmentRequest[] @relation("RecruitmentRequestCreatedBy")
@@ -298,10 +300,107 @@ model TrainingMaterial {
   createdAt    DateTime                   @default(now()) @map("created_at")
   updatedAt    DateTime                   @updatedAt @map("updated_at")
   progress     TrainingMaterialProgress[]
+  quiz         TrainingQuiz?
 
   @@index([positionId])
   @@index([type])
   @@map("training_materials")
+}
+
+// Singleton (id = 1) holding HQ-configurable AI quiz-generation settings.
+// The API key is stored AES-256-GCM encrypted, never in plaintext.
+model AiQuizConfig {
+  id        Int      @id @default(1)
+  apiKeyEnc String?  @map("api_key_enc") @db.Text
+  baseUrl   String?  @map("base_url") @db.VarChar(300)
+  model     String?  @db.VarChar(150)
+  maxTokens Int?     @map("max_tokens")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("ai_quiz_config")
+}
+
+model TrainingQuiz {
+  id            Int                    @id @default(autoincrement())
+  materialId    Int                    @unique @map("material_id")
+  passingScore  Int                    @default(80) @map("passing_score")
+  maxAttempts   Int?                   @map("max_attempts")
+  questionCount Int                    @default(0) @map("question_count")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  material  TrainingMaterial       @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  questions TrainingQuizQuestion[]
+  attempts  TrainingQuizAttempt[]
+
+  @@map("training_quizzes")
+}
+
+model TrainingQuizQuestion {
+  id           Int      @id @default(autoincrement())
+  quizId       Int      @map("quiz_id")
+  type         String   @default("single") @db.VarChar(20)
+  prompt       String   @db.VarChar(500)
+  options      Json
+  correctKeys  Json     @map("correct_keys")
+  explanation  String?  @db.VarChar(500)
+  translations Json?
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  quiz TrainingQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@map("training_quiz_questions")
+}
+
+model TrainingQuizAttempt {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  quizId    Int      @map("quiz_id")
+  score     Int
+  passed    Boolean  @default(false)
+  answers   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz TrainingQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([userId, quizId])
+  @@index([quizId])
+  @@map("training_quiz_attempts")
+}
+
+model TrainingTitle {
+  id                 Int                 @id @default(autoincrement())
+  code               String              @unique @db.VarChar(40)
+  nameZh             String              @map("name_zh") @db.VarChar(100)
+  nameEn             String              @map("name_en") @db.VarChar(100)
+  nameFr             String              @map("name_fr") @db.VarChar(100)
+  frameStyle         String              @default("red") @map("frame_style") @db.VarChar(40)
+  unlockPositionCode String              @map("unlock_position_code") @db.VarChar(40)
+  sortOrder          Int                 @default(0) @map("sort_order")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  earned             UserTrainingTitle[]
+
+  @@index([unlockPositionCode])
+  @@map("training_titles")
+}
+
+model UserTrainingTitle {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  titleCode String   @map("title_code") @db.VarChar(40)
+  earnedAt  DateTime @default(now()) @map("earned_at")
+
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title TrainingTitle @relation(fields: [titleCode], references: [code], onDelete: Cascade)
+
+  @@unique([userId, titleCode])
+  @@index([userId])
+  @@map("user_training_titles")
 }
 
 model TrainingMaterialProgress {

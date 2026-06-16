@@ -18,6 +18,7 @@ import {
 } from "@/features/stores/StoreModuleParts";
 import {
   STORE_COPY,
+  STORE_ASSIGNABLE_JOB_ROLE_VALUES,
   STORE_JOB_ROLE_OPTIONS,
 } from "@/features/stores/storeCopy";
 import {
@@ -67,9 +68,16 @@ function getVisibleRoleOptions(
 ): StoreJobRoleOption[] {
   const options = STORE_JOB_ROLE_OPTIONS[language];
 
-  return canManageHoldingRole(user)
-    ? options
-    : options.filter((option) => option.value !== "holding");
+  // Holding/admins may assign any role; everyone else (store/regional managers)
+  // can only assign the line-staff roles the backend accepts — offering
+  // management roles to them would just get a 403 on save.
+  if (canManageHoldingRole(user)) {
+    return options;
+  }
+
+  const assignable = new Set(STORE_ASSIGNABLE_JOB_ROLE_VALUES);
+
+  return options.filter((option) => assignable.has(option.value));
 }
 
 function getUsersForStore(

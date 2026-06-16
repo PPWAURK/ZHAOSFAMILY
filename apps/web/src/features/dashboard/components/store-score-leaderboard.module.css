@@ -1,0 +1,572 @@
+.scoreboardModule {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 0 72px;
+}
+.scoreboardHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 28px;
+  align-items: end;
+  margin-bottom: 22px;
+}
+.scoreboardEyebrow {
+  margin: 0 0 18px;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.scoreboardTitle {
+  margin: 0;
+  font-family: var(--zh-serif);
+  font-size: clamp(36px, 4.8vw, 64px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.scoreboardSubtitle {
+  max-width: 700px;
+  margin: 16px 0 0;
+  color: var(--ink-60);
+  font-family: var(--zh-serif);
+  font-size: 15px;
+  line-height: 1.75;
+}
+.scoreboardSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--red-soft-2);
+  border-bottom: 1px solid var(--red-soft-2);
+}
+.scoreboardSummaryItem {
+  min-width: 0;
+  padding: 18px 16px;
+  border-right: 1px solid var(--red-soft-2);
+  background: rgba(193, 22, 22, 0.04);
+}
+.scoreboardSummaryItem:last-child {
+  border-right: none;
+}
+.scoreboardSummaryGrade {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+.scoreboardSummaryItem strong {
+  display: block;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 500;
+  line-height: 0.9;
+}
+.scoreboardSummaryItem span:last-child {
+  display: block;
+  margin-top: 8px;
+  color: var(--ink-40);
+  font-family: var(--zh-serif);
+  font-size: 13px;
+}
+.podiumStage {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.16fr) minmax(0, 0.92fr);
+  gap: 16px;
+  align-items: end;
+  margin-top: 30px;
+  min-height: 560px;
+  padding: 54px 22px 0;
+  border-top: 2px solid var(--red);
+  background:
+    linear-gradient(180deg, rgba(193, 22, 22, 0.05), rgba(255, 255, 255, 0) 62%),
+    linear-gradient(90deg, transparent, rgba(193, 22, 22, 0.08), transparent);
+}
+.podiumPlace {
+  position: relative;
+  display: flex;
+  min-height: 340px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0;
+  border: 1px solid var(--red-soft-2);
+  border-bottom: 8px solid var(--red-soft-2);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 40px rgba(140, 20, 20, 0.08);
+  overflow: hidden;
+}
+.podiumPlace::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 78px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(193, 22, 22, 0.12) 0,
+    rgba(193, 22, 22, 0.12) 1px,
+    transparent 1px,
+    transparent 16px
+  );
+  opacity: 0.58;
+}
+.podiumGold {
+  --tier: #c79a1e;
+  --tier-soft: rgba(199, 154, 30, 0.14);
+  border-color: var(--tier);
+  border-top: 4px solid var(--tier);
+  border-bottom-color: var(--tier);
+  box-shadow: 0 30px 64px rgba(160, 120, 20, 0.22);
+}
+.podiumSilver {
+  --tier: #8c93a0;
+  --tier-soft: rgba(140, 147, 160, 0.16);
+  border-color: var(--tier);
+  border-top: 4px solid var(--tier);
+  border-bottom-color: var(--tier);
+}
+.podiumBronze {
+  --tier: #b16a34;
+  --tier-soft: rgba(177, 106, 52, 0.16);
+  border-color: var(--tier);
+  border-top: 4px solid var(--tier);
+  border-bottom-color: var(--tier);
+}
+.podiumGold::before,
+.podiumSilver::before,
+.podiumBronze::before {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--tier) 0,
+    var(--tier) 1px,
+    transparent 1px,
+    transparent 16px
+  );
+  opacity: 0.4;
+}
+.podiumPlaceRank1 {
+  min-height: 520px;
+}
+.podiumPlaceRank2 {
+  min-height: 430px;
+}
+.podiumPlaceRank3 {
+  min-height: 360px;
+}
+.podiumPhoto,
+.podiumContent,
+.podiumMedal,
+.podiumStore,
+.podiumScore,
+.podiumFocus,
+.podiumAudit {
+  position: relative;
+  z-index: 1;
+}
+.podiumPhoto {
+  position: relative;
+  height: 150px;
+  margin: 0;
+  border-bottom: 1px solid var(--red-soft-2);
+  overflow: hidden;
+}
+.podiumPlaceRank1 .podiumPhoto {
+  height: 248px;
+}
+.podiumPlaceRank2 .podiumPhoto {
+  height: 176px;
+}
+.podiumPhoto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.podiumContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+.podiumMedal {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1px;
+  width: 56px;
+  height: 56px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  color: #fff;
+  background: var(--tier, var(--red));
+  box-shadow: 0 8px 20px rgba(20, 20, 20, 0.28);
+}
+.podiumGold .podiumMedal {
+  background: radial-gradient(circle at 32% 28%, #f3d271, #c79a1e 70%);
+}
+.podiumSilver .podiumMedal {
+  background: radial-gradient(circle at 32% 28%, #e3e7ec, #8c93a0 72%);
+}
+.podiumBronze .podiumMedal {
+  background: radial-gradient(circle at 32% 28%, #e0a36e, #b16a34 72%);
+}
+.podiumPlaceRank1 .podiumMedal {
+  width: 72px;
+  height: 72px;
+  top: 14px;
+  left: 14px;
+}
+.podiumMedal strong {
+  font-family: var(--mono);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+.podiumPlaceRank1 .podiumMedal strong {
+  font-size: 32px;
+}
+.podiumCrown {
+  width: 18px;
+  height: 18px;
+  margin-bottom: 1px;
+  color: #fff;
+}
+.podiumPlaceRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.podiumPlaceLabel {
+  padding: 5px 11px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--tier, var(--red));
+  font: 800 12px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.podiumGrade {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 800;
+}
+.podiumStore {
+  margin-top: 22px;
+}
+.tieBadge {
+  padding: 5px 9px;
+  border: 1px solid var(--tier, var(--red-soft-2));
+  color: var(--tier, var(--red));
+  background: var(--tier-soft, rgba(193, 22, 22, 0.08));
+  font: 800 10px var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.podiumStore p {
+  margin: 0 0 10px;
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.podiumStore h3 {
+  display: -webkit-box;
+  min-height: 2em;
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: clamp(28px, 3.4vw, 42px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.podiumScore {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 26px;
+}
+.podiumScore strong {
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: clamp(46px, 6vw, 82px);
+  font-weight: 500;
+  line-height: 0.82;
+}
+.podiumFocus {
+  margin: 18px 0 0;
+  color: var(--ink-80);
+  font-family: var(--zh-serif);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.podiumAudit {
+  margin: 18px 0 0;
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.scoreTrackingList {
+  margin-top: 20px;
+  border-top: 1px solid var(--red-soft-2);
+  border-bottom: 1px solid var(--red-soft-2);
+}
+.scoreTrackingHead,
+.scoreboardRow {
+  display: grid;
+  grid-template-columns: 86px 62px minmax(220px, 1.4fr) 86px minmax(180px, 0.9fr) 92px minmax(160px, 0.9fr);
+  gap: 16px;
+  align-items: center;
+}
+.scoreTrackingHead {
+  min-height: 52px;
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.scoreTrackingHead span:first-child {
+  grid-column: 1 / 4;
+}
+.scoreTrackingHead span:nth-child(2) {
+  grid-column: 4;
+}
+.scoreTrackingHead span:nth-child(3) {
+  grid-column: 5;
+}
+.scoreTrackingHead span:nth-child(4) {
+  grid-column: 7;
+}
+.scoreboardRows {
+  display: grid;
+}
+.scoreboardRow {
+  min-height: 92px;
+  border-bottom: 1px solid var(--red-soft);
+  background: rgba(255, 255, 255, 0.82);
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.scoreboardRow:last-child {
+  border-bottom: none;
+}
+.scoreboardRow:hover {
+  background: rgba(193, 22, 22, 0.05);
+  box-shadow: 0 16px 32px rgba(140, 20, 20, 0.08);
+  transform: translateY(-1px);
+}
+.scoreStorePhoto {
+  width: 72px;
+  height: 58px;
+  border: 1px solid var(--red-soft-2);
+  object-fit: cover;
+}
+.scoreRank {
+  display: flex; flex-direction: column;
+  gap: 5px;
+  color: var(--red);
+  font: 800 15px var(--mono);
+  letter-spacing: 0.18em;
+}
+.scoreTieLabel {
+  color: var(--ink-40);
+  font-size: 10px; letter-spacing: 0.12em;
+}
+.scoreStore {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding-right: 12px;
+}
+.scoreStore strong {
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+.scoreStore small {
+  color: var(--ink-60);
+  font-family: var(--zh-serif);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.scoreGrade {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.scoreGradeA {
+  color: #1f7a57;
+  background: rgba(31, 122, 87, 0.08);
+}
+.scoreGradeB {
+  color: #aa6d2f;
+  background: rgba(170, 109, 47, 0.09);
+}
+.scoreGradeC {
+  color: var(--red);
+  background: rgba(193, 22, 22, 0.08);
+}
+.scoreValue {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+.scoreValue strong {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+.scoreBar {
+  display: block;
+  width: 100%;
+  height: 6px;
+  background: var(--ink-05);
+  overflow: hidden;
+}
+.scoreBar span {
+  display: block;
+  height: 100%;
+  background: var(--red);
+}
+.scoreTrendUp,
+.scoreTrendDown {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.scoreTrendUp {
+  color: #1f7a57;
+}
+.scoreTrendDown {
+  color: var(--red);
+}
+.scoreFocus {
+  color: var(--ink-80);
+  font-family: var(--zh-serif);
+  font-size: 15px;
+  line-height: 1.5;
+}
+@media (max-width: 860px) {
+  .scoreboardModule {
+    padding-bottom: 48px;
+  }
+  .scoreboardHeader {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .podiumStage {
+    grid-template-columns: 1fr;
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .podiumPlace {
+    min-height: 260px;
+  }
+  .podiumPlaceRank1 {
+    order: -1;
+  }
+  .scoreTrackingHead,
+  .scoreboardRow {
+    grid-template-columns: 76px 48px minmax(180px, 1.4fr) 70px minmax(130px, 0.8fr) 76px;
+  }
+  .scoreTrackingHead span:nth-child(4),
+  .scoreFocus {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
+  .scoreboardTitle {
+    font-size: clamp(32px, 10vw, 46px);
+    line-height: 1.04;
+  }
+  .scoreboardSummary {
+    grid-template-columns: 1fr;
+  }
+  .scoreboardSummaryItem {
+    border-right: none;
+    border-bottom: 1px solid var(--red-soft-2);
+  }
+  .scoreboardSummaryItem:last-child {
+    border-bottom: none;
+  }
+  .scoreTrackingHead {
+    display: none;
+  }
+  .scoreboardRow {
+    grid-template-columns: 64px minmax(0, 1fr) 58px;
+    gap: 12px;
+    min-height: 0;
+    padding: 16px 0;
+  }
+  .scoreStorePhoto {
+    grid-row: 1 / 4;
+    width: 56px;
+    height: 68px;
+  }
+  .scoreRank,
+  .scoreStore {
+    grid-column: 2;
+  }
+  .scoreGrade {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+  .scoreValue,
+  .scoreTrendUp,
+  .scoreTrendDown {
+    grid-column: 2 / -1;
+    margin-left: 0;
+  }
+  .scoreStore strong {
+    font-size: 20px;
+  }
+  .scoreGrade {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+}

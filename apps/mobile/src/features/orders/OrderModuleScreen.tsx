@@ -30,6 +30,7 @@ import {
   SummaryRows,
 } from "@/features/orders/OrderModuleParts";
 import { orderStyles as styles } from "@/features/orders/orderStyles";
+import { isTablet } from "@/lib/responsive";
 import {
   filterProducts,
   getDateAfterDays,
@@ -704,7 +705,12 @@ export function OrderModuleScreen({ language, storeName }: OrderModuleScreenProp
           {!isLoadingProducts && products.length > 0 && filteredProducts.length === 0 ? (
             <Text style={styles.stateText}>{copy.emptyFilteredProducts}</Text>
           ) : null}
-          <View style={styles.productList}>
+          <View
+            style={[
+              styles.productList,
+              isTablet ? { justifyContent: "flex-start" } : null,
+            ]}
+          >
             {filteredProducts.map((product) => (
               <ProductQuantityRow
                 key={product.id}

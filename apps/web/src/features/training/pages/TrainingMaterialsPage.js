@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
+import QuizManagerModal from "@/features/training/components/QuizManagerModal";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
 import {
   deleteTrainingMaterial,
@@ -87,6 +88,7 @@ export default function TrainingMaterialsPage() {
   });
   const [savingMaterialId, setSavingMaterialId] = useState(null);
   const [deletingMaterialId, setDeletingMaterialId] = useState(null);
+  const [quizMaterial, setQuizMaterial] = useState(null);
 
   const permissions = user?.permissions ?? [];
   const canCreateMaterials = permissions.includes("training.material.create");
@@ -553,6 +555,20 @@ export default function TrainingMaterialsPage() {
                                   编辑
                                 </button>
                               ) : null}
+                              {canUpdateMaterials ? (
+                                <button
+                                  type="button"
+                                  className={styles.materialRenameButton}
+                                  onClick={() =>
+                                    setQuizMaterial({
+                                      id: item.materialId,
+                                      title: item.title,
+                                    })
+                                  }
+                                >
+                                  测验
+                                </button>
+                              ) : null}
                               {canDeleteMaterials ? (
                                 <button
                                   type="button"
@@ -598,6 +614,13 @@ export default function TrainingMaterialsPage() {
               </section>
             );
           })}
+          {quizMaterial ? (
+            <QuizManagerModal
+              materialId={quizMaterial.id}
+              materialTitle={quizMaterial.title}
+              onClose={() => setQuizMaterial(null)}
+            />
+          ) : null}
         </>
       )}
     </TrainingLayout>

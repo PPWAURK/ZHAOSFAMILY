@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from "zustand";
 import type { ChangePasswordRequest, RestaurantSummary, UpdateMeRequest } from "@zhao/types";
@@ -394,7 +395,7 @@ export function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(scaleStyles({
   bottom: {
     alignItems: "center",
     flexDirection: "row",
@@ -460,4 +461,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 14,
   },
-});
+}));

@@ -7,6 +7,7 @@ import {
   type TextInputProps,
   View,
 } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import type { AuthCopy, AuthLanguage } from "@/features/auth/authCopy";
 import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
@@ -269,7 +270,7 @@ export const authControlStyles = {
   colors: COLORS,
 };
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(scaleStyles({
   checkBox: {
     borderColor: COLORS.ink,
     borderWidth: 1,
@@ -496,4 +497,4 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     textTransform: "uppercase",
   },
-});
+}));

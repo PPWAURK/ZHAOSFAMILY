@@ -1,6 +1,22 @@
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import type { StoreJobRoleOption } from "@/features/stores/storeTypes";
 
+// Line-staff roles a store manager is allowed to assign — must stay in sync
+// with the backend's MANAGEABLE_JOB_ROLE_VALUES (permissions.service.ts).
+// Anything outside this set is rejected (403) for non-holding viewers.
+export const STORE_ASSIGNABLE_JOB_ROLE_VALUES = [
+  "front-host",
+  "front-cashier",
+  "front-server",
+  "front-packer",
+  "front-bar",
+  "back-dishwasher",
+  "back-noodle",
+  "back-hot-appetizer",
+  "back-cold-appetizer",
+  "back-rice",
+];
+
 export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> = {
   zh: [
     { value: "holding", label: "总部" },
@@ -12,6 +28,16 @@ export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> 
     { value: "back-assistant", label: "后厨助理" },
     { value: "front-of-house", label: "前厅" },
     { value: "back-of-house", label: "后厨" },
+    { value: "front-host", label: "迎宾" },
+    { value: "front-cashier", label: "收银" },
+    { value: "front-server", label: "服务生" },
+    { value: "front-packer", label: "打包" },
+    { value: "front-bar", label: "吧台" },
+    { value: "back-dishwasher", label: "洗碗" },
+    { value: "back-noodle", label: "打面" },
+    { value: "back-hot-appetizer", label: "热前菜" },
+    { value: "back-cold-appetizer", label: "冷前菜" },
+    { value: "back-rice", label: "饭" },
   ],
   en: [
     { value: "holding", label: "Holding" },
@@ -23,6 +49,16 @@ export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> 
     { value: "back-assistant", label: "Kitchen assistant" },
     { value: "front-of-house", label: "Front of house" },
     { value: "back-of-house", label: "Kitchen" },
+    { value: "front-host", label: "Host" },
+    { value: "front-cashier", label: "Cashier" },
+    { value: "front-server", label: "Server" },
+    { value: "front-packer", label: "Packer" },
+    { value: "front-bar", label: "Bar" },
+    { value: "back-dishwasher", label: "Dishwasher" },
+    { value: "back-noodle", label: "Noodle station" },
+    { value: "back-hot-appetizer", label: "Hot appetizer" },
+    { value: "back-cold-appetizer", label: "Cold appetizer" },
+    { value: "back-rice", label: "Rice station" },
   ],
   fr: [
     { value: "holding", label: "Holding" },
@@ -34,6 +70,16 @@ export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> 
     { value: "back-assistant", label: "Assistant cuisine" },
     { value: "front-of-house", label: "Salle" },
     { value: "back-of-house", label: "Cuisine" },
+    { value: "front-host", label: "Accueil" },
+    { value: "front-cashier", label: "Caisse" },
+    { value: "front-server", label: "Serveur" },
+    { value: "front-packer", label: "Emballage" },
+    { value: "front-bar", label: "Bar" },
+    { value: "back-dishwasher", label: "Plonge" },
+    { value: "back-noodle", label: "Nouilles" },
+    { value: "back-hot-appetizer", label: "Entrée chaude" },
+    { value: "back-cold-appetizer", label: "Entrée froide" },
+    { value: "back-rice", label: "Riz" },
   ],
 };
 

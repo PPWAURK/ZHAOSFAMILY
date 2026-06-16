@@ -26,7 +26,7 @@ function initialsOf(name) {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, logout, updateMe } = useAuth();
+  const { user, isLoading, logout, updateMe, changePassword } = useAuth();
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -38,6 +38,12 @@ export default function ProfilePage() {
     address: user?.address || "",
   });
   const [draft, setDraft] = useState(contact);
+  const [changingPwd, setChangingPwd] = useState(false);
+  const [savingPwd, setSavingPwd] = useState(false);
+  const [pwdChanged, setPwdChanged] = useState(false);
+  const [pwdError, setPwdError] = useState(null);
+  const emptyPwd = { current: "", next: "", confirm: "" };
+  const [pwd, setPwd] = useState(emptyPwd);
 
   const t = PROFILE_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -101,6 +107,53 @@ export default function ProfilePage() {
       await logout();
     } finally {
       setLoggingOut(false);
+    }
+  }
+
+  function startPwdChange() {
+    setPwd(emptyPwd);
+    setPwdError(null);
+    setPwdChanged(false);
+    setChangingPwd(true);
+  }
+
+  function cancelPwdChange() {
+    setChangingPwd(false);
+    setPwd(emptyPwd);
+    setPwdError(null);
+  }
+
+  async function submitPwdChange() {
+    if (pwd.next.length < 8) {
+      setPwdError(t.passwordErrTooShort);
+      return;
+    }
+    if (pwd.next !== pwd.confirm) {
+      setPwdError(t.passwordErrMismatch);
+      return;
+    }
+
+    setPwdError(null);
+    setSavingPwd(true);
+
+    try {
+      await changePassword(pwd.current, pwd.next);
+      setChangingPwd(false);
+      setPwd(emptyPwd);
+      setPwdChanged(true);
+      setTimeout(() => setPwdChanged(false), 2600);
+    } catch (error) {
+      const code = error?.message;
+
+      if (code === "INVALID_CURRENT_PASSWORD") {
+        setPwdError(t.passwordErrCurrentWrong);
+      } else if (code === "PASSWORD_TOO_SHORT") {
+        setPwdError(t.passwordErrTooShort);
+      } else {
+        setPwdError(t.passwordErrGeneric);
+      }
+    } finally {
+      setSavingPwd(false);
     }
   }
 
@@ -347,17 +400,94 @@ export default function ProfilePage() {
               <h3 className={styles.sectionHeading}>{t.securityHeading}</h3>
               <p className={styles.sectionHint}>{t.securityHint}</p>
             </div>
-            <div className={styles.btnRow}>
-              <button
-                type="button"
-                className={`${styles.btn} ${styles.btnGhost}`}
-                disabled
-              >
-                {t.changePassword}
-              </button>
-            </div>
+            {!changingPwd ? (
+              <div className={styles.btnRow}>
+                {pwdChanged ? (
+                  <span className={styles.savedFlag}>{t.passwordChanged}</span>
+                ) : null}
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  onClick={startPwdChange}
+                >
+                  {t.changePassword}
+                </button>
+              </div>
+            ) : null}
           </header>
-          <p className={styles.placeholder}>{t.passwordPlaceholder}</p>
+
+          {changingPwd ? (
+            <>
+              <p className={styles.sectionHint}>{t.passwordIntro}</p>
+              <dl className={styles.fieldList}>
+                <div className={styles.fieldItem}>
+                  <dt>{t.fieldCurrentPassword}</dt>
+                  <dd>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      className={styles.input}
+                      value={pwd.current}
+                      onChange={(e) =>
+                        setPwd((prev) => ({ ...prev, current: e.target.value }))
+                      }
+                    />
+                  </dd>
+                </div>
+                <div className={styles.fieldItem}>
+                  <dt>{t.fieldNewPassword}</dt>
+                  <dd>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      className={styles.input}
+                      value={pwd.next}
+                      onChange={(e) =>
+                        setPwd((prev) => ({ ...prev, next: e.target.value }))
+                      }
+                    />
+                  </dd>
+                </div>
+                <div className={styles.fieldItem}>
+                  <dt>{t.fieldConfirmPassword}</dt>
+                  <dd>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      className={styles.input}
+                      value={pwd.confirm}
+                      onChange={(e) =>
+                        setPwd((prev) => ({ ...prev, confirm: e.target.value }))
+                      }
+                    />
+                  </dd>
+                </div>
+              </dl>
+              {pwdError ? (
+                <p className={styles.sectionStatus}>{pwdError}</p>
+              ) : (
+                <p className={styles.sectionHint}>{t.passwordRule}</p>
+              )}
+              <div className={styles.btnRow}>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  onClick={submitPwdChange}
+                  disabled={savingPwd}
+                >
+                  {savingPwd ? t.passwordSubmitting : t.passwordSubmit}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  onClick={cancelPwdChange}
+                  disabled={savingPwd}
+                >
+                  {t.cancel}
+                </button>
+              </div>
+            </>
+          ) : null}
         </section>
 
         {/* Déconnexion */}

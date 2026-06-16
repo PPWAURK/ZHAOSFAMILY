@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   Res,
 } from '@nestjs/common';
@@ -16,12 +17,15 @@ import { AuthService, type AuthUser } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { CreateOrderReturnDto } from './dto/create-order-return.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { ProductStatsQueryDto } from './dto/product-stats-query.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrdersService } from './orders.service';
 
 type OrderActor = {
   id: number;
   restaurantId: number;
+  jobRole?: string | null;
+  permissions?: string[];
 };
 
 @Controller('orders')
@@ -61,6 +65,17 @@ export class OrdersController {
   ): Promise<unknown> {
     return this.ordersService.listOrderReturns(
       await this.getActor(authorization),
+    );
+  }
+
+  @Get('product-stats')
+  async getProductOrderStats(
+    @Headers('authorization') authorization: string | undefined,
+    @Query() query: ProductStatsQueryDto,
+  ): Promise<unknown> {
+    return this.ordersService.getProductOrderStats(
+      await this.getActor(authorization),
+      query,
     );
   }
 
@@ -160,6 +175,8 @@ export class OrdersController {
     return {
       id: user.id,
       restaurantId: this.getRestaurantId(user),
+      jobRole: user.jobRole,
+      permissions: user.permissions,
     };
   }
 

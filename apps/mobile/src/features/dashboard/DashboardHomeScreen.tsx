@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +20,7 @@ import { BlurView } from "expo-blur";
 import { WebView } from "react-native-webview";
 import { ProtectedScreen } from "@/components/ProtectedScreen";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { StoreScoreLeaderboard } from "@/features/dashboard/StoreScoreLeaderboard";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import { crossPlatformShadow } from "@/lib/platform";
 import zhaoLogo from "@/features/auth/assets/logozhao正方形.jpg";
@@ -661,6 +663,8 @@ export function DashboardHomeScreen({
                 ) : null}
               </View>
 
+              <StoreScoreLeaderboard language={language} />
+
               <Modal
                 animationType="slide"
                 presentationStyle="overFullScreen"
@@ -969,7 +973,7 @@ export function DashboardHomeScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(scaleStyles({
   actionMessage: {
     color: authControlStyles.colors.ink60,
     fontFamily: "serif",
@@ -1699,4 +1703,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 34,
   },
-});
+}));

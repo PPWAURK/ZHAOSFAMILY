@@ -9,10 +9,3 @@ jest.mock('react-native-webview', () => {
     WebView: (props) => React.createElement(View, props),
   };
 });
-
-jest.mock('react-native-pdf', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-
-  return (props) => React.createElement(View, props);
-});

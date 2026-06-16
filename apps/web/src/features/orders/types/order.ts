@@ -76,3 +76,45 @@ export type OrderInventoryLine = {
 };
 
 export type OrderStockMap = Record<string, number>;
+
+export type ProductOrderStatItem = {
+  productId: string;
+  nameZh: string;
+  nameFr: string | null;
+  unit: string | null;
+  category: string;
+  totalQuantity: number;
+  totalAmount: number;
+  orderLineCount: number;
+};
+
+export type SupplierOrderStatGroup = {
+  supplierId: number;
+  supplierName: string;
+  totalQuantity: number;
+  totalAmount: number;
+  items: ProductOrderStatItem[];
+};
+
+export type OrderStatsStore = {
+  id: number;
+  name: string;
+};
+
+export type ProductOrderStats = {
+  from: string | null;
+  to: string | null;
+  restaurantId: number | null;
+  canViewAllStores: boolean;
+  stores: OrderStatsStore[];
+  totalProducts: number;
+  totalQuantity: number;
+  totalAmount: number;
+  suppliers: SupplierOrderStatGroup[];
+};
+
+export type ProductOrderStatsParams = {
+  from?: string;
+  to?: string;
+  restaurantId?: number;
+};

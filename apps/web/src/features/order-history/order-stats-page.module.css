@@ -1,0 +1,346 @@
+.lede {
+  margin: 0 0 16px;
+  max-width: 680px;
+  line-height: 1.7;
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 14px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 24px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+/* ---- Filters (house style: red-soft fill + left red rule) ---- */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+  background: var(--red-soft);
+  border-left: 3px solid var(--red);
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.filterLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 600;
+}
+
+.filterControl {
+  padding: 9px 11px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  font: inherit;
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.filterControl:focus {
+  outline: none;
+  border-color: var(--red);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.error {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  background: var(--red-soft);
+  border: 1px dashed var(--red-soft-2);
+  color: var(--red);
+  font-family: var(--zh-serif);
+  font-size: 14px;
+}
+
+/* ---- Totals strip (mirrors the training metric strip) ---- */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--ink);
+  margin-bottom: 30px;
+}
+
+.metric {
+  padding: 16px 20px;
+  border-right: 1px solid var(--ink-10);
+}
+
+.metric:last-child {
+  border-right: none;
+}
+
+.metricValue {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 30px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.metricLabel {
+  margin: 8px 0 0;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-50, rgba(10, 10, 10, 0.5));
+}
+
+/* ---- Supplier tabs + sort ---- */
+.tabsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid var(--red-soft-2);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: none;
+  border-right: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab:last-child {
+  border-right: none;
+}
+
+.tab:hover {
+  background: var(--red-soft);
+}
+
+.tabActive,
+.tabActive:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+.tabAmount {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.sort {
+  display: inline-flex;
+  border: 1px solid var(--red-soft-2);
+}
+
+.sortBtn {
+  padding: 8px 15px;
+  border: none;
+  border-left: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.sortBtn:first-child {
+  border-left: none;
+}
+
+.sortBtnActive {
+  background: var(--red);
+  color: #fff;
+}
+
+/* ---- Supplier heading (mirrors order-history list heading) ---- */
+.supplierHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 32px 0 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 600;
+}
+
+.supplierHeading::before {
+  content: "";
+  align-self: center;
+  width: 24px;
+  height: 2px;
+  background: var(--red);
+}
+
+.supplierTotal {
+  flex-shrink: 0;
+  color: var(--ink-40, rgba(10, 10, 10, 0.4));
+}
+
+.supplierTotal strong {
+  color: var(--ink);
+}
+
+.supplierHeading::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--red-soft-2);
+}
+
+/* ---- Table ---- */
+.table {
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  border-top: 1px solid var(--red-soft-2);
+}
+
+.tableHeader,
+.row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1.8fr) minmax(0, 0.9fr) 96px 104px 128px;
+  gap: 18px;
+  padding: 12px 18px;
+  min-width: 720px;
+}
+
+.tableHeader {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 600;
+  border-bottom: 1px solid var(--red-soft-2);
+}
+
+.row {
+  align-items: center;
+  padding: 15px 18px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--red-soft);
+  font-family: var(--zh-serif);
+}
+
+.rank {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-40, rgba(10, 10, 10, 0.4));
+  font-variant-numeric: tabular-nums;
+}
+
+.product {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.product strong {
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product small {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-40, rgba(10, 10, 10, 0.4));
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid var(--red-soft-2);
+  color: var(--ink);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.unit {
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 11px;
+  color: var(--ink-40, rgba(10, 10, 10, 0.4));
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+
+.amount {
+  text-align: right;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  padding: 40px 20px;
+  text-align: center;
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  color: var(--ink-60, rgba(10, 10, 10, 0.6));
+  background: var(--red-soft);
+  border: 1px dashed var(--red-soft-2);
+}

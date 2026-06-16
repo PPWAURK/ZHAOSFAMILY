@@ -1,7 +1,8 @@
 import { StyleSheet } from "react-native";
+import { scaleStyles } from "@/lib/responsive";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 
-export const trainingStyles = StyleSheet.create({
+export const trainingStyles = StyleSheet.create(scaleStyles({
   card: {
     backgroundColor: "#ffffff",
     borderColor: authControlStyles.colors.ink10,
@@ -133,9 +134,56 @@ export const trainingStyles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 48,
   },
+  completedBadgeText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textAlign: "center",
+    textTransform: "uppercase",
+  },
+  markCompleteButton: {
+    alignItems: "center",
+    backgroundColor: authControlStyles.colors.red,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  markCompleteButtonDisabled: {
+    opacity: 0.4,
+  },
+  markCompleteButtonText: {
+    color: "#ffffff",
+    fontFamily: "monospace",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  markCompleteHint: {
+    color: authControlStyles.colors.ink40,
+    fontFamily: "serif",
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
+  },
   previewBody: {
     flex: 1,
     position: "relative",
+  },
+  previewFooter: {
+    borderTopColor: authControlStyles.colors.ink10,
+    borderTopWidth: 1,
+    gap: 8,
+    padding: 14,
+  },
+  syncFailedText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "serif",
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
   },
   previewCloseButton: {
     alignItems: "center",
@@ -169,6 +217,7 @@ export const trainingStyles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.86)",
     bottom: 0,
+    gap: 12,
     justifyContent: "center",
     left: 0,
     padding: 20,
@@ -282,4 +331,241 @@ export const trainingStyles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1,
   },
-});
+  segment: {
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    flexDirection: "row",
+  },
+  segmentItem: {
+    alignItems: "center",
+    flex: 1,
+    paddingVertical: 11,
+  },
+  segmentItemActive: {
+    backgroundColor: authControlStyles.colors.red,
+  },
+  segmentText: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "monospace",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  segmentTextActive: {
+    color: "#ffffff",
+  },
+  sectionSubTitle: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "monospace",
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  quizScroll: {
+    gap: 16,
+    padding: 16,
+  },
+  quizLangRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  quizLangChip: {
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  quizLangChipActive: {
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: authControlStyles.colors.red,
+  },
+  quizLangChipText: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  quizLangChipTextActive: {
+    color: "#ffffff",
+  },
+  quizCenter: {
+    alignItems: "center",
+    flex: 1,
+    gap: 14,
+    justifyContent: "center",
+    padding: 24,
+  },
+  quizIntro: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  quizQuestion: {
+    gap: 8,
+  },
+  quizPrompt: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 23,
+  },
+  quizOption: {
+    alignItems: "center",
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    padding: 12,
+  },
+  quizOptionSelected: {
+    borderColor: authControlStyles.colors.red,
+  },
+  quizOptionCorrect: {
+    backgroundColor: "rgba(31,122,90,0.10)",
+    borderColor: "#1f7a5a",
+  },
+  quizOptionWrong: {
+    backgroundColor: "rgba(193,22,22,0.08)",
+    borderColor: authControlStyles.colors.red,
+  },
+  quizRadio: {
+    borderColor: authControlStyles.colors.ink40,
+    borderRadius: 9,
+    borderWidth: 2,
+    height: 18,
+    width: 18,
+  },
+  quizCheckbox: {
+    borderColor: authControlStyles.colors.ink40,
+    borderWidth: 2,
+    height: 18,
+    width: 18,
+  },
+  quizMarkSelected: {
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: authControlStyles.colors.red,
+  },
+  quizOptionLabel: {
+    color: authControlStyles.colors.ink,
+    flex: 1,
+    fontFamily: "serif",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  quizExplanation: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 13,
+    fontStyle: "italic",
+    lineHeight: 19,
+  },
+  quizScoreCard: {
+    alignItems: "center",
+    borderWidth: 1,
+    gap: 6,
+    padding: 18,
+  },
+  quizScorePass: {
+    backgroundColor: "rgba(31,122,90,0.08)",
+    borderColor: "#1f7a5a",
+  },
+  quizScoreFail: {
+    backgroundColor: "rgba(193,22,22,0.06)",
+    borderColor: authControlStyles.colors.red,
+  },
+  quizScoreValue: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 40,
+    fontWeight: "700",
+    lineHeight: 44,
+  },
+  quizScoreLabel: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "monospace",
+    fontSize: 11,
+    letterSpacing: 0.6,
+  },
+  quizTitlesUnlocked: {
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  quizUnlockLabel: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  titleBadgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  titleBadge: {
+    alignItems: "center",
+    borderWidth: 1,
+    gap: 8,
+    minWidth: 96,
+    padding: 12,
+  },
+  titleBadgeMedal: {
+    alignItems: "center",
+    borderRadius: 19,
+    borderWidth: 2,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
+  },
+  titleBadgeMedalText: {
+    fontSize: 18,
+  },
+  titleBadgeName: {
+    fontFamily: "serif",
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  recordCard: {
+    backgroundColor: "#ffffff",
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12,
+  },
+  recordHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+  },
+  recordTitle: {
+    color: authControlStyles.colors.ink,
+    flex: 1,
+    fontFamily: "serif",
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 21,
+  },
+  recordScorePill: {
+    backgroundColor: "rgba(31,122,90,0.10)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  recordScoreText: {
+    color: "#1f7a5a",
+    fontFamily: "monospace",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  recordDate: {
+    color: authControlStyles.colors.ink40,
+    fontFamily: "monospace",
+    fontSize: 10,
+    letterSpacing: 0.6,
+  },
+}));
