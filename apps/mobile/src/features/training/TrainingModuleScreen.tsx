@@ -178,6 +178,12 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         previous ? applyMaterialProgress(previous, materialId, progress) : previous,
       );
 
+      // Completing a (non-quiz) material can unlock a title server-side, so
+      // refresh the achievements panel — mirrors the quiz-pass path.
+      if (progress.status === "completed") {
+        setAchievementsRefresh((value) => value + 1);
+      }
+
       return progress;
     } catch (progressError) {
       if (__DEV__) {
