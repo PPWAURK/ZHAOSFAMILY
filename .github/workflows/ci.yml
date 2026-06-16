@@ -1,0 +1,65 @@
+name: CI
+
+# Quality gates for the monorepo: lint, typecheck, build, and unit tests.
+# Runs on every pull request and on pushes to main.
+# Deployment (CD) is intentionally out of scope here — see docs/audits/phase-1-cleanup-audit.md
+# (phase 5/6: self-hosted Ubuntu 24.04 + Docker Compose + Nginx).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref (e.g. new push to an open PR).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint · Typecheck · Build · Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm version is read from the "packageManager" field in package.json.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Prisma client is imported by backend code, so it must exist before
+      # typecheck / build / test even though unit tests mock the DB.
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build (web static export + backend)
+        run: pnpm build
+
+      - name: Backend unit tests
+        run: pnpm --filter backend test
+
+      - name: Mobile tests
+        run: pnpm --filter @zhao/mobile test
+
+      # NOTE: `pnpm format:check` is not a gate yet — the repo is not fully
+      # Prettier-clean (188 files, incl. non-build "ZHAO 2/" assets).
+      # Enable once the codebase has been formatted in a dedicated pass.
