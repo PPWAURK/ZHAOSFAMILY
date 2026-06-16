@@ -144,7 +144,7 @@ function csvCell(value) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-function buildCsv(stats, t) {
+function buildCsv(suppliers, t) {
   const header = [
     t.csvSupplier,
     t.csvProductZh,
@@ -157,7 +157,7 @@ function buildCsv(stats, t) {
   ];
   const rows = [header.map(csvCell).join(",")];
 
-  for (const supplier of stats.suppliers) {
+  for (const supplier of suppliers) {
     for (const item of supplier.items) {
       rows.push(
         [
@@ -265,8 +265,8 @@ export default function OrderStatsPage() {
   }
 
   function exportCsv() {
-    if (!stats || stats.suppliers.length === 0) return;
-    const csv = buildCsv(stats, t);
+    if (visibleSuppliers.length === 0) return;
+    const csv = buildCsv(visibleSuppliers, t);
     // Prepend a UTF-8 BOM so Excel opens Chinese/French text correctly.
     const bom = String.fromCharCode(0xfeff);
     const blob = new Blob([bom, csv], {
@@ -274,9 +274,16 @@ export default function OrderStatsPage() {
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const range = [stats.from, stats.to].filter(Boolean).join("_") || "all";
+    const range = [stats?.from, stats?.to].filter(Boolean).join("_") || "all";
+    const scope =
+      effectiveSupplier === "all"
+        ? "all-suppliers"
+        : (visibleSuppliers[0]?.supplierName || "supplier").replace(
+            /[^\p{L}\p{N}_-]+/gu,
+            "-",
+          );
     link.href = url;
-    link.download = `order-stats_${range}.csv`;
+    link.download = `order-stats_${scope}_${range}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -353,130 +360,135 @@ export default function OrderStatsPage() {
           {t.backToHistory}
         </Link>
 
-        <div className={styles.controls}>
-          {stats?.canViewAllStores ? (
+        <div className={styles.toolbar}>
+          <div className={styles.filters}>
+            {stats?.canViewAllStores ? (
+              <label className={styles.field}>
+                <span>{t.store}</span>
+                <select
+                  value={storeId}
+                  onChange={(event) => setStoreId(event.target.value)}
+                >
+                  <option value="">{t.storeAll}</option>
+                  {stats.stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className={styles.field}>
-              <span>{t.store}</span>
-              <select
-                value={storeId}
-                onChange={(event) => setStoreId(event.target.value)}
-              >
-                <option value="">{t.storeAll}</option>
-                {stats.stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
+              <span>{t.from}</span>
+              <input
+                type="date"
+                value={from}
+                max={to || undefined}
+                onChange={(event) => setFrom(event.target.value)}
+              />
             </label>
-          ) : null}
-          <label className={styles.field}>
-            <span>{t.from}</span>
-            <input
-              type="date"
-              value={from}
-              max={to || undefined}
-              onChange={(event) => setFrom(event.target.value)}
-            />
-          </label>
-          <label className={styles.field}>
-            <span>{t.to}</span>
-            <input
-              type="date"
-              value={to}
-              min={from || undefined}
-              onChange={(event) => setTo(event.target.value)}
-            />
-          </label>
-          <button type="button" className={styles.btn} onClick={applyRange}>
-            {t.apply}
-          </button>
-          {appliedRange.from || appliedRange.to ? (
-            <button
-              type="button"
-              className={styles.btnGhost}
-              onClick={clearRange}
-            >
-              {t.clear}
+            <label className={styles.field}>
+              <span>{t.to}</span>
+              <input
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(event) => setTo(event.target.value)}
+              />
+            </label>
+            <button type="button" className={styles.btn} onClick={applyRange}>
+              {t.apply}
             </button>
-          ) : null}
+            {appliedRange.from || appliedRange.to ? (
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={clearRange}
+              >
+                {t.clear}
+              </button>
+            ) : null}
+          </div>
           <button
             type="button"
-            className={styles.btnGhost}
+            className={styles.btnExport}
             onClick={exportCsv}
             disabled={!hasData}
           >
-            {t.exportCsv}
+            <span aria-hidden="true">↓</span> {t.exportCsv}
           </button>
         </div>
 
         {loadError ? <p className={styles.error}>{loadError}</p> : null}
 
-        <div className={styles.cards}>
-          <article className={styles.card}>
-            <p className={styles.cardValue}>
+        <div className={styles.kpis}>
+          <article className={styles.kpi}>
+            <span className={styles.kpiLabel}>{t.cardProducts}</span>
+            <span className={styles.kpiValue}>
               {formatNumber(stats?.totalProducts)}
-            </p>
-            <p className={styles.cardLabel}>{t.cardProducts}</p>
+            </span>
           </article>
-          <article className={styles.card}>
-            <p className={styles.cardValue}>
+          <article className={styles.kpi}>
+            <span className={styles.kpiLabel}>{t.cardQuantity}</span>
+            <span className={styles.kpiValue}>
               {formatNumber(stats?.totalQuantity)}
-            </p>
-            <p className={styles.cardLabel}>{t.cardQuantity}</p>
+            </span>
           </article>
-          <article className={styles.card}>
-            <p className={styles.cardValue}>{formatAmount(stats?.totalAmount)}</p>
-            <p className={styles.cardLabel}>{t.cardAmount}</p>
+          <article className={`${styles.kpi} ${styles.kpiAccent}`}>
+            <span className={styles.kpiLabel}>{t.cardAmount}</span>
+            <span className={styles.kpiValue}>
+              {formatAmount(stats?.totalAmount)}
+            </span>
           </article>
-        </div>
-
-        <div className={styles.sortRow}>
-          <button
-            type="button"
-            className={`${styles.sortBtn} ${sortBy === "amount" ? styles.sortBtnActive : ""}`}
-            onClick={() => setSortBy("amount")}
-          >
-            {t.sortAmount}
-          </button>
-          <button
-            type="button"
-            className={`${styles.sortBtn} ${sortBy === "quantity" ? styles.sortBtnActive : ""}`}
-            onClick={() => setSortBy("quantity")}
-          >
-            {t.sortQuantity}
-          </button>
         </div>
 
         {hasData ? (
-          <div className={styles.tabs} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={effectiveSupplier === "all"}
-              className={`${styles.tab} ${effectiveSupplier === "all" ? styles.tabActive : ""}`}
-              onClick={() => setActiveSupplier("all")}
-            >
-              {t.tabAll}
-            </button>
-            {sortedSuppliers.map((supplier) => {
-              const key = String(supplier.supplierId);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={effectiveSupplier === key}
-                  className={`${styles.tab} ${effectiveSupplier === key ? styles.tabActive : ""}`}
-                  onClick={() => setActiveSupplier(key)}
-                >
-                  {supplier.supplierName}
-                  <span className={styles.tabAmount}>
-                    {formatAmount(supplier.totalAmount)}
-                  </span>
-                </button>
-              );
-            })}
+          <div className={styles.tableToolbar}>
+            <div className={styles.tabs} role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={effectiveSupplier === "all"}
+                className={`${styles.tab} ${effectiveSupplier === "all" ? styles.tabActive : ""}`}
+                onClick={() => setActiveSupplier("all")}
+              >
+                {t.tabAll}
+              </button>
+              {sortedSuppliers.map((supplier) => {
+                const key = String(supplier.supplierId);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={effectiveSupplier === key}
+                    className={`${styles.tab} ${effectiveSupplier === key ? styles.tabActive : ""}`}
+                    onClick={() => setActiveSupplier(key)}
+                  >
+                    {supplier.supplierName}
+                    <span className={styles.tabAmount}>
+                      {formatAmount(supplier.totalAmount)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className={styles.sortRow} role="group">
+              <button
+                type="button"
+                className={`${styles.sortBtn} ${sortBy === "amount" ? styles.sortBtnActive : ""}`}
+                onClick={() => setSortBy("amount")}
+              >
+                {t.sortAmount}
+              </button>
+              <button
+                type="button"
+                className={`${styles.sortBtn} ${sortBy === "quantity" ? styles.sortBtnActive : ""}`}
+                onClick={() => setSortBy("quantity")}
+              >
+                {t.sortQuantity}
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -485,54 +497,88 @@ export default function OrderStatsPage() {
         ) : !hasData ? (
           <p className={styles.muted}>{t.empty}</p>
         ) : (
-          visibleSuppliers.map((supplier) => (
-            <section key={supplier.supplierId} className={styles.supplier}>
-              <header className={styles.supplierHead}>
-                <h2 className={styles.supplierName}>{supplier.supplierName}</h2>
-                <span className={styles.supplierTotals}>
-                  {t.supplierTotal}: {formatNumber(supplier.totalQuantity)} ·{" "}
-                  <strong>{formatAmount(supplier.totalAmount)}</strong>
-                </span>
-              </header>
+          visibleSuppliers.map((supplier) => {
+            const metricMax = Math.max(
+              ...supplier.items.map((item) =>
+                sortBy === "quantity" ? item.totalQuantity : item.totalAmount,
+              ),
+              1,
+            );
 
-              <div className={styles.table}>
-                <div className={`${styles.row} ${styles.headRow}`}>
-                  <span>{t.colRank}</span>
-                  <span>{t.colProduct}</span>
-                  <span>{t.colCategory}</span>
-                  <span className={styles.numCol}>{t.colQuantity}</span>
-                  <span className={styles.numCol}>{t.colLines}</span>
-                  <span className={styles.numCol}>{t.colAmount}</span>
-                </div>
-                {supplier.items.map((item, index) => (
-                  <div key={item.productId} className={styles.row}>
-                    <span className={styles.rank}>{index + 1}</span>
-                    <span className={styles.product}>
-                      <strong>
-                        {item.nameZh || item.nameFr || item.productId}
-                      </strong>
-                      {item.nameFr && item.nameFr !== item.nameZh ? (
-                        <small>{item.nameFr}</small>
-                      ) : null}
-                    </span>
-                    <span className={styles.category}>
-                      {item.category || "-"}
-                    </span>
-                    <span className={styles.numCol}>
-                      {formatNumber(item.totalQuantity)}
-                      {item.unit ? ` ${item.unit}` : ""}
-                    </span>
-                    <span className={styles.numCol}>
-                      {formatNumber(item.orderLineCount)}
-                    </span>
-                    <span className={`${styles.numCol} ${styles.amount}`}>
-                      {formatAmount(item.totalAmount)}
-                    </span>
+            return (
+              <section key={supplier.supplierId} className={styles.supplier}>
+                <header className={styles.supplierHead}>
+                  <h2 className={styles.supplierName}>
+                    {supplier.supplierName}
+                  </h2>
+                  <span className={styles.supplierTotals}>
+                    {formatNumber(supplier.totalQuantity)} · {t.supplierTotal}
+                    <strong>{formatAmount(supplier.totalAmount)}</strong>
+                  </span>
+                </header>
+
+                <div className={styles.table}>
+                  <div className={`${styles.row} ${styles.headRow}`}>
+                    <span>{t.colRank}</span>
+                    <span>{t.colProduct}</span>
+                    <span>{t.colCategory}</span>
+                    <span className={styles.numCol}>{t.colQuantity}</span>
+                    <span className={styles.numCol}>{t.colLines}</span>
+                    <span className={styles.numCol}>{t.colAmount}</span>
                   </div>
-                ))}
-              </div>
-            </section>
-          ))
+                  {supplier.items.map((item, index) => {
+                    const metricValue =
+                      sortBy === "quantity"
+                        ? item.totalQuantity
+                        : item.totalAmount;
+                    const barWidth = `${Math.max(
+                      (metricValue / metricMax) * 100,
+                      3,
+                    )}%`;
+
+                    return (
+                      <div key={item.productId} className={styles.row}>
+                        <span className={styles.rank}>{index + 1}</span>
+                        <span className={styles.product}>
+                          <strong>
+                            {item.nameZh || item.nameFr || item.productId}
+                          </strong>
+                          {item.nameFr && item.nameFr !== item.nameZh ? (
+                            <small>{item.nameFr}</small>
+                          ) : null}
+                        </span>
+                        <span className={styles.category}>
+                          {item.category ? (
+                            <em className={styles.chip}>{item.category}</em>
+                          ) : (
+                            "-"
+                          )}
+                        </span>
+                        <span className={styles.numCol}>
+                          {formatNumber(item.totalQuantity)}
+                          {item.unit ? (
+                            <em className={styles.unit}> {item.unit}</em>
+                          ) : null}
+                        </span>
+                        <span className={styles.numCol}>
+                          {formatNumber(item.orderLineCount)}
+                        </span>
+                        <span className={`${styles.numCol} ${styles.amount}`}>
+                          {formatAmount(item.totalAmount)}
+                        </span>
+                        <span className={styles.barTrack} aria-hidden="true">
+                          <span
+                            className={styles.barFill}
+                            style={{ width: barWidth }}
+                          />
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })
         )}
       </motion.section>
 
