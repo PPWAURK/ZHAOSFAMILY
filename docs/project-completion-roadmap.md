@@ -13,7 +13,7 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 | 端 | 完成度 | 主要缺口 |
 |---|---|---|
 | 后端 `apps/backend` | **~95%**（P0-2 已补测+验证，P1-6 映射端点已加） | — |
-| Web `apps/web` | **~93%** | 改密码接线、门店排行榜验证（岗位映射 UI 已完成 P1-6） |
+| Web `apps/web` | **~94%** | 门店排行榜验证（改密码接线已完成 P2-7、岗位映射 UI 已完成 P1-6） |
 | Mobile `apps/mobile` | **~90%** | 培训真机验证未做（店长改岗位 P1-4 已修复可用） |
 | 共享包 | **~95%** | — |
 
@@ -80,9 +80,9 @@ pnpm + Turborepo 单仓,3 个 app + 4 个共享包。
 
 ## 4. 🟡 P2 — 收尾打磨(预估 2–3 天,可并行)
 
-### P2-7 Web 改密码接线
-- **做什么:** profile 页把 mock 占位换成调用 `PATCH /auth/me/password`。
-- **为什么不是 100%:** `apps/web/src/features/profile/constants/profile-copy.js` 留了"敬请期待(模拟占位)/ Coming soon (mock placeholder)"文案,但**后端端点其实已存在**,纯前端接线即可。
+### P2-7 Web 改密码接线 ✅ 已完成（2026-06-16）
+- **做了什么:** `AuthContext` 新增 `changePassword(currentPassword, nextPassword)` → `PATCH /auth/me/password`；profile 安全区把 disabled 占位换成内联表单(当前/新/确认密码 + 前端校验 ≥8 位、两次一致 + 后端错误映射 `INVALID_CURRENT_PASSWORD` / `PASSWORD_TOO_SHORT`)。顺手清掉了同文件里 stale 的「已保存（模拟）/ Saved (mock)」标签(联系方式保存其实早已真接 `updateMe`)。三语文案补齐。
+- **验证:** web `typecheck` + `lint` 全绿；浏览器端到端**未实测**(web 无测试 runner,需手动跑一次)。
 - **工作量:** 0.5 天。
 
 ### P2-8 门店排行榜验证

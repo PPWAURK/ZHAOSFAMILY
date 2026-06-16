@@ -124,6 +124,7 @@ type AuthContextValue = {
   ) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
   updateMe: (input: UpdateMeInput) => Promise<AuthUser>;
+  changePassword: (currentPassword: string, nextPassword: string) => Promise<void>;
   acceptInvitation: (
     token: string,
     name: string,
@@ -220,6 +221,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return updatedUser;
   }, []);
 
+  const changePassword = useCallback(
+    async (currentPassword: string, nextPassword: string) => {
+      await apiClient.patch<void>("/auth/me/password", {
+        currentPassword,
+        nextPassword,
+      });
+    },
+    [],
+  );
+
   const acceptInvitation = useCallback(async (
     token: string,
     name: string,
@@ -258,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         updateMe,
+        changePassword,
         acceptInvitation,
         forgotPassword,
         resetPassword,
