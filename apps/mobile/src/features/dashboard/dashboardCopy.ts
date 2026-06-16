@@ -109,11 +109,6 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
     label: { zh: "订单模块", en: "ORDER MODULE", fr: "MODULE COMMANDES" },
     items: [
       {
-        id: "order-history",
-        icon: "史",
-        label: { zh: "历史订单", en: "Order history", fr: "Historique" },
-      },
-      {
         id: "suppliers",
         icon: "供",
         label: { zh: "供应商管理", en: "Suppliers", fr: "Fournisseurs" },
