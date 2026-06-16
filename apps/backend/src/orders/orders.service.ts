@@ -18,6 +18,26 @@ type OrderActor = {
   restaurantId: number;
 };
 
+type ProductOrderStatItem = {
+  productId: string;
+  nameZh: string;
+  nameFr: string | null;
+  unit: string | null;
+  category: string;
+  totalQuantity: number;
+  totalAmount: number;
+  orderLineCount: number;
+};
+
+type ProductOrderStats = {
+  from: string | null;
+  to: string | null;
+  totalProducts: number;
+  totalQuantity: number;
+  totalAmount: number;
+  items: ProductOrderStatItem[];
+};
+
 type OrderProduct = {
   id: bigint;
   supplierId: number;
@@ -249,6 +269,81 @@ export class OrdersService {
         },
       };
     });
+  }
+
+  async getProductOrderStats(
+    actor: OrderActor,
+    query: { from?: string; to?: string },
+  ): Promise<ProductOrderStats> {
+    const createdAt: Prisma.DateTimeFilter = {};
+    if (query.from) {
+      createdAt.gte = new Date(query.from);
+    }
+    if (query.to) {
+      const toDate = new Date(query.to);
+      // A date-only bound (YYYY-MM-DD) should include the whole day.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(query.to)) {
+        toDate.setUTCHours(23, 59, 59, 999);
+      }
+      createdAt.lte = toDate;
+    }
+
+    const where: Prisma.PurchaseOrderItemWhereInput = {
+      purchaseOrder: {
+        restaurantId: actor.restaurantId,
+        ...(query.from || query.to ? { createdAt } : {}),
+      },
+    };
+
+    const [grouped, names] = await Promise.all([
+      this.prismaService.purchaseOrderItem.groupBy({
+        by: ['productId'],
+        where,
+        _sum: { quantity: true, lineTotal: true },
+        _count: { _all: true },
+      }),
+      this.prismaService.purchaseOrderItem.findMany({
+        where,
+        distinct: ['productId'],
+        select: {
+          productId: true,
+          nameZh: true,
+          nameFr: true,
+          unit: true,
+          category: true,
+        },
+      }),
+    ]);
+
+    const nameByProductId = new Map(
+      names.map((row) => [row.productId.toString(), row]),
+    );
+
+    const items: ProductOrderStatItem[] = grouped
+      .map((row) => {
+        const meta = nameByProductId.get(row.productId.toString());
+
+        return {
+          productId: row.productId.toString(),
+          nameZh: meta?.nameZh ?? '',
+          nameFr: meta?.nameFr ?? null,
+          unit: meta?.unit ?? null,
+          category: meta?.category ?? '',
+          totalQuantity: row._sum.quantity ?? 0,
+          totalAmount: Number(row._sum.lineTotal ?? 0),
+          orderLineCount: row._count._all,
+        };
+      })
+      .sort((left, right) => right.totalAmount - left.totalAmount);
+
+    return {
+      from: query.from ?? null,
+      to: query.to ?? null,
+      totalProducts: items.length,
+      totalQuantity: items.reduce((sum, item) => sum + item.totalQuantity, 0),
+      totalAmount: items.reduce((sum, item) => sum + item.totalAmount, 0),
+      items,
+    };
   }
 
   async getOrder(

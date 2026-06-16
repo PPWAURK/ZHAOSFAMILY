@@ -85,6 +85,13 @@ export const DASHBOARD_NAV = [
         fr: "Historique",
       },
       {
+        id: "order-stats",
+        href: "/dashboard/orders/stats",
+        zh: "商品统计",
+        en: "Product stats",
+        fr: "Stats produits",
+      },
+      {
         id: "suppliers",
         href: "/dashboard/suppliers",
         zh: "供应商管理",

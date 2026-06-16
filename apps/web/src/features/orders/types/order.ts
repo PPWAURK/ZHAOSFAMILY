@@ -76,3 +76,28 @@ export type OrderInventoryLine = {
 };
 
 export type OrderStockMap = Record<string, number>;
+
+export type ProductOrderStatItem = {
+  productId: string;
+  nameZh: string;
+  nameFr: string | null;
+  unit: string | null;
+  category: string;
+  totalQuantity: number;
+  totalAmount: number;
+  orderLineCount: number;
+};
+
+export type ProductOrderStats = {
+  from: string | null;
+  to: string | null;
+  totalProducts: number;
+  totalQuantity: number;
+  totalAmount: number;
+  items: ProductOrderStatItem[];
+};
+
+export type ProductOrderStatsParams = {
+  from?: string;
+  to?: string;
+};

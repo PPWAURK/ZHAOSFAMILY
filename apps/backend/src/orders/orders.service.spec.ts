@@ -52,6 +52,10 @@ type OrdersPrismaServiceMock = {
     findMany: AsyncMock;
     findUnique: AsyncMock;
   };
+  purchaseOrderItem: {
+    groupBy: AsyncMock;
+    findMany: AsyncMock;
+  };
   purchaseReturn: {
     create: AsyncMock;
     delete: AsyncMock;
@@ -127,6 +131,10 @@ describe('OrdersService', () => {
       purchaseOrder: {
         findMany: createAsyncMock(),
         findUnique: createAsyncMock(),
+      },
+      purchaseOrderItem: {
+        groupBy: createAsyncMock(),
+        findMany: createAsyncMock(),
       },
       purchaseReturn: {
         create: createAsyncMock(),
@@ -327,5 +335,64 @@ describe('OrdersService', () => {
     await expect(
       service.deleteOrder(42, { id: 7, restaurantId: 3 }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('aggregates product order stats sorted by spend with a date filter', async () => {
+    prismaService.purchaseOrderItem.groupBy.mockResolvedValue([
+      {
+        productId: BigInt(10),
+        _sum: { quantity: 5, lineTotal: 50 },
+        _count: { _all: 2 },
+      },
+      {
+        productId: BigInt(20),
+        _sum: { quantity: 8, lineTotal: 120 },
+        _count: { _all: 1 },
+      },
+    ]);
+    prismaService.purchaseOrderItem.findMany.mockResolvedValue([
+      {
+        productId: BigInt(10),
+        nameZh: '番茄',
+        nameFr: 'Tomate',
+        unit: 'kg',
+        category: 'veg',
+      },
+      {
+        productId: BigInt(20),
+        nameZh: '牛肉',
+        nameFr: 'Boeuf',
+        unit: 'kg',
+        category: 'meat',
+      },
+    ]);
+
+    const result = await service.getProductOrderStats(
+      { id: 7, restaurantId: 3 },
+      { from: '2026-06-01', to: '2026-06-30' },
+    );
+
+    // Sorted by totalAmount desc.
+    expect(result.items.map((item) => item.productId)).toEqual(['20', '10']);
+    expect(result.items[0]).toMatchObject({
+      nameZh: '牛肉',
+      totalQuantity: 8,
+      totalAmount: 120,
+      orderLineCount: 1,
+    });
+    expect(result.totalProducts).toBe(2);
+    expect(result.totalQuantity).toBe(13);
+    expect(result.totalAmount).toBe(170);
+
+    // The whole day is included for a date-only upper bound.
+    const where = prismaService.purchaseOrderItem.groupBy.mock.calls[0][0] as {
+      where: {
+        purchaseOrder: { restaurantId: number; createdAt: { lte: Date } };
+      };
+    };
+    expect(where.where.purchaseOrder.restaurantId).toBe(3);
+    expect(where.where.purchaseOrder.createdAt.lte.toISOString()).toContain(
+      '2026-06-30T23:59:59',
+    );
   });
 });

@@ -3,6 +3,8 @@ import type {
   CreateOrderItem,
   CreatePurchaseOrderInput,
   CreatePurchaseReturnInput,
+  ProductOrderStats,
+  ProductOrderStatsParams,
   PurchaseOrder,
   PurchaseReturn,
   QuantityMap,
@@ -77,6 +79,19 @@ export async function fetchPurchaseOrderPdf(orderId: string): Promise<Blob> {
   return apiClient.get<Blob>(`/orders/${encodeURIComponent(orderId)}/commande`, {
     responseType: "blob",
   });
+}
+
+export async function fetchProductOrderStats(
+  params: ProductOrderStatsParams = {},
+): Promise<ProductOrderStats> {
+  const search = new URLSearchParams();
+  if (params.from) search.set("from", params.from);
+  if (params.to) search.set("to", params.to);
+  const query = search.toString();
+
+  return apiClient.get<ProductOrderStats>(
+    query ? `/orders/product-stats?${query}` : "/orders/product-stats",
+  );
 }
 
 export async function fetchPurchaseReturns(): Promise<PurchaseReturn[]> {
