@@ -20,6 +20,7 @@ import { BlurView } from "expo-blur";
 import { WebView } from "react-native-webview";
 import { ProtectedScreen } from "@/components/ProtectedScreen";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { StoreScoreLeaderboard } from "@/features/dashboard/StoreScoreLeaderboard";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import { crossPlatformShadow } from "@/lib/platform";
 import zhaoLogo from "@/features/auth/assets/logozhao正方形.jpg";
@@ -661,6 +662,8 @@ export function DashboardHomeScreen({
                   </>
                 ) : null}
               </View>
+
+              <StoreScoreLeaderboard language={language} />
 
               <Modal
                 animationType="slide"
