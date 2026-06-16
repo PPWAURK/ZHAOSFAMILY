@@ -84,7 +84,8 @@ const COPY = {
     storeUnit: "家",
     auditLabel: "检查",
     tieLabel: "并列",
-    focusLabel: "关注点",
+    trackingLabel: "后续追踪",
+    placeLabel: (rank: number) => `第 ${rank} 名`,
   },
   en: {
     kicker: "Store Score · Ranking",
@@ -94,7 +95,8 @@ const COPY = {
     storeUnit: "stores",
     auditLabel: "Audit",
     tieLabel: "Tie",
-    focusLabel: "Focus",
+    trackingLabel: "Follow-up",
+    placeLabel: (rank: number) => `No. ${rank}`,
   },
   fr: {
     kicker: "Store Score · Ranking",
@@ -104,7 +106,8 @@ const COPY = {
     storeUnit: "boutiques",
     auditLabel: "Audit",
     tieLabel: "Ex aequo",
-    focusLabel: "Point clé",
+    trackingLabel: "Suivi",
+    placeLabel: (rank: number) => `Rang ${rank}`,
   },
 };
 
@@ -146,6 +149,13 @@ function getRankedEntries(entries: StoreScoreEntry[]): RankedEntry[] {
   });
 }
 
+// Arrange the top three as a podium: 2nd · 1st · 3rd, so the winner sits in
+// the middle (mirrors the web layout).
+function getPodiumOrder(top: RankedEntry[]): RankedEntry[] {
+  if (top.length < 3) return top;
+  return [top[1], top[0], top[2]];
+}
+
 function getGradeCount(grade: StoreScoreGrade): number {
   return STORE_SCORE_ENTRIES.filter((entry) => entry.grade === grade).length;
 }
@@ -157,6 +167,8 @@ type StoreScoreLeaderboardProps = {
 export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) {
   const copy = COPY[language];
   const rankedEntries = getRankedEntries(STORE_SCORE_ENTRIES);
+  const podiumEntries = getPodiumOrder(rankedEntries.slice(0, 3));
+  const trackingEntries = rankedEntries.slice(3);
 
   return (
     <View style={styles.module}>
@@ -180,41 +192,104 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
         ))}
       </View>
 
-      <View style={styles.list}>
-        {rankedEntries.map((entry) => {
+      <View style={styles.podium}>
+        {podiumEntries.map((entry) => {
+          const isWinner = entry.displayRank === 1;
           const medalColor = MEDAL_COLORS[entry.displayRank] || colors.ink20;
           const trendDown = entry.trend.startsWith("-");
 
           return (
-            <View key={entry.id} style={styles.card}>
-              <View style={styles.cardTop}>
-                <View style={[styles.rankBadge, { borderColor: medalColor }]}>
-                  <Text style={[styles.rankText, { color: medalColor }]}>
-                    {String(entry.displayRank).padStart(2, "0")}
-                  </Text>
+            <View
+              key={entry.id}
+              style={[styles.podiumCol, isWinner ? styles.podiumWinner : null]}
+            >
+              <View style={styles.podiumPhotoWrap}>
+                <Image
+                  source={entry.image}
+                  style={[
+                    styles.podiumPhoto,
+                    isWinner ? styles.podiumPhotoWinner : null,
+                    { borderColor: medalColor },
+                  ]}
+                />
+                <View style={[styles.medal, { backgroundColor: medalColor }]}>
+                  <Text style={styles.medalText}>{entry.displayRank}</Text>
                 </View>
-                <Image source={entry.image} style={styles.photo} />
-                <View style={styles.storeInfo}>
-                  <Text style={styles.storeName} numberOfLines={1}>
-                    {entry.name}
-                  </Text>
-                  <Text style={styles.storeMeta} numberOfLines={1}>
-                    {entry.area} · {copy.auditLabel} {entry.auditDate}
-                    {entry.isTied ? ` · ${copy.tieLabel}` : ""}
-                  </Text>
-                </View>
-                <View
-                  style={[styles.gradeChip, { borderColor: GRADE_COLORS[entry.grade] }]}
+              </View>
+
+              <Text style={styles.placeLabel}>
+                {copy.placeLabel(entry.displayRank)}
+              </Text>
+              <Text
+                style={[styles.podiumName, isWinner ? styles.podiumNameWinner : null]}
+                numberOfLines={1}
+              >
+                {entry.name}
+              </Text>
+              <Text style={styles.podiumArea} numberOfLines={1}>
+                {entry.area}
+              </Text>
+
+              <View style={styles.podiumScoreRow}>
+                <Text
+                  style={[styles.podiumScore, isWinner ? styles.podiumScoreWinner : null]}
                 >
+                  {entry.score}
+                </Text>
+                <View style={[styles.gradeChip, { borderColor: GRADE_COLORS[entry.grade] }]}>
                   <Text style={[styles.gradeText, { color: GRADE_COLORS[entry.grade] }]}>
                     {entry.grade}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.cardBottom}>
-                <View style={styles.scoreRow}>
-                  <Text style={styles.score}>{entry.score}</Text>
+              <Text
+                style={[styles.trend, { color: trendDown ? colors.red : colors.success }]}
+              >
+                {entry.trend}
+                {entry.isTied ? ` · ${copy.tieLabel}` : ""}
+              </Text>
+              <Text style={styles.podiumFocus} numberOfLines={1}>
+                {entry.focus[language]}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {trackingEntries.length > 0 ? (
+        <View style={styles.tracking}>
+          <Text style={styles.trackingHead}>{copy.trackingLabel}</Text>
+          {trackingEntries.map((entry) => {
+            const trendDown = entry.trend.startsWith("-");
+
+            return (
+              <View key={entry.id} style={styles.trackRow}>
+                <Text style={styles.trackRank}>
+                  {String(entry.displayRank).padStart(2, "0")}
+                </Text>
+                <Image source={entry.image} style={styles.trackPhoto} />
+                <View style={styles.trackInfo}>
+                  <Text style={styles.trackName} numberOfLines={1}>
+                    {entry.name}
+                  </Text>
+                  <Text style={styles.trackMeta} numberOfLines={1}>
+                    {entry.area} · {copy.auditLabel} {entry.auditDate}
+                  </Text>
+                  <View style={styles.trackBarTrack}>
+                    <View
+                      style={[
+                        styles.trackBarFill,
+                        {
+                          width: `${entry.score}%`,
+                          backgroundColor: GRADE_COLORS[entry.grade],
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+                <View style={styles.trackRight}>
+                  <Text style={styles.trackScore}>{entry.score}</Text>
                   <Text
                     style={[
                       styles.trend,
@@ -224,26 +299,11 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
                     {entry.trend}
                   </Text>
                 </View>
-                <Text style={styles.focus} numberOfLines={1}>
-                  {copy.focusLabel} · {entry.focus[language]}
-                </Text>
               </View>
-
-              <View style={styles.barTrack}>
-                <View
-                  style={[
-                    styles.barFill,
-                    {
-                      width: `${entry.score}%`,
-                      backgroundColor: GRADE_COLORS[entry.grade],
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -273,7 +333,7 @@ const styles = StyleSheet.create({
   summary: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 18,
+    marginBottom: 22,
   },
   summaryItem: {
     flex: 1,
@@ -298,98 +358,177 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.ink40,
   },
-  list: {
-    gap: 12,
+  podium: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    marginBottom: 24,
   },
-  card: {
+  podiumCol: {
+    flex: 1,
+    alignItems: "center",
+    paddingTop: 20,
+    paddingBottom: 12,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: colors.ink10,
-    padding: 12,
   },
-  cardTop: {
-    flexDirection: "row",
+  podiumWinner: {
+    paddingTop: 8,
+    borderColor: "#d4af37",
+    backgroundColor: "rgba(212, 175, 55, 0.06)",
+  },
+  podiumPhotoWrap: {
     alignItems: "center",
-    gap: 12,
+    marginBottom: 14,
   },
-  rankBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  podiumPhoto: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rankText: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  photo: {
-    width: 48,
-    height: 48,
-    borderRadius: 6,
     backgroundColor: colors.ink05,
   },
-  storeInfo: {
-    flex: 1,
-    minWidth: 0,
+  podiumPhotoWinner: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
   },
-  storeName: {
-    fontSize: 15,
+  medal: {
+    position: "absolute",
+    bottom: -10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.paper,
+  },
+  medalText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: colors.paper,
+  },
+  placeLabel: {
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: colors.ink40,
+    textTransform: "uppercase",
+  },
+  podiumName: {
+    marginTop: 4,
+    fontSize: 12,
     fontWeight: "700",
     color: colors.ink,
+    textAlign: "center",
   },
-  storeMeta: {
-    marginTop: 2,
-    fontSize: 11.5,
+  podiumNameWinner: {
+    fontSize: 13,
+  },
+  podiumArea: {
+    fontSize: 10.5,
     color: colors.ink40,
   },
+  podiumScoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  podiumScore: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: colors.ink,
+  },
+  podiumScoreWinner: {
+    fontSize: 26,
+  },
   gradeChip: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
   gradeText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: "800",
-  },
-  cardBottom: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-  scoreRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 8,
-  },
-  score: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: colors.ink,
   },
   trend: {
-    fontSize: 13,
+    fontSize: 11.5,
     fontWeight: "700",
+    marginTop: 4,
   },
-  focus: {
-    flexShrink: 1,
-    fontSize: 12,
+  podiumFocus: {
+    marginTop: 4,
+    fontSize: 10.5,
     color: colors.ink60,
-    textAlign: "right",
+    textAlign: "center",
   },
-  barTrack: {
-    marginTop: 10,
+  tracking: {
+    gap: 10,
+  },
+  trackingHead: {
+    fontSize: 10.5,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: colors.red,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  trackRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.ink10,
+    padding: 10,
+  },
+  trackRank: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.ink40,
+    width: 22,
+  },
+  trackPhoto: {
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    backgroundColor: colors.ink05,
+  },
+  trackInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  trackName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.ink,
+  },
+  trackMeta: {
+    marginTop: 1,
+    fontSize: 11,
+    color: colors.ink40,
+  },
+  trackBarTrack: {
+    marginTop: 6,
     height: 4,
     backgroundColor: colors.ink05,
     borderRadius: 2,
     overflow: "hidden",
   },
-  barFill: {
+  trackBarFill: {
     height: "100%",
     borderRadius: 2,
+  },
+  trackRight: {
+    alignItems: "flex-end",
+  },
+  trackScore: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.ink,
   },
 });
