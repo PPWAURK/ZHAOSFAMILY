@@ -38,6 +38,7 @@ const COPY = {
     sortAmount: "按金额",
     sortQuantity: "按数量",
     supplierTotal: "供应商合计",
+    tabAll: "全部供应商",
     colRank: "#",
     colProduct: "商品",
     colCategory: "类别",
@@ -74,6 +75,7 @@ const COPY = {
     sortAmount: "By amount",
     sortQuantity: "By quantity",
     supplierTotal: "Supplier total",
+    tabAll: "All suppliers",
     colRank: "#",
     colProduct: "Product",
     colCategory: "Category",
@@ -110,6 +112,7 @@ const COPY = {
     sortAmount: "Par montant",
     sortQuantity: "Par quantité",
     supplierTotal: "Total fournisseur",
+    tabAll: "Tous fournisseurs",
     colRank: "#",
     colProduct: "Produit",
     colCategory: "Catégorie",
@@ -187,6 +190,7 @@ export default function OrderStatsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [sortBy, setSortBy] = useState("amount");
+  const [activeSupplier, setActiveSupplier] = useState("all");
 
   const t = COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -235,6 +239,20 @@ export default function OrderStatsPage() {
       ),
     }));
   }, [stats, sortBy]);
+
+  // If the selected supplier tab disappears after a refetch, fall back to All.
+  const activeSupplierExists =
+    activeSupplier === "all" ||
+    sortedSuppliers.some(
+      (supplier) => String(supplier.supplierId) === activeSupplier,
+    );
+  const effectiveSupplier = activeSupplierExists ? activeSupplier : "all";
+  const visibleSuppliers =
+    effectiveSupplier === "all"
+      ? sortedSuppliers
+      : sortedSuppliers.filter(
+          (supplier) => String(supplier.supplierId) === effectiveSupplier,
+        );
 
   function applyRange() {
     setAppliedRange({ from, to });
@@ -430,12 +448,44 @@ export default function OrderStatsPage() {
           </button>
         </div>
 
+        {hasData ? (
+          <div className={styles.tabs} role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={effectiveSupplier === "all"}
+              className={`${styles.tab} ${effectiveSupplier === "all" ? styles.tabActive : ""}`}
+              onClick={() => setActiveSupplier("all")}
+            >
+              {t.tabAll}
+            </button>
+            {sortedSuppliers.map((supplier) => {
+              const key = String(supplier.supplierId);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveSupplier === key}
+                  className={`${styles.tab} ${effectiveSupplier === key ? styles.tabActive : ""}`}
+                  onClick={() => setActiveSupplier(key)}
+                >
+                  {supplier.supplierName}
+                  <span className={styles.tabAmount}>
+                    {formatAmount(supplier.totalAmount)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         {isLoading ? (
           <p className={styles.muted}>{t.loading}</p>
         ) : !hasData ? (
           <p className={styles.muted}>{t.empty}</p>
         ) : (
-          sortedSuppliers.map((supplier) => (
+          visibleSuppliers.map((supplier) => (
             <section key={supplier.supplierId} className={styles.supplier}>
               <header className={styles.supplierHead}>
                 <h2 className={styles.supplierName}>{supplier.supplierName}</h2>
