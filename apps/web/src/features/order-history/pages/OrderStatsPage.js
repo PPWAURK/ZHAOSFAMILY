@@ -360,90 +360,97 @@ export default function OrderStatsPage() {
           {t.backToHistory}
         </Link>
 
-        <div className={styles.toolbar}>
-          <div className={styles.filters}>
-            {stats?.canViewAllStores ? (
-              <label className={styles.field}>
-                <span>{t.store}</span>
-                <select
-                  value={storeId}
-                  onChange={(event) => setStoreId(event.target.value)}
-                >
-                  <option value="">{t.storeAll}</option>
-                  {stats.stores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <label className={styles.field}>
-              <span>{t.from}</span>
-              <input
-                type="date"
-                value={from}
-                max={to || undefined}
-                onChange={(event) => setFrom(event.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>{t.to}</span>
-              <input
-                type="date"
-                value={to}
-                min={from || undefined}
-                onChange={(event) => setTo(event.target.value)}
-              />
-            </label>
-            <button type="button" className={styles.btn} onClick={applyRange}>
+        <div className={styles.filters} aria-label={t.store}>
+          {stats?.canViewAllStores ? (
+            <div className={styles.filterField}>
+              <span className={styles.filterLabel}>{t.store}</span>
+              <select
+                className={styles.filterControl}
+                value={storeId}
+                onChange={(event) => setStoreId(event.target.value)}
+              >
+                <option value="">{t.storeAll}</option>
+                {stats.stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div className={styles.filterField}>
+            <span className={styles.filterLabel}>{t.from}</span>
+            <input
+              type="date"
+              className={styles.filterControl}
+              value={from}
+              max={to || undefined}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          </div>
+          <div className={styles.filterField}>
+            <span className={styles.filterLabel}>{t.to}</span>
+            <input
+              type="date"
+              className={styles.filterControl}
+              value={to}
+              min={from || undefined}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          </div>
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={`${shell.btn} ${shell.btnPrimary}`}
+              onClick={applyRange}
+            >
               {t.apply}
             </button>
             {appliedRange.from || appliedRange.to ? (
               <button
                 type="button"
-                className={styles.btnGhost}
+                className={`${shell.btn} ${shell.btnGhost}`}
                 onClick={clearRange}
               >
                 {t.clear}
               </button>
             ) : null}
+            <button
+              type="button"
+              className={`${shell.btn} ${shell.btnGhost}`}
+              onClick={exportCsv}
+              disabled={!hasData}
+            >
+              {t.exportCsv}
+            </button>
           </div>
-          <button
-            type="button"
-            className={styles.btnExport}
-            onClick={exportCsv}
-            disabled={!hasData}
-          >
-            <span aria-hidden="true">↓</span> {t.exportCsv}
-          </button>
         </div>
 
         {loadError ? <p className={styles.error}>{loadError}</p> : null}
 
-        <div className={styles.kpis}>
-          <article className={styles.kpi}>
-            <span className={styles.kpiLabel}>{t.cardProducts}</span>
-            <span className={styles.kpiValue}>
+        <div className={styles.metrics}>
+          <div className={styles.metric}>
+            <p className={styles.metricValue}>
               {formatNumber(stats?.totalProducts)}
-            </span>
-          </article>
-          <article className={styles.kpi}>
-            <span className={styles.kpiLabel}>{t.cardQuantity}</span>
-            <span className={styles.kpiValue}>
+            </p>
+            <p className={styles.metricLabel}>{t.cardProducts}</p>
+          </div>
+          <div className={styles.metric}>
+            <p className={styles.metricValue}>
               {formatNumber(stats?.totalQuantity)}
-            </span>
-          </article>
-          <article className={`${styles.kpi} ${styles.kpiAccent}`}>
-            <span className={styles.kpiLabel}>{t.cardAmount}</span>
-            <span className={styles.kpiValue}>
+            </p>
+            <p className={styles.metricLabel}>{t.cardQuantity}</p>
+          </div>
+          <div className={styles.metric}>
+            <p className={styles.metricValue}>
               {formatAmount(stats?.totalAmount)}
-            </span>
-          </article>
+            </p>
+            <p className={styles.metricLabel}>{t.cardAmount}</p>
+          </div>
         </div>
 
         {hasData ? (
-          <div className={styles.tableToolbar}>
+          <div className={styles.tabsRow}>
             <div className={styles.tabs} role="tablist">
               <button
                 type="button"
@@ -473,7 +480,7 @@ export default function OrderStatsPage() {
                 );
               })}
             </div>
-            <div className={styles.sortRow} role="group">
+            <div className={styles.sort} role="group">
               <button
                 type="button"
                 className={`${styles.sortBtn} ${sortBy === "amount" ? styles.sortBtnActive : ""}`}
@@ -497,88 +504,60 @@ export default function OrderStatsPage() {
         ) : !hasData ? (
           <p className={styles.muted}>{t.empty}</p>
         ) : (
-          visibleSuppliers.map((supplier) => {
-            const metricMax = Math.max(
-              ...supplier.items.map((item) =>
-                sortBy === "quantity" ? item.totalQuantity : item.totalAmount,
-              ),
-              1,
-            );
+          visibleSuppliers.map((supplier) => (
+            <section key={supplier.supplierId}>
+              <p className={styles.supplierHeading}>
+                <span>{supplier.supplierName}</span>
+                <span className={styles.supplierTotal}>
+                  {formatNumber(supplier.totalQuantity)} ·{" "}
+                  <strong>{formatAmount(supplier.totalAmount)}</strong>
+                </span>
+              </p>
 
-            return (
-              <section key={supplier.supplierId} className={styles.supplier}>
-                <header className={styles.supplierHead}>
-                  <h2 className={styles.supplierName}>
-                    {supplier.supplierName}
-                  </h2>
-                  <span className={styles.supplierTotals}>
-                    {formatNumber(supplier.totalQuantity)} · {t.supplierTotal}
-                    <strong>{formatAmount(supplier.totalAmount)}</strong>
-                  </span>
-                </header>
-
-                <div className={styles.table}>
-                  <div className={`${styles.row} ${styles.headRow}`}>
-                    <span>{t.colRank}</span>
-                    <span>{t.colProduct}</span>
-                    <span>{t.colCategory}</span>
-                    <span className={styles.numCol}>{t.colQuantity}</span>
-                    <span className={styles.numCol}>{t.colLines}</span>
-                    <span className={styles.numCol}>{t.colAmount}</span>
-                  </div>
-                  {supplier.items.map((item, index) => {
-                    const metricValue =
-                      sortBy === "quantity"
-                        ? item.totalQuantity
-                        : item.totalAmount;
-                    const barWidth = `${Math.max(
-                      (metricValue / metricMax) * 100,
-                      3,
-                    )}%`;
-
-                    return (
-                      <div key={item.productId} className={styles.row}>
-                        <span className={styles.rank}>{index + 1}</span>
-                        <span className={styles.product}>
-                          <strong>
-                            {item.nameZh || item.nameFr || item.productId}
-                          </strong>
-                          {item.nameFr && item.nameFr !== item.nameZh ? (
-                            <small>{item.nameFr}</small>
-                          ) : null}
-                        </span>
-                        <span className={styles.category}>
-                          {item.category ? (
-                            <em className={styles.chip}>{item.category}</em>
-                          ) : (
-                            "-"
-                          )}
-                        </span>
-                        <span className={styles.numCol}>
-                          {formatNumber(item.totalQuantity)}
-                          {item.unit ? (
-                            <em className={styles.unit}> {item.unit}</em>
-                          ) : null}
-                        </span>
-                        <span className={styles.numCol}>
-                          {formatNumber(item.orderLineCount)}
-                        </span>
-                        <span className={`${styles.numCol} ${styles.amount}`}>
-                          {formatAmount(item.totalAmount)}
-                        </span>
-                        <span className={styles.barTrack} aria-hidden="true">
-                          <span
-                            className={styles.barFill}
-                            style={{ width: barWidth }}
-                          />
-                        </span>
-                      </div>
-                    );
-                  })}
+              <div className={styles.table}>
+                <div className={styles.tableHeader}>
+                  <span>{t.colRank}</span>
+                  <span>{t.colProduct}</span>
+                  <span>{t.colCategory}</span>
+                  <span className={styles.num}>{t.colQuantity}</span>
+                  <span className={styles.num}>{t.colLines}</span>
+                  <span className={styles.num}>{t.colAmount}</span>
                 </div>
-              </section>
-            );
-          })
+                {supplier.items.map((item, index) => (
+                  <div key={item.productId} className={styles.row}>
+                    <span className={styles.rank}>{index + 1}</span>
+                    <span className={styles.product}>
+                      <strong>
+                        {item.nameZh || item.nameFr || item.productId}
+                      </strong>
+                      {item.nameFr && item.nameFr !== item.nameZh ? (
+                        <small>{item.nameFr}</small>
+                      ) : null}
+                    </span>
+                    <span>
+                      {item.category ? (
+                        <em className={styles.chip}>{item.category}</em>
+                      ) : (
+                        "-"
+                      )}
+                    </span>
+                    <span className={styles.num}>
+                      {formatNumber(item.totalQuantity)}
+                      {item.unit ? (
+                        <em className={styles.unit}> {item.unit}</em>
+                      ) : null}
+                    </span>
+                    <span className={styles.num}>
+                      {formatNumber(item.orderLineCount)}
+                    </span>
+                    <span className={styles.amount}>
+                      {formatAmount(item.totalAmount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))
         )}
       </motion.section>
 
