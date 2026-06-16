@@ -3,6 +3,7 @@ import {
   type ImageSourcePropType,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -166,6 +167,11 @@ type StoreScoreLeaderboardProps = {
 
 export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) {
   const copy = COPY[language];
+  const { width } = useWindowDimensions();
+  // The dashboard scroll content uses paddingHorizontal: 20 on each side, so
+  // pin the podium row to that inner width — otherwise its three flex columns
+  // size to content inside the vertical ScrollView and overflow the screen.
+  const podiumWidth = width - 40;
   const rankedEntries = getRankedEntries(STORE_SCORE_ENTRIES);
   const podiumEntries = getPodiumOrder(rankedEntries.slice(0, 3));
   const trackingEntries = rankedEntries.slice(3);
@@ -192,7 +198,7 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
         ))}
       </View>
 
-      <View style={styles.podium}>
+      <View style={[styles.podium, { width: podiumWidth }]}>
         {podiumEntries.map((entry) => {
           const isWinner = entry.displayRank === 1;
           const medalColor = MEDAL_COLORS[entry.displayRank] || colors.ink20;
@@ -366,6 +372,7 @@ const styles = StyleSheet.create({
   },
   podiumCol: {
     flex: 1,
+    minWidth: 0,
     alignItems: "center",
     paddingTop: 20,
     paddingBottom: 12,
@@ -422,6 +429,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.ink,
     textAlign: "center",
+    width: "100%",
   },
   podiumNameWinner: {
     fontSize: 13,
@@ -501,6 +509,7 @@ const styles = StyleSheet.create({
   trackInfo: {
     flex: 1,
     minWidth: 0,
+    flexShrink: 1,
   },
   trackName: {
     fontSize: 14,
