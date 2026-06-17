@@ -1,0 +1,66 @@
+name: Deploy Web
+
+# Builds the Next.js static export (apps/web -> out/) and uploads it over SFTP
+# to the OVH shared hosting that serves zhaoplatforme.com. Apex root, so no
+# basePath. The API base URL is injected at build time.
+#
+# Required secrets: WEB_SFTP_HOST, WEB_SFTP_USER, WEB_SFTP_PASSWORD,
+# WEB_SFTP_PORT, WEB_SFTP_REMOTE_DIR (the site docroot, e.g. "www").
+# Optional variable: NEXT_PUBLIC_API_BASE_URL (defaults below).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build + SFTP upload (OVH)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build web (static export)
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL || 'https://api.zhaoplatforme.com/backend3' }}
+        run: pnpm --filter @zhao/web build
+
+      - name: Upload out/ via SFTP
+        env:
+          SFTP_HOST: ${{ secrets.WEB_SFTP_HOST }}
+          SFTP_USER: ${{ secrets.WEB_SFTP_USER }}
+          SFTP_PORT: ${{ secrets.WEB_SFTP_PORT }}
+          SFTP_REMOTE: ${{ secrets.WEB_SFTP_REMOTE_DIR }}
+          LFTP_PASSWORD: ${{ secrets.WEB_SFTP_PASSWORD }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          # mirror -R = upload local -> remote. No --delete: overwrites changed
+          # files and leaves anything else (e.g. .well-known, .htaccess) intact.
+          lftp -u "$SFTP_USER" --env-password "sftp://$SFTP_HOST:$SFTP_PORT" -e "
+            set sftp:auto-confirm yes;
+            set net:max-retries 2;
+            set net:timeout 20;
+            mirror -R --verbose --parallel=4 apps/web/out/ \"$SFTP_REMOTE\";
+            bye
+          "

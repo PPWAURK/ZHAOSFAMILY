@@ -1,10 +1,11 @@
-# Déploiement (CI/CD) — Backend
+# Déploiement (CI/CD)
 
-Guide opérationnel du déploiement continu du **backend**, adapté à
-l'infrastructure réelle du serveur (relevée le 2026-06-17).
+Guide opérationnel du déploiement continu **backend** + **web**, adapté à
+l'infrastructure réelle (relevée le 2026-06-17).
 
-> Le **web** est hébergé sur un autre cloud (hors de ce dépôt) et n'est pas
-> géré ici. Le **mobile** se publie via EAS. Ce pipeline ne couvre que le backend.
+> Le **backend** tourne sous PM2 sur le VPS. Le **web** (export statique Next.js)
+> est hébergé sur l'**hébergement mutualisé OVH** qui sert `zhaoplatforme.com`,
+> mis à jour par SFTP. Le **mobile** se publie via EAS (hors de ce pipeline).
 
 ## Architecture réelle
 
@@ -23,17 +24,25 @@ l'infrastructure réelle du serveur (relevée le 2026-06-17).
 > Les conteneurs `/backend1` (:4000) et `/backend2` (:3000, image GitLab) sont
 > d'autres déploiements indépendants — hors périmètre.
 
-## Pipeline
+## Pipelines
 
 | Workflow | Déclenchement |
 | --- | --- |
 | `.github/workflows/deploy-backend.yml` | push `main` sur `apps/backend/**`, `packages/**`, `pnpm-lock.yaml`, ou dispatch manuel |
+| `.github/workflows/deploy-web.yml` | push `main` sur `apps/web/**`, `packages/**`, `pnpm-lock.yaml`, ou dispatch manuel |
 
-Le backend se déploie en SSH : `git checkout -f -B main origin/main` →
+**Backend** (SSH → PM2) : `git checkout -f -B main origin/main` →
 `pnpm install --frozen-lockfile` → `pnpm --filter backend build` (génère le
 client Prisma) → `pm2 reload zhao-family-backend`.
 
+**Web** (build → SFTP) : `pnpm --filter @zhao/web build` (export statique vers
+`apps/web/out/`, `NEXT_PUBLIC_API_BASE_URL` injecté au build) → upload `lftp`
+`mirror -R` vers le docroot OVH. Pas de `--delete` (n'efface pas `.htaccess`,
+`.well-known`, etc.). Apex à la racine → pas de `basePath`.
+
 ## Secrets GitHub (Settings → Secrets and variables → Actions)
+
+**Backend :**
 
 | Secret | Valeur |
 | --- | --- |
@@ -42,6 +51,19 @@ client Prisma) → `pm2 reload zhao-family-backend`.
 | `DEPLOY_SSH_KEY` | clé privée SSH dédiée (PEM complet) |
 | `DEPLOY_SSH_PORT` | `22` |
 | `DEPLOY_DIR` | `/opt/zhao-family` |
+
+**Web (OVH SFTP) :**
+
+| Secret | Valeur |
+| --- | --- |
+| `WEB_SFTP_HOST` | `ftp.cluster100.hosting.ovh.net` |
+| `WEB_SFTP_USER` | `zhaosfx` |
+| `WEB_SFTP_PASSWORD` | mot de passe SSH/SFTP OVH |
+| `WEB_SFTP_PORT` | `22` |
+| `WEB_SFTP_REMOTE_DIR` | docroot du site (ex. `www`) |
+
+> Variable optionnelle `NEXT_PUBLIC_API_BASE_URL` (défaut
+> `https://api.zhaoplatforme.com/backend3`).
 
 ## Environnement backend sur le serveur
 
