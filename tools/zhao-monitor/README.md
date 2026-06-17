@@ -10,6 +10,9 @@ ZHAO deployment from the menu/dock — companion to the CI/CD in `docs/deploymen
 - **One-click CI / CD** — buttons trigger `CI`, `Deploy Backend`, `Deploy Web`
   (or all) via `gh workflow run`. Production deploys show a confirm dialog.
   Uses the locally authenticated `gh` — no token is stored in the app.
+- **Live pipeline status** — the pipelines section shows the latest run per
+  workflow (queued / in progress / success / failure + time) via `gh run list`,
+  auto-refreshing every 30s and after a trigger; click a row to open the run.
 - **⚙ Config** — edit the monitored URLs, repo, workflow filenames, deploy ref,
   and SSH connection (for the `.env` editor). Persisted to
   `~/Library/Application Support/ZHAO Monitor/config.json`.
