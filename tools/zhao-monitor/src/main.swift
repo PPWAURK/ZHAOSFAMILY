@@ -80,7 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         ["refresh", "dispatch", "saveConfig", "resetConfig",
          "listSecrets", "setSecret", "pickKeyFile",
          "readEnv", "saveEnv",
-         "gitStatus", "gitCommit"].forEach { ucc.add(self, name: $0) }
+         "gitStatus", "gitCommit", "pipelines"].forEach { ucc.add(self, name: $0) }
         let wkcfg = WKWebViewConfiguration()
         wkcfg.userContentController = ucc
 
@@ -99,13 +99,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
         timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.fetchStatus()
+            self?.fetchPipelines()
         }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        if !loaded { loaded = true; pushConfigToWeb(); fetchStatus() }
+        if !loaded { loaded = true; pushConfigToWeb(); fetchStatus(); fetchPipelines() }
     }
 
     func webView(_ webView: WKWebView,
@@ -138,6 +139,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         switch message.name {
         case "refresh":
             fetchStatus()
+            fetchPipelines()
+        case "pipelines":
+            fetchPipelines()
         case "dispatch":
             runDispatch((message.body as? String) ?? "")
         case "saveConfig":
@@ -214,6 +218,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 self.webView.evaluateJavaScript(
                     "window.dispatchResult('\(key)', \(ok), \(self.jsString(detail)))",
                     completionHandler: nil)
+                for d in [4.0, 12.0, 25.0] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + d) { self.fetchPipelines() }
+                }
+            }
+        }
+    }
+
+    // MARK: - Pipeline runs
+
+    func fetchPipelines() {
+        guard loaded else { return }
+        let repo = cfg("repo")
+        DispatchQueue.global().async {
+            let task = Process()
+            task.launchPath = "/bin/zsh"
+            task.arguments = ["-lc",
+                "gh run list --repo \(self.sh(repo)) --limit 20 --json workflowName,status,conclusion,headBranch,event,createdAt,url 2>&1"]
+            let pipe = Pipe(); task.standardOutput = pipe; task.standardError = pipe
+            do { try task.run() } catch { return }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            task.waitUntilExit()
+            guard task.terminationStatus == 0,
+                  let s = String(data: data, encoding: .utf8),
+                  (try? JSONSerialization.jsonObject(with: data)) != nil else { return }
+            DispatchQueue.main.async {
+                self.webView.evaluateJavaScript("window.renderPipelines(\(s))", completionHandler: nil)
             }
         }
     }

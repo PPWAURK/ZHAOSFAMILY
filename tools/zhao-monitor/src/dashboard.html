@@ -9,7 +9,7 @@
     --bg:#f7f6f3; --surface:#ffffff; --surface2:#f1efe8; --text:#1f1f1d;
     --muted:#5f5e5a; --hint:#8a8980; --border:rgba(0,0,0,.12);
     --ok:#1d9e75; --okbg:#e1f5ee; --okt:#0f6e56;
-    --warn:#ba7517; --warnt:#854f0b;
+    --warn:#ba7517; --warnbg:#faeeda; --warnt:#854f0b;
     --bad:#e24b4a; --badbg:#fcebeb; --badt:#a32d2d;
     --accent:#a32d2d;
   }
@@ -18,7 +18,7 @@
       --bg:#1a1a18; --surface:#242422; --surface2:#2c2c2a; --text:#f1efe8;
       --muted:#b4b2a9; --hint:#888780; --border:rgba(255,255,255,.14);
       --ok:#5dcaa5; --okbg:#0f3a30; --okt:#9fe1cb;
-      --warn:#ef9f27; --warnt:#fac775;
+      --warn:#ef9f27; --warnbg:#3a2e10; --warnt:#fac775;
       --bad:#f09595; --badbg:#3a1717; --badt:#f7c1c1;
       --accent:#e24b4a;
     }
@@ -50,6 +50,9 @@
   .row .name{font-size:13px;font-weight:500}
   .pill{font-size:11px;padding:3px 9px;border-radius:7px}
   .pill.ok{background:var(--okbg);color:var(--okt)}
+  .pill.warn{background:var(--warnbg);color:var(--warnt)}
+  .pill.bad{background:var(--badbg);color:var(--badt)}
+  .pill.muted{background:var(--surface2);color:var(--muted)}
   .ops{display:flex;gap:8px;flex-wrap:wrap}
   .op.primary{background:var(--accent);color:#fff;border-color:transparent;font-weight:600}
   .op.primary:hover{filter:brightness(1.08);background:var(--accent)}
@@ -169,10 +172,12 @@
     </div>
   </div>
 
-  <p class="sectitle">流水线（GitHub Actions）</p>
-  <div class="row"><span class="name">CI 质量门禁</span><span class="pill ok">已配置</span></div>
-  <div class="row"><span class="name">Deploy Backend</span><span class="pill ok">已配置</span></div>
-  <div class="row"><span class="name">Deploy Web</span><span class="pill ok">已配置</span></div>
+  <p class="sectitle">流水线（GitHub Actions）· 实时</p>
+  <div id="pipelines">
+    <div class="row"><span class="name">CI 质量门禁</span><span class="pill muted">加载中…</span></div>
+    <div class="row"><span class="name">Deploy Backend</span><span class="pill muted">加载中…</span></div>
+    <div class="row"><span class="name">Deploy Web</span><span class="pill muted">加载中…</span></div>
+  </div>
 
   <p class="sectitle" style="margin-top:16px">操作 · 一键触发</p>
   <div class="ops">
@@ -321,7 +326,32 @@
     catch(e){ showToast('无法调用 gh（需在已登录 gh 的机器上）','bad'); }
   }
   window.dispatchResult=function(key,ok,msg){
-    showToast((ok?'✓ 已触发 ':'✗ 失败 ')+(LABEL[key]||key)+(msg?' — '+msg:''), ok?'ok':'bad');
+    showToast((ok?'✓ 已触发 ':'✗ 失败 ')+(LABEL[key]||key)+(msg?' — '+msg:'')+(ok?'（流水线状态见下方，实时刷新）':''), ok?'ok':'bad');
+  };
+
+  var WORKFLOWS=[{wf:'CI',label:'CI 质量门禁'},{wf:'Deploy Backend',label:'Deploy Backend'},{wf:'Deploy Web',label:'Deploy Web'}];
+  function ago(iso){ var s=Math.max(0,(Date.now()-new Date(iso).getTime())/1000);
+    if(s<60) return Math.floor(s)+'秒前'; if(s<3600) return Math.floor(s/60)+'分前';
+    if(s<86400) return Math.floor(s/3600)+'时前'; return Math.floor(s/86400)+'天前'; }
+  window.renderPipelines=function(runs){
+    runs=runs||[];
+    var html=WORKFLOWS.map(function(w){
+      var r=null; for(var i=0;i<runs.length;i++){ if(runs[i].workflowName===w.wf){ r=runs[i]; break; } }
+      var pill='无运行', cls='muted', meta='';
+      if(r){
+        meta=(r.event||'')+' · '+(r.headBranch||'')+' · '+ago(r.createdAt);
+        if(r.status!=='completed'){ pill=(r.status==='queued'?'排队':'进行中'); cls='warn'; }
+        else if(r.conclusion==='success'){ pill='成功'; cls='ok'; }
+        else if(r.conclusion==='failure'){ pill='失败'; cls='bad'; }
+        else { pill=r.conclusion||'—'; cls='muted'; }
+      }
+      var url=(r&&r.url)?r.url:('https://github.com/'+(CFG.repo||'')+'/actions');
+      return '<a class="row" href="'+url+'"><span class="name">'+w.label+'</span>'+
+             '<span style="display:flex;gap:9px;align-items:center">'+
+             (meta?'<span class="meta">'+meta+'</span>':'')+
+             '<span class="pill '+cls+'">'+pill+'</span></span></a>';
+    }).join('');
+    document.getElementById('pipelines').innerHTML=html;
   };
 </script>
 </body>
