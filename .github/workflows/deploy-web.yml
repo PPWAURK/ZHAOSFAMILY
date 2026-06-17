@@ -1,0 +1,85 @@
+name: Deploy Web
+
+# Builds the Next.js static export and publishes it to GitHub Pages.
+#
+# Repository configuration required (Settings -> Pages -> Build and deployment
+# -> Source = "GitHub Actions"). Optional repo *Variables* (Settings ->
+# Secrets and variables -> Actions -> Variables):
+#   NEXT_PUBLIC_API_BASE_URL  backend public URL (default below)
+#   WEB_BASE_PATH             sub-path for a project Pages site, e.g. /ZHAOSFAMILY
+#                             (leave unset for a custom domain at root)
+#   WEB_CNAME                 custom domain to write into out/CNAME, e.g. zhaoplatforme.com
+#
+# Trigger: push to main touching web-relevant paths, or manual dispatch.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build static export
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL || 'https://api.zhaoplatforme.com/backend3' }}
+      NEXT_PUBLIC_BASE_PATH: ${{ vars.WEB_BASE_PATH }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web (static export)
+        run: pnpm --filter @zhao/web build
+
+      - name: Finalize artifact (.nojekyll + optional CNAME)
+        run: |
+          touch apps/web/out/.nojekyll
+          if [ -n "${{ vars.WEB_CNAME }}" ]; then
+            echo "${{ vars.WEB_CNAME }}" > apps/web/out/CNAME
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,46 @@
+name: Deploy Backend
+
+# Deploys the backend stack to the self-hosted Ubuntu server over SSH.
+# The server holds a git clone of this repo at ${{ secrets.DEPLOY_DIR }} with
+# a populated .env and apps/backend/.env.production (see docs/deployment.md).
+#
+# Trigger: push to main touching backend-relevant paths, or manual dispatch.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend/**"
+      - "docker-compose.prod.yml"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: SSH deploy (docker compose)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.DEPLOY_DIR }}"
+            git fetch --all --prune
+            git reset --hard origin/main
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker compose -f docker-compose.prod.yml ps
+            docker image prune -f
