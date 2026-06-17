@@ -61,6 +61,6 @@ jobs:
             set sftp:auto-confirm yes;
             set net:max-retries 2;
             set net:timeout 20;
-            mirror -R --verbose --parallel=4 apps/web/out/ \"$SFTP_REMOTE\";
+            mirror -R --verbose --parallel=4 apps/web/out/ $SFTP_REMOTE;
             bye
           "
