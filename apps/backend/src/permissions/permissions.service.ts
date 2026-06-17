@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../auth/auth.service';
 import { ACCOUNT_STATUS } from '../auth/account-status';
 import { PrismaService } from '../prisma/prisma.service';
@@ -205,7 +206,11 @@ export class PermissionsService {
   }
 
   async listApprovableUsers(viewer: AuthUser): Promise<PermissionUserItem[]> {
-    const where = await this.getApprovalUserWhere(viewer);
+    const scopeWhere = await this.getApprovalUserWhere(viewer);
+    const where: Prisma.UserWhereInput = {
+      ...scopeWhere,
+      accountStatus: { not: ACCOUNT_STATUS.removed },
+    };
     const users = await this.findPermissionUsers(where);
     const managedRestaurantsByUserId =
       await this.findManagedRestaurantsByUserId(users.map((user) => user.id));
@@ -447,6 +452,76 @@ export class PermissionsService {
     });
 
     return this.getUser(userId);
+  }
+
+  async removeUser(
+    viewer: AuthUser,
+    userId: number,
+  ): Promise<{ message: 'EMPLOYEE_REMOVED' | 'EMPLOYEE_DELETED' }> {
+    if (viewer.id === userId) {
+      throw new BadRequestException('CANNOT_REMOVE_SELF');
+    }
+
+    const targetUser = await this.getUserRoleScope(userId);
+
+    // Reuse the approval store-scope check (holding → all, regional → managed
+    // restaurants, store-manager → own store).
+    await this.assertApprovalAllowed(viewer, targetUser);
+
+    // Rejected registrations were never approved and have no operational
+    // history → hard delete so the email can be reused, regardless of the job
+    // role they registered with. Cascades clean up roles/sessions; any other
+    // linked row (P2003) means the account is not safe to delete.
+    if (targetUser.accountStatus === ACCOUNT_STATUS.rejected) {
+      return this.hardDeleteUser(userId);
+    }
+
+    // Active holding accounts cannot be deactivated from the store view.
+    if (this.parseJobRoles(targetUser.jobRole).has(HOLDING_JOB_ROLE)) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+    }
+
+    if (targetUser.accountStatus === ACCOUNT_STATUS.removed) {
+      throw new BadRequestException('USER_ALREADY_REMOVED');
+    }
+
+    await this.prismaService.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          accountStatus: ACCOUNT_STATUS.removed,
+          accountReviewedAt: new Date(),
+          accountReviewedByUserId: viewer.id,
+        },
+      });
+
+      // Revoke refresh sessions so the removed employee cannot stay signed in.
+      await tx.refreshSession.deleteMany({ where: { userId } });
+    });
+
+    return { message: 'EMPLOYEE_REMOVED' };
+  }
+
+  private async hardDeleteUser(
+    userId: number,
+  ): Promise<{ message: 'EMPLOYEE_DELETED' }> {
+    try {
+      await this.prismaService.user.delete({ where: { id: userId } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') {
+          throw new ConflictException('USER_HAS_LINKED_DATA');
+        }
+
+        if (error.code === 'P2025') {
+          throw new NotFoundException('USER_NOT_FOUND');
+        }
+      }
+
+      throw error;
+    }
+
+    return { message: 'EMPLOYEE_DELETED' };
   }
 
   private async getApprovalUserWhere(

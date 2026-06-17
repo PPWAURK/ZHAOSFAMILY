@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PermissionsService } from './permissions.service';
 
 describe('PermissionsService', () => {
@@ -15,6 +16,7 @@ describe('PermissionsService', () => {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     };
     const legacyUserManagedRestaurant = {
       createMany: jest.fn(),
@@ -22,8 +24,12 @@ describe('PermissionsService', () => {
       findMany: jest.fn(),
       findUnique: jest.fn(),
     };
+    const refreshSession = {
+      deleteMany: jest.fn(),
+    };
     const prismaService = {
       legacyUserManagedRestaurant,
+      refreshSession,
       restaurant: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
@@ -38,10 +44,17 @@ describe('PermissionsService', () => {
             user: typeof user;
             userRole: typeof userRole;
             legacyUserManagedRestaurant: typeof legacyUserManagedRestaurant;
+            refreshSession: typeof refreshSession;
           }) => unknown,
         ) =>
           Promise.resolve(
-            callback({ legacyUserManagedRestaurant, role, user, userRole }),
+            callback({
+              legacyUserManagedRestaurant,
+              refreshSession,
+              role,
+              user,
+              userRole,
+            }),
           ),
       ),
     };
@@ -704,6 +717,9 @@ describe('PermissionsService', () => {
           restaurantId: {
             in: [3, 8],
           },
+          accountStatus: {
+            not: 'removed',
+          },
         },
       }),
     );
@@ -1031,5 +1047,175 @@ describe('PermissionsService', () => {
     await expect(
       service.updateUserRoles(404, ['training-viewer']),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  function makeStoreManagerViewer(restaurantId: number) {
+    return {
+      id: 1,
+      familyName: 'Zhao',
+      givenName: 'Manager',
+      firstName: 'Manager',
+      lastName: 'Zhao',
+      name: 'Zhao Manager',
+      email: 'manager@zhao.test',
+      emailVerified: true,
+      restaurantId,
+      store: {
+        id: restaurantId,
+        name: 'ZHAO Test',
+        address: 'Test',
+        photoUrl: null,
+      },
+      storeName: 'ZHAO Test',
+      jobRole: 'store-manager',
+      role: 'store-manager',
+      position: 'store-manager',
+      birthday: null,
+      avatar: null,
+      avatarUrl: null,
+      phone: null,
+      address: null,
+      userLevel: 0,
+      preferredLanguage: 'zh',
+      permissions: [],
+    };
+  }
+
+  it('deactivates an employee in the store manager own store', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-of-house',
+      restaurantId: 7,
+      accountStatus: 'approved',
+    });
+
+    await expect(
+      service.removeUser(makeStoreManagerViewer(7), 12),
+    ).resolves.toEqual({ message: 'EMPLOYEE_REMOVED' });
+
+    expect(prismaService.user.update).toHaveBeenCalledWith({
+      where: { id: 12 },
+      data: {
+        accountStatus: 'removed',
+        accountReviewedAt: expect.any(Date) as Date,
+        accountReviewedByUserId: 1,
+      },
+    });
+    expect(prismaService.refreshSession.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 12 },
+    });
+  });
+
+  it('hard deletes a rejected account in the store manager own store', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-of-house',
+      restaurantId: 7,
+      accountStatus: 'rejected',
+    });
+
+    await expect(
+      service.removeUser(makeStoreManagerViewer(7), 12),
+    ).resolves.toEqual({ message: 'EMPLOYEE_DELETED' });
+
+    expect(prismaService.user.delete).toHaveBeenCalledWith({
+      where: { id: 12 },
+    });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('hard deletes a rejected account even when it has a holding job role', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'holding',
+      restaurantId: 7,
+      accountStatus: 'rejected',
+    });
+
+    await expect(
+      service.removeUser(makeStoreManagerViewer(7), 12),
+    ).resolves.toEqual({ message: 'EMPLOYEE_DELETED' });
+
+    expect(prismaService.user.delete).toHaveBeenCalledWith({
+      where: { id: 12 },
+    });
+  });
+
+  it('returns a conflict when a rejected account still has linked data', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-of-house',
+      restaurantId: 7,
+      accountStatus: 'rejected',
+    });
+    prismaService.user.delete.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('FK', {
+        code: 'P2003',
+        clientVersion: 'test',
+      }),
+    );
+
+    await expect(
+      service.removeUser(makeStoreManagerViewer(7), 12),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('rejects deactivating an employee in another store', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-of-house',
+      restaurantId: 8,
+      accountStatus: 'approved',
+    });
+
+    await expect(
+      service.removeUser(makeStoreManagerViewer(7), 12),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects deactivating a holding account', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'holding',
+      restaurantId: 7,
+      accountStatus: 'approved',
+    });
+
+    await expect(
+      service.removeUser(makeStoreManagerViewer(7), 12),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects deactivating yourself', async () => {
+    const { service, prismaService } = createService();
+
+    await expect(
+      service.removeUser(makeStoreManagerViewer(7), 1),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prismaService.user.findUnique).not.toHaveBeenCalled();
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects deactivating an already removed employee', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-of-house',
+      restaurantId: 7,
+      accountStatus: 'removed',
+    });
+
+    await expect(
+      service.removeUser(makeStoreManagerViewer(7), 12),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prismaService.user.update).not.toHaveBeenCalled();
   });
 });

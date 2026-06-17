@@ -49,6 +49,18 @@ export const STORES_COPY = {
       savingRole: "保存中",
       roleSaved: "岗位已更新。",
       roleSaveError: "岗位保存失败。",
+      remove: "停用",
+      removing: "停用中",
+      removeConfirm:
+        "确定要停用员工「{name}」吗？停用后该员工将无法登录，并从门店团队列表中移除（下单、培训等历史记录会保留）。",
+      removeSuccess: "员工已停用。",
+      removeError: "停用员工失败。",
+      deleteUser: "删除",
+      deletingUser: "删除中",
+      deleteUserConfirm:
+        "确定要彻底删除被拒绝的账号「{name}」吗？此操作不可恢复，删除后该邮箱可重新注册。",
+      deleteUserSuccess: "账号已删除。",
+      deleteUserError: "删除失败，该账号可能仍有关联数据。",
       selectStore: "选择门店",
       selectJobRole: "选择岗位",
       storeLabel: "门店",
@@ -62,6 +74,7 @@ export const STORES_COPY = {
         pending: "待审批",
         approved: "已通过",
         rejected: "已拒绝",
+        removed: "已停用",
       },
       table: {
         name: "姓名",
@@ -125,6 +138,18 @@ export const STORES_COPY = {
       savingRole: "Saving",
       roleSaved: "Position updated.",
       roleSaveError: "Failed to save position.",
+      remove: "Deactivate",
+      removing: "Deactivating",
+      removeConfirm:
+        "Deactivate employee \"{name}\"? They will no longer be able to sign in and will be removed from the store team list (order and training history is kept).",
+      removeSuccess: "Employee deactivated.",
+      removeError: "Failed to deactivate employee.",
+      deleteUser: "Delete",
+      deletingUser: "Deleting",
+      deleteUserConfirm:
+        "Permanently delete the rejected account \"{name}\"? This cannot be undone, and the email can be used to register again.",
+      deleteUserSuccess: "Account deleted.",
+      deleteUserError: "Failed to delete. The account may still have linked data.",
       selectStore: "Select store",
       selectJobRole: "Select position",
       storeLabel: "Store",
@@ -138,6 +163,7 @@ export const STORES_COPY = {
         pending: "Pending",
         approved: "Approved",
         rejected: "Rejected",
+        removed: "Deactivated",
       },
       table: {
         name: "Name",
@@ -204,6 +230,19 @@ export const STORES_COPY = {
       savingRole: "En cours",
       roleSaved: "Poste mis a jour.",
       roleSaveError: "Echec de l'enregistrement du poste.",
+      remove: "Desactiver",
+      removing: "En cours",
+      removeConfirm:
+        "Desactiver l'employe \"{name}\" ? Il ne pourra plus se connecter et sera retire de l'equipe de la boutique (l'historique des commandes et formations est conserve).",
+      removeSuccess: "Employe desactive.",
+      removeError: "Echec de la desactivation de l'employe.",
+      deleteUser: "Supprimer",
+      deletingUser: "En cours",
+      deleteUserConfirm:
+        "Supprimer definitivement le compte refuse \"{name}\" ? Action irreversible ; l'email pourra etre reutilise pour s'inscrire.",
+      deleteUserSuccess: "Compte supprime.",
+      deleteUserError:
+        "Echec de la suppression. Le compte a peut-etre des donnees liees.",
       selectStore: "Choisir la boutique",
       selectJobRole: "Choisir le poste",
       storeLabel: "Boutique",
@@ -217,6 +256,7 @@ export const STORES_COPY = {
         pending: "En attente",
         approved: "Valide",
         rejected: "Refuse",
+        removed: "Desactive",
       },
       table: {
         name: "Nom",

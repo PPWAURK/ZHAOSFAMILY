@@ -819,6 +819,12 @@
   color: var(--red);
 }
 
+.approvalButtonDanger {
+  background: var(--paper);
+  border-color: #111;
+  color: #111;
+}
+
 /* Footer + back link */
 .backRow {
   margin-top: 48px;

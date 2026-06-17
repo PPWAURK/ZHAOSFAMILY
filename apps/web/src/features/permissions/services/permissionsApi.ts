@@ -67,6 +67,14 @@ export async function updatePermissionUserJobRole(
   );
 }
 
+export async function removePermissionUser(
+  id: number | string,
+): Promise<{ message: string }> {
+  return apiClient.delete<{ message: string }>(
+    `/permissions/users/${encodeURIComponent(id)}`,
+  );
+}
+
 export async function updatePermissionUserApproval(
   id: number | string,
   accountStatus: "approved" | "rejected",

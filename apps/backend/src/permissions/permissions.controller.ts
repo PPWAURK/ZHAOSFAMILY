@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
@@ -106,6 +107,18 @@ export class PermissionsController {
     );
 
     return this.permissionsService.updateUserApproval(viewer, id, dto);
+  }
+
+  @Delete('users/:id')
+  async removeUser(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ message: 'EMPLOYEE_REMOVED' | 'EMPLOYEE_DELETED' }> {
+    const viewer = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    return this.permissionsService.removeUser(viewer, id);
   }
 
   @Get('roles')

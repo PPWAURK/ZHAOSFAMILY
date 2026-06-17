@@ -13,6 +13,7 @@ import {
 } from "@/features/dashboard/constants/dashboard-copy";
 import {
   fetchApprovablePermissionUsers,
+  removePermissionUser,
   updatePermissionUserApproval,
   updatePermissionUserJobRole,
 } from "@/features/permissions/services/permissionsApi";
@@ -228,7 +229,9 @@ function TeamUserTable({
   lang,
   labels,
   onPatchTeamDraft,
+  onRemoveUser,
   onSaveJobRole,
+  removingUserId,
   roleGroups,
   savingUserId,
   teamDrafts,
@@ -255,7 +258,10 @@ function TeamUserTable({
             const draftJobRole =
               teamDrafts[String(user.id)] ?? normalizeJobRoleString(user.jobRole);
             const isApproved = user.accountStatus === "approved";
+            const isRejected = user.accountStatus === "rejected";
             const isSaving = savingUserId === user.id;
+            const isRemoving = removingUserId === user.id;
+            const isBusy = isSaving || isRemoving;
             const hasChanged =
               normalizeJobRoleString(draftJobRole) !==
               normalizeJobRoleString(user.jobRole);
@@ -267,7 +273,7 @@ function TeamUserTable({
                 <td>
                   {isApproved ? (
                     <JobRoleGroupPicker
-                      disabled={isSaving}
+                      disabled={isBusy}
                       groups={roleGroups}
                       labels={labels}
                       value={draftJobRole}
@@ -280,13 +286,32 @@ function TeamUserTable({
                 <td>{formatStatus(user.accountStatus, labels)}</td>
                 <td>
                   {isApproved ? (
+                    <div className={styles.approvalActions}>
+                      <button
+                        type="button"
+                        className={styles.approvalButton}
+                        disabled={isBusy || !draftJobRole || !hasChanged}
+                        onClick={() => onSaveJobRole(user.id)}
+                      >
+                        {isSaving ? labels.savingRole : labels.saveRole}
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.approvalButton} ${styles.approvalButtonDanger}`}
+                        disabled={isBusy}
+                        onClick={() => onRemoveUser(user)}
+                      >
+                        {isRemoving ? labels.removing : labels.remove}
+                      </button>
+                    </div>
+                  ) : isRejected ? (
                     <button
                       type="button"
-                      className={styles.approvalButton}
-                      disabled={isSaving || !draftJobRole || !hasChanged}
-                      onClick={() => onSaveJobRole(user.id)}
+                      className={`${styles.approvalButton} ${styles.approvalButtonDanger}`}
+                      disabled={isRemoving}
+                      onClick={() => onRemoveUser(user)}
                     >
-                      {isSaving ? labels.savingRole : labels.saveRole}
+                      {isRemoving ? labels.deletingUser : labels.deleteUser}
                     </button>
                   ) : (
                     "-"
@@ -317,6 +342,7 @@ export default function StoreApprovalPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [reviewingUserId, setReviewingUserId] = useState(null);
   const [savingUserId, setSavingUserId] = useState(null);
+  const [removingUserId, setRemovingUserId] = useState(null);
 
   const t = STORES_COPY[lang];
   const page = t.approval;
@@ -458,6 +484,42 @@ export default function StoreApprovalPage() {
       setErrorMessage(error instanceof Error ? error.message : page.loadError);
     } finally {
       setReviewingUserId(null);
+    }
+  }
+
+  async function removeUser(targetUser) {
+    const isRejected = targetUser.accountStatus === "rejected";
+    const confirmMessage = (
+      isRejected ? page.deleteUserConfirm : page.removeConfirm
+    ).replace("{name}", targetUser.name || targetUser.email || "");
+
+    if (typeof window !== "undefined" && !window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setRemovingUserId(targetUser.id);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      await removePermissionUser(String(targetUser.id));
+
+      setUsers((current) =>
+        current.filter((item) => String(item.id) !== String(targetUser.id)),
+      );
+      setTeamDrafts((current) => {
+        const nextDrafts = { ...current };
+        delete nextDrafts[String(targetUser.id)];
+        return nextDrafts;
+      });
+      setSuccessMessage(
+        isRejected ? page.deleteUserSuccess : page.removeSuccess,
+      );
+    } catch (error) {
+      const fallback = isRejected ? page.deleteUserError : page.removeError;
+      setErrorMessage(error instanceof Error ? error.message : fallback);
+    } finally {
+      setRemovingUserId(null);
     }
   }
 
@@ -620,11 +682,13 @@ export default function StoreApprovalPage() {
               emptyText={page.noTeam}
               lang={lang}
               labels={page}
+              removingUserId={removingUserId}
               roleGroups={roleGroups}
               savingUserId={savingUserId}
               teamDrafts={teamDrafts}
               users={storeUsers}
               onPatchTeamDraft={patchTeamDraft}
+              onRemoveUser={removeUser}
               onSaveJobRole={saveJobRole}
             />
           </>
