@@ -16,12 +16,14 @@ package-lock.json
 npm-shrinkwrap.json
 yarn.lock
 
-# local env files
+# local env files (keep *.example templates tracked)
 .env
 .env.local
+.env.production
 .env.development.local
 .env.test.local
 .env.production.local
+apps/backend/.env.production
 
 # IDE
 .idea
