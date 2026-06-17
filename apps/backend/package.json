@@ -12,6 +12,7 @@
     "prisma:pull": "prisma db pull",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "jest",

@@ -1,17 +1,19 @@
 name: Deploy Backend
 
-# Deploys the backend stack to the self-hosted Ubuntu server over SSH.
-# The server holds a git clone of this repo at ${{ secrets.DEPLOY_DIR }} with
-# a populated .env and apps/backend/.env.production (see docs/deployment.md).
+# Deploys the backend to the self-hosted server over SSH. The backend runs
+# directly under PM2 (process "zhao-family-backend"), not in a container; MySQL
+# and MinIO are pre-existing Docker containers the backend connects to via its
+# server-side apps/backend/.env.production (gitignored, never overwritten here).
 #
-# Trigger: push to main touching backend-relevant paths, or manual dispatch.
+# The server holds a GitHub clone at ${{ secrets.DEPLOY_DIR }} (/opt/zhao-family).
+# Trigger: push to main on backend-relevant paths, or manual dispatch.
 
 on:
   push:
     branches: [main]
     paths:
       - "apps/backend/**"
-      - "docker-compose.prod.yml"
+      - "packages/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
@@ -25,7 +27,7 @@ permissions:
 
 jobs:
   deploy:
-    name: SSH deploy (docker compose)
+    name: SSH deploy (PM2)
     runs-on: ubuntu-latest
     steps:
       - name: Deploy over SSH
@@ -38,9 +40,13 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
+            export CI=true
             cd "${{ secrets.DEPLOY_DIR }}"
-            git fetch --all --prune
-            git reset --hard origin/main
-            docker compose -f docker-compose.prod.yml up -d --build
-            docker compose -f docker-compose.prod.yml ps
-            docker image prune -f
+            # Force-align the working tree to origin/main (discards local drift;
+            # the server's .env.production is gitignored and untouched).
+            git fetch origin --prune
+            git checkout -f -B main origin/main
+            pnpm install --frozen-lockfile
+            pnpm --filter backend build
+            pm2 reload zhao-family-backend --update-env
+            pm2 save

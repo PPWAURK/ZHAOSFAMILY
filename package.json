@@ -31,6 +31,7 @@
     "db:pull": "pnpm --filter backend prisma:pull",
     "db:push": "pnpm --filter backend prisma:push",
     "db:migrate": "pnpm --filter backend prisma:migrate",
+    "db:deploy": "pnpm --filter backend prisma:deploy",
     "db:generate": "pnpm --filter backend prisma:generate",
     "db:seed": "pnpm --filter backend prisma:seed"
   },

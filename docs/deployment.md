@@ -1,129 +1,106 @@
 # Déploiement (CI/CD)
 
-Guide opérationnel pour le déploiement des trois apps. Mis en place lors de la
-phase 6 du plan de finition.
+Guide opérationnel. Mis en place phase 6 du plan de finition, **adapté à
+l'infrastructure existante** du serveur (relevée le 2026-06-17).
 
-## Architecture cible
+## Architecture réelle
 
-| App | Hébergement | Pipeline |
+| Composant | Hébergement | Détail |
 | --- | --- | --- |
-| `apps/backend` | Serveur Ubuntu 24.04 auto-géré · Docker Compose (backend + MySQL + MinIO) · Nginx + HTTPS | `.github/workflows/deploy-backend.yml` (SSH → `docker compose up -d --build`) |
-| `apps/web` | GitHub Pages (export statique Next.js) | `.github/workflows/deploy-web.yml` |
-| `apps/mobile` | EAS Build / stores | Manuel via EAS (hors CI pour l'instant) |
+| Backend | **PM2** (process `zhao-family-backend`) | `/opt/zhao-family/apps/backend/dist/main.js`, écoute `127.0.0.1:3002`, `API_PREFIX=api` |
+| MySQL | conteneur Docker `zhao-family-mysql` | `127.0.0.1:3310 -> 3306` (données existantes, **ne pas recréer**) |
+| MinIO | conteneur Docker `zhao-family-minio` | `127.0.0.1:9010 -> 9000`, console `9011` |
+| Web | **GitHub Pages** (export statique) | workflow `deploy-web.yml` |
+| Nginx | reverse proxy | `api.zhaoplatforme.com/backend3/` → `127.0.0.1:3002/api/` |
 
-- Backend public : `https://api.zhaoplatforme.com/backend3` (Nginx → `127.0.0.1:3002`).
-- MySQL et MinIO ne sont **pas** exposés publiquement (réseau interne Compose).
-- Le contrôle qualité (lint/typecheck/build/tests) tourne séparément dans
-  `.github/workflows/ci.yml` sur chaque PR.
+> Le backend tourne **directement via PM2** (pas en conteneur). MySQL et MinIO
+> sont des conteneurs Docker pré-existants avec des données de production : le
+> déploiement **ne les touche pas**, il s'y connecte via leurs ports hôte
+> (`apps/backend/.env.production` sur le serveur).
+>
+> Les conteneurs `/backend1` (:4000) et `/backend2` (:3000, image GitLab) sont
+> d'autres déploiements indépendants — hors périmètre.
 
-## Déclenchement
+## Pipelines
 
-- **Backend** : push sur `main` touchant `apps/backend/**`, `docker-compose.prod.yml`,
-  `pnpm-lock.yaml` ou le workflow lui-même ; ou `workflow_dispatch` manuel.
-- **Web** : push sur `main` touchant `apps/web/**`, `packages/**`, `pnpm-lock.yaml`
-  ou le workflow ; ou `workflow_dispatch` manuel.
+| App | Workflow | Déclenchement |
+| --- | --- | --- |
+| Backend | `.github/workflows/deploy-backend.yml` | push `main` sur `apps/backend/**`, `packages/**`, `pnpm-lock.yaml`, ou manuel |
+| Web | `.github/workflows/deploy-web.yml` | push `main` sur `apps/web/**`, `packages/**`, `pnpm-lock.yaml`, ou manuel |
 
-## Secrets GitHub requis (backend)
+Le backend se déploie en SSH : `git reset --hard origin/main` →
+`pnpm install` → `pnpm --filter backend build` (génère le client Prisma) →
+`pm2 reload zhao-family-backend`.
+
+## Secrets GitHub (backend)
 
 `Settings → Secrets and variables → Actions → Secrets` :
 
-| Secret | Description |
+| Secret | Valeur |
 | --- | --- |
 | `DEPLOY_SSH_HOST` | IP / hostname du serveur |
-| `DEPLOY_SSH_USER` | utilisateur SSH (membre du groupe `docker`) |
-| `DEPLOY_SSH_KEY` | clé privée SSH (PEM complet) autorisée sur le serveur |
+| `DEPLOY_SSH_USER` | `ubuntu` (membre du groupe docker) |
+| `DEPLOY_SSH_KEY` | clé privée SSH dédiée (PEM complet) |
 | `DEPLOY_SSH_PORT` | port SSH (ex. `22`) |
-| `DEPLOY_DIR` | chemin du clone du repo sur le serveur (ex. `/opt/zhao`) |
+| `DEPLOY_DIR` | `/opt/zhao-family` |
 
 ## Variables GitHub (web, optionnelles)
 
-`Settings → Secrets and variables → Actions → Variables` :
-
-| Variable | Défaut | Quand la définir |
+| Variable | Défaut | Quand |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | `https://api.zhaoplatforme.com/backend3` | si l'URL de l'API change |
-| `WEB_BASE_PATH` | *(vide)* | site **projet** Pages → `/ZHAOSFAMILY` ; domaine custom à la racine → laisser vide |
-| `WEB_CNAME` | *(vide)* | domaine custom à écrire dans `out/CNAME`, ex. `zhaoplatforme.com` |
-
-> ⚠️ `WEB_BASE_PATH` et `WEB_CNAME` vont ensemble : avec un domaine custom à la
-> racine, garder `WEB_BASE_PATH` vide et renseigner `WEB_CNAME`. Avec l'URL
-> projet `https://ppwaurk.github.io/ZHAOSFAMILY/`, mettre `WEB_BASE_PATH=/ZHAOSFAMILY`
-> (sinon les assets `/_next/...` renvoient 404).
+| `NEXT_PUBLIC_API_BASE_URL` | `https://api.zhaoplatforme.com/backend3` | si l'URL API change |
+| `WEB_BASE_PATH` | *(vide)* | site projet Pages → `/ZHAOSFAMILY` ; domaine custom racine → vide |
+| `WEB_CNAME` | *(vide)* | domaine custom à écrire dans `out/CNAME` |
 
 Activer Pages : `Settings → Pages → Source = GitHub Actions`.
 
-## Mise en place initiale du serveur (une seule fois)
+## Environnement backend sur le serveur
 
-Prérequis : Docker + plugin compose installés, DNS `api.zhaoplatforme.com` pointant
-sur le serveur.
+`apps/backend/.env.production` est **géré à la main sur le serveur** (gitignoré,
+jamais committé ni écrasé par le déploiement). Variables clés pour cette infra :
 
-```bash
-# 1. Cloner le repo à l'emplacement de DEPLOY_DIR
-sudo mkdir -p /opt/zhao && sudo chown "$USER" /opt/zhao
-git clone https://github.com/PPWAURK/ZHAOSFAMILY.git /opt/zhao
-cd /opt/zhao
-
-# 2. Renseigner les variables d'environnement (NE PAS committer)
-cp .env.prod.example .env                                   # MySQL + MinIO
-cp apps/backend/.env.production.example apps/backend/.env.production
-#   - .env                       : MYSQL_*, MINIO_ROOT_*
-#   - apps/backend/.env.production: AUTH_TOKEN_SECRET, DATABASE_URL (host=mysql),
-#     CORS_ORIGINS, BREVO_API_KEY, MinIO, AI_*  (les mots de passe DB/MinIO
-#     doivent correspondre à .env)
-#   Générer le secret : openssl rand -base64 48
-
-# 3. Premier démarrage
-docker compose -f docker-compose.prod.yml up -d --build
-
-# 4. Initialiser le schéma de base de données (voir note ci-dessous)
+```
+PORT=3002
+API_PREFIX=api                                   # Nginx ajoute déjà /api/ via /backend3/
+DATABASE_URL="mysql://<user>:<pwd>@127.0.0.1:3310/zhao_family"   # conteneur zhao-family-mysql
+AUTH_TOKEN_SECRET=<openssl rand -base64 48>
+CORS_ORIGINS="https://zhaoplatforme.com"
+MINIO_ENDPOINT=127.0.0.1
+MINIO_PORT=9010                                  # conteneur zhao-family-minio
+MINIO_ACCESS_KEY=...
+MINIO_SECRET_KEY=...
+MINIO_BUCKET=company-private-files
+BREVO_API_KEY=...        # vide = emails désactivés
+AI_API_KEY=...           # vide = génération IA désactivée
 ```
 
-### Note base de données ⚠️
+## Migrations de schéma (manuel)
 
-`prisma migrate deploy` **ne peut pas** amorcer une base vide : la première
-migration référence la table legacy `users` (issue d'un dump SQL, absente des
-migrations). Deux cas :
-
-- **Greenfield (base vide)** : pousser le schéma directement.
-  ```bash
-  docker compose -f docker-compose.prod.yml exec backend \
-    sh -c 'cd /repo/apps/backend && npx prisma db push'
-  ```
-- **Reprise de données legacy** : importer d'abord le dump SQL dans MySQL, puis
-  appliquer les migrations restantes avec `prisma migrate deploy`.
-
-Le seed (`pnpm db:seed`) est optionnel et réservé aux environnements de démo.
-
-### Nginx + HTTPS
-
-Modèle fourni : [`deploy/nginx/api.zhaoplatforme.com.conf`](../deploy/nginx/api.zhaoplatforme.com.conf).
+Le déploiement **ne lance pas** les migrations (risque sur des données de prod).
+Quand le schéma change, après le déploiement :
 
 ```bash
-sudo cp deploy/nginx/api.zhaoplatforme.com.conf /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/api.zhaoplatforme.com.conf /etc/nginx/sites-enabled/
-sudo certbot --nginx -d api.zhaoplatforme.com   # certificat TLS + redirection
-sudo nginx -t && sudo systemctl reload nginx
+cd /opt/zhao-family
+pnpm db:deploy            # prisma migrate deploy
 ```
 
-## Déploiements suivants
-
-Automatiques au push sur `main`. Le workflow backend fait, côté serveur :
-`git reset --hard origin/main` → `docker compose up -d --build` → `image prune`.
-Les volumes `zhao_mysql_data` / `zhao_minio_data` persistent entre déploiements.
+> ⚠️ `migrate deploy` suppose un historique de migrations initialisé. Sur une
+> base amorcée hors migrations (dump legacy), utiliser `pnpm db:push` à la place.
+> Le seed (`pnpm db:seed`) est réservé aux environnements de démo.
 
 ## Rollback
 
 ```bash
-cd /opt/zhao
+cd /opt/zhao-family
 git reset --hard <sha-précédent>
-docker compose -f docker-compose.prod.yml up -d --build
+pnpm install --frozen-lockfile
+pnpm --filter backend build
+pm2 reload zhao-family-backend --update-env
 ```
-
-(ou relancer le workflow sur un commit antérieur via `workflow_dispatch`).
 
 ## Vérifications post-déploiement
 
 ```bash
-docker compose -f docker-compose.prod.yml ps        # tous "healthy"
-curl -s https://api.zhaoplatforme.com/backend3/health   # {"...":"up"}
+pm2 status zhao-family-backend                       # online
+curl -s https://api.zhaoplatforme.com/backend3/health   # database up
 ```
