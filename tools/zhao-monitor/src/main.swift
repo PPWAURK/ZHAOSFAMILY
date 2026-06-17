@@ -19,7 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         "sshUser": "ubuntu",
         "sshPort": "22",
         "sshKeyPath": "~/.ssh/zhao_deploy",
-        "envPath": "/opt/zhao-family/apps/backend/.env"
+        "envPath": "/opt/zhao-family/apps/backend/.env",
+        "repoPath": "/Users/shihongwang/Documents/03-Developpement/GitHub/zhao-family"
     ]
     var config: [String: String] = [:]
 
@@ -78,7 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let ucc = WKUserContentController()
         ["refresh", "dispatch", "saveConfig", "resetConfig",
          "listSecrets", "setSecret", "pickKeyFile",
-         "readEnv", "saveEnv"].forEach { ucc.add(self, name: $0) }
+         "readEnv", "saveEnv",
+         "gitStatus", "gitCommit"].forEach { ucc.add(self, name: $0) }
         let wkcfg = WKWebViewConfiguration()
         wkcfg.userContentController = ucc
 
@@ -163,6 +165,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             readEnv()
         case "saveEnv":
             saveEnv((message.body as? String) ?? "")
+        case "gitStatus":
+            gitStatus()
+        case "gitCommit":
+            if let s = message.body as? String, let d = s.data(using: .utf8),
+               let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+               let msg = o["message"] as? String {
+                gitCommit(message: msg, push: (o["push"] as? Bool) ?? false)
+            }
         default:
             break
         }
@@ -353,6 +363,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 let ok = code == 0
                 let m = out.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ")
                 self.webView.evaluateJavaScript("window.envSaved(\(ok), \(self.jsString(String(m.prefix(140)))))", completionHandler: nil)
+            }
+        }
+    }
+
+    // MARK: - Local git (status / commit / push)
+
+    func git(_ args: [String]) -> (Int32, String) {
+        let task = Process()
+        task.launchPath = "/usr/bin/git"
+        task.arguments = ["-C", (cfg("repoPath") as NSString).expandingTildeInPath] + args
+        let pipe = Pipe(); task.standardOutput = pipe; task.standardError = pipe
+        do { try task.run() } catch { return (127, "无法启动 git") }
+        let d = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        return (task.terminationStatus, String(data: d, encoding: .utf8) ?? "")
+    }
+
+    func gitStatus() {
+        DispatchQueue.global().async {
+            let (code, out) = self.git(["status", "--porcelain=v1", "--branch"])
+            let text = code == 0 ? out : "# git 错误: " + out
+            DispatchQueue.main.async {
+                self.webView.evaluateJavaScript("window.renderGit(\(self.jsString(text)))", completionHandler: nil)
+            }
+        }
+    }
+
+    func gitCommit(message: String, push: Bool) {
+        DispatchQueue.global().async {
+            var log = ""; var ok = true
+            let (c1, o1) = self.git(["add", "-A"]); log += o1
+            if c1 != 0 { ok = false }
+            if ok {
+                let (c2, o2) = self.git(["commit", "-m", message]); log += o2
+                if c2 != 0 { ok = false }
+            }
+            if ok && push {
+                let (c3, o3) = self.git(["push"]); log += " | " + o3
+                if c3 != 0 { ok = false }
+            }
+            let summary = log.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ")
+            DispatchQueue.main.async {
+                self.webView.evaluateJavaScript("window.gitDone(\(ok), \(self.jsString(String(summary.suffix(170)))))", completionHandler: nil)
             }
         }
     }

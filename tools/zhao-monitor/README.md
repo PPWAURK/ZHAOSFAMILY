@@ -16,9 +16,11 @@ ZHAO deployment from the menu/dock — companion to the CI/CD in `docs/deploymen
 - **🔑 GitHub secrets** — view status (set / when) and overwrite the deploy
   secrets via `gh secret set`. GitHub never returns values, so existing values
   cannot be displayed — only status and overwrite.
-- **🖥 Server `.env`** — read and edit the server's
-  `apps/backend/.env.production` over SSH (values are shown; a `.bak` is made on
-  save). Requires the SSH key path configured in ⚙.
+- **🖥 Server `.env`** — read and edit the server's `apps/backend/.env` over SSH
+  (values are shown; a `.bak` is made on save). Requires the SSH key path
+  configured in ⚙.
+- **📝 Git** — show local working-tree status and commit / commit + push from the
+  app (pushing to main auto-triggers CI/CD). Requires the local repo path in ⚙.
 
 ## Build
 

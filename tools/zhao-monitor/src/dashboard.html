@@ -92,6 +92,7 @@
       <button onclick="togglePanel('settings')" title="设置">⚙</button>
       <button onclick="togglePanel('secrets')" title="密钥">🔑</button>
       <button onclick="togglePanel('server')" title="服务器 .env">🖥</button>
+      <button onclick="togglePanel('git')" title="Git 提交">📝</button>
       <button onclick="nativeRefresh()"><span id="rfx">↻</span> 刷新</button>
     </div>
   </div>
@@ -110,7 +111,9 @@
     <div class="frow"><label>SSH 用户</label><input id="cfg-sshUser" placeholder="ubuntu"></div>
     <div class="frow"><label>SSH 端口</label><input id="cfg-sshPort" placeholder="22"></div>
     <div class="frow"><label>SSH 私钥路径</label><input id="cfg-sshKeyPath" placeholder="~/.ssh/zhao_deploy"></div>
-    <div class="frow"><label>.env 路径</label><input id="cfg-envPath" placeholder="/opt/…/.env.production"></div>
+    <div class="frow"><label>.env 路径</label><input id="cfg-envPath" placeholder="/opt/…/.env"></div>
+    <div class="sgroup">本地（用于 Git 提交）</div>
+    <div class="frow"><label>本地仓库路径</label><input id="cfg-repoPath" placeholder="/Users/…/zhao-family"></div>
     <div class="ops" style="margin-top:11px">
       <button class="op primary" onclick="saveConfig()">保存</button>
       <button onclick="togglePanel('settings')">取消</button>
@@ -129,13 +132,27 @@
   </div>
 
   <div id="server" class="panel" style="display:none">
-    <p class="sectitle">服务器 .env.production · 经 SSH 读写</p>
-    <p style="font-size:11px;color:var(--hint);margin:0 0 8px">值会真实显示（在你 VPS 上）。保存会先备份为 <code>.env.production.bak</code>；改动需重启/重部署后端才生效。</p>
+    <p class="sectitle">服务器 .env · 经 SSH 读写</p>
+    <p style="font-size:11px;color:var(--hint);margin:0 0 8px">值会真实显示（在你 VPS 上）。保存会先备份为 <code>.env.bak</code>；改动需重启/重部署后端才生效。</p>
     <textarea id="env-text" spellcheck="false" placeholder="点「读取」从服务器拉取…"></textarea>
     <div class="ops" style="margin-top:10px">
       <button onclick="readEnv()">读取</button>
       <button class="op primary" onclick="saveEnv()">保存到服务器</button>
       <button onclick="togglePanel('server')">关闭</button>
+    </div>
+  </div>
+
+  <div id="git" class="panel" style="display:none">
+    <p class="sectitle">Git · 提交本地改动</p>
+    <div id="git-branch" style="font-size:12px;color:var(--muted);margin-bottom:8px">…</div>
+    <div id="git-files" style="font:12px/1.6 ui-monospace,Menlo,monospace;max-height:180px;overflow:auto;
+      background:var(--bg);border:.5px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px">—</div>
+    <input id="git-msg" placeholder="提交信息…" style="width:100%;margin-bottom:10px">
+    <div class="ops">
+      <button onclick="gitCommit(false)">提交</button>
+      <button class="op primary" onclick="gitCommit(true)">提交并推送</button>
+      <button onclick="gitStatus()">刷新</button>
+      <button onclick="togglePanel('git')">关闭</button>
     </div>
   </div>
 
@@ -175,7 +192,7 @@
 <script>
   var CFG={};
   var FIELDS=['backendHealthURL','webURL','repo','ref','ciWorkflow','backendWorkflow','webWorkflow',
-              'sshHost','sshUser','sshPort','sshKeyPath','envPath'];
+              'sshHost','sshUser','sshPort','sshKeyPath','envPath','repoPath'];
   var SECRETS=[
     {n:'DEPLOY_SSH_HOST',g:'后端 (SSH)'},{n:'DEPLOY_SSH_USER',g:'后端 (SSH)'},
     {n:'DEPLOY_SSH_KEY',g:'后端 (SSH)',file:true},{n:'DEPLOY_SSH_PORT',g:'后端 (SSH)'},
@@ -188,14 +205,35 @@
 
   function host(u){ try{ return new URL(u).host + new URL(u).pathname.replace(/\/$/,''); }catch(e){ return u; } }
   function togglePanel(id){
-    ['settings','secrets','server'].forEach(function(p){ if(p!==id) document.getElementById(p).style.display='none'; });
+    ['settings','secrets','server','git'].forEach(function(p){ if(p!==id) document.getElementById(p).style.display='none'; });
     var s=document.getElementById(id); s.style.display = s.style.display==='none'?'block':'none';
-    if(s.style.display==='block'){ if(id==='secrets') refreshSecrets(); if(id==='server') readEnv(); }
+    if(s.style.display==='block'){ if(id==='secrets') refreshSecrets(); if(id==='server') readEnv(); if(id==='git') gitStatus(); }
   }
+  function gitStatus(){ document.getElementById('git-files').textContent='读取中…'; try{ window.webkit.messageHandlers.gitStatus.postMessage(''); }catch(e){} }
+  window.renderGit=function(t){
+    var lines=(t||'').split('\n').filter(function(l){return l.length;}); var branch='',files=[];
+    lines.forEach(function(l){ if(l.indexOf('## ')===0) branch=l.slice(3); else files.push(l); });
+    window._gitBranch=(branch||'').split('.')[0].split(' ')[0];
+    document.getElementById('git-branch').textContent='分支: '+(branch||'?');
+    var box=document.getElementById('git-files');
+    if(!files.length){ box.textContent='工作区干净，无改动'; }
+    else { box.innerHTML=files.map(function(f){ return '<div>'+f.replace(/[&<]/g,function(c){return c==='&'?'&amp;':'&lt;';})+'</div>'; }).join(''); }
+  };
+  function gitCommit(push){
+    var msg=document.getElementById('git-msg').value.trim();
+    if(!msg){ showToast('请输入提交信息','bad'); return; }
+    if(push && !confirm('确认提交并推送到 '+(window._gitBranch||'当前分支')+'？\n推送到 main 会自动触发 CI/CD。')) return;
+    showToast(push?'提交并推送…':'提交…','');
+    try{ window.webkit.messageHandlers.gitCommit.postMessage(JSON.stringify({message:msg,push:!!push})); }catch(e){ showToast('失败','bad'); }
+  }
+  window.gitDone=function(ok,msg){
+    showToast((ok?'✓ 完成':'✗ 失败')+(msg?' — '+msg:''), ok?'ok':'bad');
+    if(ok){ document.getElementById('git-msg').value=''; gitStatus(); }
+  };
   function readEnv(){ document.getElementById('env-text').value='# 读取中…'; try{ window.webkit.messageHandlers.readEnv.postMessage(''); }catch(e){} }
   window.renderEnv=function(t){ document.getElementById('env-text').value=t; };
   function saveEnv(){
-    if(!confirm('确认把编辑后的内容写回服务器 .env.production？（会先备份为 .bak，改动需重启后端生效）')) return;
+    if(!confirm('确认把编辑后的内容写回服务器 .env？（会先备份为 .bak，改动需重启后端生效）')) return;
     showToast('保存到服务器…','');
     try{ window.webkit.messageHandlers.saveEnv.postMessage(document.getElementById('env-text').value); }catch(e){ showToast('失败','bad'); }
   }
