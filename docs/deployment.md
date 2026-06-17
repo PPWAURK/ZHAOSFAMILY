@@ -19,7 +19,7 @@ l'infrastructure réelle (relevée le 2026-06-17).
 > Le backend tourne **directement via PM2** (pas en conteneur). MySQL et MinIO
 > sont des conteneurs Docker pré-existants avec des données de production : le
 > déploiement **ne les touche pas**, il s'y connecte via leurs ports hôte
-> (`apps/backend/.env.production` sur le serveur).
+> (`apps/backend/.env` sur le serveur).
 >
 > Les conteneurs `/backend1` (:4000) et `/backend2` (:3000, image GitLab) sont
 > d'autres déploiements indépendants — hors périmètre.
@@ -67,7 +67,7 @@ client Prisma) → `pm2 reload zhao-family-backend`.
 
 ## Environnement backend sur le serveur
 
-`apps/backend/.env.production` est **géré à la main sur le serveur** (gitignoré,
+`apps/backend/.env` est **géré à la main sur le serveur** (gitignoré,
 jamais committé ni écrasé par le déploiement). Variables clés pour cette infra :
 
 ```
