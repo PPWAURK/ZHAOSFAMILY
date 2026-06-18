@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { MediaModule } from '../media/media.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { TrainingController } from './training.controller';
 import { TrainingQuizAdminController } from './training-quiz-admin.controller';
@@ -12,7 +13,7 @@ import { TrainingAiConfigService } from './training-ai-config.service';
 import { TrainingTitleService } from './training-title.service';
 
 @Module({
-  imports: [AuthModule, MediaModule, PrismaModule],
+  imports: [AuthModule, MediaModule, NotificationsModule, PrismaModule],
   controllers: [TrainingController, TrainingQuizAdminController],
   providers: [
     TrainingService,

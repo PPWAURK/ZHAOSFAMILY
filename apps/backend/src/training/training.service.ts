@@ -3,12 +3,18 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { MediaService } from '../media/media.service';
 import { fixMojibakeFileName } from '../media/media-filename.utils';
 import { PrismaService } from '../prisma/prisma.service';
+import { ACCOUNT_STATUS } from '../auth/account-status';
 import { JOB_ROLE_VALUES } from '../auth/job-roles';
+import { newTrainingMaterialNotification } from '../notifications/notification-content';
+import { NotificationsService } from '../notifications/notifications.service';
+import type { NotificationLanguage } from '../notifications/notification-content';
+import { normalizeLanguage } from '../notifications/notification-content';
 import { TRAINING_COURSE_CATALOG } from './training-catalog';
 import { TrainingTitleService } from './training-title.service';
 import type { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
@@ -33,6 +39,7 @@ import type {
 import {
   ALL_POSITION_CODE,
   getRoleValues,
+  resolveTrainingMaterialRecipients,
   resolveTrainingPositionCodes,
 } from './training-position-resolver';
 import type { TrainingJobRolePositionRow } from './training-position-resolver';
@@ -249,10 +256,13 @@ function getLatestIsoDate(dates: (Date | null)[]): string | null {
 
 @Injectable()
 export class TrainingService {
+  private readonly logger = new Logger(TrainingService.name);
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly mediaService: MediaService,
     private readonly titleService: TrainingTitleService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   listCourses(query: ListTrainingCoursesQueryDto): TrainingCourseItem[] {
@@ -825,7 +835,64 @@ export class TrainingService {
       },
     });
 
+    await this.notifyNewTrainingMaterial(row.id, row.positionId, row.title);
+
     return toTrainingMaterialItem(row);
+  }
+
+  /**
+   * Best-effort push to every approved user whose training plan includes the
+   * new material's position. Push failures must not fail the upload, so errors
+   * are swallowed after logging.
+   */
+  private async notifyNewTrainingMaterial(
+    materialId: number,
+    positionCode: string,
+    title: string,
+  ): Promise<void> {
+    try {
+      const [positions, mappings, users] = await Promise.all([
+        this.listActivePositionRows(),
+        this.listJobRolePositionRows(),
+        this.prismaService.user.findMany({
+          where: { accountStatus: ACCOUNT_STATUS.approved },
+          select: { id: true, jobRole: true, preferredLanguage: true },
+        }),
+      ]);
+
+      const recipients = resolveTrainingMaterialRecipients(
+        positionCode,
+        positions,
+        mappings,
+        users,
+      );
+      if (recipients.length === 0) {
+        return;
+      }
+
+      const idsByLanguage = new Map<NotificationLanguage, number[]>();
+      for (const recipient of recipients) {
+        const language = normalizeLanguage(recipient.preferredLanguage);
+        const ids = idsByLanguage.get(language) ?? [];
+        ids.push(recipient.id);
+        idsByLanguage.set(language, ids);
+      }
+
+      await Promise.all(
+        [...idsByLanguage].map(([language, ids]) =>
+          this.notificationsService.sendToUsers(
+            ids,
+            newTrainingMaterialNotification(language, materialId, title),
+          ),
+        ),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send new-training-material push for material ${materialId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   async updateMaterial(

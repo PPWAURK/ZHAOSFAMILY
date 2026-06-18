@@ -28,6 +28,7 @@ import type { AuthCopy, AuthLanguage, AuthMode } from "@/features/auth/authCopy"
 import { AUTH_COPY } from "@/features/auth/authCopy";
 import { mobileApiClient, mobileAuthActions, mobileAuthApi, mobileAuthStore } from "@/lib/api";
 import { secureTokenStorage } from "@/lib/tokenStorage";
+import { unregisterPushToken } from "@/lib/pushNotifications";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -199,6 +200,9 @@ export function LoginScreen() {
   }
 
   async function submitLogout(): Promise<void> {
+    // Revoke the push token while still authenticated; ignore failures so a
+    // network hiccup never blocks logout.
+    await unregisterPushToken().catch(() => undefined);
     await mobileAuthActions.logout();
   }
 

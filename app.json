@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "6b57d10c-a072-4394-997e-a35dd6710aee"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.zhao.family",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

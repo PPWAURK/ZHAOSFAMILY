@@ -27,10 +27,18 @@ function resolveUserCard(user, labels) {
     user?.establishment ||
     labels.noStore;
 
-  const roleParts = [user?.role, user?.position || user?.jobRole].filter(
-    Boolean,
+  // role / position / jobRole pointent tous vers la même colonne `job_role`,
+  // qui peut contenir plusieurs postes séparés par des virgules. On dé-duplique
+  // et on normalise l'affichage en une seule liste lisible.
+  const jobRoleParts = Array.from(
+    new Set(
+      `${user?.jobRole || user?.position || user?.role || ""}`
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean),
+    ),
   );
-  const role = roleParts.join(" · ") || labels.noRole;
+  const role = jobRoleParts.join(" · ") || labels.noRole;
 
   const avatar = user?.avatarUrl || user?.avatar || null;
   const initials = fullName

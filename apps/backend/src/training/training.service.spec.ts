@@ -83,15 +83,22 @@ describe('TrainingService', () => {
     const titleService = {
       evaluateForPosition: jest.fn().mockResolvedValue(undefined),
     };
+    const notificationsService = {
+      sendToUsers: jest.fn().mockResolvedValue(undefined),
+      registerToken: jest.fn(),
+      unregisterToken: jest.fn(),
+    };
 
     return {
       prismaService,
       mediaService,
       titleService,
+      notificationsService,
       service: new TrainingService(
         prismaService as never,
         mediaService as never,
         titleService as never,
+        notificationsService as never,
       ),
     };
   }
@@ -386,6 +393,63 @@ describe('TrainingService', () => {
       }),
     ).rejects.toMatchObject({ status: 400 });
     expect(prismaService.trainingMaterial.create).not.toHaveBeenCalled();
+  });
+
+  it('pushes a new material to matching users grouped by language', async () => {
+    const { service, prismaService, notificationsService } = createService();
+    prismaService.trainingPosition.findUnique.mockResolvedValue({
+      isActive: true,
+    });
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      { code: 'FOH', parentCode: null },
+      { code: 'HOLDING', parentCode: null },
+    ]);
+    prismaService.user.findMany.mockResolvedValue([
+      { id: 1, jobRole: 'holding', preferredLanguage: 'fr' },
+      { id: 2, jobRole: 'front-of-house', preferredLanguage: 'zh' },
+      { id: 3, jobRole: 'back-of-house', preferredLanguage: 'en' },
+    ]);
+    prismaService.trainingMaterial.create.mockResolvedValue({
+      id: 42,
+      positionId: 'FOH',
+      type: 'VIDEO',
+      isRequired: true,
+      title: 'Greeting',
+      description: null,
+      originalName: 'greeting.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: BigInt(120),
+      bucket: 'company-private-files',
+      objectKey: 'training/FOH/VIDEO/greeting.mp4',
+      createdAt: new Date('2026-06-18T08:00:00.000Z'),
+      updatedAt: new Date('2026-06-18T08:00:00.000Z'),
+    });
+
+    await service.createMaterial({
+      positionId: 'FOH',
+      type: 'VIDEO',
+      isRequired: true,
+      title: 'Greeting',
+      description: '',
+      originalName: 'greeting.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: 120,
+      bucket: 'company-private-files',
+      objectKey: 'training/FOH/VIDEO/greeting.mp4',
+    });
+
+    // holding (fr) + front-of-house (zh) cover FOH; back-of-house (en) does not.
+    expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
+    expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
+      [1],
+      expect.objectContaining({
+        data: { type: 'training-material', materialId: '42' },
+      }),
+    );
+    expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
+      [2],
+      expect.objectContaining({ title: '新培训材料' }),
+    );
   });
 
   it('deletes the training material object and database row', async () => {

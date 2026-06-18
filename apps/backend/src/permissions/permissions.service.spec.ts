@@ -61,9 +61,19 @@ describe('PermissionsService', () => {
     legacyUserManagedRestaurant.findMany.mockResolvedValue([]);
     prismaService.restaurant.findMany.mockResolvedValue([]);
 
+    const notificationsService = {
+      sendToUsers: jest.fn().mockResolvedValue(undefined),
+      registerToken: jest.fn(),
+      unregisterToken: jest.fn(),
+    };
+
     return {
       prismaService,
-      service: new PermissionsService(prismaService as never),
+      notificationsService,
+      service: new PermissionsService(
+        prismaService as never,
+        notificationsService as never,
+      ),
     };
   }
 
@@ -912,6 +922,138 @@ describe('PermissionsService', () => {
         jobRole: 'front-of-house,back-of-house',
       },
     });
+  });
+
+  const adminViewer = {
+    id: 1,
+    familyName: 'Zhao',
+    givenName: 'Admin',
+    firstName: 'Admin',
+    lastName: 'Zhao',
+    name: 'Zhao Admin',
+    email: 'admin@zhao.test',
+    emailVerified: true,
+    restaurantId: 99,
+    store: { id: 99, name: 'ZHAO Holding', address: 'HQ', photoUrl: null },
+    storeName: 'ZHAO Holding',
+    jobRole: 'holding',
+    role: 'holding',
+    position: 'holding',
+    birthday: null,
+    avatar: null,
+    avatarUrl: null,
+    phone: null,
+    address: null,
+    userLevel: 0,
+    preferredLanguage: 'zh',
+    permissions: ['system.permission.manage'],
+  };
+
+  it('sends a localized push to the user it approves', async () => {
+    const { service, prismaService, notificationsService } = createService();
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({
+        id: 12,
+        jobRole: 'front-of-house',
+        restaurantId: 7,
+        accountStatus: 'pending',
+        preferredLanguage: 'en',
+      })
+      .mockResolvedValueOnce({
+        id: 12,
+        name: 'New Staff',
+        email: 'new@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'front-of-house',
+        restaurant: { id: 7, name: 'ZHAO Next' },
+        userRoles: [],
+      });
+    prismaService.role.findUnique.mockResolvedValue({ id: 20 });
+    prismaService.user.update.mockResolvedValue({
+      id: 12,
+      accountStatus: 'approved',
+    });
+    prismaService.userRole.createMany.mockResolvedValue({ count: 1 });
+
+    await service.updateUserApproval(adminViewer, 12, {
+      accountStatus: 'approved',
+    });
+
+    expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(1);
+    expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
+      [12],
+      expect.objectContaining({
+        title: 'Account approved',
+        data: { type: 'account-approved' },
+      }),
+    );
+  });
+
+  it('does not push when a registration is rejected', async () => {
+    const { service, prismaService, notificationsService } = createService();
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({
+        id: 12,
+        jobRole: 'front-of-house',
+        restaurantId: 7,
+        accountStatus: 'pending',
+        preferredLanguage: 'fr',
+      })
+      .mockResolvedValueOnce({
+        id: 12,
+        name: 'New Staff',
+        email: 'new@zhao.test',
+        accountStatus: 'rejected',
+        jobRole: 'front-of-house',
+        restaurant: { id: 7, name: 'ZHAO Next' },
+        userRoles: [],
+      });
+    prismaService.user.update.mockResolvedValue({
+      id: 12,
+      accountStatus: 'rejected',
+    });
+
+    await service.updateUserApproval(adminViewer, 12, {
+      accountStatus: 'rejected',
+    });
+
+    expect(notificationsService.sendToUsers).not.toHaveBeenCalled();
+  });
+
+  it('still approves when the push delivery fails', async () => {
+    const { service, prismaService, notificationsService } = createService();
+    notificationsService.sendToUsers.mockRejectedValueOnce(
+      new Error('expo down'),
+    );
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({
+        id: 12,
+        jobRole: 'front-of-house',
+        restaurantId: 7,
+        accountStatus: 'pending',
+        preferredLanguage: 'zh',
+      })
+      .mockResolvedValueOnce({
+        id: 12,
+        name: 'New Staff',
+        email: 'new@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'front-of-house',
+        restaurant: { id: 7, name: 'ZHAO Next' },
+        userRoles: [],
+      });
+    prismaService.role.findUnique.mockResolvedValue({ id: 20 });
+    prismaService.user.update.mockResolvedValue({
+      id: 12,
+      accountStatus: 'approved',
+    });
+    prismaService.userRole.createMany.mockResolvedValue({ count: 1 });
+
+    await expect(
+      service.updateUserApproval(adminViewer, 12, {
+        accountStatus: 'approved',
+      }),
+    ).resolves.toMatchObject({ id: 12, accountStatus: 'approved' });
   });
 
   it('replaces managed restaurants for a regional manager', async () => {

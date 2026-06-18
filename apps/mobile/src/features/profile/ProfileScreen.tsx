@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import {
   Image,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +16,8 @@ import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControl
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
 import { PROFILE_COPY } from "@/features/profile/profileCopy";
+
+const ACCOUNT_DELETION_URL = "https://zhaoplatforme.com/delete-account";
 
 type ProfileScreenProps = {
   language: AuthLanguage;
@@ -112,6 +115,7 @@ export function ProfileScreen({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState("");
+  const [dataRequestError, setDataRequestError] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [showSaved, setShowSaved] = useState(false);
@@ -247,6 +251,16 @@ export function ProfileScreen({
       await onLogout();
     } finally {
       setIsLoggingOut(false);
+    }
+  }
+
+  async function openAccountDeletionPage(): Promise<void> {
+    setDataRequestError("");
+
+    try {
+      await Linking.openURL(ACCOUNT_DELETION_URL);
+    } catch {
+      setDataRequestError(copy.dataRequestError);
     }
   }
 
@@ -452,6 +466,19 @@ export function ProfileScreen({
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleGroup}>
+            <Text style={styles.sectionTitle}>{copy.dataRequestHeading}</Text>
+            <Text style={styles.sectionHint}>{copy.dataRequestHint}</Text>
+          </View>
+        </View>
+        <Pressable style={styles.linkButton} onPress={() => void openAccountDeletionPage()}>
+          <Text style={styles.linkButtonText}>{copy.dataRequestAction}</Text>
+        </Pressable>
+        {dataRequestError ? <Text style={styles.inlineMessage}>{dataRequestError}</Text> : null}
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleGroup}>
             <Text style={styles.sectionTitle}>{copy.logoutHeading}</Text>
             <Text style={styles.sectionHint}>{copy.logoutHint}</Text>
           </View>
@@ -614,6 +641,20 @@ const styles = StyleSheet.create(scaleStyles({
   languageGrid: {
     flexDirection: "row",
     gap: 8,
+  },
+  linkButton: {
+    alignItems: "center",
+    borderColor: "rgba(193, 22, 22, 0.28)",
+    borderWidth: 1,
+    minHeight: 46,
+    justifyContent: "center",
+  },
+  linkButtonText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.2,
   },
   logoutButton: {
     alignItems: "center",

@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
+import { useNotificationNavigation } from "@/lib/useNotificationNavigation";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
 import { canSeeNavEntry } from "@zhao/utils";
@@ -161,6 +162,9 @@ export function DashboardHomeScreen({
   const copy = DASHBOARD_COPY[language];
   const orderCopy = ORDER_COPY[language];
   const [activeEntry, setActiveEntry] = useState("home");
+
+  // Route to the relevant module when the app is opened from a push tap.
+  useNotificationNavigation((entry) => setActiveEntry(entry));
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [newsPosts, setNewsPosts] = useState<DashboardNewsPost[]>([]);
   const [newsError, setNewsError] = useState("");

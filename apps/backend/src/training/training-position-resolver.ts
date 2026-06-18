@@ -84,6 +84,37 @@ export function resolveTrainingPositionCodes(
   };
 }
 
+export type TrainingMaterialRecipient = {
+  id: number;
+  jobRole: string | null;
+  preferredLanguage: string | null;
+};
+
+/**
+ * Returns the users who should be notified about a material on `positionCode`,
+ * i.e. those whose job role resolves to a position scope that includes it. This
+ * reuses {@link resolveTrainingPositionCodes} so notification targeting always
+ * matches what each user actually sees in their training plan.
+ */
+export function resolveTrainingMaterialRecipients<
+  T extends TrainingMaterialRecipient,
+>(
+  positionCode: string,
+  positions: TrainingPositionResolverPositionRow[],
+  mappings: TrainingJobRolePositionRow[],
+  users: T[],
+): T[] {
+  return users.filter((user) => {
+    const { positionCodes } = resolveTrainingPositionCodes(
+      user.jobRole,
+      positions,
+      mappings,
+    );
+
+    return positionCodes.includes(positionCode);
+  });
+}
+
 function getPositionScopeCodes(
   anchor: TrainingPositionResolverPositionRow,
   positions: TrainingPositionResolverPositionRow[],

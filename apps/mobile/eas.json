@@ -15,6 +15,10 @@
     },
     "production": {
       "node": "22.22.3",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaoplatforme.com/backend3"
+      },
       "android": {
         "buildType": "app-bundle"
       }

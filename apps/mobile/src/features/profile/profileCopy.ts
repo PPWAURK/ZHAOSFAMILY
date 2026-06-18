@@ -20,6 +20,10 @@ export const PROFILE_COPY: Record<
     logout: string;
     logoutHeading: string;
     logoutHint: string;
+    dataRequestHeading: string;
+    dataRequestHint: string;
+    dataRequestAction: string;
+    dataRequestError: string;
     name: string;
     noValue: string;
     phone: string;
@@ -61,6 +65,10 @@ export const PROFILE_COPY: Record<
     logout: "退出登录",
     logoutHeading: "登录状态",
     logoutHint: "结束当前会话并返回登录页。",
+    dataRequestHeading: "账号与数据",
+    dataRequestHint: "如需删除账号或相关数据，请通过网页表单提交请求。",
+    dataRequestAction: "打开删除请求页面",
+    dataRequestError: "无法打开网页，请稍后重试。",
     name: "姓名",
     noValue: "未填写",
     phone: "电话",
@@ -101,6 +109,10 @@ export const PROFILE_COPY: Record<
     logout: "Sign out",
     logoutHeading: "Session",
     logoutHint: "End this session and return to login.",
+    dataRequestHeading: "Account and data",
+    dataRequestHint: "To delete your account or related data, submit a request on the web page.",
+    dataRequestAction: "Open deletion request page",
+    dataRequestError: "The web page could not be opened. Please try again later.",
     name: "Name",
     noValue: "Not set",
     phone: "Phone",
@@ -141,6 +153,11 @@ export const PROFILE_COPY: Record<
     logout: "Se déconnecter",
     logoutHeading: "Session",
     logoutHint: "Terminez cette session et retournez à la connexion.",
+    dataRequestHeading: "Compte et données",
+    dataRequestHint:
+      "Pour supprimer votre compte ou les données associées, envoyez une demande depuis la page web.",
+    dataRequestAction: "Ouvrir la page de demande",
+    dataRequestError: "La page web n'a pas pu être ouverte. Réessayez plus tard.",
     name: "Nom",
     noValue: "Non renseigné",
     phone: "Téléphone",

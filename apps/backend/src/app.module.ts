@@ -6,6 +6,7 @@ import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { MailModule } from './mail/mail.module';
 import { MediaModule } from './media/media.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -35,6 +36,7 @@ import { TrainingModule } from './training/training.module';
     TrainingModule,
     MediaModule,
     MailModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

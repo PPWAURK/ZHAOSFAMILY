@@ -1,10 +1,18 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { ACCOUNT_STATUS } from '../auth/account-status';
 import { MediaService } from '../media/media.service';
+import {
+  dashboardPostNotification,
+  normalizeLanguage,
+  type NotificationLanguage,
+} from '../notifications/notification-content';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateDashboardNewsPostDto } from './dto/create-dashboard-news-post.dto';
 import type { ListDashboardNewsPostsQueryDto } from './dto/list-dashboard-news-posts-query.dto';
@@ -26,9 +34,12 @@ type DashboardPostWithRelations = Prisma.DashboardPostGetPayload<{
 
 @Injectable()
 export class DashboardNewsService {
+  private readonly logger = new Logger(DashboardNewsService.name);
+
   constructor(
     private readonly mediaService: MediaService,
     private readonly prismaService: PrismaService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async listPosts(
@@ -94,7 +105,74 @@ export class DashboardNewsService {
       include: this.getPostIncludes(),
     });
 
-    return this.mapPost(post, actor);
+    const mapped = this.mapPost(post, actor);
+    await this.notifyPostPublished(actor, mapped);
+
+    return mapped;
+  }
+
+  /**
+   * Best-effort broadcast push when a post is published. Audience follows the
+   * post's visibility (public → everyone, team → same restaurant, private →
+   * nobody); the author is never notified about their own post. Delivery
+   * failures must not fail publishing, so errors are swallowed after logging.
+   */
+  private async notifyPostPublished(
+    actor: DashboardNewsActor,
+    post: DashboardNewsPost,
+  ): Promise<void> {
+    try {
+      const audience = await this.findPostAudience(
+        post.visibility,
+        post.restaurantId,
+        actor.id,
+      );
+      if (audience.length === 0) {
+        return;
+      }
+
+      const idsByLanguage = new Map<NotificationLanguage, number[]>();
+      for (const user of audience) {
+        const language = normalizeLanguage(user.preferredLanguage);
+        const ids = idsByLanguage.get(language) ?? [];
+        ids.push(user.id);
+        idsByLanguage.set(language, ids);
+      }
+
+      await Promise.all(
+        [...idsByLanguage].map(([language, ids]) =>
+          this.notificationsService.sendToUsers(
+            ids,
+            dashboardPostNotification(language, post.id, post.title),
+          ),
+        ),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send dashboard-news push for post ${post.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  private async findPostAudience(
+    visibility: DashboardNewsVisibility,
+    restaurantId: number,
+    authorId: number,
+  ): Promise<{ id: number; preferredLanguage: string | null }[]> {
+    if (visibility === 'private') {
+      return [];
+    }
+
+    return this.prismaService.user.findMany({
+      where: {
+        accountStatus: ACCOUNT_STATUS.approved,
+        id: { not: authorId },
+        ...(visibility === 'team' ? { restaurantId } : {}),
+      },
+      select: { id: true, preferredLanguage: true },
+    });
   }
 
   async deletePost(actor: DashboardNewsActor, id: number): Promise<void> {

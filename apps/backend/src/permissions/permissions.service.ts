@@ -3,11 +3,14 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../auth/auth.service';
 import { ACCOUNT_STATUS } from '../auth/account-status';
+import { accountApprovedNotification } from '../notifications/notification-content';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserApprovalDto } from './dto/update-user-approval.dto';
 import {
@@ -55,6 +58,7 @@ type PermissionUserRoleScope = {
   jobRole: string | null;
   restaurantId: number;
   accountStatus: string;
+  preferredLanguage: string | null;
 };
 
 type ManagedRestaurantRow = {
@@ -161,7 +165,12 @@ function buildManagedRestaurantsByUserId(
 
 @Injectable()
 export class PermissionsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  private readonly logger = new Logger(PermissionsService.name);
+
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async listRoles(): Promise<PermissionRoleItem[]> {
     const roles = await this.prismaService.role.findMany({
@@ -390,7 +399,31 @@ export class PermissionsService {
       });
     });
 
+    await this.notifyAccountApproved(userId, targetUser.preferredLanguage);
+
     return this.getUser(userId);
+  }
+
+  /**
+   * Best-effort push to a freshly approved user. A delivery failure must never
+   * fail the approval itself, so errors are swallowed after logging.
+   */
+  private async notifyAccountApproved(
+    userId: number,
+    language: string | null,
+  ): Promise<void> {
+    try {
+      await this.notificationsService.sendToUsers(
+        [userId],
+        accountApprovedNotification(language),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send account-approved push to user ${userId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   async updateUserJobRole(
@@ -606,6 +639,7 @@ export class PermissionsService {
         jobRole: true,
         restaurantId: true,
         accountStatus: true,
+        preferredLanguage: true,
       },
     });
 

@@ -2,12 +2,15 @@ import "../src/styles/global.css";
 
 import { SplashScreen } from "@/features/splash/SplashScreen";
 import { useScreenCaptureProtection } from "@/lib/useScreenCaptureProtection";
+import { usePushTokenRegistration } from "@/lib/usePushTokenRegistration";
 import { Stack } from "expo-router";
 import { StatusBar, StyleSheet, View } from "react-native";
 import { isAndroid } from "@/lib/platform";
 
 export default function RootLayout() {
   const isPrivacyOverlayVisible = useScreenCaptureProtection();
+
+  usePushTokenRegistration();
 
   return (
     <View style={{ flex: 1 }}>
