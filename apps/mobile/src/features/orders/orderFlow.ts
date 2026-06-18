@@ -39,13 +39,6 @@ export function isValidDate(value: string): boolean {
   return !Number.isNaN(date.getTime()) && value === getDateString(date);
 }
 
-export function getProgressValue(step: OrderStep, hasSelectedLines: boolean): number {
-  if (step === "share") return 4;
-  if (step === "complete") return 3;
-  if (step === "confirm") return 2;
-  return hasSelectedLines ? 1 : 0;
-}
-
 export function getDeliveryDate(mode: DeliveryMode, customDate: string): string {
   if (mode === "today") return getDateAfterDays(0);
   if (mode === "tomorrow") return getDateAfterDays(1);

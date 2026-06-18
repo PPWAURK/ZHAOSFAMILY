@@ -19,17 +19,18 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "package": "com.zhao.family",
       "adaptiveIcon": {
         "foregroundImage": "./assets/play-store/adaptive-foreground-1024.png",
-        "backgroundColor": "#6F0D10"
+        "backgroundColor": "#FFFFFF"
       },
       "permissions": [
         "android.permission.POST_NOTIFICATIONS"
-      ]
+      ],
+      "versionCode": 2
     },
     "plugins": [
       "expo-router",
