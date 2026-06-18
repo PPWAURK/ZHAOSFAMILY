@@ -1,3 +1,8 @@
+import {
+  HEADQUARTER_JOB_ROLES,
+  MANAGEMENT_JOB_ROLES,
+} from "@zhao/utils";
+
 export const DASHBOARD_NAV = [
   {
     id: "menu",
@@ -15,6 +20,7 @@ export const DASHBOARD_NAV = [
         zh: "门店管理",
         en: "Store management",
         fr: "Gestion des boutiques",
+        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
       },
       {
         id: "profile",
@@ -30,6 +36,7 @@ export const DASHBOARD_NAV = [
         en: "System roles",
         fr: "Rôles système",
         requiredPermission: "system.permission.manage",
+        visibleForJobRoles: ["holding"],
       },
     ],
   },
@@ -64,6 +71,7 @@ export const DASHBOARD_NAV = [
         en: "Positions",
         fr: "Postes",
         requiredPermission: "training.position.manage",
+        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
       },
     ],
   },
@@ -76,6 +84,7 @@ export const DASHBOARD_NAV = [
         zh: "下单",
         en: "Place order",
         fr: "Passer commande",
+        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
       },
       {
         id: "order-history",
@@ -83,6 +92,7 @@ export const DASHBOARD_NAV = [
         zh: "历史订单",
         en: "Order history",
         fr: "Historique",
+        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
       },
       {
         id: "order-stats",
@@ -90,6 +100,7 @@ export const DASHBOARD_NAV = [
         zh: "商品统计",
         en: "Product stats",
         fr: "Stats produits",
+        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
       },
       {
         id: "suppliers",
@@ -97,6 +108,7 @@ export const DASHBOARD_NAV = [
         zh: "供应商管理",
         en: "Suppliers",
         fr: "Fournisseurs",
+        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
       },
       {
         id: "inventory-zhao-bureau",
@@ -104,6 +116,7 @@ export const DASHBOARD_NAV = [
         zh: "ZHAO Bureau 库存",
         en: "ZHAO Bureau stock",
         fr: "Stock ZHAO Bureau",
+        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
       },
     ],
   },
@@ -670,4 +683,10 @@ export const DASHBOARD_SHORTCUT_HREFS = {
   stores: "/dashboard/stores",
   training: "/dashboard/training",
   profile: "/dashboard/profile",
+};
+
+// Visibilité des cartes raccourcis de l'accueil — alignée sur DASHBOARD_NAV.
+// Une entrée absente = visible par tous.
+export const DASHBOARD_SHORTCUT_RULES = {
+  stores: { visibleForJobRoles: MANAGEMENT_JOB_ROLES },
 };

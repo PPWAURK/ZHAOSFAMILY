@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 
+import { canSeeNavEntry } from "@zhao/utils";
+
 import { useAuth } from "@/features/auth/context/AuthContext";
 import {
   DASHBOARD_NAV,
@@ -47,26 +49,9 @@ export default function Sidebar({ open, onClose, lang }) {
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const userLabels = USER_CARD_LABELS[lang];
   const userCard = resolveUserCard(user, userLabels);
-  const userPermissions = user?.permissions || [];
-  const userJobRoles = `${user?.jobRole || user?.position || ""}`
-    .split(",")
-    .map((role) => role.trim())
-    .filter(Boolean);
-  const canSeeNavItem = (item) => {
-    if (
-      item.visibleForJobRoles?.some((role) => userJobRoles.includes(role))
-    ) {
-      return true;
-    }
-
-    return (
-      !item.requiredPermission ||
-      userPermissions.includes(item.requiredPermission)
-    );
-  };
   const visibleNavGroups = DASHBOARD_NAV.map((group) => ({
     ...group,
-    items: group.items.filter(canSeeNavItem),
+    items: group.items.filter((item) => canSeeNavEntry(user, item)),
   })).filter((group) => group.items.length > 0);
 
   useEffect(() => {

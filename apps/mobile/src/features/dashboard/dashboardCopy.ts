@@ -1,6 +1,7 @@
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import type { ComponentProps } from "react";
 import type { Ionicons } from "@expo/vector-icons";
+import { HEADQUARTER_JOB_ROLES, MANAGEMENT_JOB_ROLES } from "@zhao/utils";
 
 export type DashboardPrimaryIconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -9,14 +10,16 @@ export type DashboardNavItem = {
   href?: string;
   icon: DashboardPrimaryIconName;
   menuIcon: string;
-  permission?: string;
+  requiredPermission?: string;
+  visibleForJobRoles?: readonly string[];
   label: Record<AuthLanguage, string>;
 };
 
 export type DashboardMenuItem = {
   id: string;
   icon: string;
-  permission?: string;
+  requiredPermission?: string;
+  visibleForJobRoles?: readonly string[];
   label: Record<AuthLanguage, string>;
 };
 
@@ -37,12 +40,14 @@ export const DASHBOARD_PRIMARY_NAV: DashboardNavItem[] = [
     id: "stores",
     icon: "storefront-outline",
     menuIcon: "店",
+    visibleForJobRoles: MANAGEMENT_JOB_ROLES,
     label: { zh: "门店", en: "Stores", fr: "Boutiques" },
   },
   {
     id: "orders",
     icon: "receipt-outline",
     menuIcon: "订",
+    visibleForJobRoles: MANAGEMENT_JOB_ROLES,
     label: { zh: "下单", en: "Order", fr: "Commande" },
   },
   {
@@ -72,12 +77,15 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
       {
         id: "permissions",
         icon: "权",
-        permission: "system.permission.manage",
+        requiredPermission: "system.permission.manage",
+        visibleForJobRoles: ["holding"],
         label: { zh: "权限中心", en: "Permissions", fr: "Permissions" },
       },
       {
         id: "recruitment-requests",
         icon: "聘",
+        requiredPermission: "recruitment.request.manage",
+        visibleForJobRoles: ["store-manager"],
         label: { zh: "招聘请求", en: "Recruitment requests", fr: "Demandes recrutement" },
       },
     ],
@@ -99,7 +107,8 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
       {
         id: "training-positions",
         icon: "岗",
-        permission: "training.position.manage",
+        requiredPermission: "training.position.manage",
+        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
         label: { zh: "岗位管理", en: "Positions", fr: "Postes" },
       },
     ],
@@ -111,11 +120,13 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
       {
         id: "suppliers",
         icon: "供",
+        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
         label: { zh: "供应商管理", en: "Suppliers", fr: "Fournisseurs" },
       },
       {
         id: "inventory",
         icon: "库",
+        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
         label: { zh: "ZHAO Bureau 库存", en: "ZHAO Bureau stock", fr: "Stock ZHAO Bureau" },
       },
     ],

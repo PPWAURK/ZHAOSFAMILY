@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { canSeeNavEntry } from "@zhao/utils";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import DashboardNewsModule from "@/features/dashboard/components/DashboardNewsModule";
@@ -13,6 +14,7 @@ import {
   DASHBOARD_LANGUAGES,
   DASHBOARD_MENU_LABELS,
   DASHBOARD_SHORTCUT_HREFS,
+  DASHBOARD_SHORTCUT_RULES,
 } from "@/features/dashboard/constants/dashboard-copy";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/dashboard/dashboard-page.module.css";
@@ -34,6 +36,9 @@ export default function DashboardPage() {
   const newsCopy = t.newsModule;
   const scoreLeaderboardCopy = t.scoreLeaderboard;
   const displayName = resolveDisplayName(user, t.greetingFallback);
+  const visibleShortcuts = t.shortcuts.filter((shortcut) =>
+    canSeeNavEntry(user, DASHBOARD_SHORTCUT_RULES[shortcut.id]),
+  );
 
   return (
     <main className={styles.page}>
@@ -104,7 +109,7 @@ export default function DashboardPage() {
         <p className={styles.shortcutsHeading}>{t.shortcutsHeading}</p>
 
         <div className={styles.shortcutGrid}>
-          {t.shortcuts.map((shortcut, index) => (
+          {visibleShortcuts.map((shortcut, index) => (
             <Link
               key={shortcut.id}
               href={DASHBOARD_SHORTCUT_HREFS[shortcut.id] || "#"}

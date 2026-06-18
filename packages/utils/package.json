@@ -7,6 +7,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./access/nav-visibility": "./src/access/nav-visibility.ts",
     "./env": "./src/env.ts",
     "./strings": "./src/strings.ts"
   },

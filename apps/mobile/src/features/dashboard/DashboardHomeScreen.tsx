@@ -15,6 +15,7 @@ import {
 import { scaleStyles } from "@/lib/responsive";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
+import { canSeeNavEntry } from "@zhao/utils";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { WebView } from "react-native-webview";
@@ -134,13 +135,6 @@ function isPdfAttachment(post: DashboardNewsPost): boolean {
   );
 }
 
-function canSeeNavItem(
-  item: DashboardNavItem | DashboardMenuItem,
-  permissions: string[],
-): boolean {
-  return !item.permission || permissions.includes(item.permission);
-}
-
 function resolveDashboardEntryId(entryId: string): string {
   return entryId === "new-order" ? "orders" : entryId;
 }
@@ -192,16 +186,19 @@ export function DashboardHomeScreen({
 
   const displayName = resolveDisplayName(user, copy.greetingFallback);
   const moreNavLabel = DASHBOARD_PRIMARY_NAV.find((item) => item.id === "more")?.label[language];
-  const permissions = user.permissions ?? [];
   const newsCarouselCardWidth = Math.max(280, Math.min(screenWidth - 80, 360));
   const newsCarouselSnapInterval = newsCarouselCardWidth + 12;
+  const visiblePrimaryNav = useMemo(
+    () => DASHBOARD_PRIMARY_NAV.filter((item) => canSeeNavEntry(user, item)),
+    [user],
+  );
   const visibleMoreGroups = useMemo(
     () =>
       DASHBOARD_MORE_NAV_GROUPS.map((group) => ({
         ...group,
-        items: group.items.filter((item) => canSeeNavItem(item, permissions)),
+        items: group.items.filter((item) => canSeeNavEntry(user, item)),
       })).filter((group) => group.items.length > 0),
-    [permissions],
+    [user],
   );
   const visibleNewsPosts = useMemo(
     () =>
@@ -832,7 +829,7 @@ export function DashboardHomeScreen({
         {!isMoreOpen ? (
           <BlurView intensity={80} tint="light" style={styles.bottomNav}>
             <View style={styles.bottomNavDepth} />
-            {DASHBOARD_PRIMARY_NAV.filter((item) => item.id !== "more").map((item) => {
+            {visiblePrimaryNav.filter((item) => item.id !== "more").map((item) => {
               const isActive = activeEntry === item.id;
               const navColor = isActive
                 ? authControlStyles.colors.red
