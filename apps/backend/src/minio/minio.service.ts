@@ -41,6 +41,7 @@ export class MinioService implements OnModuleInit {
       port: Number(this.configService.get<string>('MINIO_PORT', '9000')),
       useSSL:
         this.configService.get<string>('MINIO_USE_SSL', 'false') === 'true',
+      region: this.configService.get<string>('MINIO_REGION', 'us-east-1'),
       accessKey: this.configService.get<string>('MINIO_ACCESS_KEY', ''),
       secretKey: this.configService.get<string>('MINIO_SECRET_KEY', ''),
     });
@@ -178,7 +179,10 @@ export class MinioService implements OnModuleInit {
   private async prepareBucket(): Promise<void> {
     const exists = await this.client.bucketExists(this.bucket);
     if (!exists) {
-      await this.client.makeBucket(this.bucket, 'us-east-1');
+      await this.client.makeBucket(
+        this.bucket,
+        this.configService.get<string>('MINIO_REGION', 'us-east-1'),
+      );
     }
 
     this.isBucketReady = true;
