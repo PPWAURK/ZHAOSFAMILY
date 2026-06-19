@@ -117,6 +117,7 @@ const PERMISSIONS_COPY = {
       unassignedStore: "未分配门店",
       memberCountSuffix: "人",
       managedStoresUnavailable: "非区域经理不需要设置门店范围",
+      storeJumpLabel: "快速跳转门店",
       table: {
         name: "姓名",
         email: "邮箱",
@@ -170,6 +171,7 @@ const PERMISSIONS_COPY = {
       unassignedStore: "Unassigned store",
       memberCountSuffix: "members",
       managedStoresUnavailable: "Store scope is only set for regional managers",
+      storeJumpLabel: "Jump to store",
       table: {
         name: "Name",
         email: "Email",
@@ -226,6 +228,7 @@ const PERMISSIONS_COPY = {
       memberCountSuffix: "membres",
       managedStoresUnavailable:
         "Le périmètre boutique concerne uniquement les managers régionaux",
+      storeJumpLabel: "Aller à la boutique",
       table: {
         name: "Nom",
         email: "Email",
@@ -272,6 +275,16 @@ function formatPermissionSummary(permissions, lang, fallback) {
     .join(" / ");
 }
 
+function formatPermissionLabels(permissions, lang, fallback) {
+  if (!permissions?.length) {
+    return [fallback];
+  }
+
+  return permissions.map((permission) =>
+    getLocalizedLabel(PERMISSION_LABELS, permission, lang),
+  );
+}
+
 function normalizeRoleNames(roleNames) {
   return [...(roleNames || [])].sort();
 }
@@ -310,6 +323,10 @@ function isRegionalManager(user) {
 
 function getUserStoreKey(user) {
   return user?.restaurant?.id ? `store-${user.restaurant.id}` : "unassigned";
+}
+
+function getPermissionStoreAnchorId(storeKey) {
+  return `permission-${String(storeKey).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
 
 function normalizeRestaurantIds(restaurantIds) {
@@ -512,6 +529,11 @@ export default function PermissionsPage() {
   return (
     <TrainingLayout pageCopy={PERMISSIONS_COPY}>
       {({ lang, t, styles }) => {
+        const permissionStoreGroups = groupUsersByStore(
+          users,
+          t.page.unassignedStore,
+        );
+
         return (
           <>
             <section className={styles.pageHeaderCard}>
@@ -553,11 +575,33 @@ export default function PermissionsPage() {
                     {t.page.loadingData}
                   </div>
                 ) : users.length > 0 ? (
-                  <div className={styles.permissionStoreGroups}>
-                    {groupUsersByStore(users, t.page.unassignedStore).map(
-                      (group) => (
+                  <>
+                    <nav
+                      className={styles.permissionStoreJumpNav}
+                      aria-label={t.page.storeJumpLabel}
+                    >
+                      <span className={styles.permissionStoreJumpLabel}>
+                        {t.page.storeJumpLabel}
+                      </span>
+                      <div className={styles.permissionStoreJumpButtons}>
+                        {permissionStoreGroups.map((group) => (
+                          <a
+                            key={group.key}
+                            className={styles.permissionStoreJumpButton}
+                            href={`#${getPermissionStoreAnchorId(group.key)}`}
+                          >
+                            <span>{group.storeName}</span>
+                            <strong>{group.users.length}</strong>
+                          </a>
+                        ))}
+                      </div>
+                    </nav>
+
+                    <div className={styles.permissionStoreGroups}>
+                      {permissionStoreGroups.map((group) => (
                         <details
                           key={group.key}
+                          id={getPermissionStoreAnchorId(group.key)}
                           className={styles.permissionStoreGroup}
                           open
                         >
@@ -568,225 +612,262 @@ export default function PermissionsPage() {
                             </span>
                           </summary>
 
-                          <table className={styles.permissionTable}>
-                            <thead>
-                              <tr>
-                                <th>{t.page.table.name}</th>
-                                <th>{t.page.table.email}</th>
-                                <th>{t.page.table.status}</th>
-                                <th>{t.page.table.jobRole}</th>
-                                <th>{t.page.table.managedStores}</th>
-                                <th>{t.page.table.roles}</th>
-                                <th>{t.page.table.permissions}</th>
-                                <th>{t.page.table.action}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {group.users.map((item) => {
-                                const userIdKey = getUserIdKey(item.id);
-                                const currentRoles = normalizeRoleNames(
-                                  item.roles,
+                          <div className={styles.permissionUserGrid}>
+                            {group.users.map((item) => {
+                              const userIdKey = getUserIdKey(item.id);
+                              const currentRoles = normalizeRoleNames(
+                                item.roles,
+                              );
+                              const draftRoles =
+                                draftRolesByUserId[userIdKey] || currentRoles;
+                              const currentManagedRestaurantIds =
+                                normalizeRestaurantIds(
+                                  (item.managedRestaurants || []).map(
+                                    (restaurant) => restaurant.id,
+                                  ),
                                 );
-                                const draftRoles =
-                                  draftRolesByUserId[userIdKey] || currentRoles;
-                                const currentManagedRestaurantIds =
-                                  normalizeRestaurantIds(
-                                    (item.managedRestaurants || []).map(
-                                      (restaurant) => restaurant.id,
-                                    ),
-                                  );
-                                const draftManagedRestaurantIds =
-                                  draftManagedRestaurantsByUserId[userIdKey] ||
-                                  currentManagedRestaurantIds;
-                                const hasRoleChanges = !areRoleNamesEqual(
-                                  currentRoles,
-                                  draftRoles,
+                              const draftManagedRestaurantIds =
+                                draftManagedRestaurantsByUserId[userIdKey] ||
+                                currentManagedRestaurantIds;
+                              const hasRoleChanges = !areRoleNamesEqual(
+                                currentRoles,
+                                draftRoles,
+                              );
+                              const hasManagedRestaurantChanges =
+                                !areRestaurantIdsEqual(
+                                  currentManagedRestaurantIds,
+                                  draftManagedRestaurantIds,
                                 );
-                                const hasManagedRestaurantChanges =
-                                  !areRestaurantIdsEqual(
-                                    currentManagedRestaurantIds,
-                                    draftManagedRestaurantIds,
-                                  );
-                                const canEditManagedRestaurants =
-                                  isRegionalManager(item);
+                              const canEditManagedRestaurants =
+                                isRegionalManager(item);
+                              const permissionLabels = formatPermissionLabels(
+                                item.permissions || [],
+                                lang,
+                                t.page.noPermission,
+                              );
 
-                                return (
-                                  <tr key={item.id}>
-                                    <td>{item.name || "-"}</td>
-                                    <td>{item.email || "-"}</td>
-                                    <td>
+                              return (
+                                <article
+                                  key={item.id}
+                                  className={styles.permissionUserCard}
+                                >
+                                  <header className={styles.permissionUserHead}>
+                                    <div
+                                      className={styles.permissionUserIdentity}
+                                    >
+                                      <strong>{item.name || "-"}</strong>
+                                      <span>{item.email || "-"}</span>
+                                    </div>
+                                    <span className={styles.permissionStatusPill}>
                                       {t.page.status[item.accountStatus] ||
                                         item.accountStatus ||
                                         "-"}
-                                    </td>
-                                    <td>
-                                      <span className={styles.permissionReadOnlyPill}>
-                                        {formatJobRoleLabel(item.jobRole, lang)}
-                                      </span>
-                                    </td>
-                                    <td>
-                                      {canEditManagedRestaurants ? (
+                                    </span>
+                                  </header>
+
+                                  <div className={styles.permissionUserMeta}>
+                                    <span className={styles.permissionMetaLabel}>
+                                      {t.page.table.jobRole}
+                                    </span>
+                                    <span
+                                      className={styles.permissionReadOnlyPill}
+                                    >
+                                      {formatJobRoleLabel(item.jobRole, lang)}
+                                    </span>
+                                  </div>
+
+                                  <section
+                                    className={styles.permissionCardSection}
+                                  >
+                                    <div
+                                      className={styles.permissionSectionHead}
+                                    >
+                                      <span>{t.page.table.roles}</span>
+                                    </div>
+                                    <div className={styles.permissionRoleChips}>
+                                      {roles.map((role) => {
+                                        const isChecked = draftRoles.includes(
+                                          role.name,
+                                        );
+                                        const canAssign = canAssignRoleToUser(
+                                          role.name,
+                                          item,
+                                        );
+                                        const isDisabled =
+                                          savingUserId === item.id ||
+                                          (!canAssign && !isChecked);
+                                        const permissionTitle =
+                                          formatPermissionSummary(
+                                            role.permissions || [],
+                                            lang,
+                                            t.page.noPermission,
+                                          );
+
+                                        return (
+                                          <label
+                                            key={role.name}
+                                            className={
+                                              isDisabled
+                                                ? styles.permissionRoleChipDisabled
+                                                : styles.permissionRoleChip
+                                            }
+                                            title={
+                                              canAssign
+                                                ? permissionTitle
+                                                : t.page.roleLocked
+                                            }
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              disabled={isDisabled}
+                                              onChange={(event) =>
+                                                updateDraftRole(
+                                                  item.id,
+                                                  role.name,
+                                                  event.currentTarget.checked,
+                                                )
+                                              }
+                                            />
+                                            <span>
+                                              {formatRoleLabel(role.name, lang)}
+                                            </span>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </section>
+
+                                  <section
+                                    className={styles.permissionCardSection}
+                                  >
+                                    <div
+                                      className={styles.permissionSectionHead}
+                                    >
+                                      <span>{t.page.table.managedStores}</span>
+                                    </div>
+                                    {canEditManagedRestaurants ? (
+                                      <div
+                                        className={styles.permissionScopePanel}
+                                      >
                                         <div
                                           className={
-                                            styles.permissionManagedStorePanel
+                                            styles.permissionManagedStoreGrid
                                           }
                                         >
-                                          <div
-                                            className={
-                                              styles.permissionManagedStoreGrid
-                                            }
-                                          >
-                                            {restaurants.map((restaurant) => {
-                                              const restaurantId = Number(
-                                                restaurant.id,
-                                              );
-                                              const isChecked =
-                                                draftManagedRestaurantIds.includes(
-                                                  restaurantId,
-                                                );
-
-                                              return (
-                                                <label
-                                                  key={restaurant.id}
-                                                  className={
-                                                    styles.permissionManagedStoreOption
-                                                  }
-                                                >
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    disabled={
-                                                      savingManagedRestaurantsUserId ===
-                                                      item.id
-                                                    }
-                                                    onChange={(event) =>
-                                                      updateDraftManagedRestaurant(
-                                                        item.id,
-                                                        restaurantId,
-                                                        event.currentTarget
-                                                          .checked,
-                                                      )
-                                                    }
-                                                  />
-                                                  <span>{restaurant.name}</span>
-                                                </label>
-                                              );
-                                            })}
-                                          </div>
-                                          <button
-                                            type="button"
-                                            className={
-                                              styles.permissionSaveButton
-                                            }
-                                            disabled={
-                                              savingManagedRestaurantsUserId ===
-                                                item.id ||
-                                              !hasManagedRestaurantChanges
-                                            }
-                                            onClick={() =>
-                                              saveManagedRestaurants(item.id)
-                                            }
-                                          >
-                                            {savingManagedRestaurantsUserId ===
-                                            item.id
-                                              ? t.page.actions.saving
-                                              : hasManagedRestaurantChanges
-                                                ? t.page.actions.saveStores
-                                                : t.page.noChanges}
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        t.page.managedStoresUnavailable
-                                      )}
-                                    </td>
-                                    <td>
-                                      <div className={styles.permissionRoleGrid}>
-                                        {roles.map((role) => {
-                                          const isChecked = draftRoles.includes(
-                                            role.name,
-                                          );
-                                          const canAssign =
-                                            canAssignRoleToUser(role.name, item);
-                                          const isDisabled =
-                                            savingUserId === item.id ||
-                                            (!canAssign && !isChecked);
-                                          const permissionTitle =
-                                            formatPermissionSummary(
-                                              role.permissions || [],
-                                              lang,
-                                              t.page.noPermission,
+                                          {restaurants.map((restaurant) => {
+                                            const restaurantId = Number(
+                                              restaurant.id,
                                             );
+                                            const isChecked =
+                                              draftManagedRestaurantIds.includes(
+                                                restaurantId,
+                                              );
 
-                                          return (
-                                            <label
-                                              key={role.name}
-                                              className={
-                                                isDisabled
-                                                  ? styles.permissionRoleOptionDisabled
-                                                  : styles.permissionRoleOption
-                                              }
-                                              title={
-                                                canAssign
-                                                  ? permissionTitle
-                                                  : t.page.roleLocked
-                                              }
-                                            >
-                                              <input
-                                                type="checkbox"
-                                                checked={isChecked}
-                                                disabled={isDisabled}
-                                                onChange={(event) =>
-                                                  updateDraftRole(
-                                                    item.id,
-                                                    role.name,
-                                                    event.currentTarget.checked,
-                                                  )
+                                            return (
+                                              <label
+                                                key={restaurant.id}
+                                                className={
+                                                  styles.permissionManagedStoreOption
                                                 }
-                                              />
-                                              <span>
-                                                {formatRoleLabel(
-                                                  role.name,
-                                                  lang,
-                                                )}
-                                              </span>
-                                            </label>
-                                          );
-                                        })}
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isChecked}
+                                                  disabled={
+                                                    savingManagedRestaurantsUserId ===
+                                                    item.id
+                                                  }
+                                                  onChange={(event) =>
+                                                    updateDraftManagedRestaurant(
+                                                      item.id,
+                                                      restaurantId,
+                                                      event.currentTarget
+                                                        .checked,
+                                                    )
+                                                  }
+                                                />
+                                                <span>{restaurant.name}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className={styles.permissionSaveButton}
+                                          disabled={
+                                            savingManagedRestaurantsUserId ===
+                                              item.id ||
+                                            !hasManagedRestaurantChanges
+                                          }
+                                          onClick={() =>
+                                            saveManagedRestaurants(item.id)
+                                          }
+                                        >
+                                          {savingManagedRestaurantsUserId ===
+                                          item.id
+                                            ? t.page.actions.saving
+                                            : hasManagedRestaurantChanges
+                                              ? t.page.actions.saveStores
+                                              : t.page.noChanges}
+                                        </button>
                                       </div>
-                                    </td>
-                                    <td title={(item.permissions || []).join(" / ")}>
-                                      {formatPermissionSummary(
-                                        item.permissions || [],
-                                        lang,
-                                        t.page.noPermission,
+                                    ) : (
+                                      <p className={styles.permissionMutedText}>
+                                        {t.page.managedStoresUnavailable}
+                                      </p>
+                                    )}
+                                  </section>
+
+                                  <section
+                                    className={styles.permissionCardSection}
+                                  >
+                                    <div
+                                      className={styles.permissionSectionHead}
+                                    >
+                                      <span>{t.page.table.permissions}</span>
+                                    </div>
+                                    <div
+                                      className={styles.permissionSummaryChips}
+                                      title={(item.permissions || []).join(
+                                        " / ",
                                       )}
-                                    </td>
-                                    <td>
-                                      <button
-                                        type="button"
-                                        className={styles.permissionSaveButton}
-                                        disabled={
-                                          savingUserId === item.id ||
-                                          !hasRoleChanges
-                                        }
-                                        onClick={() => saveUserRoles(item.id)}
-                                      >
-                                        {savingUserId === item.id
-                                          ? t.page.actions.saving
-                                          : hasRoleChanges
-                                            ? t.page.actions.save
-                                            : t.page.noChanges}
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                                    >
+                                      {permissionLabels.map((permissionLabel, index) => (
+                                        <span key={`${permissionLabel}-${index}`}>
+                                          {permissionLabel}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </section>
+
+                                  <footer
+                                    className={styles.permissionCardFooter}
+                                  >
+                                    <button
+                                      type="button"
+                                      className={styles.permissionSaveButton}
+                                      disabled={
+                                        savingUserId === item.id ||
+                                        !hasRoleChanges
+                                      }
+                                      onClick={() => saveUserRoles(item.id)}
+                                    >
+                                      {savingUserId === item.id
+                                        ? t.page.actions.saving
+                                        : hasRoleChanges
+                                          ? t.page.actions.save
+                                          : t.page.noChanges}
+                                    </button>
+                                  </footer>
+                                </article>
+                              );
+                            })}
+                          </div>
                         </details>
-                      ),
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <div className={styles.materialEmpty}>{t.page.emptyUsers}</div>
                 )}

@@ -1325,18 +1325,73 @@
 }
 
 .permissionTableWrap {
-  overflow-x: auto;
+  display: grid;
+  gap: 18px;
 }
 
 .permissionBoundaryNote {
   max-width: 720px;
   margin: 10px 0 0;
   padding: 10px 12px;
-  border-left: 3px solid var(--red);
+  border: 1px solid rgba(189, 40, 40, 0.18);
   background: var(--red-soft);
-  color: var(--ink-60);
+  color: var(--ink-50);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.permissionStoreJumpNav {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.permissionStoreJumpLabel {
+  flex: 0 0 auto;
+  padding-top: 8px;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.permissionStoreJumpButtons {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.permissionStoreJumpButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--ink-10);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--zh);
+  font-size: 12px;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.permissionStoreJumpButton:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.permissionStoreJumpButton strong {
+  color: var(--ink-50);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .permissionStoreGroups {
@@ -1346,6 +1401,7 @@
 
 .permissionStoreGroup {
   border-top: 1px solid var(--ink);
+  scroll-margin-top: 104px;
 }
 
 .permissionStoreSummary {
@@ -1353,7 +1409,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 14px 0;
+  padding: 16px 0;
   color: var(--ink);
   font-family: var(--mono);
   font-size: 11px;
@@ -1367,59 +1423,139 @@
   white-space: nowrap;
 }
 
-.permissionTable {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 1120px;
-  font-size: 13px;
+.permissionUserGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 14px;
+  padding-bottom: 10px;
 }
 
-.permissionTable th,
-.permissionTable td {
-  padding: 13px 10px;
+.permissionUserCard {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding: 18px;
+  border: 1px solid var(--ink-10);
+  background: var(--paper);
+}
+
+.permissionUserHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.permissionUserIdentity {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.permissionUserIdentity strong {
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.16;
+  overflow-wrap: anywhere;
+}
+
+.permissionUserIdentity span {
+  color: var(--ink-50);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.permissionStatusPill {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.permissionUserMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--ink-10);
-  text-align: left;
-  vertical-align: middle;
 }
 
-.permissionTable th {
+.permissionMetaLabel,
+.permissionSectionHead {
   color: var(--ink-50);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 9.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-.permissionRoleGrid {
+.permissionCardSection {
   display: grid;
   gap: 8px;
-  min-width: 240px;
 }
 
-.permissionRoleOption,
-.permissionRoleOptionDisabled {
+.permissionSectionHead {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.permissionRoleChips,
+.permissionSummaryChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.permissionRoleChip,
+.permissionRoleChipDisabled {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  color: var(--ink);
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid var(--ink-10);
+  background: var(--paper);
+  color: var(--ink-70);
   font-size: 12px;
   line-height: 1.35;
+  cursor: pointer;
 }
 
-.permissionRoleOption input,
-.permissionRoleOptionDisabled input {
+.permissionRoleChip:has(input:checked) {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.permissionRoleChip input,
+.permissionRoleChipDisabled input {
   flex: 0 0 auto;
-  margin-top: 2px;
+  margin: 0;
   accent-color: var(--ink);
 }
 
-.permissionRoleOptionDisabled {
+.permissionRoleChipDisabled {
   color: var(--ink-30);
+  cursor: not-allowed;
+}
+
+.permissionRoleChipDisabled:has(input:checked) {
+  border-color: var(--ink-20);
+  background: var(--ink-05);
+  color: var(--ink-50);
 }
 
 .permissionReadOnlyPill {
   display: inline-flex;
-  max-width: 220px;
+  max-width: 100%;
   padding: 5px 8px;
   border: 1px solid var(--ink-10);
   color: var(--ink-50);
@@ -1427,22 +1563,25 @@
   line-height: 1.35;
 }
 
-.permissionManagedStorePanel {
+.permissionScopePanel {
   display: grid;
   gap: 10px;
-  min-width: 220px;
 }
 
 .permissionManagedStoreGrid {
   display: grid;
-  gap: 7px;
-  max-height: 160px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  max-height: 180px;
   overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--ink-10);
+  background: var(--cream);
 }
 
 .permissionManagedStoreOption {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   color: var(--ink);
   font-size: 12px;
@@ -1451,8 +1590,29 @@
 
 .permissionManagedStoreOption input {
   flex: 0 0 auto;
-  margin-top: 2px;
+  margin: 0;
   accent-color: var(--ink);
+}
+
+.permissionMutedText {
+  margin: 0;
+  color: var(--ink-50);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.permissionSummaryChips span {
+  padding: 5px 8px;
+  background: var(--ink-05);
+  color: var(--ink-70);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.permissionCardFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 2px;
 }
 
 .permissionSaveButton {
@@ -2110,6 +2270,10 @@
   .positionManageRow {
     grid-template-columns: 1fr 1fr;
   }
+
+  .permissionUserGrid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -2185,5 +2349,42 @@
 
   .positionManageEditPanel {
     grid-template-columns: 1fr;
+  }
+
+  .permissionUserGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .permissionStoreJumpNav {
+    flex-direction: column;
+  }
+
+  .permissionStoreJumpLabel {
+    padding-top: 0;
+  }
+
+  .permissionStoreJumpButton {
+    max-width: 100%;
+  }
+
+  .permissionUserCard {
+    padding: 14px;
+  }
+
+  .permissionUserHead,
+  .permissionUserMeta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .permissionManagedStoreGrid {
+    grid-template-columns: 1fr;
+    max-height: 220px;
+  }
+
+  .permissionCardFooter,
+  .permissionCardFooter .permissionSaveButton,
+  .permissionScopePanel .permissionSaveButton {
+    width: 100%;
   }
 }

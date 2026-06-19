@@ -69,6 +69,38 @@ function resolveDisplayName(user: AuthUser, fallback: string): string {
   return user.name?.trim() || composedName.trim() || user.email || fallback;
 }
 
+function resolveDashboardUserCard(user: AuthUser, fallback: string): {
+  avatar: string | null;
+  displayName: string;
+  initials: string;
+  role: string;
+  store: string;
+} {
+  const displayName = resolveDisplayName(user, fallback);
+  const roleParts = Array.from(
+    new Set(
+      `${user.jobRole || user.position || user.role || ""}`
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean),
+    ),
+  );
+  const initials = displayName
+    .split(/\s+/)
+    .map((part) => part.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return {
+    avatar: user.avatarUrl || user.avatar || null,
+    displayName,
+    initials,
+    role: roleParts.join(" · ") || "-",
+    store: user.store?.name || user.storeName || user.establishment || "-",
+  };
+}
+
 function formatDate(value: string): string {
   if (!value) return "-";
 
@@ -196,10 +228,10 @@ export function DashboardHomeScreen({
   // separate native window where SafeAreaView resolves insets to 0.
   const insets = useSafeAreaInsets();
 
-  // "更多" panel slides in from the right edge (right → left) instead of bottom up.
+  // Keep the mobile trigger on the right while matching the Web drawer styling.
   const [isMoreRendered, setIsMoreRendered] = useState(false);
   const moreDrawerProgress = useRef(new Animated.Value(0)).current;
-  const moreDrawerWidth = Math.min(420, Math.round(screenWidth * 0.55));
+  const moreDrawerWidth = Math.min(360, Math.round(screenWidth * 0.70));
   const moreDrawerTranslateX = moreDrawerProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [moreDrawerWidth, 0],
@@ -230,6 +262,10 @@ export function DashboardHomeScreen({
   }, [isMoreOpen, moreDrawerProgress]);
 
   const displayName = resolveDisplayName(user, copy.greetingFallback);
+  const userCard = useMemo(
+    () => resolveDashboardUserCard(user, copy.greetingFallback),
+    [copy.greetingFallback, user],
+  );
   const moreNavLabel = DASHBOARD_PRIMARY_NAV.find((item) => item.id === "more")?.label[language];
   const newsCarouselCardWidth = Math.max(280, Math.min(screenWidth - 80, 360));
   const newsCarouselSnapInterval = newsCarouselCardWidth + 12;
@@ -943,44 +979,89 @@ export function DashboardHomeScreen({
                 { width: moreDrawerWidth, transform: [{ translateX: moreDrawerTranslateX }] },
               ]}
             >
-              <BlurView intensity={42} tint="light" style={styles.sheet}>
-                <View style={styles.sheetSurface} />
+              <View style={styles.sheet}>
                 <View
                   style={[
                     styles.sheetContent,
                     {
-                      paddingTop: insets.top + 10,
-                      paddingBottom: insets.bottom + 10,
-                      paddingRight: insets.right + 20,
+                      paddingTop: insets.top,
+                      paddingBottom: insets.bottom,
                     },
                   ]}
                 >
                 <View style={styles.sheetHeader}>
-                  <View>
+                  <Text style={styles.sheetBrand}>
+                    <Text style={styles.sheetBrandBold}>ZHAO</Text> / FAMILY
+                  </Text>
+                  <Pressable style={styles.sheetClose} onPress={() => setIsMoreOpen(false)}>
+                    <Text style={styles.sheetCloseText}>{copy.close} ×</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.sheetUserCard}>
+                  <View style={styles.sheetUserKickerRow}>
+                    <View style={styles.sheetUserKickerDot} />
                     <TrackingText color={authControlStyles.colors.red} size={10}>
                       {copy.moreKicker}
                     </TrackingText>
-                    <Text style={styles.sheetTitle}>{copy.moreTitle}</Text>
                   </View>
-                  <Pressable style={styles.sheetClose} onPress={() => setIsMoreOpen(false)}>
-                    <Text style={styles.sheetCloseText}>{copy.close}</Text>
-                  </Pressable>
+
+                  <View style={styles.sheetUserBody}>
+                    <View style={styles.sheetUserAvatar}>
+                      {userCard.avatar ? (
+                        <Image
+                          source={{ uri: userCard.avatar }}
+                          style={styles.sheetUserAvatarImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Text style={styles.sheetUserInitials}>
+                          {userCard.initials || "Z"}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.sheetUserIdentity}>
+                      <Text style={styles.sheetUserName}>{userCard.displayName}</Text>
+                      <Text style={styles.sheetUserHint}>{copy.moreTitle}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.sheetUserMeta}>
+                    <View style={styles.sheetUserMetaRow}>
+                      <Text style={styles.sheetUserMetaLabel}>{copy.storeLabel}</Text>
+                      <Text style={styles.sheetUserMetaValue}>{userCard.store}</Text>
+                    </View>
+                    <View style={styles.sheetUserMetaRow}>
+                      <Text style={styles.sheetUserMetaLabel}>{copy.roleLabel}</Text>
+                      <Text style={styles.sheetUserMetaValue}>{userCard.role}</Text>
+                    </View>
+                  </View>
                 </View>
 
                 <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
                   {visibleMoreGroups.map((group) => (
                     <View key={group.id} style={styles.moreGroup}>
-                      <TrackingText color={authControlStyles.colors.red} size={10}>
-                        {group.label[language]}
-                      </TrackingText>
+                      <View style={styles.moreGroupLabelRow}>
+                        <View style={styles.moreGroupLabelDash} />
+                        <TrackingText
+                          color={authControlStyles.colors.red}
+                          size={10}
+                          style={styles.moreGroupLabel}
+                        >
+                          {group.label[language]}
+                        </TrackingText>
+                        <View style={styles.moreGroupLabelLine} />
+                      </View>
                       <View style={styles.moreList}>
-                        {group.items.map((item) => (
+                        {group.items.map((item, index) => (
                           <Pressable
                             key={item.id}
                             style={styles.moreItem}
                             onPress={() => handleMoreItemPress(item)}
                           >
-                            <Text style={styles.moreIcon}>{item.icon}</Text>
+                            <Text style={styles.moreIndex}>
+                              {String(index + 1).padStart(2, "0")}
+                            </Text>
                             <Text style={styles.moreText}>{item.label[language]}</Text>
                             <Text style={styles.moreArrow}>→</Text>
                           </Pressable>
@@ -1003,7 +1084,7 @@ export function DashboardHomeScreen({
                   <Text style={styles.sheetLogoutText}>{copy.logout}</Text>
                 </Pressable>
                 </View>
-              </BlurView>
+              </View>
             </Animated.View>
           </View>
         </Modal>
@@ -1152,26 +1233,53 @@ const styles = StyleSheet.create(scaleStyles({
   },
   moreGroup: {
     gap: 10,
-    marginTop: 22,
+    marginTop: 26,
   },
-  moreIcon: {
+  moreGroupLabel: {
+    fontWeight: "700",
+  },
+  moreGroupLabelDash: {
+    backgroundColor: authControlStyles.colors.red,
+    height: 2,
+    width: 18,
+  },
+  moreGroupLabelLine: {
+    backgroundColor: "rgba(193, 22, 22, 0.18)",
+    flex: 1,
+    height: 1,
+  },
+  moreGroupLabelRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 6,
+  },
+  moreIndex: {
+    backgroundColor: "rgba(193, 22, 22, 0.06)",
+    borderColor: "rgba(193, 22, 22, 0.18)",
+    borderWidth: 1,
     color: authControlStyles.colors.red,
     fontFamily: "monospace",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
-    width: 24,
+    letterSpacing: 1.6,
+    minWidth: 34,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    textAlign: "center",
   },
   moreItem: {
     alignItems: "center",
     borderBottomColor: "rgba(193, 22, 22, 0.08)",
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: 12,
+    gap: 14,
     minHeight: 50,
+    paddingHorizontal: 10,
+    paddingVertical: 13,
   },
   moreList: {
-    borderTopColor: "rgba(193, 22, 22, 0.16)",
-    borderTopWidth: 1,
+    gap: 0,
   },
   moreText: {
     color: authControlStyles.colors.ink,
@@ -1545,38 +1653,46 @@ const styles = StyleSheet.create(scaleStyles({
     paddingTop: 22,
   },
   sheet: {
-    backgroundColor: Platform.select({
-      ios: "rgba(193, 22, 22, 0.07)",
-      default: "rgba(255, 255, 255, 0.94)",
-    }),
-    borderColor: "rgba(193, 22, 22, 0.22)",
-    borderLeftWidth: 1,
-    borderWidth: 1,
+    backgroundColor: authControlStyles.colors.paper,
+    borderLeftColor: authControlStyles.colors.red,
+    borderLeftWidth: 3,
     flex: 1,
     overflow: "hidden",
     ...crossPlatformShadow({
       color: authControlStyles.colors.red,
-      offset: { width: -16, height: 0 },
-      opacity: 0.14,
-      radius: 30,
+      offset: { width: 0, height: 24 },
+      opacity: 0.18,
+      radius: 48,
       elevation: 24,
     }),
     width: "100%",
   },
   sheetBackdrop: {
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(10, 10, 10, 0.28)",
     bottom: 0,
     left: 0,
     position: "absolute",
     right: 0,
     top: 0,
   },
+  sheetBrand: {
+    color: authControlStyles.colors.ink40,
+    fontFamily: "monospace",
+    fontSize: 11,
+    fontWeight: "500",
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
+  },
+  sheetBrandBold: {
+    color: authControlStyles.colors.ink,
+    fontWeight: "700",
+  },
   sheetClose: {
-    borderColor: "rgba(193, 22, 22, 0.16)",
+    borderColor: "rgba(193, 22, 22, 0.18)",
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 36,
-    paddingHorizontal: 12,
+    minHeight: 28,
+    paddingHorizontal: 10,
   },
   sheetCloseText: {
     color: authControlStyles.colors.red,
@@ -1602,47 +1718,44 @@ const styles = StyleSheet.create(scaleStyles({
     width: 42,
   },
   sheetHeader: {
-    alignItems: "flex-start",
+    alignItems: "center",
     borderBottomColor: "rgba(193, 22, 22, 0.16)",
     borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingBottom: 18,
+    paddingBottom: 20,
+    paddingHorizontal: 32,
+    paddingTop: 28,
   },
   sheetList: {
     flex: 1,
+    paddingHorizontal: 32,
   },
   sheetModalRoot: {
     ...StyleSheet.absoluteFillObject,
     flex: 1,
-    justifyContent: "flex-end",
   },
   sheetLogoutButton: {
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    borderColor: "rgba(193, 22, 22, 0.38)",
-    borderWidth: 1,
+    borderTopColor: "rgba(193, 22, 22, 0.18)",
+    borderTopWidth: 1,
     flexDirection: "row",
     gap: 10,
     justifyContent: "center",
-    marginTop: 18,
-    minHeight: 48,
-    borderRadius:46,
-    marginBottom:20,
+    marginTop: "auto",
+    minHeight: 54,
+    paddingHorizontal: 32,
   },
   sheetLogoutText: {
     color: authControlStyles.colors.red,
     fontFamily: "monospace",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.2,
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 2.2,
     textTransform: "uppercase",
   },
   sheetContent: {
     flex: 1,
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    paddingTop: 10,
   },
   sheetDrawer: {
     bottom: 0,
@@ -1662,13 +1775,98 @@ const styles = StyleSheet.create(scaleStyles({
     right: 0,
     top: 0,
   },
-  sheetTitle: {
+  sheetUserAvatar: {
+    alignItems: "center",
+    backgroundColor: "rgba(193, 22, 22, 0.06)",
+    borderColor: "rgba(193, 22, 22, 0.18)",
+    borderWidth: 1,
+    height: 58,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 58,
+  },
+  sheetUserAvatarImage: {
+    height: "100%",
+    width: "100%",
+  },
+  sheetUserBody: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 16,
+    marginBottom: 20,
+  },
+  sheetUserCard: {
+    borderBottomColor: "rgba(193, 22, 22, 0.18)",
+    borderBottomWidth: 1,
+    borderLeftColor: authControlStyles.colors.red,
+    borderLeftWidth: 4,
+    paddingBottom: 26,
+    paddingHorizontal: 32,
+    paddingTop: 24,
+  },
+  sheetUserHint: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  sheetUserIdentity: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
+  },
+  sheetUserInitials: {
+    color: authControlStyles.colors.red,
+    fontFamily: "serif",
+    fontSize: 22,
+    fontWeight: "600",
+    letterSpacing: 0.8,
+  },
+  sheetUserKickerDot: {
+    backgroundColor: authControlStyles.colors.red,
+    height: 8,
+    width: 8,
+  },
+  sheetUserKickerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 18,
+  },
+  sheetUserMeta: {
+    borderTopColor: "rgba(193, 22, 22, 0.08)",
+    borderTopWidth: 1,
+    gap: 10,
+    paddingTop: 14,
+  },
+  sheetUserMetaLabel: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
+  },
+  sheetUserMetaRow: {
+    alignItems: "baseline",
+    flexDirection: "row",
+    gap: 14,
+    justifyContent: "space-between",
+  },
+  sheetUserMetaValue: {
+    color: authControlStyles.colors.ink,
+    flex: 1,
+    fontFamily: "serif",
+    fontSize: 14,
+    lineHeight: 19,
+    textAlign: "right",
+  },
+  sheetUserName: {
     color: authControlStyles.colors.ink,
     fontFamily: "serif",
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: "500",
-    lineHeight: 34,
-    marginTop: 6,
+    lineHeight: 25,
   },
   shell: {
     flex: 1,

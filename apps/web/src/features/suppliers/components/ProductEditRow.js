@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { uploadProductImage } from "@/features/suppliers/services/suppliersApi";
 import styles from "@/features/suppliers/suppliers-page.module.css";
 
 function toInputValue(product) {
@@ -33,23 +34,73 @@ export default function ProductEditRow({
   const [draft, setDraft] = useState(() => toInputValue(product));
   const [error, setError] = useState("");
   const [imageError, setImageError] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const imageInputRef = useRef(null);
+  const isRowSubmitting = submitting || isUploadingImage;
 
   useEffect(() => {
     if (editing) {
       setDraft(toInputValue(product));
+      setImageFile(null);
+      setImagePreviewUrl("");
+      setIsUploadingImage(false);
       setError("");
+
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
+      }
     }
   }, [editing, product]);
 
   useEffect(() => {
     setImageError(false);
-  }, [editing, draft.image, product.image]);
+  }, [editing, draft.image, imagePreviewUrl, product.image]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
 
   function patch(key, value) {
+    setError("");
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
-  function save() {
+  function handleImageFileChange(event) {
+    const nextFile = event.target.files?.[0] ?? null;
+
+    if (!nextFile) {
+      return;
+    }
+
+    if (!nextFile.type.startsWith("image/")) {
+      setError(copy.imageInvalidType);
+      event.target.value = "";
+      return;
+    }
+
+    setError("");
+    setImageFile(nextFile);
+    setImagePreviewUrl(URL.createObjectURL(nextFile));
+    event.target.value = "";
+  }
+
+  function clearImage() {
+    setImageFile(null);
+    setImagePreviewUrl("");
+    patch("image", "");
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  }
+
+  async function save() {
     setError("");
     if (!draft.category.trim()) {
       setError(copy.validation.categoryRequired);
@@ -64,7 +115,22 @@ export default function ProductEditRow({
       setError(copy.validation.priceInvalid);
       return;
     }
-    onSave({ ...draft, price: priceValue });
+
+    let image = draft.image;
+
+    if (imageFile) {
+      try {
+        setIsUploadingImage(true);
+        image = await uploadProductImage(imageFile);
+      } catch {
+        setError(copy.imageUploadError);
+        return;
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+
+    await onSave({ ...draft, image, price: priceValue });
   }
 
   if (editing) {
@@ -137,12 +203,44 @@ export default function ProductEditRow({
           />
         </td>
         <td>
-          <input
-            className={`${styles.tableInput} ${styles.tableInputMono}`}
-            value={draft.image}
-            onChange={(e) => patch("image", e.target.value)}
-            placeholder={copy.imagePlaceholder}
-          />
+          <div className={styles.productImageEditor}>
+            <div className={styles.productImagePreview}>
+              {imagePreviewUrl || (draft.image && !imageError) ? (
+                <img
+                  src={imagePreviewUrl || draft.image}
+                  alt=""
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <span>{copy.imageEmpty}</span>
+              )}
+            </div>
+            <div className={styles.productImageActions}>
+              <label className={styles.productImageUploadButton}>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  disabled={isRowSubmitting}
+                />
+                {imageFile ? copy.imageChange : copy.imageUpload}
+              </label>
+              {imageFile || draft.image ? (
+                <button
+                  type="button"
+                  className={styles.productImageClearButton}
+                  onClick={clearImage}
+                  disabled={isRowSubmitting}
+                >
+                  {copy.imageClear}
+                </button>
+              ) : null}
+            </div>
+            <small className={styles.productImageHint}>
+              {imageFile ? imageFile.name : copy.imagePlaceholder}
+            </small>
+          </div>
         </td>
         <td>
           <div className={styles.rowActions}>
@@ -150,15 +248,15 @@ export default function ProductEditRow({
               type="button"
               className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
               onClick={save}
-              disabled={submitting}
+              disabled={isRowSubmitting}
             >
-              {submitting ? copy.saving : copy.save}
+              {isRowSubmitting ? copy.saving : copy.save}
             </button>
             <button
               type="button"
               className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
               onClick={onCancelEdit}
-              disabled={submitting}
+              disabled={isRowSubmitting}
             >
               {copy.cancel}
             </button>
@@ -205,19 +303,10 @@ export default function ProductEditRow({
         {Number(product.price || 0).toFixed(2)}
       </td>
       <td>{product.specification || "—"}</td>
-      <td
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: 11,
-          color: "var(--ink-40)",
-          maxWidth: 220,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={product.image}
-      >
-        {product.image || "—"}
+      <td>
+        <span className={styles.productImageStatus}>
+          {product.image ? copy.imagePresent : "—"}
+        </span>
       </td>
       <td>
         <div className={styles.rowActions}>

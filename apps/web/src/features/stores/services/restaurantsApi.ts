@@ -11,6 +11,10 @@ import type {
 const DEFAULT_STORE_PHOTO = "/logo2024/logo2024.jpg";
 const restaurantsApi = createRestaurantsApi(apiClient);
 
+type StorePhotoUploadResult = {
+  objectKey?: string;
+};
+
 export function formatStoreCode(restaurantId: number | string): string {
   return `STORE ${String(restaurantId).padStart(3, "0")}`;
 }
@@ -114,4 +118,23 @@ export async function updateRestaurant(
 
 export async function deleteRestaurant(id: string): Promise<void> {
   await restaurantsApi.remove(id);
+}
+
+export async function uploadStorePhoto(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("folder", "stores/photos");
+
+  const uploaded = await apiClient.upload<StorePhotoUploadResult>(
+    "/media/upload",
+    formData,
+  );
+
+  if (!uploaded.objectKey) {
+    throw new Error("STORE_PHOTO_UPLOAD_MISSING_OBJECT_KEY");
+  }
+
+  return `${API_URL}/media/file?objectKey=${encodeURIComponent(
+    uploaded.objectKey,
+  )}`;
 }

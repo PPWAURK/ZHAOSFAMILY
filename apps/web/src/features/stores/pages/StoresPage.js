@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
 
@@ -18,7 +18,9 @@ import {
   createRestaurant,
   deleteRestaurant,
   fetchStoresPageStores,
+  resolveStorePhotoPath,
   updateRestaurant,
+  uploadStorePhoto,
 } from "@/features/stores/services/restaurantsApi";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
@@ -52,11 +54,15 @@ export default function StoresPage() {
   const [stores, setStores] = useState([]);
   const [isLoadingStores, setIsLoadingStores] = useState(true);
   const [storesError, setStoresError] = useState("");
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [editingStoreId, setEditingStoreId] = useState(null);
   const [draft, setDraft] = useState(EMPTY_STORE_FORM);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [formError, setFormError] = useState("");
   const [isSavingStore, setIsSavingStore] = useState(false);
   const [deletingStoreId, setDeletingStoreId] = useState(null);
+  const photoInputRef = useRef(null);
   const t = STORES_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const count = stores.length;
@@ -98,10 +104,56 @@ export default function StoresPage() {
     };
   }, [t.loadError]);
 
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl);
+      }
+    };
+  }, [photoPreviewUrl]);
+
+  useEffect(() => {
+    if (!isStoreModalOpen) {
+      return undefined;
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape" && !isSavingStore) {
+        resetStoreForm();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSavingStore, isStoreModalOpen]);
+
   function resetStoreForm() {
+    setIsStoreModalOpen(false);
     setEditingStoreId(null);
     setDraft(EMPTY_STORE_FORM);
+    setPhotoFile(null);
+    setPhotoPreviewUrl("");
     setFormError("");
+
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
+  }
+
+  function openCreateStoreModal() {
+    setIsStoreModalOpen(true);
+    setEditingStoreId(null);
+    setDraft(EMPTY_STORE_FORM);
+    setPhotoFile(null);
+    setPhotoPreviewUrl("");
+    setFormError("");
+
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
   }
 
   function patchDraft(key, value) {
@@ -110,13 +162,55 @@ export default function StoresPage() {
   }
 
   function startEditStore(store) {
+    setIsStoreModalOpen(true);
     setEditingStoreId(store.id);
     setDraft({
       name: store.name,
       address: store.address,
       photoUrl: store.photoUrl || "",
     });
+    setPhotoFile(null);
+    setPhotoPreviewUrl("");
     setFormError("");
+
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
+  }
+
+  function handleModalBackdropMouseDown(event) {
+    if (event.target === event.currentTarget && !isSavingStore) {
+      resetStoreForm();
+    }
+  }
+
+  function handlePhotoFileChange(event) {
+    const nextFile = event.target.files?.[0] ?? null;
+
+    if (!nextFile) {
+      return;
+    }
+
+    if (!nextFile.type.startsWith("image/")) {
+      setFormError(t.photoInvalidType);
+      event.target.value = "";
+      return;
+    }
+
+    setFormError("");
+    setPhotoFile(nextFile);
+    setPhotoPreviewUrl(URL.createObjectURL(nextFile));
+    event.target.value = "";
+  }
+
+  function clearStorePhoto() {
+    setPhotoFile(null);
+    setPhotoPreviewUrl("");
+    patchDraft("photoUrl", "");
+
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
   }
 
   async function handleSaveStore(event) {
@@ -137,9 +231,20 @@ export default function StoresPage() {
     setIsSavingStore(true);
 
     try {
+      let photoUrl = input.photoUrl;
+
+      if (photoFile) {
+        try {
+          photoUrl = await uploadStorePhoto(photoFile);
+        } catch {
+          setFormError(t.photoUploadError);
+          return;
+        }
+      }
+
       const savedStore = editingStoreId
-        ? await updateRestaurant(editingStoreId, input)
-        : await createRestaurant(input);
+        ? await updateRestaurant(editingStoreId, { ...input, photoUrl })
+        : await createRestaurant({ ...input, photoUrl });
 
       setStores((current) => {
         if (!editingStoreId) {
@@ -248,78 +353,26 @@ export default function StoresPage() {
 
         <p className={styles.lede}>{t.lede}</p>
 
-        {canManageStores ? (
-          <form className={styles.formPanel} onSubmit={handleSaveStore}>
-            <div className={styles.formHead}>
-              <h2 className={styles.formTitle}>
-                {editingStoreId ? t.formTitleEdit : t.formTitleCreate}
-              </h2>
-              {editingStoreId ? (
-                <button
-                  type="button"
-                  className={styles.formGhostButton}
-                  onClick={resetStoreForm}
-                >
-                  {t.cancel}
-                </button>
-              ) : null}
-            </div>
+        <div className={styles.listToolbar}>
+          <p className={styles.listHeading}>
+            <span>{t.listHeading}</span>
+            <span className={styles.listHeadingCount}>
+              {count} {countLabel}
+            </span>
+          </p>
 
-            <div className={styles.formGrid}>
-              <label className={styles.formField}>
-                <span>{t.nameLabel}</span>
-                <input
-                  value={draft.name}
-                  onChange={(event) => patchDraft("name", event.target.value)}
-                  placeholder={t.namePlaceholder}
-                  disabled={isSavingStore}
-                />
-              </label>
-
-              <label className={styles.formField}>
-                <span>{t.addressLabel}</span>
-                <input
-                  value={draft.address}
-                  onChange={(event) => patchDraft("address", event.target.value)}
-                  placeholder={t.addressLabel}
-                  disabled={isSavingStore}
-                />
-              </label>
-
-              <label className={styles.formField}>
-                <span>{t.photoLabel}</span>
-                <input
-                  value={draft.photoUrl}
-                  onChange={(event) => patchDraft("photoUrl", event.target.value)}
-                  placeholder={t.photoPlaceholder}
-                  disabled={isSavingStore}
-                />
-              </label>
-
-            </div>
-
-            {formError ? (
-              <p className={styles.formError} role="alert">
-                {formError}
-              </p>
-            ) : null}
-
+          {canManageStores ? (
             <button
-              type="submit"
-              className={styles.formPrimaryButton}
-              disabled={isSavingStore}
+              type="button"
+              className={styles.addStoreButton}
+              onClick={openCreateStoreModal}
+              aria-label={t.addStoreAria}
+              title={t.addStoreAria}
             >
-              {editingStoreId ? t.saveEdit : t.saveCreate}
+              +
             </button>
-          </form>
-        ) : null}
-
-        <p className={styles.listHeading}>
-          <span>{t.listHeading}</span>
-          <span className={styles.listHeadingCount}>
-            {count} {countLabel}
-          </span>
-        </p>
+          ) : null}
+        </div>
 
         {isLoadingStores ? (
           <div className={styles.statePanel}>{t.loading}</div>
@@ -362,6 +415,141 @@ export default function StoresPage() {
       <footer className={styles.footer}>{t.footer}</footer>
 
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} lang={lang} />
+
+      {canManageStores && isStoreModalOpen ? (
+        <div
+          className={styles.modalBackdrop}
+          onMouseDown={handleModalBackdropMouseDown}
+          role="presentation"
+        >
+          <section
+            className={styles.modalPanel}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="store-form-title"
+          >
+            <form
+              className={`${styles.formPanel} ${styles.modalForm}`}
+              onSubmit={handleSaveStore}
+            >
+              <div className={styles.modalFormHeader}>
+                <div className={styles.modalTitleGroup}>
+                  <span className={styles.modalEyebrow}>{t.modalEyebrow}</span>
+                  <h2 className={styles.formTitle} id="store-form-title">
+                    {editingStoreId ? t.formTitleEdit : t.formTitleCreate}
+                  </h2>
+                  <p className={styles.modalFormHint}>{t.modalHint}</p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.modalCloseButton}
+                  onClick={resetStoreForm}
+                  disabled={isSavingStore}
+                  aria-label={t.closeModal}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className={styles.modalFormBody}>
+                <div className={styles.storeDetailsGroup}>
+                  <label className={styles.formField}>
+                    <span>{t.nameLabel}</span>
+                    <input
+                      value={draft.name}
+                      onChange={(event) =>
+                        patchDraft("name", event.target.value)
+                      }
+                      placeholder={t.namePlaceholder}
+                      disabled={isSavingStore}
+                    />
+                  </label>
+
+                  <label className={styles.formField}>
+                    <span>{t.addressLabel}</span>
+                    <input
+                      value={draft.address}
+                      onChange={(event) =>
+                        patchDraft("address", event.target.value)
+                      }
+                      placeholder={t.addressLabel}
+                      disabled={isSavingStore}
+                    />
+                  </label>
+                </div>
+
+                <div className={`${styles.formField} ${styles.photoField}`}>
+                  <span>{t.photoLabel}</span>
+                  <div className={styles.photoUpload}>
+                    <div className={styles.photoPreview}>
+                      {photoPreviewUrl || draft.photoUrl ? (
+                        <img
+                          src={
+                            photoPreviewUrl ||
+                            resolveStorePhotoPath(draft.photoUrl)
+                          }
+                          alt=""
+                        />
+                      ) : (
+                        <span>{t.photoEmpty}</span>
+                      )}
+                    </div>
+                    <div className={styles.photoActions}>
+                      <label className={styles.photoUploadButton}>
+                        <input
+                          ref={photoInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoFileChange}
+                          disabled={isSavingStore}
+                        />
+                        {photoFile ? t.photoChange : t.photoUpload}
+                      </label>
+                      {photoFile || draft.photoUrl ? (
+                        <button
+                          type="button"
+                          className={styles.photoClearButton}
+                          onClick={clearStorePhoto}
+                          disabled={isSavingStore}
+                        >
+                          {t.photoClear}
+                        </button>
+                      ) : null}
+                    </div>
+                    <small className={styles.photoHint}>
+                      {photoFile ? photoFile.name : t.photoPlaceholder}
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              {formError ? (
+                <p className={styles.formError} role="alert">
+                  {formError}
+                </p>
+              ) : null}
+
+              <div className={styles.modalFormFooter}>
+                <button
+                  type="button"
+                  className={styles.formGhostButton}
+                  onClick={resetStoreForm}
+                  disabled={isSavingStore}
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="submit"
+                  className={styles.formPrimaryButton}
+                  disabled={isSavingStore}
+                >
+                  {editingStoreId ? t.saveEdit : t.saveCreate}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
