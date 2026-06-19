@@ -54,11 +54,16 @@ import type {
 type OrderModuleScreenProps = {
   language: AuthLanguage;
   storeName?: string;
+  onProductViewChange?: (visible: boolean) => void;
 };
 
 type OrderModuleMode = "new" | "history";
 
-export function OrderModuleScreen({ language, storeName }: OrderModuleScreenProps) {
+export function OrderModuleScreen({
+  language,
+  storeName,
+  onProductViewChange,
+}: OrderModuleScreenProps) {
   const copy = ORDER_COPY[language];
   const [mode, setMode] = useState<OrderModuleMode>("new");
   const [suppliers, setSuppliers] = useState<OrderSupplier[]>([]);
@@ -86,6 +91,16 @@ export function OrderModuleScreen({ language, storeName }: OrderModuleScreenProp
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
+  // The product-selection page (supplier chosen, editing a new order) is the
+  // only long-scrolling view — let the host show its scroll-to helpers there.
+  const isProductView =
+    mode === "new" && step === "edit" && Boolean(selectedSupplierId);
+
+  useEffect(() => {
+    onProductViewChange?.(isProductView);
+  }, [isProductView, onProductViewChange]);
+
+  useEffect(() => () => onProductViewChange?.(false), [onProductViewChange]);
   const historySupplierOptions = useMemo(
     () => buildHistorySupplierOptions(orderHistory),
     [orderHistory],
@@ -545,25 +560,36 @@ export function OrderModuleScreen({ language, storeName }: OrderModuleScreenProp
             <StateRow label={copy.loadingSuppliers} />
           ) : (
             <View style={styles.optionGrid}>
-              {suppliers.map((supplier) => (
-                <Pressable
-                  key={supplier.id}
-                  style={[
-                    styles.optionButton,
-                    selectedSupplierId === supplier.id ? styles.optionButtonActive : null,
-                  ]}
-                  onPress={() => handleSelectSupplier(supplier.id)}
-                >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      selectedSupplierId === supplier.id ? styles.optionTextActive : null,
-                    ]}
+              {suppliers.map((supplier) => {
+                const isActive = selectedSupplierId === supplier.id;
+
+                return (
+                  <Pressable
+                    key={supplier.id}
+                    style={[styles.supplierRow, isActive ? styles.supplierRowActive : null]}
+                    onPress={() => handleSelectSupplier(supplier.id)}
                   >
-                    {supplier.name}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.supplierRowText,
+                        isActive ? styles.supplierRowTextActive : null,
+                      ]}
+                    >
+                      {supplier.name}
+                    </Text>
+                    <Ionicons
+                      color={
+                        isActive
+                          ? authControlStyles.colors.red
+                          : authControlStyles.colors.ink40
+                      }
+                      name="chevron-forward"
+                      size={18}
+                    />
+                  </Pressable>
+                );
+              })}
             </View>
           )}
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}

@@ -257,91 +257,68 @@ export function RecruitmentModuleScreen({
         </View>
 
         <Text style={styles.statLabel}>{copy.positionLabel}</Text>
-        <View style={{ gap: 10 }}>
+        <View style={styles.roleGrid}>
           {POSITIONS.map((pos) => {
             const active = isActivePosition(combo, pos);
-            const contracts = combo[pos];
 
             return (
-              <View key={pos}>
-                <Pressable
-                  style={[styles.rolePill, { alignSelf: "flex-start" }, active ? styles.rolePillActive : null]}
-                  onPress={() => togglePosition(pos)}
+              <Pressable
+                key={pos}
+                style={[styles.rolePill, active ? styles.rolePillActive : null]}
+                onPress={() => togglePosition(pos)}
+              >
+                <Text
+                  style={[
+                    styles.rolePillText,
+                    active ? styles.rolePillTextActive : null,
+                  ]}
                 >
-                  <Text
-                    style={[
-                      styles.rolePillText,
-                      active ? styles.rolePillTextActive : null,
-                    ]}
-                  >
-                    {positionLabels[pos]}
-                  </Text>
-                </Pressable>
-                {active ? (
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                    {CONTRACT_TYPES.map((ct) => {
-                      const isOn = ct in (contracts || {});
-                      return isOn ? (
-                        <View
-                          key={ct}
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 4,
-                            borderWidth: 1,
-                            borderColor: authControlStyles.colors.ink10,
-                            paddingLeft: 8,
-                          }}
-                        >
-                          <Pressable onPress={() => toggleContractForPosition(pos, ct)}>
-                            <Text
-                              style={{
-                                color: authControlStyles.colors.red,
-                                fontFamily: "monospace",
-                                fontSize: 11,
-                                fontWeight: "700",
-                              }}
-                            >
-                              {contractLabels[ct]}
-                            </Text>
-                          </Pressable>
-                          <TextInput
-                            keyboardType="number-pad"
-                            style={{
-                              width: 44,
-                              minHeight: 34,
-                              textAlign: "center",
-                              borderLeftWidth: 1,
-                              borderLeftColor: authControlStyles.colors.ink10,
-                              color: authControlStyles.colors.ink,
-                              fontFamily: "serif",
-                              fontSize: 15,
-                            }}
-                            value={contracts?.[ct] ?? ""}
-                            onChangeText={(value) => patchComboHeadcount(pos, ct, value)}
-                          />
-                        </View>
-                      ) : (
-                        <Pressable
-                          key={ct}
-                          style={[
-                            styles.rolePill,
-                            { borderStyle: "dashed", opacity: 0.5 },
-                          ]}
-                          onPress={() => toggleContractForPosition(pos, ct)}
-                        >
-                          <Text style={styles.rolePillText}>
-                            +{contractLabels[ct]}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : null}
-              </View>
+                  {positionLabels[pos]}
+                </Text>
+              </Pressable>
             );
           })}
         </View>
+
+        {POSITIONS.filter((pos) => isActivePosition(combo, pos)).map((pos) => {
+          const contracts = combo[pos];
+
+          return (
+            <View key={pos} style={styles.contractCard}>
+              <Text style={styles.contractCardTitle}>{positionLabels[pos]}</Text>
+              <View style={styles.contractRow}>
+                {CONTRACT_TYPES.map((ct) => {
+                  const isOn = ct in (contracts || {});
+
+                  return isOn ? (
+                    <View key={ct} style={styles.contractChip}>
+                      <Pressable
+                        style={styles.contractChipToggle}
+                        onPress={() => toggleContractForPosition(pos, ct)}
+                      >
+                        <Text style={styles.contractChipLabel}>{contractLabels[ct]}</Text>
+                      </Pressable>
+                      <TextInput
+                        keyboardType="number-pad"
+                        style={styles.contractChipInput}
+                        value={contracts?.[ct] ?? ""}
+                        onChangeText={(value) => patchComboHeadcount(pos, ct, value)}
+                      />
+                    </View>
+                  ) : (
+                    <Pressable
+                      key={ct}
+                      style={[styles.rolePill, styles.contractAddPill]}
+                      onPress={() => toggleContractForPosition(pos, ct)}
+                    >
+                      <Text style={styles.rolePillText}>+{contractLabels[ct]}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
 
         <Text style={styles.statLabel}>{copy.notesLabel}</Text>
         <TextInput

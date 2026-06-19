@@ -1,7 +1,7 @@
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import type { ComponentProps } from "react";
 import type { Ionicons } from "@expo/vector-icons";
-import { HEADQUARTER_JOB_ROLES, MANAGEMENT_JOB_ROLES } from "@zhao/utils";
+import { MANAGEMENT_JOB_ROLES } from "@zhao/utils";
 
 export type DashboardPrimaryIconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -75,59 +75,11 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
         label: { zh: "个人资料", en: "Profile", fr: "Profil" },
       },
       {
-        id: "permissions",
-        icon: "权",
-        requiredPermission: "system.permission.manage",
-        visibleForJobRoles: ["holding"],
-        label: { zh: "权限中心", en: "Permissions", fr: "Permissions" },
-      },
-      {
         id: "recruitment-requests",
         icon: "聘",
         requiredPermission: "recruitment.request.manage",
         visibleForJobRoles: ["store-manager"],
         label: { zh: "招聘请求", en: "Recruitment requests", fr: "Demandes recrutement" },
-      },
-    ],
-  },
-  {
-    id: "learning",
-    label: { zh: "学习模块", en: "LEARNING MODULE", fr: "MODULE FORMATION" },
-    items: [
-      {
-        id: "training-certifications",
-        icon: "证",
-        label: { zh: "认证管理", en: "Certifications", fr: "Certifications" },
-      },
-      {
-        id: "training-materials",
-        icon: "资",
-        label: { zh: "学习资料", en: "Learning materials", fr: "Ressources" },
-      },
-      {
-        id: "training-positions",
-        icon: "岗",
-        requiredPermission: "training.position.manage",
-        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
-        label: { zh: "岗位管理", en: "Positions", fr: "Postes" },
-      },
-    ],
-  },
-  {
-    id: "orders",
-    label: { zh: "订单模块", en: "ORDER MODULE", fr: "MODULE COMMANDES" },
-    items: [
-      {
-        id: "suppliers",
-        icon: "供",
-        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
-        label: { zh: "供应商管理", en: "Suppliers", fr: "Fournisseurs" },
-      },
-      {
-        id: "inventory",
-        icon: "库",
-        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
-        label: { zh: "ZHAO Bureau 库存", en: "ZHAO Bureau stock", fr: "Stock ZHAO Bureau" },
       },
     ],
   },

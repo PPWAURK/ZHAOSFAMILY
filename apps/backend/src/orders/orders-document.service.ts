@@ -49,6 +49,11 @@ export class OrdersDocumentService {
     join(this.cwdAssetsDir, 'ZHAO', 'img.png'),
   ];
   private readonly cjkFontCandidatePaths = [
+    // Committed font shipped with the backend assets (resolves on the Linux
+    // server via git deploy, same pattern as the logo/background paths).
+    join(this.backendAssetsDir, 'fonts', 'NotoSansSC-Regular.ttf'),
+    join(this.workspaceBackendAssetsDir, 'fonts', 'NotoSansSC-Regular.ttf'),
+    join(this.cwdAssetsDir, 'fonts', 'NotoSansSC-Regular.ttf'),
     join(
       process.cwd(),
       'assets',

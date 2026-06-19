@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  Animated,
+  Easing,
   Image,
   Linking,
   Modal,
@@ -14,7 +16,7 @@ import {
 } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
 import { useNotificationNavigation } from "@/lib/useNotificationNavigation";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
 import { canSeeNavEntry } from "@zhao/utils";
 import { Ionicons } from "@expo/vector-icons";
@@ -166,6 +168,9 @@ export function DashboardHomeScreen({
   // Route to the relevant module when the app is opened from a push tap.
   useNotificationNavigation((entry) => setActiveEntry(entry));
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  // The order module reports when its long product-selection view is active so
+  // the scroll-to-top/bottom helpers only show there, not on the supplier list.
+  const [isOrderProductView, setIsOrderProductView] = useState(false);
   const [newsPosts, setNewsPosts] = useState<DashboardNewsPost[]>([]);
   const [newsError, setNewsError] = useState("");
   const [isLoadingNews, setIsLoadingNews] = useState(true);
@@ -187,6 +192,42 @@ export function DashboardHomeScreen({
   const pdfLoadingTokenRef = useRef(0);
   const [newsCarouselIndex, setNewsCarouselIndex] = useState(0);
   const { width: screenWidth } = useWindowDimensions();
+  // Safe-area insets read here (outside the Modal) — RN Modal renders in a
+  // separate native window where SafeAreaView resolves insets to 0.
+  const insets = useSafeAreaInsets();
+
+  // "更多" panel slides in from the right edge (right → left) instead of bottom up.
+  const [isMoreRendered, setIsMoreRendered] = useState(false);
+  const moreDrawerProgress = useRef(new Animated.Value(0)).current;
+  const moreDrawerWidth = Math.min(420, Math.round(screenWidth * 0.55));
+  const moreDrawerTranslateX = moreDrawerProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [moreDrawerWidth, 0],
+  });
+
+  useEffect(() => {
+    if (isMoreOpen) {
+      setIsMoreRendered(true);
+      Animated.timing(moreDrawerProgress, {
+        toValue: 1,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    Animated.timing(moreDrawerProgress, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setIsMoreRendered(false);
+      }
+    });
+  }, [isMoreOpen, moreDrawerProgress]);
 
   const displayName = resolveDisplayName(user, copy.greetingFallback);
   const moreNavLabel = DASHBOARD_PRIMARY_NAV.find((item) => item.id === "more")?.label[language];
@@ -409,6 +450,7 @@ export function DashboardHomeScreen({
         <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
+          contentInsetAdjustmentBehavior="never"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.top}>
@@ -453,6 +495,7 @@ export function DashboardHomeScreen({
             <OrderModuleScreen
               language={language}
               storeName={user.store?.name || user.storeName || user.establishment || undefined}
+              onProductViewChange={setIsOrderProductView}
             />
           ) : activeEntry === "stores" ? (
             <StoresModuleScreen language={language} user={user} />
@@ -483,22 +526,6 @@ export function DashboardHomeScreen({
                   <Text style={styles.titleEm}>{displayName}</Text>
                   {copy.greetingSuffix}
                 </Text>
-                <Text style={styles.introText}>{copy.intro}</Text>
-              </View>
-
-              <View style={styles.profileStrip}>
-                <View style={styles.profileItem}>
-                  <TrackingText size={10}>{copy.storeLabel}</TrackingText>
-                  <Text style={styles.profileValue}>
-                    {user.store?.name || user.storeName || user.establishment || "-"}
-                  </Text>
-                </View>
-                <View style={styles.profileItem}>
-                  <TrackingText size={10}>{copy.roleLabel}</TrackingText>
-                  <Text style={styles.profileValue}>
-                    {user.jobRole || user.position || user.role || "-"}
-                  </Text>
-                </View>
               </View>
 
               <View style={styles.newsDesk}>
@@ -874,7 +901,7 @@ export function DashboardHomeScreen({
           </BlurView>
         ) : null}
 
-        {activeEntry === "orders" ? (
+        {activeEntry === "orders" && isOrderProductView ? (
           <View style={styles.orderJumpControls}>
             <Pressable
               accessibilityLabel={orderCopy.jumpTop}
@@ -902,22 +929,32 @@ export function DashboardHomeScreen({
         ) : null}
 
         <Modal
-          animationType="slide"
+          animationType="none"
           presentationStyle="overFullScreen"
           transparent
-          visible={isMoreOpen}
+          visible={isMoreRendered}
           onRequestClose={() => setIsMoreOpen(false)}
         >
           <View style={styles.sheetModalRoot}>
             <Pressable style={styles.sheetBackdrop} onPress={() => setIsMoreOpen(false)} />
-            <SafeAreaView
-              edges={["left", "right"]}
-              pointerEvents="box-none"
-              style={styles.sheetSafeArea}
+            <Animated.View
+              style={[
+                styles.sheetDrawer,
+                { width: moreDrawerWidth, transform: [{ translateX: moreDrawerTranslateX }] },
+              ]}
             >
               <BlurView intensity={42} tint="light" style={styles.sheet}>
                 <View style={styles.sheetSurface} />
-                <View style={styles.sheetHandle} />
+                <View
+                  style={[
+                    styles.sheetContent,
+                    {
+                      paddingTop: insets.top + 10,
+                      paddingBottom: insets.bottom + 10,
+                      paddingRight: insets.right + 20,
+                    },
+                  ]}
+                >
                 <View style={styles.sheetHeader}>
                   <View>
                     <TrackingText color={authControlStyles.colors.red} size={10}>
@@ -965,8 +1002,9 @@ export function DashboardHomeScreen({
                   />
                   <Text style={styles.sheetLogoutText}>{copy.logout}</Text>
                 </Pressable>
+                </View>
               </BlurView>
-            </SafeAreaView>
+            </Animated.View>
           </View>
         </Modal>
       </View>
@@ -1072,12 +1110,6 @@ const styles = StyleSheet.create(scaleStyles({
   intro: {
     gap: 10,
     paddingTop: 22,
-  },
-  introText: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 15,
-    lineHeight: 23,
   },
   kickerDot: {
     backgroundColor: authControlStyles.colors.red,
@@ -1475,24 +1507,6 @@ const styles = StyleSheet.create(scaleStyles({
     right: 18,
     zIndex: 8,
   },
-  profileItem: {
-    flex: 1,
-    gap: 6,
-  },
-  profileStrip: {
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 16,
-    marginTop: 22,
-    padding: 14,
-  },
-  profileValue: {
-    color: authControlStyles.colors.ink,
-    fontFamily: "serif",
-    fontSize: 15,
-    lineHeight: 20,
-  },
   quickAction: {
     alignItems: "center",
     borderColor: authControlStyles.colors.ink10,
@@ -1536,16 +1550,13 @@ const styles = StyleSheet.create(scaleStyles({
       default: "rgba(255, 255, 255, 0.94)",
     }),
     borderColor: "rgba(193, 22, 22, 0.22)",
-    borderTopWidth: 1,
+    borderLeftWidth: 1,
     borderWidth: 1,
-    maxHeight: "78%",
+    flex: 1,
     overflow: "hidden",
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    paddingTop: 10,
     ...crossPlatformShadow({
       color: authControlStyles.colors.red,
-      offset: { width: 0, height: -16 },
+      offset: { width: -16, height: 0 },
       opacity: 0.14,
       radius: 30,
       elevation: 24,
@@ -1599,7 +1610,7 @@ const styles = StyleSheet.create(scaleStyles({
     paddingBottom: 18,
   },
   sheetList: {
-    flexShrink: 1,
+    flex: 1,
   },
   sheetModalRoot: {
     ...StyleSheet.absoluteFillObject,
@@ -1627,15 +1638,18 @@ const styles = StyleSheet.create(scaleStyles({
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
-  sheetSafeArea: {
-    backgroundColor: "transparent",
+  sheetContent: {
+    flex: 1,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  sheetDrawer: {
     bottom: 0,
-    justifyContent: "flex-end",
-    left: 0,
+    maxWidth: "100%",
     position: "absolute",
     right: 0,
     top: 0,
-    width: "100%",
   },
   sheetSurface: {
     backgroundColor: Platform.select({

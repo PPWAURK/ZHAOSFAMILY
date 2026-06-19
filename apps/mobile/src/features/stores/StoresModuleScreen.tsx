@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -288,16 +289,19 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
     }
   }
 
-  async function saveTeamRole(permissionUser: MobilePermissionUser): Promise<void> {
-    const draft = teamDrafts[permissionUser.id];
-    if (!draft?.jobRole) return;
+  async function saveTeamRole(
+    permissionUser: MobilePermissionUser,
+    jobRoleOverride?: string,
+  ): Promise<void> {
+    const jobRole = jobRoleOverride ?? teamDrafts[permissionUser.id]?.jobRole;
+    if (!jobRole) return;
 
     setSavingUserId(permissionUser.id);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
-      const updatedUser = await updateUserJobRole(permissionUser.id, draft.jobRole);
+      const updatedUser = await updateUserJobRole(permissionUser.id, jobRole);
 
       setData((current) => ({
         ...current,
@@ -307,7 +311,9 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
         ...current,
         [updatedUser.id]: { jobRole: updatedUser.jobRole || "" },
       }));
-      setSuccessMessage(copy.roleSaved);
+      // No success banner here: toggling is auto-saved and the green switch is
+      // the feedback. Showing/clearing a banner above the list made the page
+      // jump up/down on every toggle.
     } catch {
       setErrorMessage(copy.roleSaveError);
     } finally {
@@ -469,7 +475,12 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
               value={teamSearchTerm}
               onChangeText={setTeamSearchTerm}
             />
-            <View style={styles.roleGrid}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScrollerContent}
+              style={styles.filterScroller}
+            >
               <Pressable
                 style={[
                   styles.filterPill,
@@ -509,7 +520,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
             {teamUsers.length === 0 ? (
               <Text style={styles.emptyText}>{copy.noTeam}</Text>
             ) : filteredTeamUsers.length === 0 ? (
@@ -525,8 +536,10 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
                   roleOptions={roleOptions}
                   user={item}
                   onDelete={() => confirmDeleteTeamUser(item)}
-                  onPatchDraft={(jobRole) => patchTeamDraft(item.id, jobRole)}
-                  onSave={() => void saveTeamRole(item)}
+                  onPatchDraft={(jobRole) => {
+                    patchTeamDraft(item.id, jobRole);
+                    void saveTeamRole(item, jobRole);
+                  }}
                 />
               ))
             )}

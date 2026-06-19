@@ -197,7 +197,9 @@ export function ProductQuantityRow({
               <Text style={styles.stepperButtonText}>+</Text>
             </Pressable>
           </View>
-          <Text style={styles.unitText}>{variant.unit || product.unit || "-"}</Text>
+          <Text style={styles.unitText} numberOfLines={1}>
+            {variant.unit || product.unit || "-"}
+          </Text>
         </View>
       ))}
     </View>

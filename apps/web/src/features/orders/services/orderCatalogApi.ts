@@ -46,8 +46,7 @@ function buildProductVariants(
 
   const variants = variantFields
     .filter(
-      (variant, index) =>
-        index === 0 ||
+      (variant) =>
         variant.specification ||
         variant.unit ||
         Number.isFinite(variant.price),

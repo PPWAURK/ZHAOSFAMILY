@@ -159,6 +159,31 @@ export const orderStyles = StyleSheet.create(scaleStyles({
   optionTextActive: {
     color: authControlStyles.colors.red,
   },
+  supplierRow: {
+    alignItems: "center",
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 58,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  supplierRowActive: {
+    backgroundColor: "rgba(193, 22, 22, 0.05)",
+    borderColor: authControlStyles.colors.red,
+  },
+  supplierRowText: {
+    color: authControlStyles.colors.ink,
+    flex: 1,
+    fontFamily: "serif",
+    fontSize: 16,
+    marginRight: 12,
+  },
+  supplierRowTextActive: {
+    color: authControlStyles.colors.red,
+    fontWeight: "600",
+  },
   orderCard: {
     borderColor: "rgba(193, 22, 22, 0.16)",
     borderWidth: 1,
@@ -264,10 +289,10 @@ export const orderStyles = StyleSheet.create(scaleStyles({
   quantityInput: {
     color: authControlStyles.colors.ink,
     fontFamily: "monospace",
-    fontSize: 15,
+    fontSize: 14,
     minHeight: 42,
-    minWidth: 46,
-    paddingHorizontal: 6,
+    minWidth: 30,
+    paddingHorizontal: 2,
     textAlign: "center",
   },
   quantityStepper: {
@@ -282,7 +307,7 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 42,
-    width: 34,
+    width: 26,
   },
   stepperButtonPressed: {
     backgroundColor: authControlStyles.colors.ink05,
@@ -434,8 +459,10 @@ export const orderStyles = StyleSheet.create(scaleStyles({
   },
   unitText: {
     color: authControlStyles.colors.ink60,
-    flex: 1,
+    flexShrink: 1,
     fontFamily: "monospace",
-    fontSize: 10,
+    fontSize: 9,
+    marginLeft: 4,
+    textAlign: "left",
   },
 }));

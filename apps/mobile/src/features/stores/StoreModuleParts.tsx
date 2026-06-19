@@ -1,4 +1,4 @@
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { authControlStyles, TrackingText } from "@/features/auth/AuthFormControls";
 import { STORE_COPY } from "@/features/stores/storeCopy";
@@ -62,29 +62,37 @@ export function RoleMultiSelector({
   }
 
   return (
-    <View style={styles.roleGrid}>
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled
+      style={styles.roleSelectPanel}
+    >
       {options.map((option) => {
         const isActive = selectedValues.includes(option.value);
 
         return (
-          <Pressable
-            key={option.value}
-            disabled={disabled}
-            style={[styles.rolePill, isActive ? styles.rolePillActive : null]}
-            onPress={() => toggleRole(option.value)}
-          >
+          <View key={option.value} style={styles.roleSwitchRow}>
             <Text
               style={[
-                styles.rolePillText,
-                isActive ? styles.rolePillTextActive : null,
+                styles.roleSwitchLabel,
+                isActive ? styles.roleSwitchLabelActive : null,
               ]}
             >
               {option.label}
             </Text>
-          </Pressable>
+            <Switch
+              disabled={disabled}
+              ios_backgroundColor="rgba(120, 120, 128, 0.16)"
+              style={styles.roleSwitch}
+              thumbColor="#ffffff"
+              trackColor={{ false: "rgba(120, 120, 128, 0.16)", true: "#34c759" }}
+              value={isActive}
+              onValueChange={() => toggleRole(option.value)}
+            />
+          </View>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -224,7 +232,6 @@ export function TeamUserCard({
   user,
   onDelete,
   onPatchDraft,
-  onSave,
 }: {
   copy: typeof STORE_COPY.zh;
   draft: StoreTeamDraft;
@@ -234,48 +241,20 @@ export function TeamUserCard({
   user: MobilePermissionUser;
   onDelete: () => void;
   onPatchDraft: (jobRole: string) => void;
-  onSave: () => void;
 }) {
-  const hasChanged = draft.jobRole !== (user.jobRole || "");
-
   return (
     <View style={styles.userCard}>
-      <View>
-        <Text style={styles.userName}>{user.name || "-"}</Text>
-        <Text style={styles.userEmail}>{user.email || "-"}</Text>
-        <Text style={styles.cardMeta}>{getRoleLabel(user.jobRole, roleOptions)}</Text>
-      </View>
-      <RoleMultiSelector
-        disabled={isSaving || isDeleting}
-        options={roleOptions}
-        value={draft.jobRole}
-        onChange={onPatchDraft}
-      />
-      <View style={styles.actionRow}>
+      <View style={styles.teamCardHeader}>
+        <View style={styles.teamCardIdentity}>
+          <Text style={styles.userName}>{user.name || "-"}</Text>
+          <Text style={styles.userEmail}>{user.email || "-"}</Text>
+          <Text style={styles.cardMeta}>{getRoleLabel(user.jobRole, roleOptions)}</Text>
+        </View>
         <Pressable
-          disabled={isSaving || isDeleting || !draft.jobRole || !hasChanged}
-          style={[
-            styles.actionButton,
-            styles.actionButtonPrimary,
-            isSaving || isDeleting || !draft.jobRole || !hasChanged
-              ? { opacity: 0.56 }
-              : null,
-          ]}
-          onPress={onSave}
-        >
-          {isSaving ? (
-            <ZhaoLoadingIndicator tone="light" variant="button" />
-          ) : (
-            <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
-              {copy.saveRole}
-            </Text>
-          )}
-        </Pressable>
-        <Pressable
+          accessibilityRole="button"
           disabled={isSaving || isDeleting}
           style={[
-            styles.actionButton,
-            styles.actionButtonDanger,
+            styles.teamDeleteButton,
             isSaving || isDeleting ? { opacity: 0.56 } : null,
           ]}
           onPress={onDelete}
@@ -287,6 +266,12 @@ export function TeamUserCard({
           )}
         </Pressable>
       </View>
+      <RoleMultiSelector
+        disabled={isSaving || isDeleting}
+        options={roleOptions}
+        value={draft.jobRole}
+        onChange={onPatchDraft}
+      />
     </View>
   );
 }

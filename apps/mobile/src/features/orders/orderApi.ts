@@ -50,8 +50,7 @@ function buildProductVariants(product: OrderProductApiRecord): OrderProductVaria
 
   return variantFields
     .filter(
-      (variant, index) =>
-        index === 0 ||
+      (variant) =>
         variant.specification ||
         variant.unit ||
         Number.isFinite(variant.price),
