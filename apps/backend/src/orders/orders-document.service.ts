@@ -192,9 +192,7 @@ export class OrdersDocumentService {
 
     if (this.publicApiBaseUrl) {
       const normalizedBaseUrl = this.publicApiBaseUrl.replace(/\/$/, '');
-      return normalizedPrefix
-        ? `${normalizedBaseUrl}/${normalizedPrefix}${path}`
-        : `${normalizedBaseUrl}${path}`;
+      return `${normalizedBaseUrl}${path}`;
     }
 
     const host = req.get('host') ?? 'localhost:3002';

@@ -73,6 +73,7 @@ jamais committé ni écrasé par le déploiement). Variables clés pour cette in
 ```
 PORT=3002
 API_PREFIX=api                                   # Nginx ajoute déjà /api/ via /backend3/
+PUBLIC_API_BASE_URL=https://api.zhaoplatforme.com/backend3
 DATABASE_URL="mysql://<user>:<pwd>@127.0.0.1:3310/zhao_family"   # conteneur zhao-family-mysql
 AUTH_TOKEN_SECRET=<openssl rand -base64 48>
 CORS_ORIGINS="https://zhaoplatforme.com"         # ajouter les origines web réelles
