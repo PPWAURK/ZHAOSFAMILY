@@ -86,6 +86,7 @@ export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> 
 export const STORE_COPY = {
   zh: {
     address: "地址",
+    appliedRole: "申请岗位",
     approve: "通过",
     backToList: "返回门店",
     backToStore: "返回门店详情",
@@ -131,6 +132,7 @@ export const STORE_COPY = {
   },
   en: {
     address: "Address",
+    appliedRole: "Applied position",
     approve: "Approve",
     backToList: "Back to stores",
     backToStore: "Back to store",
@@ -176,6 +178,7 @@ export const STORE_COPY = {
   },
   fr: {
     address: "Adresse",
+    appliedRole: "Poste demandé",
     approve: "Valider",
     backToList: "Retour aux boutiques",
     backToStore: "Retour boutique",

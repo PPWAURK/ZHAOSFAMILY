@@ -51,7 +51,10 @@ function formatStatus(status, labels) {
 function getDefaultReviewDraft(user, storeId) {
   return {
     restaurantId: String(user.restaurant?.id ?? storeId),
-    jobRole: normalizeJobRoleString(user.jobRole),
+    // Leave the assignment empty: user.jobRole is the *applied* position (shown
+    // read-only), not an assignable workstation. Pre-seeding it would submit a
+    // non-assignable role and get a 403 from the backend.
+    jobRole: "",
   };
 }
 
@@ -138,6 +141,7 @@ function PendingUserTable({
   drafts,
   emptyText,
   labels,
+  lang,
   onPatchDraft,
   onReviewUser,
   reviewingUserId,
@@ -186,6 +190,12 @@ function PendingUserTable({
                   />
                 </td>
                 <td>
+                  <div className={styles.appliedRole}>
+                    <span className={styles.appliedRoleLabel}>
+                      {labels.appliedRole}
+                    </span>
+                    <span>{formatJobRoleLabel(user.jobRole, lang)}</span>
+                  </div>
                   <JobRoleGroupPicker
                     disabled={isReviewing}
                     groups={roleGroups}
@@ -666,6 +676,7 @@ export default function StoreApprovalPage() {
               drafts={reviewDrafts}
               emptyText={page.noPending}
               labels={page}
+              lang={lang}
               reviewingUserId={reviewingUserId}
               roleGroups={roleGroups}
               stores={stores}

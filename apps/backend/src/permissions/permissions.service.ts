@@ -71,6 +71,13 @@ const TRAINING_VIEWER_ROLE_NAME = 'training-viewer';
 const HOLDING_JOB_ROLE = 'holding';
 const STORE_MANAGER_JOB_ROLE = 'store-manager';
 const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
+// Pending applications for these management-level positions are only reviewable
+// by holding — they must stay hidden from store/regional managers' approval lists.
+const ELEVATED_APPLICATION_JOB_ROLES = new Set([
+  HOLDING_JOB_ROLE,
+  REGIONAL_MANAGER_JOB_ROLE,
+  STORE_MANAGER_JOB_ROLE,
+]);
 const MANAGE_STORE_JOB_ROLES_PERMISSION = 'employee.job_role.manage_store';
 const SYSTEM_PERMISSION_MANAGE = 'system.permission.manage';
 const MANAGEABLE_JOB_ROLE_VALUES = new Set([
@@ -221,11 +228,28 @@ export class PermissionsService {
       accountStatus: { not: ACCOUNT_STATUS.removed },
     };
     const users = await this.findPermissionUsers(where);
+    const visibleUsers = this.hasHoldingScope(viewer)
+      ? users
+      : users.filter((user) => this.isApplicationVisibleToManager(user));
     const managedRestaurantsByUserId =
-      await this.findManagedRestaurantsByUserId(users.map((user) => user.id));
+      await this.findManagedRestaurantsByUserId(
+        visibleUsers.map((user) => user.id),
+      );
 
-    return users.map((user) =>
+    return visibleUsers.map((user) =>
       toPermissionUserItem(user, managedRestaurantsByUserId),
+    );
+  }
+
+  // Management-level applications (店长/区域经理/总部) are reserved for holding;
+  // already-approved staff stay visible so store teams render correctly.
+  private isApplicationVisibleToManager(user: PermissionUserRow): boolean {
+    if (user.accountStatus !== ACCOUNT_STATUS.pending) {
+      return true;
+    }
+
+    return ![...this.parseJobRoles(user.jobRole)].some((role) =>
+      ELEVATED_APPLICATION_JOB_ROLES.has(role),
     );
   }
 

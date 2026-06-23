@@ -1003,6 +1003,24 @@
   cursor: not-allowed;
 }
 
+.appliedRole {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.appliedRoleLabel {
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .jobRoleGroupPicker {
   display: grid;
   gap: 10px;

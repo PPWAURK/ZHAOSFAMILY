@@ -50,6 +50,22 @@ const PERMISSIONS = [
     key: 'recruitment.request.manage',
     description: 'Manage recruitment requests from stores',
   },
+  {
+    key: 'abc.score.read',
+    description: 'View ABC score cycles and leaderboard',
+  },
+  {
+    key: 'abc.score.fill_marketing',
+    description: 'Fill ABC marketing scores for stores',
+  },
+  {
+    key: 'abc.score.fill_operations',
+    description: 'Fill ABC operations (audit) scores and upload reports',
+  },
+  {
+    key: 'abc.score.publish',
+    description: 'Publish the ABC score leaderboard',
+  },
 ];
 
 const TRAINING_POSITIONS = [
@@ -342,6 +358,17 @@ const ROLES = [
     name: 'training-viewer',
     description: 'Can view and play training materials',
     permissions: ['training.material.read', 'training.material.play'],
+  },
+  {
+    name: 'marketing-admin',
+    description: 'Marketing department: fills ABC marketing scores',
+    permissions: ['abc.score.read', 'abc.score.fill_marketing'],
+  },
+  {
+    name: 'operations-admin',
+    description:
+      'Operations department: fills ABC audit scores and uploads reports',
+    permissions: ['abc.score.read', 'abc.score.fill_operations'],
   },
 ];
 

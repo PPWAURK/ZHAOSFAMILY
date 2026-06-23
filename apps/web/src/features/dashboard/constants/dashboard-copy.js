@@ -23,6 +23,17 @@ export const DASHBOARD_NAV = [
         visibleForJobRoles: MANAGEMENT_JOB_ROLES,
       },
       {
+        id: "abc-scores",
+        href: "/dashboard/abc-scores",
+        zh: "ABC 评分排行榜",
+        en: "ABC scoreboard",
+        fr: "Classement ABC",
+        requiredPermission: "abc.score.read",
+        // 营销/运营账号靠权限可见；总部（holding/regional）靠岗位兜底，
+        // 与「系统角色」入口同样的 OR 双条件。
+        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
+      },
+      {
         id: "profile",
         href: "/dashboard/profile",
         zh: "个人资料",

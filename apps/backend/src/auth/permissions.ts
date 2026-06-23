@@ -30,6 +30,13 @@ export const RECRUITMENT_REQUEST_PERMISSIONS = {
   manage: 'recruitment.request.manage',
 } as const;
 
+export const ABC_SCORE_PERMISSIONS = {
+  read: 'abc.score.read',
+  fillMarketing: 'abc.score.fill_marketing',
+  fillOperations: 'abc.score.fill_operations',
+  publish: 'abc.score.publish',
+} as const;
+
 export function RequirePermissions(...permissions: string[]) {
   return SetMetadata(PERMISSIONS_KEY, permissions);
 }

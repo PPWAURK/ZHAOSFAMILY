@@ -735,6 +735,70 @@ describe('PermissionsService', () => {
     );
   });
 
+  it('hides pending management applications from non-holding reviewers', async () => {
+    const { service, prismaService } = createService();
+    const restaurant = { id: 7, name: 'ZHAO Test' };
+    prismaService.user.findMany.mockResolvedValue([
+      {
+        id: 12,
+        name: 'Line Staff',
+        email: 'line@zhao.test',
+        accountStatus: 'pending',
+        jobRole: 'front-of-house',
+        restaurant,
+        userRoles: [],
+      },
+      {
+        id: 13,
+        name: 'Wannabe Manager',
+        email: 'manager@zhao.test',
+        accountStatus: 'pending',
+        jobRole: 'store-manager',
+        restaurant,
+        userRoles: [],
+      },
+      {
+        id: 14,
+        name: 'Existing Manager',
+        email: 'existing@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'store-manager',
+        restaurant,
+        userRoles: [],
+      },
+    ]);
+
+    const result = await service.listApprovableUsers({
+      id: 1,
+      familyName: 'Zhao',
+      givenName: 'Manager',
+      firstName: 'Manager',
+      lastName: 'Zhao',
+      name: 'Zhao Manager',
+      email: 'reviewer@zhao.test',
+      emailVerified: true,
+      restaurantId: 7,
+      store: { id: 7, name: 'ZHAO Test', address: 'Test', photoUrl: null },
+      storeName: 'ZHAO Test',
+      jobRole: 'store-manager',
+      role: 'store-manager',
+      position: 'store-manager',
+      birthday: null,
+      avatar: null,
+      avatarUrl: null,
+      phone: null,
+      address: null,
+      userLevel: 0,
+      preferredLanguage: 'zh',
+      permissions: [],
+    });
+
+    expect(result.map((user) => user.email)).toEqual([
+      'line@zhao.test',
+      'existing@zhao.test',
+    ]);
+  });
+
   it('rejects store managers approving employees into another restaurant', async () => {
     const { service, prismaService } = createService();
     prismaService.user.findUnique.mockResolvedValue({

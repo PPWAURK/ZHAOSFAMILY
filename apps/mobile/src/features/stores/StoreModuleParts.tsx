@@ -163,6 +163,7 @@ export function StoreCard({
 
 export function PendingUserCard({
   copy,
+  appliedRoleLabel,
   draft,
   isReviewing,
   roleOptions,
@@ -171,6 +172,7 @@ export function PendingUserCard({
   onReview,
 }: {
   copy: typeof STORE_COPY.zh;
+  appliedRoleLabel: string;
   draft: StoreApprovalDraft;
   isReviewing: boolean;
   roleOptions: StoreJobRoleOption[];
@@ -185,6 +187,9 @@ export function PendingUserCard({
         <Text style={styles.userEmail}>{user.email || "-"}</Text>
         <Text style={styles.cardMeta}>
           {resolveStatusLabel(user.accountStatus, copy)}
+        </Text>
+        <Text style={styles.cardMeta}>
+          {copy.appliedRole}: {appliedRoleLabel}
         </Text>
       </View>
       <RoleMultiSelector

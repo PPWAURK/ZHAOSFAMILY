@@ -95,6 +95,20 @@ function parseRoleValues(jobRole: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
+// Label the *applied* position using the full role table (incl. 前厅/后厨/经理),
+// not the filtered assignable options the selector renders.
+function formatAppliedRoleLabel(
+  jobRole: string | null | undefined,
+  language: AuthLanguage,
+): string {
+  const options = STORE_JOB_ROLE_OPTIONS[language];
+  const labels = parseRoleValues(jobRole).map(
+    (value) => options.find((option) => option.value === value)?.label || value,
+  );
+
+  return labels.length > 0 ? labels.join(" / ") : "-";
+}
+
 function upsertUser(
   users: MobilePermissionUser[],
   nextUser: MobilePermissionUser,
@@ -208,7 +222,10 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
   function buildApprovalDrafts(users: MobilePermissionUser[]): Record<number, StoreApprovalDraft> {
     return users.reduce<Record<number, StoreApprovalDraft>>((drafts, item) => {
       if (item.accountStatus === "pending") {
-        drafts[item.id] = { jobRole: item.jobRole || "" };
+        // Start empty: the registration role is the *applied* position (shown
+        // read-only), not an assignable workstation. The reviewer must pick one
+        // of the allowed line-staff roles, otherwise the backend rejects it.
+        drafts[item.id] = { jobRole: "" };
       }
 
       return drafts;
@@ -448,6 +465,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
                 <PendingUserCard
                   key={item.id}
                   copy={copy}
+                  appliedRoleLabel={formatAppliedRoleLabel(item.jobRole, language)}
                   draft={approvalDrafts[item.id] || { jobRole: "" }}
                   isReviewing={reviewingUserId === item.id}
                   roleOptions={roleOptions}
