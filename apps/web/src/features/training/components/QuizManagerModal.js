@@ -12,6 +12,7 @@ import {
   upsertTrainingQuiz,
 } from "@/features/training/services/trainingQuizApi";
 import AiConfigPanel from "@/features/training/components/AiConfigPanel";
+import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import styles from "@/features/training/components/quiz-manager.module.css";
 
 const OPTION_LETTERS = "ABCDEFGH";
@@ -136,6 +137,7 @@ function draftToQuestionInput(draft) {
 }
 
 export default function QuizManagerModal({ materialId, materialTitle, onClose }) {
+  const confirm = useConfirm();
   const [view, setView] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -209,7 +211,13 @@ export default function QuizManagerModal({ materialId, materialTitle, onClose })
   }
 
   async function handleDeleteQuiz() {
-    if (!window.confirm("确认删除整个测验及其全部题目？此操作无法撤销。")) return;
+    if (
+      !(await confirm({
+        message: "确认删除整个测验及其全部题目？此操作无法撤销。",
+        tone: "danger",
+      }))
+    )
+      return;
     const ok = await runMutation(async () => {
       await deleteTrainingQuiz(materialId);
       return null;
@@ -251,7 +259,7 @@ export default function QuizManagerModal({ materialId, materialTitle, onClose })
   }
 
   async function handleDeleteQuestion(questionId) {
-    if (!window.confirm("确认删除这道题？")) return;
+    if (!(await confirm({ message: "确认删除这道题？", tone: "danger" }))) return;
     await runMutation(() => deleteTrainingQuizQuestion(questionId));
   }
 

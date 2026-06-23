@@ -44,6 +44,12 @@ export const DASHBOARD_PRIMARY_NAV: DashboardNavItem[] = [
     label: { zh: "门店", en: "Stores", fr: "Boutiques" },
   },
   {
+    id: "case-shares",
+    icon: "chatbubbles-outline",
+    menuIcon: "案",
+    label: { zh: "案例", en: "Cases", fr: "Cas" },
+  },
+  {
     id: "orders",
     icon: "receipt-outline",
     menuIcon: "订",

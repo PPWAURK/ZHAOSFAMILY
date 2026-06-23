@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AbcScoresModule } from './abc-scores/abc-scores.module';
 import { AuthModule } from './auth/auth.module';
+import { CaseSharesModule } from './case-shares/case-shares.module';
 import { DashboardNewsModule } from './dashboard-news/dashboard-news.module';
 import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
@@ -26,6 +27,7 @@ import { TrainingModule } from './training/training.module';
     PrismaModule,
     AuthModule,
     AbcScoresModule,
+    CaseSharesModule,
     DashboardNewsModule,
     HealthModule,
     ProductsModule,

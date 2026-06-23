@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
@@ -36,6 +37,15 @@ export class AbcScoresController {
     private readonly authService: AuthService,
     private readonly abcScoresService: AbcScoresService,
   ) {}
+
+  // 首页排行榜：任何已登录用户可见，不要求 abc.score.read。
+  @Get('published')
+  async getPublished(
+    @Headers('authorization') authorization: string | undefined,
+  ): Promise<AbcLeaderboard | null> {
+    await this.getActor(authorization);
+    return this.abcScoresService.getPublishedLeaderboard();
+  }
 
   @Get('cycles')
   @RequirePermissions(ABC_SCORE_PERMISSIONS.read)
@@ -121,6 +131,12 @@ export class AbcScoresController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<AbcCycleSummary> {
     return this.abcScoresService.publishCycle(id);
+  }
+
+  @Delete('cycles/:id')
+  @RequirePermissions(ABC_SCORE_PERMISSIONS.publish)
+  deleteCycle(@Param('id', ParseIntPipe) id: number): Promise<{ id: number }> {
+    return this.abcScoresService.deleteCycle(id);
   }
 
   private async getActor(

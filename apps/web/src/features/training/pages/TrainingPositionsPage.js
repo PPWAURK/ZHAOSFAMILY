@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import JobRolePositionPanel from "@/features/training/components/JobRolePositionPanel";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
@@ -304,6 +305,7 @@ function PositionGroup({
 
 export default function TrainingPositionsPage() {
   const { user, isLoading } = useAuth();
+  const confirm = useConfirm();
   const [positions, setPositions] = useState(DEFAULT_TRAINING_POSITION_TREE);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingCode, setEditingCode] = useState(null);
@@ -432,7 +434,10 @@ export default function TrainingPositionsPage() {
 
   async function deletePosition(position) {
     const label = getTrainingPositionLabel(position, "zh") || position.code;
-    const confirmed = window.confirm(`确认删除岗位「${label}」？删除后不可恢复。`);
+    const confirmed = await confirm({
+      message: `确认删除岗位「${label}」？删除后不可恢复。`,
+      tone: "danger",
+    });
 
     if (!confirmed) {
       return;

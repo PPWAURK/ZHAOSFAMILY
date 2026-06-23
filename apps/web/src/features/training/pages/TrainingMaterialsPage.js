@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
 import QuizManagerModal from "@/features/training/components/QuizManagerModal";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
@@ -62,6 +63,7 @@ function toMaterialListItem(material) {
 
 export default function TrainingMaterialsPage() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const searchParams = useSearchParams();
   const initialPosition = searchParams.get("position");
   const [positions, setPositions] = useState(DEFAULT_TRAINING_POSITION_TREE);
@@ -231,9 +233,11 @@ export default function TrainingMaterialsPage() {
   }
 
   async function deleteMaterial(materialId) {
-    const shouldDelete = window.confirm(
-      "确认删除这份培训资料？此操作会同时删除文件和数据库记录，无法撤销。",
-    );
+    const shouldDelete = await confirm({
+      message:
+        "确认删除这份培训资料？此操作会同时删除文件和数据库记录，无法撤销。",
+      tone: "danger",
+    });
 
     if (!shouldDelete) {
       return;

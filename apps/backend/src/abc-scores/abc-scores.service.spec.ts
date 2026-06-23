@@ -25,9 +25,11 @@ function createPrismaServiceMock() {
   return {
     abcScoreCycle: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     abcStoreScore: {
       findMany: jest.fn(),
@@ -35,7 +37,7 @@ function createPrismaServiceMock() {
       findUniqueOrThrow: jest.fn(),
       upsert: jest.fn(),
     },
-    abcScoreMedia: { create: jest.fn() },
+    abcScoreMedia: { create: jest.fn(), findMany: jest.fn() },
     restaurant: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -44,13 +46,19 @@ function createPrismaServiceMock() {
   };
 }
 
+function createMediaServiceMock() {
+  return { deleteFile: jest.fn() };
+}
+
 describe('AbcScoresService', () => {
   let prisma: ReturnType<typeof createPrismaServiceMock>;
+  let media: ReturnType<typeof createMediaServiceMock>;
   let service: AbcScoresService;
 
   beforeEach(() => {
     prisma = createPrismaServiceMock();
-    service = new AbcScoresService(prisma as never);
+    media = createMediaServiceMock();
+    service = new AbcScoresService(prisma as never, media as never);
   });
 
   describe('getProgress', () => {
@@ -224,6 +232,41 @@ describe('AbcScoresService', () => {
         update: operationsData,
         include: { media: { orderBy: { createdAt: 'desc' } } },
       });
+    });
+  });
+
+  describe('deleteCycle', () => {
+    it('deletes the cycle and best-effort removes report objects', async () => {
+      prisma.abcScoreCycle.findUnique.mockResolvedValue({
+        ...DRAFT_CYCLE,
+        status: 'published',
+      });
+      prisma.abcScoreMedia.findMany.mockResolvedValue([
+        { objectKey: 'abc-scores/reports/a.pdf' },
+        { objectKey: 'abc-scores/reports/b.pdf' },
+      ]);
+      prisma.abcScoreCycle.delete.mockResolvedValue(DRAFT_CYCLE);
+      // 一个文件删失败不应中断整体删除。
+      media.deleteFile
+        .mockRejectedValueOnce(new Error('gone'))
+        .mockResolvedValueOnce(undefined);
+
+      const result = await service.deleteCycle(1);
+
+      expect(result).toEqual({ id: 1 });
+      expect(prisma.abcScoreCycle.delete).toHaveBeenCalledWith({
+        where: { id: 1 },
+      });
+      expect(media.deleteFile).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws when the cycle does not exist', async () => {
+      prisma.abcScoreCycle.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteCycle(404)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(prisma.abcScoreCycle.delete).not.toHaveBeenCalled();
     });
   });
 });

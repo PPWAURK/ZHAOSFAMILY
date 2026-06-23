@@ -13,8 +13,10 @@ ZHAO deployment from the menu/dock — companion to the CI/CD in `docs/deploymen
 - **Live pipeline status** — the pipelines section shows the latest run per
   workflow (queued / in progress / success / failure + time) via `gh run list`,
   auto-refreshing every 30s and after a trigger; click a row to open the run.
+- **Mobile EAS release actions** — trigger Android / iOS production EAS build
+  and submit from the local Mac without typing commands.
 - **⚙ Config** — edit the monitored URLs, repo, workflow filenames, deploy ref,
-  and SSH connection (for the `.env` editor). Persisted to
+  local EAS command, and SSH connection (for the `.env` editor). Persisted to
   `~/Library/Application Support/ZHAO Monitor/config.json`.
 - **🔑 GitHub secrets** — view status (set / when) and overwrite the deploy
   secrets via `gh secret set`. GitHub never returns values, so existing values
@@ -40,6 +42,8 @@ Requires Xcode command line tools (`swiftc`, `sips`, `iconutil`, `hdiutil`,
 
 - `gh` installed and authenticated (`gh auth login`) for the trigger / secrets
   buttons.
+- `eas` installed and authenticated (`eas login`), or an `EXPO_TOKEN` stored in
+  the local ZHAO Monitor config, for local mobile EAS build / submit actions.
 - An SSH key that can reach the server (for the `.env` editor), path set in ⚙.
 
 ## Files

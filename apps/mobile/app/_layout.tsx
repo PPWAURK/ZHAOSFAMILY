@@ -1,5 +1,7 @@
 import "../src/styles/global.css";
 
+import { ConfirmProvider } from "@/components/confirm/ConfirmProvider";
+import { ToastProvider } from "@/components/toast/ToastProvider";
 import { SplashScreen } from "@/features/splash/SplashScreen";
 import { useScreenCaptureProtection } from "@/lib/useScreenCaptureProtection";
 import { usePushTokenRegistration } from "@/lib/usePushTokenRegistration";
@@ -27,7 +29,11 @@ export default function RootLayout() {
         backgroundColor="#ffffff"
         translucent={isAndroid ? false : undefined}
       />
-      <Stack screenOptions={{ headerShown: false }} />
+      <ConfirmProvider>
+        <ToastProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </ToastProvider>
+      </ConfirmProvider>
       <SplashScreen />
       {isPrivacyOverlayVisible ? (
         <View pointerEvents="none" style={styles.privacyOverlay} />

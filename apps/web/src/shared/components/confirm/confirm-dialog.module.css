@@ -1,0 +1,79 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 10, 10, 0.5);
+}
+
+.panel {
+  width: min(440px, 100%);
+  background: #ffffff;
+  border: 1px solid #c11616;
+  padding: 26px 26px 22px;
+  box-shadow: 0 24px 60px rgba(10, 10, 10, 0.25);
+  font-family: "Noto Serif", "Noto Serif SC", "Songti SC", serif;
+  color: #0a0a0a;
+}
+
+.title {
+  margin: 0 0 10px;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.message {
+  margin: 0 0 22px;
+  line-height: 1.6;
+  color: rgba(10, 10, 10, 0.7);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cancel,
+.confirm {
+  padding: 9px 18px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.cancel {
+  background: #ffffff;
+  border: 1px solid rgba(10, 10, 10, 0.2);
+  color: rgba(10, 10, 10, 0.8);
+}
+
+.cancel:hover {
+  border-color: #c11616;
+  color: #c11616;
+}
+
+.confirm {
+  background: #c11616;
+  border: 1px solid #c11616;
+  color: #ffffff;
+}
+
+.confirm:hover {
+  background: #8c1414;
+  border-color: #8c1414;
+}
+
+.confirm.danger {
+  background: #c11616;
+  border-color: #c11616;
+}
+
+.confirm.danger:hover {
+  background: #8c1414;
+}

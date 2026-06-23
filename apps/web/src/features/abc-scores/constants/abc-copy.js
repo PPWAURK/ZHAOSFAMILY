@@ -46,6 +46,10 @@ export const ABC_COPY = {
     publish: "发布排行榜",
     publishConfirm: "确认发布该周期排行榜？发布后将不可再修改分数。",
     publishedHint: "该周期已发布，分数为只读。",
+    deleteCycle: "删除周期",
+    deleteConfirm: "确认删除该周期？将一并删除其全部评分与报告，且不可恢复。",
+    publishSuccess: "排行榜已发布",
+    deleteSuccess: "周期已删除",
     back: "返回控制台",
     footer: "Since 2011 — ZHAO's Family Holding",
   },
@@ -97,6 +101,11 @@ export const ABC_COPY = {
     publishConfirm:
       "Publish this cycle's leaderboard? Scores become read-only after publishing.",
     publishedHint: "This cycle is published — scores are read-only.",
+    deleteCycle: "Delete cycle",
+    deleteConfirm:
+      "Delete this cycle? All its scores and reports will be removed permanently.",
+    publishSuccess: "Leaderboard published",
+    deleteSuccess: "Cycle deleted",
     back: "Back to dashboard",
     footer: "Since 2011 — ZHAO's Family Holding",
   },
@@ -148,6 +157,11 @@ export const ABC_COPY = {
     publishConfirm:
       "Publier le classement de ce cycle ? Les notes deviennent non modifiables après publication.",
     publishedHint: "Ce cycle est publié — notes en lecture seule.",
+    deleteCycle: "Supprimer le cycle",
+    deleteConfirm:
+      "Supprimer ce cycle ? Toutes ses notes et ses rapports seront supprimés définitivement.",
+    publishSuccess: "Classement publié",
+    deleteSuccess: "Cycle supprimé",
     back: "Retour au tableau de bord",
     footer: "Since 2011 — ZHAO's Family Holding",
   },

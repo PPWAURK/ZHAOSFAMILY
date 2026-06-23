@@ -41,6 +41,7 @@ export const ORDER_HISTORY_COPY = {
     deletingOrder: "删除中...",
     confirmDeleteOrder: "确认删除订单「{number}」吗？此操作不可撤销。",
     deleteOrderError: "订单删除失败，请稍后重试。",
+    deleteOrderSuccess: "订单已删除",
     loading: "订单加载中...",
     loadError: "订单加载失败，请检查 orders 接口或数据库连接。",
     returnTitle: "创建退货",
@@ -110,6 +111,7 @@ export const ORDER_HISTORY_COPY = {
     deletingOrder: "Deleting...",
     confirmDeleteOrder: 'Delete order "{number}"? This cannot be undone.',
     deleteOrderError: "Failed to delete the order. Please try again.",
+    deleteOrderSuccess: "Order deleted",
     loading: "Loading orders...",
     loadError: "Failed to load orders. Check the orders API or database connection.",
     returnTitle: "Create return",
@@ -180,6 +182,7 @@ export const ORDER_HISTORY_COPY = {
     confirmDeleteOrder:
       "Supprimer la commande « {number} » ? Cette action est irreversible.",
     deleteOrderError: "Impossible de supprimer la commande. Veuillez reessayer.",
+    deleteOrderSuccess: "Commande supprimée",
     loading: "Chargement des commandes...",
     loadError: "Impossible de charger les commandes. Verifiez l'API orders ou la connexion base de donnees.",
     returnTitle: "Creer un retour",

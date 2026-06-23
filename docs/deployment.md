@@ -5,7 +5,8 @@ l'infrastructure réelle (relevée le 2026-06-17).
 
 > Le **backend** tourne sous PM2 sur le VPS. Le **web** (export statique Next.js)
 > est hébergé sur l'**hébergement mutualisé OVH** qui sert `zhaoplatforme.com`,
-> mis à jour par SFTP. Le **mobile** se publie via EAS (hors de ce pipeline).
+> mis à jour par SFTP. Le **mobile** se publie via EAS, déclenchable localement
+> depuis ZHAO Monitor.
 
 ## Architecture réelle
 
@@ -39,6 +40,10 @@ client Prisma) → `pm2 reload zhao-family-backend`.
 `apps/web/out/`, `NEXT_PUBLIC_API_BASE_URL` injecté au build) → upload `lftp`
 `mirror -R` vers le docroot OVH. Pas de `--delete` (n'efface pas `.htaccess`,
 `.well-known`, etc.). Apex à la racine → pas de `basePath`.
+
+**Mobile** (EAS) : `apps/mobile/eas.json` définit le profil `production`.
+ZHAO Monitor peut lancer les commandes EAS localement depuis `apps/mobile` pour
+éviter de saisir les commandes à la main.
 
 ## Secrets GitHub (Settings → Secrets and variables → Actions)
 

@@ -16,6 +16,7 @@ import ScoreEditModal from "@/features/abc-scores/components/ScoreEditModal";
 import StoreScoreTable from "@/features/abc-scores/components/StoreScoreTable";
 import {
   createAbcCycle,
+  deleteAbcCycle,
   fetchAbcCycle,
   fetchAbcCycles,
   fetchAbcPreview,
@@ -25,6 +26,8 @@ import {
   resolveAbcMediaUrl,
   uploadAbcReport,
 } from "@/features/abc-scores/services/abcScoresApi";
+import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
+import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/abc-scores/abc-scores-page.module.css";
 
@@ -32,6 +35,8 @@ const EMPTY_DRAFT = { score: "", notes: "", grade: "" };
 
 export default function AbcScoresPage() {
   const { user } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [cycles, setCycles] = useState([]);
@@ -53,6 +58,7 @@ export default function AbcScoresPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [uploadingFor, setUploadingFor] = useState(null);
   const [publishing, setPublishing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const t = ABC_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -227,7 +233,7 @@ export default function AbcScoresPage() {
   }
 
   async function handlePublish() {
-    if (!currentCycleId || !window.confirm(t.publishConfirm)) {
+    if (!currentCycleId || !(await confirm(t.publishConfirm))) {
       return;
     }
     setPublishing(true);
@@ -235,10 +241,31 @@ export default function AbcScoresPage() {
       await publishAbcCycle(currentCycleId);
       await loadCycles();
       await refreshDetail(currentCycleId);
+      toast.success(t.publishSuccess);
     } catch (publishErr) {
-      setError(publishErr instanceof Error ? publishErr.message : t.saveError);
+      toast.error(publishErr instanceof Error ? publishErr.message : t.saveError);
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (
+      !currentCycleId ||
+      !(await confirm({ message: t.deleteConfirm, tone: "danger" }))
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteAbcCycle(currentCycleId);
+      // 删除当前周期后，loadCycles 会自动改选剩余周期（或清空）。
+      await loadCycles();
+      toast.success(t.deleteSuccess);
+    } catch (deleteErr) {
+      toast.error(deleteErr instanceof Error ? deleteErr.message : t.saveError);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -376,6 +403,16 @@ export default function AbcScoresPage() {
                   disabled={publishing}
                 >
                   {t.publish}
+                </button>
+              ) : null}
+              {canPublish ? (
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {t.deleteCycle}
                 </button>
               ) : null}
             </div>

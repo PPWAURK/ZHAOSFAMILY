@@ -1,16 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { Image, Modal, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { useConfirm } from "@/components/confirm/ConfirmProvider";
 import type { TRAINING_COPY } from "@/features/training/trainingCopy";
 import {
   assessViewerStats,
@@ -117,6 +110,7 @@ export function TrainingPreviewModal({
   onStartQuiz,
   syncProgress,
 }: TrainingPreviewModalProps) {
+  const confirm = useConfirm();
   const [stats, setStats] = useState<ViewerStats | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
@@ -218,14 +212,16 @@ export function TrainingPreviewModal({
     // Only viewer stats updates should re-trigger the sync pipeline.
   }, [stats]);
 
-  function handleMarkCompletePress(): void {
-    Alert.alert(copy.markCompleteConfirmTitle, copy.markCompleteConfirmMessage, [
-      { text: copy.markCompleteConfirmCancel, style: "cancel" },
-      {
-        text: copy.markCompleteConfirmOk,
-        onPress: () => void completeMaterial(),
-      },
-    ]);
+  async function handleMarkCompletePress(): Promise<void> {
+    const confirmed = await confirm({
+      title: copy.markCompleteConfirmTitle,
+      message: copy.markCompleteConfirmMessage,
+      confirmLabel: copy.markCompleteConfirmOk,
+      cancelLabel: copy.markCompleteConfirmCancel,
+    });
+    if (confirmed) {
+      void completeMaterial();
+    }
   }
 
   function handleClose(): void {
@@ -350,7 +346,7 @@ export function TrainingPreviewModal({
                         ? styles.markCompleteButtonDisabled
                         : null,
                     ]}
-                    onPress={handleMarkCompletePress}
+                    onPress={() => void handleMarkCompletePress()}
                   >
                     <Text style={styles.markCompleteButtonText}>
                       {copy.markComplete}

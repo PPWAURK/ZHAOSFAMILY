@@ -21,6 +21,8 @@ import {
   fetchPurchaseOrders,
   fetchPurchaseReturns,
 } from "@/features/orders/services/ordersApi";
+import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
+import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/order-history/order-history-page.module.css";
 
@@ -58,6 +60,8 @@ function toOrderRow(order) {
 }
 
 export default function OrderHistoryPage() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [storeFilter, setStoreFilter] = useState("all");
@@ -77,7 +81,6 @@ export default function OrderHistoryPage() {
   const [downloadingPdfOrderId, setDownloadingPdfOrderId] = useState("");
   const [pdfError, setPdfError] = useState("");
   const [deletingOrderId, setDeletingOrderId] = useState("");
-  const [deleteError, setDeleteError] = useState("");
 
   const t = ORDER_HISTORY_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -215,18 +218,19 @@ export default function OrderHistoryPage() {
     if (!order?.id) return;
     const orderId = String(order.id);
 
-    const confirmed = window.confirm(
-      t.confirmDeleteOrder.replace("{number}", order.number || order.id),
-    );
+    const confirmed = await confirm({
+      message: t.confirmDeleteOrder.replace("{number}", order.number || order.id),
+      tone: "danger",
+    });
     if (!confirmed) return;
 
     try {
       setDeletingOrderId(orderId);
-      setDeleteError("");
       await deletePurchaseOrder(orderId);
       await refreshOrders();
+      toast.success(t.deleteOrderSuccess);
     } catch (nextError) {
-      setDeleteError(resolveErrorMessage(nextError, t.deleteOrderError));
+      toast.error(resolveErrorMessage(nextError, t.deleteOrderError));
     } finally {
       setDeletingOrderId("");
     }
@@ -464,11 +468,6 @@ export default function OrderHistoryPage() {
           </div>
         ) : null}
 
-        {deleteError ? (
-          <div className={styles.inlineError} role="alert">
-            {deleteError}
-          </div>
-        ) : null}
 
         <p className={styles.listHeading}>
           <span>{t.returnsHeading}</span>

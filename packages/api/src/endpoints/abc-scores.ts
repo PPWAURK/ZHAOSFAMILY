@@ -18,6 +18,7 @@ export type AbcScoresApi = {
   getCycle: (id: number | string) => Promise<AbcCycleDetail>;
   getProgress: (id: number | string) => Promise<AbcProgress>;
   getPreview: (id: number | string) => Promise<AbcLeaderboard>;
+  getPublished: () => Promise<AbcLeaderboard | null>;
   fillMarketing: (
     id: number | string,
     restaurantId: number | string,
@@ -34,6 +35,7 @@ export type AbcScoresApi = {
     input: AttachAbcMediaRequest,
   ) => Promise<AbcStoreScoreItem>;
   publish: (id: number | string) => Promise<AbcCycleSummary>;
+  deleteCycle: (id: number | string) => Promise<{ id: number }>;
 };
 
 function buildCyclesPath(query?: ListAbcCyclesQuery): string {
@@ -57,6 +59,7 @@ export function createAbcScoresApi(apiClient: ApiClient): AbcScoresApi {
       apiClient.get<AbcProgress>(`/abc-scores/cycles/${encodeURIComponent(id)}/progress`),
     getPreview: (id) =>
       apiClient.get<AbcLeaderboard>(`/abc-scores/cycles/${encodeURIComponent(id)}/preview`),
+    getPublished: () => apiClient.get<AbcLeaderboard | null>("/abc-scores/published"),
     fillMarketing: (id, restaurantId, input) =>
       apiClient.patch<AbcStoreScoreItem>(`${storeBasePath(id, restaurantId)}/marketing`, input),
     fillOperations: (id, restaurantId, input) =>
@@ -65,5 +68,7 @@ export function createAbcScoresApi(apiClient: ApiClient): AbcScoresApi {
       apiClient.post<AbcStoreScoreItem>(`${storeBasePath(id, restaurantId)}/media`, input),
     publish: (id) =>
       apiClient.post<AbcCycleSummary>(`/abc-scores/cycles/${encodeURIComponent(id)}/publish`),
+    deleteCycle: (id) =>
+      apiClient.delete<{ id: number }>(`/abc-scores/cycles/${encodeURIComponent(id)}`),
   };
 }

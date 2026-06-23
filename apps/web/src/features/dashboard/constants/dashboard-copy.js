@@ -145,6 +145,14 @@ export const DASHBOARD_NAV = [
         // their list to their own store and the page is read-only for them.
         visibleForJobRoles: ["store-manager"],
       },
+      {
+        id: "case-shares-review",
+        href: "/dashboard/case-shares-review",
+        zh: "案例审核",
+        en: "Case review",
+        fr: "Validation des cas",
+        requiredPermission: "case.share.review",
+      },
     ],
   },
 ];
@@ -344,12 +352,13 @@ export const DASHBOARD_COPY = {
     scoreLeaderboard: {
       kicker: "Store Score · Ranking",
       title: "门店评分排行榜",
-      subtitle: "先使用虚假数据展示每家门店的 A / B / C 等级，后续可替换为真实评分接口。",
+      subtitle: "展示最新已发布周期每家门店的 A / B / C 等级与评分，点击门店可查看运营上传的评分报告。",
       summaryLabel: "等级统计",
       trackingLabel: "后续追踪",
       tieLabel: "并列",
       storeUnit: "家",
       auditLabel: "检查",
+      reportLabel: "查看评分报告",
       placeLabel: "第 {rank} 名",
       columns: {
         rank: "排名",
@@ -502,12 +511,13 @@ export const DASHBOARD_COPY = {
     scoreLeaderboard: {
       kicker: "Store Score · Ranking",
       title: "Store score ranking",
-      subtitle: "Mock data for each store's A / B / C grade. This can later be wired to the real scoring API.",
+      subtitle: "A / B / C grade and score for each store from the latest published cycle. Click a store to open the operations audit report.",
       summaryLabel: "Grade summary",
       trackingLabel: "Follow-up",
       tieLabel: "Tie",
       storeUnit: "stores",
       auditLabel: "Audit",
+      reportLabel: "View audit report",
       placeLabel: "No. {rank}",
       columns: {
         rank: "Rank",
@@ -664,12 +674,13 @@ export const DASHBOARD_COPY = {
     scoreLeaderboard: {
       kicker: "Store Score · Ranking",
       title: "Classement des boutiques",
-      subtitle: "Donnees fictives pour afficher les niveaux A / B / C de chaque boutique. La section pourra ensuite utiliser l'API reelle.",
+      subtitle: "Niveaux A / B / C et notes de chaque boutique du dernier cycle publie. Cliquez sur une boutique pour ouvrir le rapport d'audit.",
       summaryLabel: "Synthese des notes",
       trackingLabel: "Suivi",
       tieLabel: "Ex aequo",
       storeUnit: "boutiques",
       auditLabel: "Audit",
+      reportLabel: "Voir le rapport d'audit",
       placeLabel: "Rang {rank}",
       columns: {
         rank: "Rang",

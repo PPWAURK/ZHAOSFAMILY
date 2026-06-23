@@ -42,6 +42,7 @@ import {
   fetchDashboardNewsPosts,
   type DashboardNewsPost,
 } from "@/features/dashboard/dashboardNewsApi";
+import { CaseSharesModuleScreen } from "@/features/case-shares/CaseSharesModuleScreen";
 import { OrderModuleScreen } from "@/features/orders/OrderModuleScreen";
 import { ORDER_COPY } from "@/features/orders/orderCopy";
 import { ProfileScreen } from "@/features/profile/ProfileScreen";
@@ -177,6 +178,7 @@ function resolveDashboardEntryId(entryId: string): string {
 function isConnectedDashboardEntry(entryId: string): boolean {
   return (
     entryId === "home" ||
+    entryId === "case-shares" ||
     entryId === "orders" ||
     entryId === "profile" ||
     entryId === "recruitment-requests" ||
@@ -546,6 +548,8 @@ export function DashboardHomeScreen({
             />
           ) : activeEntry === "recruitment-requests" ? (
             <RecruitmentModuleScreen language={language} />
+          ) : activeEntry === "case-shares" ? (
+            <CaseSharesModuleScreen language={language} />
           ) : activeEntry === "training" ? (
             <TrainingModuleScreen language={language} />
           ) : (

@@ -117,6 +117,10 @@
     <div class="frow"><label>.env 路径</label><input id="cfg-envPath" placeholder="/opt/…/.env"></div>
     <div class="sgroup">本地（用于 Git 提交）</div>
     <div class="frow"><label>本地仓库路径</label><input id="cfg-repoPath" placeholder="/Users/…/zhao-family"></div>
+    <div class="sgroup">本地 EAS（用于 Mobile build / submit）</div>
+    <div class="frow"><label>Mobile app 路径</label><input id="cfg-mobileAppPath" placeholder="/Users/…/zhao-family/apps/mobile"></div>
+    <div class="frow"><label>EAS 命令</label><input id="cfg-easCommand" placeholder="eas"></div>
+    <div class="frow"><label>EXPO_TOKEN</label><input id="cfg-expoToken" type="password" placeholder="留空则使用本机 eas login"></div>
     <div class="ops" style="margin-top:11px">
       <button class="op primary" onclick="saveConfig()">保存</button>
       <button onclick="togglePanel('settings')">取消</button>
@@ -188,6 +192,14 @@
   </div>
   <div id="toast" class="toast"></div>
 
+  <p class="sectitle" style="margin-top:16px">Mobile · EAS</p>
+  <div class="ops">
+    <button class="op" onclick="easLocal('mobileAndroidBuild','确认：触发 Android production EAS Build？')">Android Build</button>
+    <button class="op primary" onclick="easLocal('mobileAndroidSubmit','确认：提交最新 Android production build 到 Google Play？')">Android Submit</button>
+    <button class="op" onclick="easLocal('mobileIosBuild','确认：触发 iOS production EAS Build？')">iOS Build</button>
+    <button class="op primary" onclick="easLocal('mobileIosSubmit','确认：提交最新 iOS production build 到 App Store Connect / TestFlight？')">iOS Submit</button>
+  </div>
+
   <div class="links">
     <a id="a-actions" href="#"><button>GitHub Actions ↗</button></a>
     <a id="a-web" href="#"><button>打开 Web ↗</button></a>
@@ -197,7 +209,8 @@
 <script>
   var CFG={};
   var FIELDS=['backendHealthURL','webURL','repo','ref','ciWorkflow','backendWorkflow','webWorkflow',
-              'sshHost','sshUser','sshPort','sshKeyPath','envPath','repoPath'];
+              'sshHost','sshUser','sshPort','sshKeyPath','envPath','repoPath','mobileAppPath',
+              'easCommand','expoToken'];
   var SECRETS=[
     {n:'DEPLOY_SSH_HOST',g:'后端 (SSH)'},{n:'DEPLOY_SSH_USER',g:'后端 (SSH)'},
     {n:'DEPLOY_SSH_KEY',g:'后端 (SSH)',file:true},{n:'DEPLOY_SSH_PORT',g:'后端 (SSH)'},
@@ -317,7 +330,13 @@
     document.getElementById('when').textContent='更新于 '+d.time;
   };
 
-  var LABEL={ci:'CI',backend:'Deploy Backend',web:'Deploy Web',all:'CI + CD'};
+  var LABEL={
+    ci:'CI',backend:'Deploy Backend',web:'Deploy Web',all:'CI + CD',
+    mobileAndroidBuild:'Android EAS Build',
+    mobileAndroidSubmit:'Android EAS Submit',
+    mobileIosBuild:'iOS EAS Build',
+    mobileIosSubmit:'iOS EAS Submit'
+  };
   function showToast(msg,cls){ var t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+(cls||''); }
   function fire(key,confirmMsg){
     if(confirmMsg && !confirm(confirmMsg)) return;
@@ -328,8 +347,21 @@
   window.dispatchResult=function(key,ok,msg){
     showToast((ok?'✓ 已触发 ':'✗ 失败 ')+(LABEL[key]||key)+(msg?' — '+msg:'')+(ok?'（流水线状态见下方，实时刷新）':''), ok?'ok':'bad');
   };
+  function easLocal(key,confirmMsg){
+    if(confirmMsg && !confirm(confirmMsg)) return;
+    showToast('本机执行中… '+(LABEL[key]||key)+' …','');
+    try{ window.webkit.messageHandlers.easLocal.postMessage(key); }
+    catch(e){ showToast('无法调用本机 EAS 命令','bad'); }
+  }
+  window.easLocalDone=function(key,ok,msg){
+    showToast((ok?'✓ 完成 ':'✗ 失败 ')+(LABEL[key]||key)+(msg?' — '+msg:''), ok?'ok':'bad');
+  };
 
-  var WORKFLOWS=[{wf:'CI',label:'CI 质量门禁'},{wf:'Deploy Backend',label:'Deploy Backend'},{wf:'Deploy Web',label:'Deploy Web'}];
+  var WORKFLOWS=[
+    {wf:'CI',label:'CI 质量门禁'},
+    {wf:'Deploy Backend',label:'Deploy Backend'},
+    {wf:'Deploy Web',label:'Deploy Web'}
+  ];
   function ago(iso){ var s=Math.max(0,(Date.now()-new Date(iso).getTime())/1000);
     if(s<60) return Math.floor(s)+'秒前'; if(s<3600) return Math.floor(s/60)+'分前';
     if(s<86400) return Math.floor(s/3600)+'时前'; return Math.floor(s/86400)+'天前'; }

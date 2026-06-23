@@ -45,6 +45,10 @@ model User {
   pushTokens        PushToken[]
   createdRecruitmentRequests RecruitmentRequest[] @relation("RecruitmentRequestCreatedBy")
   handledRecruitmentRequests RecruitmentRequest[] @relation("RecruitmentRequestHandledBy")
+  caseShares                 CaseShare[]          @relation("CaseShareAuthor")
+  reviewedCaseShares         CaseShare[]          @relation("CaseShareReviewedBy")
+  caseShareComments          CaseShareComment[]   @relation("CaseShareCommentAuthor")
+  caseShareLikes             CaseShareLike[]      @relation("CaseShareLikeUser")
 
   @@index([restaurantId])
   @@index([accountStatus])
@@ -146,6 +150,7 @@ model Restaurant {
   dashboardPosts  DashboardPost[]
   recruitmentRequests RecruitmentRequest[]
   abcStoreScores  AbcStoreScore[]
+  caseShares      CaseShare[]
 
   @@map("restaurants")
 }
@@ -572,6 +577,62 @@ model RecruitmentRequest {
   @@index([createdByUserId])
   @@index([handledByUserId])
   @@map("recruitment_requests")
+}
+
+model CaseShare {
+  id               Int        @id @default(autoincrement())
+  authorId         Int        @map("author_id")
+  author           User       @relation("CaseShareAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  restaurantId     Int        @map("restaurant_id")
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  type             String     @db.VarChar(20)
+  content          String     @db.Text
+  imageBucket      String?    @map("image_bucket") @db.VarChar(100)
+  imageObjectKey   String?    @map("image_object_key") @db.VarChar(500)
+  imageName        String?    @map("image_name") @db.VarChar(255)
+  imageMimeType    String?    @map("image_mime_type") @db.VarChar(100)
+  imageSizeBytes   BigInt?    @map("image_size_bytes")
+  status           String     @default("pending") @db.VarChar(20)
+  reviewNote       String?    @map("review_note") @db.Text
+  reviewedByUserId Int?       @map("reviewed_by_user_id")
+  reviewedBy       User?      @relation("CaseShareReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt       DateTime?  @map("reviewed_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  comments         CaseShareComment[]
+  likes            CaseShareLike[]
+
+  @@index([status, reviewedAt])
+  @@index([authorId, createdAt])
+  @@index([restaurantId, createdAt])
+  @@map("case_shares")
+}
+
+model CaseShareComment {
+  id          Int       @id @default(autoincrement())
+  caseShareId Int       @map("case_share_id")
+  caseShare   CaseShare @relation(fields: [caseShareId], references: [id], onDelete: Cascade)
+  authorId    Int       @map("author_id")
+  author      User      @relation("CaseShareCommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  content     String    @db.VarChar(300)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([caseShareId, createdAt])
+  @@map("case_share_comments")
+}
+
+model CaseShareLike {
+  id          Int       @id @default(autoincrement())
+  caseShareId Int       @map("case_share_id")
+  caseShare   CaseShare @relation(fields: [caseShareId], references: [id], onDelete: Cascade)
+  userId      Int       @map("user_id")
+  user        User      @relation("CaseShareLikeUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([caseShareId, userId])
+  @@index([userId, createdAt])
+  @@map("case_share_likes")
 }
 
 model LegacyDocument {

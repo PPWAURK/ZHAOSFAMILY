@@ -96,3 +96,61 @@ export function dashboardPostNotification(
     data: { type: 'dashboard-news', postId: String(postId) },
   };
 }
+
+const CASE_SHARE_LIKE: Record<
+  NotificationLanguage,
+  (actorName: string) => LocalizedText
+> = {
+  zh: (actorName) => ({
+    title: '收到一个赞',
+    body: `${actorName} 点赞了你的案例`,
+  }),
+  en: (actorName) => ({
+    title: 'New like',
+    body: `${actorName} liked your case`,
+  }),
+  fr: (actorName) => ({
+    title: "Nouveau j'aime",
+    body: `${actorName} a aimé votre cas`,
+  }),
+};
+
+export function caseShareLikeNotification(
+  language: string | null | undefined,
+  caseShareId: number | bigint,
+  actorName: string,
+): NotificationPayload {
+  return {
+    ...CASE_SHARE_LIKE[normalizeLanguage(language)](actorName),
+    data: { type: 'case-share', caseShareId: String(caseShareId) },
+  };
+}
+
+const CASE_SHARE_COMMENT: Record<
+  NotificationLanguage,
+  (actorName: string) => LocalizedText
+> = {
+  zh: (actorName) => ({
+    title: '收到新评论',
+    body: `${actorName} 评论了你的案例`,
+  }),
+  en: (actorName) => ({
+    title: 'New comment',
+    body: `${actorName} commented on your case`,
+  }),
+  fr: (actorName) => ({
+    title: 'Nouveau commentaire',
+    body: `${actorName} a commenté votre cas`,
+  }),
+};
+
+export function caseShareCommentNotification(
+  language: string | null | undefined,
+  caseShareId: number | bigint,
+  actorName: string,
+): NotificationPayload {
+  return {
+    ...CASE_SHARE_COMMENT[normalizeLanguage(language)](actorName),
+    data: { type: 'case-share', caseShareId: String(caseShareId) },
+  };
+}

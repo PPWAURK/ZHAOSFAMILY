@@ -1,14 +1,19 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { canSeeNavEntry } from "@zhao/utils";
 
+import {
+  fetchPublishedLeaderboard,
+  resolveAbcMediaUrl,
+} from "@/features/abc-scores/services/abcScoresApi";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import DashboardNewsModule from "@/features/dashboard/components/DashboardNewsModule";
 import Sidebar from "@/features/dashboard/components/Sidebar";
 import StoreScoreLeaderboard from "@/features/dashboard/components/StoreScoreLeaderboard";
+import { resolveStorePhotoPath } from "@/features/stores/services/restaurantsApi";
 import {
   DASHBOARD_COPY,
   DASHBOARD_LANGUAGES,
@@ -27,9 +32,43 @@ function resolveDisplayName(user, fallback) {
   );
 }
 
+// 0 或 null 视为无变化，不显示箭头；正数加 "+"。
+function formatTrend(trend) {
+  if (!trend) {
+    return null;
+  }
+  return trend > 0 ? `+${trend}` : String(trend);
+}
+
+function mapLeaderboardEntries(board) {
+  if (!board) {
+    return [];
+  }
+
+  const publishedDate = board.cycle.publishedAt
+    ? board.cycle.publishedAt.slice(0, 10)
+    : "";
+
+  return board.entries.map((entry) => ({
+    id: String(entry.restaurantId),
+    name: entry.storeName,
+    area: entry.storeAddress,
+    grade: entry.grade,
+    score: entry.totalScore,
+    trend: formatTrend(entry.trend),
+    auditDate: entry.auditDate ? entry.auditDate.slice(0, 10) : publishedDate,
+    focus: entry.focus ?? "",
+    imageSrc: resolveStorePhotoPath(entry.photoUrl),
+    reportUrl: entry.reportObjectKey
+      ? resolveAbcMediaUrl(entry.reportObjectKey)
+      : null,
+  }));
+}
+
 export default function DashboardPage() {
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scoreEntries, setScoreEntries] = useState([]);
   const { user } = useAuth();
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const t = DASHBOARD_COPY[lang];
@@ -39,6 +78,26 @@ export default function DashboardPage() {
   const visibleShortcuts = t.shortcuts.filter((shortcut) =>
     canSeeNavEntry(user, DASHBOARD_SHORTCUT_RULES[shortcut.id]),
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchPublishedLeaderboard()
+      .then((board) => {
+        if (!cancelled) {
+          setScoreEntries(mapLeaderboardEntries(board));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setScoreEntries([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className={styles.page}>
@@ -145,7 +204,12 @@ export default function DashboardPage() {
 
       <DashboardNewsModule lang={lang} copy={newsCopy} />
 
-      <StoreScoreLeaderboard copy={scoreLeaderboardCopy} />
+      {scoreEntries.length > 0 ? (
+        <StoreScoreLeaderboard
+          copy={scoreLeaderboardCopy}
+          entries={scoreEntries}
+        />
+      ) : null}
 
       <footer className={styles.footer}>{t.footer}</footer>
 

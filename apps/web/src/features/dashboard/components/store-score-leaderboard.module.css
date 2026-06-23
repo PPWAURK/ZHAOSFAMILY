@@ -570,3 +570,32 @@
     font-size: 20px;
   }
 }
+
+/* 可点击门店：有运营评分报告时整张卡片/行可点开 */
+.clickable {
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.clickable:hover {
+  transform: translateY(-2px);
+}
+
+.clickable:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+.reportTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

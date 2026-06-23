@@ -6,6 +6,7 @@ import {
   fetchAiQuizConfig,
   updateAiQuizConfig,
 } from "@/features/training/services/trainingQuizApi";
+import { useToast } from "@/shared/components/toast/ToastProvider";
 import styles from "@/features/training/components/quiz-manager.module.css";
 
 const SOURCE_LABELS = {
@@ -15,6 +16,7 @@ const SOURCE_LABELS = {
 };
 
 export default function AiConfigPanel() {
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [config, setConfig] = useState(null);
   const [form, setForm] = useState({
@@ -24,7 +26,6 @@ export default function AiConfigPanel() {
     maxTokens: "",
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   function applyConfig(next) {
@@ -47,7 +48,6 @@ export default function AiConfigPanel() {
   async function handleSave() {
     setIsSaving(true);
     setError("");
-    setMessage("");
     try {
       const payload = {
         baseUrl: form.baseUrl.trim(),
@@ -60,7 +60,7 @@ export default function AiConfigPanel() {
       }
       const next = await updateAiQuizConfig(payload);
       applyConfig(next);
-      setMessage("已保存。生成功能会立即使用新配置。");
+      toast.success("已保存。生成功能会立即使用新配置。");
     } catch (saveError) {
       const code = saveError.message || "";
       setError(
@@ -152,8 +152,6 @@ export default function AiConfigPanel() {
                   />
                 </label>
               </div>
-
-              {message ? <p className={styles.hint}>{message}</p> : null}
 
               <div className={styles.settingsActions}>
                 <button

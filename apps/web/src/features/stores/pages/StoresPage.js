@@ -22,6 +22,7 @@ import {
   updateRestaurant,
   uploadStorePhoto,
 } from "@/features/stores/services/restaurantsApi";
+import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
 
@@ -49,6 +50,7 @@ function canManageStoreRecords(user) {
 
 export default function StoresPage() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [stores, setStores] = useState([]);
@@ -264,7 +266,10 @@ export default function StoresPage() {
   }
 
   async function handleDeleteStore(store) {
-    const confirmed = window.confirm(t.deleteConfirm);
+    const confirmed = await confirm({
+      message: t.deleteConfirm,
+      tone: "danger",
+    });
 
     if (!confirmed) {
       return;

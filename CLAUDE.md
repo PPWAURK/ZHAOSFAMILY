@@ -54,7 +54,8 @@ pnpm --filter @zhao/mobile typecheck
 pnpm --filter backend test
 pnpm --filter backend test:e2e
 pnpm --filter backend exec jest path/to/file.spec.ts        # single test
-pnpm --filter backend exec prisma migrate dev --name <descriptive-name>   # new migration
+# New migration: write the SQL by hand (see Prisma Schema Notes), then apply with:
+pnpm --filter backend exec prisma migrate deploy   # ⚠️ NEVER `migrate dev` here — see Prisma Schema Notes
 ```
 
 The web and mobile apps now have `lint` and `typecheck` scripts — use them (the old "no scripts" guidance is obsolete). The web app has no test runner; verify changes by running `pnpm dev:web` and exercising the feature in the browser. Mobile uses `jest-expo`.
@@ -91,7 +92,9 @@ Permission keys live in [permissions.ts](apps/backend/src/auth/permissions.ts). 
 
 [schema.prisma](apps/backend/prisma/schema.prisma) maps to a legacy database with mixed French/Chinese column names: e.g. `Supplier` is table `fournisseurs` with column `nom`; `Product` has `nom_cn`, `designation_fr`, `prix_u_ht`. Use the Prisma model field names in code; only map names appear in raw SQL or migrations. `Product.id` and `InventoryMovement.id` are `BigInt` — be careful when serializing to JSON.
 
-Migrations directory: [apps/backend/prisma/migrations/](apps/backend/prisma/migrations/). Latest covers training RBAC, training positions, purchase orders, training material progress, dashboard posts, auth recovery tokens, refresh sessions, and recruitment requests.
+Migrations directory: [apps/backend/prisma/migrations/](apps/backend/prisma/migrations/). Latest covers training RBAC, training positions, purchase orders, training material progress, dashboard posts, auth recovery tokens, refresh sessions, recruitment requests, ABC scores, and case shares.
+
+**⚠️ Never run `prisma migrate dev` against this DB.** The base tables (`users`, `restaurants`, …) were imported from an SQL dump and are NOT part of the migration history. `migrate dev` validates by replaying every migration on a fresh empty shadow DB, where the first migration's foreign key to `users` fails (`P3006 / Failed to open the referenced table 'users'`). That error happens during shadow validation only — it never touches the real DB. To apply a new migration: hand-write `migration.sql` in a new timestamped folder (copy the format of an existing one), then run `prisma migrate deploy` (applies pending migrations straight to the real DB, skips already-applied ones). `prisma db push` also works for dev. Verify with `prisma migrate status` (should say "up to date") and `prisma migrate diff` (should show no drift).
 
 ## Frontend (Web) Architecture
 

@@ -11,9 +11,11 @@ cd "$(dirname "$0")"
 APP_NAME="ZHAO Monitor"
 OUT="build"
 rm -rf "$OUT" && mkdir -p "$OUT"
+MODULE_CACHE="$OUT/module-cache"
+mkdir -p "$MODULE_CACHE"
 
 echo "==> icon"
-swiftc -O -swift-version 5 src/icongen.swift -o "$OUT/icongen"
+swiftc -O -swift-version 5 -module-cache-path "$MODULE_CACHE" src/icongen.swift -o "$OUT/icongen"
 "$OUT/icongen" "$OUT/icon_1024.png"
 ICONSET="$OUT/icon.iconset"; mkdir -p "$ICONSET"
 gen(){ sips -z "$1" "$1" "$OUT/icon_1024.png" --out "$ICONSET/$2" >/dev/null; }
@@ -22,10 +24,15 @@ gen 32 icon_32x32.png;   gen 64 icon_32x32@2x.png
 gen 128 icon_128x128.png; gen 256 icon_128x128@2x.png
 gen 256 icon_256x256.png; gen 512 icon_256x256@2x.png
 gen 512 icon_512x512.png; cp "$OUT/icon_1024.png" "$ICONSET/icon_512x512@2x.png"
-iconutil -c icns "$ICONSET" -o "$OUT/AppIcon.icns"
+if iconutil -c icns "$ICONSET" -o "$OUT/AppIcon.icns"; then
+  echo "    icon ok"
+else
+  sleep 0.5
+  iconutil -c icns "$ICONSET" -o "$OUT/AppIcon.icns" || echo "    icon skipped"
+fi
 
 echo "==> compile"
-swiftc -O -swift-version 5 src/main.swift -o "$OUT/$APP_NAME" \
+swiftc -O -swift-version 5 -module-cache-path "$MODULE_CACHE" src/main.swift -o "$OUT/$APP_NAME" \
   -framework Cocoa -framework WebKit
 
 echo "==> assemble bundle"
@@ -33,7 +40,9 @@ APP="$OUT/$APP_NAME.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$OUT/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
 cp src/dashboard.html "$APP/Contents/Resources/"
-cp "$OUT/AppIcon.icns" "$APP/Contents/Resources/"
+if [[ -f "$OUT/AppIcon.icns" ]]; then
+  cp "$OUT/AppIcon.icns" "$APP/Contents/Resources/"
+fi
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -63,11 +72,16 @@ echo "==> dmg"
 STAGE="$OUT/stage"; rm -rf "$STAGE"; mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE" -ov -format UDZO "$OUT/ZHAO-Monitor.dmg" >/dev/null
-echo "built: $OUT/ZHAO-Monitor.dmg"
+if hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE" -ov -format UDZO "$OUT/ZHAO-Monitor.dmg" >/dev/null; then
+  echo "built: $OUT/ZHAO-Monitor.dmg"
+else
+  echo "dmg skipped: hdiutil create failed"
+fi
 
 if [[ "${1:-}" == "--desktop" ]]; then
-  cp "$OUT/ZHAO-Monitor.dmg" "$HOME/Desktop/"
+  if [[ -f "$OUT/ZHAO-Monitor.dmg" ]]; then
+    cp "$OUT/ZHAO-Monitor.dmg" "$HOME/Desktop/"
+  fi
   rm -rf "$HOME/Desktop/$APP_NAME.app"; cp -R "$APP" "$HOME/Desktop/"
   echo "copied .app + .dmg to ~/Desktop"
 fi

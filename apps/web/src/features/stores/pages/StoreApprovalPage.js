@@ -27,6 +27,8 @@ import {
   normalizeJobRoleValues,
   parseJobRoleValues,
 } from "@/shared/constants/job-roles";
+import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
+import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
 
@@ -338,6 +340,8 @@ function TeamUserTable({
 
 export default function StoreApprovalPage() {
   const { user } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const params = useParams();
   const storeId = getStoreIdParam(params);
   const [lang, setLang] = usePreferredLanguage();
@@ -349,7 +353,6 @@ export default function StoreApprovalPage() {
   const [teamDrafts, setTeamDrafts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [reviewingUserId, setReviewingUserId] = useState(null);
   const [savingUserId, setSavingUserId] = useState(null);
   const [removingUserId, setRemovingUserId] = useState(null);
@@ -377,7 +380,6 @@ export default function StoreApprovalPage() {
       try {
         setIsLoading(true);
         setErrorMessage("");
-        setSuccessMessage("");
 
         const [nextStores, nextUsers] = await Promise.all([
           fetchStoresPageStores(),
@@ -437,7 +439,6 @@ export default function StoreApprovalPage() {
 
   function patchReviewDraft(userId, patch) {
     setErrorMessage("");
-    setSuccessMessage("");
     setReviewDrafts((current) => ({
       ...current,
       [String(userId)]: {
@@ -449,7 +450,6 @@ export default function StoreApprovalPage() {
 
   function patchTeamDraft(userId, jobRole) {
     setErrorMessage("");
-    setSuccessMessage("");
     setTeamDrafts((current) => ({
       ...current,
       [String(userId)]: jobRole,
@@ -460,7 +460,6 @@ export default function StoreApprovalPage() {
     const draft = reviewDrafts[String(userId)] ?? {};
     setReviewingUserId(userId);
     setErrorMessage("");
-    setSuccessMessage("");
 
     try {
       const updatedUser = await updatePermissionUserApproval(
@@ -491,7 +490,7 @@ export default function StoreApprovalPage() {
         }));
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : page.loadError);
+      toast.error(error instanceof Error ? error.message : page.loadError);
     } finally {
       setReviewingUserId(null);
     }
@@ -503,13 +502,12 @@ export default function StoreApprovalPage() {
       isRejected ? page.deleteUserConfirm : page.removeConfirm
     ).replace("{name}", targetUser.name || targetUser.email || "");
 
-    if (typeof window !== "undefined" && !window.confirm(confirmMessage)) {
+    if (!(await confirm({ message: confirmMessage, tone: "danger" }))) {
       return;
     }
 
     setRemovingUserId(targetUser.id);
     setErrorMessage("");
-    setSuccessMessage("");
 
     try {
       await removePermissionUser(String(targetUser.id));
@@ -522,12 +520,10 @@ export default function StoreApprovalPage() {
         delete nextDrafts[String(targetUser.id)];
         return nextDrafts;
       });
-      setSuccessMessage(
-        isRejected ? page.deleteUserSuccess : page.removeSuccess,
-      );
+      toast.success(isRejected ? page.deleteUserSuccess : page.removeSuccess);
     } catch (error) {
       const fallback = isRejected ? page.deleteUserError : page.removeError;
-      setErrorMessage(error instanceof Error ? error.message : fallback);
+      toast.error(error instanceof Error ? error.message : fallback);
     } finally {
       setRemovingUserId(null);
     }
@@ -542,7 +538,6 @@ export default function StoreApprovalPage() {
 
     setSavingUserId(userId);
     setErrorMessage("");
-    setSuccessMessage("");
 
     try {
       const updatedUser = await updatePermissionUserJobRole(
@@ -559,9 +554,9 @@ export default function StoreApprovalPage() {
         ...current,
         [String(updatedUser.id)]: normalizeJobRoleString(updatedUser.jobRole),
       }));
-      setSuccessMessage(page.roleSaved);
+      toast.success(page.roleSaved);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : page.roleSaveError);
+      toast.error(error instanceof Error ? error.message : page.roleSaveError);
     } finally {
       setSavingUserId(null);
     }
@@ -636,12 +631,6 @@ export default function StoreApprovalPage() {
         {errorMessage ? (
           <div className={styles.statePanel} role="alert">
             {errorMessage}
-          </div>
-        ) : null}
-
-        {successMessage ? (
-          <div className={styles.statePanel} role="status">
-            {successMessage}
           </div>
         ) : null}
 

@@ -1,14 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import type { AuthUser } from "@zhao/types";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { useConfirm } from "@/components/confirm/ConfirmProvider";
+import { useToast } from "@/components/toast/ToastProvider";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
@@ -132,6 +127,8 @@ function userHasRole(user: MobilePermissionUser, roleValue: string): boolean {
 }
 
 export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) {
+  const confirm = useConfirm();
+  const toast = useToast();
   const copy = STORE_COPY[language];
   const roleOptions = useMemo(
     () => getVisibleRoleOptions(language, user),
@@ -143,7 +140,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
   const [approvalDrafts, setApprovalDrafts] = useState<Record<number, StoreApprovalDraft>>({});
   const [teamDrafts, setTeamDrafts] = useState<Record<number, StoreTeamDraft>>({});
   const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [reviewingUserId, setReviewingUserId] = useState<number | null>(null);
   const [savingUserId, setSavingUserId] = useState<number | null>(null);
@@ -183,7 +179,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
     async function loadStores(): Promise<void> {
       setIsLoading(true);
       setErrorMessage("");
-      setSuccessMessage("");
 
       try {
         const [stores, users] = await Promise.all([
@@ -244,7 +239,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
 
   function patchApprovalDraft(userId: number, jobRole: string): void {
     setErrorMessage("");
-    setSuccessMessage("");
     setApprovalDrafts((current) => ({
       ...current,
       [userId]: { jobRole },
@@ -253,7 +247,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
 
   function patchTeamDraft(userId: number, jobRole: string): void {
     setErrorMessage("");
-    setSuccessMessage("");
     setTeamDrafts((current) => ({
       ...current,
       [userId]: { jobRole },
@@ -270,7 +263,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
 
     setReviewingUserId(permissionUser.id);
     setErrorMessage("");
-    setSuccessMessage("");
 
     try {
       const updatedUser = await updateUserApproval(
@@ -300,7 +292,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
         }));
       }
     } catch {
-      setErrorMessage(copy.updateError);
+      toast.error(copy.updateError);
     } finally {
       setReviewingUserId(null);
     }
@@ -315,7 +307,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
 
     setSavingUserId(permissionUser.id);
     setErrorMessage("");
-    setSuccessMessage("");
 
     try {
       const updatedUser = await updateUserJobRole(permissionUser.id, jobRole);
@@ -332,7 +323,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
       // the feedback. Showing/clearing a banner above the list made the page
       // jump up/down on every toggle.
     } catch {
-      setErrorMessage(copy.roleSaveError);
+      toast.error(copy.roleSaveError);
     } finally {
       setSavingUserId(null);
     }
@@ -341,7 +332,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
   async function deleteTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
     setDeletingUserId(permissionUser.id);
     setErrorMessage("");
-    setSuccessMessage("");
 
     try {
       const updatedUser = await updateUserApproval(permissionUser.id, "rejected");
@@ -355,26 +345,27 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
         delete nextDrafts[permissionUser.id];
         return nextDrafts;
       });
-      setSuccessMessage(copy.employeeDeleted);
+      toast.success(copy.employeeDeleted);
     } catch {
-      setErrorMessage(copy.employeeDeleteError);
+      toast.error(copy.employeeDeleteError);
     } finally {
       setDeletingUserId(null);
     }
   }
 
-  function confirmDeleteTeamUser(permissionUser: MobilePermissionUser): void {
-    Alert.alert(copy.deleteEmployeeTitle, copy.deleteEmployeeBody, [
-      {
-        text: copy.deleteCancel,
-        style: "cancel",
-      },
-      {
-        text: copy.deleteConfirm,
-        style: "destructive",
-        onPress: () => void deleteTeamUser(permissionUser),
-      },
-    ]);
+  async function confirmDeleteTeamUser(
+    permissionUser: MobilePermissionUser,
+  ): Promise<void> {
+    const confirmed = await confirm({
+      title: copy.deleteEmployeeTitle,
+      message: copy.deleteEmployeeBody,
+      confirmLabel: copy.deleteConfirm,
+      cancelLabel: copy.deleteCancel,
+      tone: "danger",
+    });
+    if (confirmed) {
+      void deleteTeamUser(permissionUser);
+    }
   }
 
   function openStore(storeId: number): void {
@@ -383,7 +374,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
     setTeamSearchTerm("");
     setTeamRoleFilter("");
     setErrorMessage("");
-    setSuccessMessage("");
   }
 
   if (selectedStore) {
@@ -400,7 +390,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
               setDetailView("overview");
             }
             setErrorMessage("");
-            setSuccessMessage("");
           }}
         >
           <Text style={styles.backButtonText}>
@@ -427,7 +416,6 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
         </View>
 
         {errorMessage ? <Text style={styles.message}>{errorMessage}</Text> : null}
-        {successMessage ? <Text style={styles.message}>{successMessage}</Text> : null}
 
         {detailView === "overview" ? (
           <View style={styles.list}>
@@ -553,7 +541,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
                   isSaving={savingUserId === item.id}
                   roleOptions={roleOptions}
                   user={item}
-                  onDelete={() => confirmDeleteTeamUser(item)}
+                  onDelete={() => void confirmDeleteTeamUser(item)}
                   onPatchDraft={(jobRole) => {
                     patchTeamDraft(item.id, jobRole);
                     void saveTeamRole(item, jobRole);

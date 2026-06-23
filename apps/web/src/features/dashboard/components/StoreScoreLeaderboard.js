@@ -4,55 +4,11 @@ import { motion } from "motion/react";
 
 import styles from "@/features/dashboard/components/store-score-leaderboard.module.css";
 
-const STORE_SCORE_ENTRIES = [
-  {
-    id: "opera",
-    name: "ZHAO Opera",
-    area: "Paris 02",
-    grade: "A",
-    score: 96,
-    trend: "+4",
-    auditDate: "2026-06-10",
-    focus: "出品稳定",
-    imageSrc: "/store-score/store-1.jpg",
-  },
-  {
-    id: "saint-lazare",
-    name: "ZHAO Saint-Lazare",
-    area: "Paris 08",
-    grade: "B",
-    score: 84,
-    trend: "+3",
-    auditDate: "2026-06-09",
-    focus: "服务提速",
-    imageSrc: "/store-score/store-2.jpg",
-  },
-  {
-    id: "bastille",
-    name: "ZHAO Bastille",
-    area: "Paris 11",
-    grade: "B",
-    score: 84,
-    trend: "-1",
-    auditDate: "2026-06-08",
-    focus: "晚高峰复盘",
-    imageSrc: "/store-score/store-3.jpg",
-  },
-  {
-    id: "republique",
-    name: "ZHAO Republique",
-    area: "Paris 10",
-    grade: "C",
-    score: 64,
-    trend: "-4",
-    auditDate: "2026-06-07",
-    focus: "卫生复查",
-    imageSrc: "/store-score/store-4.jpg",
-  },
-];
+// 总分为营销分 + 稽核分（0-200），进度条按一半宽度映射到 0-100 的视觉刻度。
+const SCORE_BAR_DIVISOR = 2;
 
-function getGradeCount(grade) {
-  return STORE_SCORE_ENTRIES.filter((entry) => entry.grade === grade).length;
+function getGradeCount(entries, grade) {
+  return entries.filter((entry) => entry.grade === grade).length;
 }
 
 function getTrendClassName(trend) {
@@ -111,10 +67,37 @@ function formatPlaceLabel(template, rank) {
   return template.replace("{rank}", String(rank));
 }
 
-export default function StoreScoreLeaderboard({ copy }) {
-  const rankedEntries = getRankedScoreEntries(STORE_SCORE_ENTRIES);
+function openReport(url) {
+  if (url) {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+export default function StoreScoreLeaderboard({ copy, entries }) {
+  const rankedEntries = getRankedScoreEntries(entries);
   const podiumEntries = getPodiumEntries(rankedEntries.slice(0, 3));
   const trackingEntries = rankedEntries.slice(3);
+
+  // 有报告时，让整张门店卡片/行可点击打开运营上传的评分报告。
+  function getReportProps(entry) {
+    if (!entry.reportUrl) {
+      return {};
+    }
+
+    return {
+      role: "button",
+      tabIndex: 0,
+      title: copy.reportLabel,
+      "aria-label": `${entry.name} · ${copy.reportLabel}`,
+      onClick: () => openReport(entry.reportUrl),
+      onKeyDown: (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openReport(entry.reportUrl);
+        }
+      },
+    };
+  }
 
   return (
     <motion.section
@@ -135,7 +118,7 @@ export default function StoreScoreLeaderboard({ copy }) {
           {["A", "B", "C"].map((grade) => (
             <div key={grade} className={styles.scoreboardSummaryItem}>
               <span className={styles.scoreboardSummaryGrade}>{grade}</span>
-              <strong>{getGradeCount(grade)}</strong>
+              <strong>{getGradeCount(entries, grade)}</strong>
               <span>{copy.storeUnit}</span>
             </div>
           ))}
@@ -148,7 +131,9 @@ export default function StoreScoreLeaderboard({ copy }) {
             key={entry.id}
             className={`${styles.podiumPlace} ${getPodiumTierClassName(
               entry.displayRank,
-            )} ${styles[`podiumPlaceRank${entry.displayRank}`]}`}
+            )} ${styles[`podiumPlaceRank${entry.displayRank}`]} ${
+              entry.reportUrl ? styles.clickable : ""
+            }`}
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -157,6 +142,7 @@ export default function StoreScoreLeaderboard({ copy }) {
               delay: index * 0.07,
               ease: [0.22, 1, 0.36, 1],
             }}
+            {...getReportProps(entry)}
           >
             <figure className={styles.podiumPhoto}>
               <img src={entry.imageSrc} alt={`${entry.name} store`} loading="lazy" />
@@ -184,10 +170,10 @@ export default function StoreScoreLeaderboard({ copy }) {
                 ) : null}
                 <span
                   className={`${styles.podiumGrade} ${
-                    styles[`scoreGrade${entry.grade}`]
+                    entry.grade ? styles[`scoreGrade${entry.grade}`] : ""
                   }`}
                 >
-                  {entry.grade}
+                  {entry.grade ?? "—"}
                 </span>
               </div>
 
@@ -198,13 +184,20 @@ export default function StoreScoreLeaderboard({ copy }) {
 
               <div className={styles.podiumScore}>
                 <strong>{entry.score}</strong>
-                <span className={getTrendClassName(entry.trend)}>{entry.trend}</span>
+                {entry.trend ? (
+                  <span className={getTrendClassName(entry.trend)}>
+                    {entry.trend}
+                  </span>
+                ) : null}
               </div>
 
               <p className={styles.podiumFocus}>{entry.focus}</p>
               <p className={styles.podiumAudit}>
                 {copy.auditLabel} · {entry.auditDate}
               </p>
+              {entry.reportUrl ? (
+                <span className={styles.reportTag}>{copy.reportLabel} →</span>
+              ) : null}
             </div>
           </motion.article>
         ))}
@@ -222,7 +215,9 @@ export default function StoreScoreLeaderboard({ copy }) {
           {trackingEntries.map((entry, index) => (
             <motion.article
               key={entry.id}
-              className={styles.scoreboardRow}
+              className={`${styles.scoreboardRow} ${
+                entry.reportUrl ? styles.clickable : ""
+              }`}
               initial={{ opacity: 0, x: -10 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-60px" }}
@@ -231,6 +226,7 @@ export default function StoreScoreLeaderboard({ copy }) {
                 delay: index * 0.05,
                 ease: [0.22, 1, 0.36, 1],
               }}
+              {...getReportProps(entry)}
             >
               <img
                 className={styles.scoreStorePhoto}
@@ -251,28 +247,37 @@ export default function StoreScoreLeaderboard({ copy }) {
                 <small>
                   {entry.area} · {copy.auditLabel} {entry.auditDate}
                 </small>
+                {entry.reportUrl ? (
+                  <small className={styles.reportTag}>
+                    {copy.reportLabel} →
+                  </small>
+                ) : null}
               </span>
 
               <span
-                className={`${styles.scoreGrade} ${styles[`scoreGrade${entry.grade}`]}`}
+                className={`${styles.scoreGrade} ${
+                  entry.grade ? styles[`scoreGrade${entry.grade}`] : ""
+                }`}
               >
-                {entry.grade}
+                {entry.grade ?? "—"}
               </span>
 
               <span className={styles.scoreValue}>
                 <strong>{entry.score}</strong>
                 <span className={styles.scoreBar} aria-hidden="true">
-                  <span style={{ width: `${entry.score}%` }} />
+                  <span style={{ width: `${entry.score / SCORE_BAR_DIVISOR}%` }} />
                 </span>
               </span>
 
-              <span className={getTrendClassName(entry.trend)}>
-                {entry.trend}
-              </span>
+              {entry.trend ? (
+                <span className={getTrendClassName(entry.trend)}>
+                  {entry.trend}
+                </span>
+              ) : (
+                <span />
+              )}
 
-              <span className={styles.scoreFocus}>
-                {entry.focus}
-              </span>
+              <span className={styles.scoreFocus}>{entry.focus}</span>
             </motion.article>
           ))}
         </div>

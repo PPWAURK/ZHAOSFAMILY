@@ -30,6 +30,10 @@ export const RECRUITMENT_REQUEST_PERMISSIONS = {
   manage: 'recruitment.request.manage',
 } as const;
 
+export const CASE_SHARE_PERMISSIONS = {
+  review: 'case.share.review',
+} as const;
+
 export const ABC_SCORE_PERMISSIONS = {
   read: 'abc.score.read',
   fillMarketing: 'abc.score.fill_marketing',

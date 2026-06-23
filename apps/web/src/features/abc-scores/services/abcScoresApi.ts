@@ -43,6 +43,11 @@ export function fetchAbcPreview(id: number | string): Promise<AbcLeaderboard> {
   return abcScoresApi.getPreview(id);
 }
 
+// 首页用：最新已发布周期的排行榜（无已发布周期时返回 null）。
+export function fetchPublishedLeaderboard(): Promise<AbcLeaderboard | null> {
+  return abcScoresApi.getPublished();
+}
+
 export function fillMarketingScore(
   cycleId: number | string,
   restaurantId: number | string,
@@ -63,6 +68,10 @@ export function publishAbcCycle(
   id: number | string,
 ): Promise<AbcCycleSummary> {
   return abcScoresApi.publish(id);
+}
+
+export function deleteAbcCycle(id: number | string): Promise<{ id: number }> {
+  return abcScoresApi.deleteCycle(id);
 }
 
 // Operations 上传评分报告：先把文件传到 /media/upload 拿 objectKey，

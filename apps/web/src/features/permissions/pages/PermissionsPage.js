@@ -12,6 +12,7 @@ import {
   updatePermissionUserManagedRestaurants,
   updatePermissionUserRoles,
 } from "@/features/permissions/services/permissionsApi";
+import { useToast } from "@/shared/components/toast/ToastProvider";
 import { formatJobRoleLabel } from "@/shared/constants/job-roles";
 
 const MANAGE_PERMISSION = "system.permission.manage";
@@ -368,6 +369,7 @@ function groupUsersByStore(users, unassignedStoreName) {
 
 export default function PermissionsPage() {
   const { user, isLoading } = useAuth();
+  const toast = useToast();
   const canManagePermissions = hasPermission(user, MANAGE_PERMISSION);
   const [roles, setRoles] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
@@ -478,7 +480,6 @@ export default function PermissionsPage() {
     const roleNames = draftRolesByUserId[userIdKey] || [];
 
     setSavingUserId(userId);
-    setErrorMessage("");
 
     try {
       const updatedUser = await updatePermissionUserRoles(userIdKey, roleNames);
@@ -489,8 +490,9 @@ export default function PermissionsPage() {
         ...prev,
         [getUserIdKey(updatedUser.id)]: normalizeRoleNames(updatedUser.roles),
       }));
+      toast.success("角色已保存");
     } catch (error) {
-      setErrorMessage(error.message || "角色保存失败");
+      toast.error(error.message || "角色保存失败");
     } finally {
       setSavingUserId(null);
     }
@@ -501,7 +503,6 @@ export default function PermissionsPage() {
     const restaurantIds = draftManagedRestaurantsByUserId[userIdKey] || [];
 
     setSavingManagedRestaurantsUserId(userId);
-    setErrorMessage("");
 
     try {
       const updatedUser = await updatePermissionUserManagedRestaurants(
@@ -519,8 +520,9 @@ export default function PermissionsPage() {
           ),
         ),
       }));
+      toast.success("管理门店已保存");
     } catch (error) {
-      setErrorMessage(error.message || "角色保存失败");
+      toast.error(error.message || "角色保存失败");
     } finally {
       setSavingManagedRestaurantsUserId(null);
     }

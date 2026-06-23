@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import {
   createDashboardNewsPost,
   deleteDashboardNewsPost,
@@ -151,6 +152,7 @@ function buildMarkdownImage(attachment) {
 
 export default function DashboardNewsModule({ lang, copy }) {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const bodyTextareaRef = useRef(null);
   const [posts, setPosts] = useState([]);
   const [loadError, setLoadError] = useState("");
@@ -423,7 +425,7 @@ export default function DashboardNewsModule({ lang, copy }) {
   }
 
   async function handleDeletePost(postId) {
-    if (!window.confirm(copy.reader.deleteConfirm)) {
+    if (!(await confirm({ message: copy.reader.deleteConfirm, tone: "danger" }))) {
       return;
     }
 

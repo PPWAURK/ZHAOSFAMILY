@@ -16,6 +16,7 @@ import {
   fetchRecruitmentRequests,
   updateRecruitmentRequest,
 } from "@/features/recruitment-requests/services/recruitmentRequestsApi";
+import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/recruitment-requests/recruitment-requests-page.module.css";
 
@@ -39,6 +40,7 @@ function resolveErrorMessage(error, fallbackMessage) {
 
 export default function RecruitmentRequestsPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const canManage = (user?.permissions || []).includes(
     "recruitment.request.manage",
   );
@@ -50,8 +52,6 @@ export default function RecruitmentRequestsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [savingRequestId, setSavingRequestId] = useState("");
-  const [saveMessage, setSaveMessage] = useState("");
-  const [saveError, setSaveError] = useState("");
   const t = RECRUITMENT_REQUEST_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const filteredRequests = useMemo(() => {
@@ -113,8 +113,6 @@ export default function RecruitmentRequestsPage() {
   }
 
   function patchDraft(requestId, key, value) {
-    setSaveError("");
-    setSaveMessage("");
     setDrafts((current) => ({
       ...current,
       [requestId]: {
@@ -137,8 +135,6 @@ export default function RecruitmentRequestsPage() {
 
     try {
       setSavingRequestId(requestId);
-      setSaveError("");
-      setSaveMessage("");
       const updatedRequest = await updateRecruitmentRequest(request.id, {
         status: draft.status,
         handledNotes: draft.handledNotes.trim() || undefined,
@@ -156,9 +152,9 @@ export default function RecruitmentRequestsPage() {
           handledNotes: updatedRequest.handledNotes || "",
         },
       }));
-      setSaveMessage(t.saveSuccess);
+      toast.success(t.saveSuccess);
     } catch (error) {
-      setSaveError(resolveErrorMessage(error, t.saveError));
+      toast.error(resolveErrorMessage(error, t.saveError));
     } finally {
       setSavingRequestId("");
     }
@@ -257,8 +253,6 @@ export default function RecruitmentRequestsPage() {
         {!isLoading && loadError ? (
           <p className={styles.inlineError}>{loadError}</p>
         ) : null}
-        {saveMessage ? <p className={styles.inlineMessage}>{saveMessage}</p> : null}
-        {saveError ? <p className={styles.inlineError}>{saveError}</p> : null}
 
         {!isLoading && !loadError && filteredRequests.length === 0 ? (
           <p className={styles.empty}>{t.empty}</p>

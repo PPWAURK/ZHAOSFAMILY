@@ -20,7 +20,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         "sshPort": "22",
         "sshKeyPath": "~/.ssh/zhao_deploy",
         "envPath": "/opt/zhao-family/apps/backend/.env",
-        "repoPath": "/Users/shihongwang/Documents/03-Developpement/GitHub/zhao-family"
+        "repoPath": "/Users/shihongwang/Documents/03-Developpement/GitHub/zhao-family",
+        "mobileAppPath": "/Users/shihongwang/Documents/03-Developpement/GitHub/zhao-family/apps/mobile",
+        "easCommand": "eas",
+        "expoToken": ""
     ]
     var config: [String: String] = [:]
 
@@ -80,7 +83,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         ["refresh", "dispatch", "saveConfig", "resetConfig",
          "listSecrets", "setSecret", "pickKeyFile",
          "readEnv", "saveEnv",
-         "gitStatus", "gitCommit", "pipelines"].forEach { ucc.add(self, name: $0) }
+         "gitStatus", "gitCommit", "pipelines",
+         "easLocal"].forEach { ucc.add(self, name: $0) }
         let wkcfg = WKWebViewConfiguration()
         wkcfg.userContentController = ucc
 
@@ -144,6 +148,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             fetchPipelines()
         case "dispatch":
             runDispatch((message.body as? String) ?? "")
+        case "easLocal":
+            runLocalEAS((message.body as? String) ?? "")
         case "saveConfig":
             if let s = message.body as? String,
                let d = s.data(using: .utf8),
@@ -192,20 +198,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // MARK: - Trigger CI / CD via gh
 
     func runDispatch(_ key: String) {
-        let files: [String]
+        let workflows: [String]
         switch key {
-        case "ci": files = [cfg("ciWorkflow")]
-        case "backend": files = [cfg("backendWorkflow")]
-        case "web": files = [cfg("webWorkflow")]
-        case "all": files = [cfg("ciWorkflow"), cfg("backendWorkflow"), cfg("webWorkflow")]
+        case "ci":
+            workflows = [cfg("ciWorkflow")]
+        case "backend":
+            workflows = [cfg("backendWorkflow")]
+        case "web":
+            workflows = [cfg("webWorkflow")]
+        case "all":
+            workflows = [cfg("ciWorkflow"), cfg("backendWorkflow"), cfg("webWorkflow")]
         default: return
         }
         let repo = cfg("repo"), ref = cfg("ref")
         DispatchQueue.global().async {
             var ok = true
             var detail = "已提交，查看 Actions"
-            for f in files {
-                let (code, out) = self.runGH(file: f, repo: repo, ref: ref)
+            for workflow in workflows {
+                let (code, out) = self.runGH(file: workflow, repo: repo, ref: ref)
                 if code != 0 {
                     ok = false
                     detail = out.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -223,6 +233,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 }
             }
         }
+    }
+
+    // MARK: - Local EAS commands
+
+    func runLocalEAS(_ key: String) {
+        let action: (platform: String, operation: String)?
+        switch key {
+        case "mobileAndroidBuild": action = ("android", "build")
+        case "mobileAndroidSubmit": action = ("android", "submit")
+        case "mobileIosBuild": action = ("ios", "build")
+        case "mobileIosSubmit": action = ("ios", "submit")
+        default: action = nil
+        }
+        guard let action else { return }
+
+        let command = buildEASCommand(platform: action.platform, operation: action.operation)
+        DispatchQueue.global().async {
+            let (code, out) = self.runShell(command)
+            let detail = out.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\n", with: " ")
+            DispatchQueue.main.async {
+                self.webView.evaluateJavaScript(
+                    "window.easLocalDone('\(key)', \(code == 0), \(self.jsString(String(detail.suffix(180)))))",
+                    completionHandler: nil)
+                self.fetchPipelines()
+            }
+        }
+    }
+
+    func buildEASCommand(platform: String, operation: String) -> String {
+        let appPath = cfg("mobileAppPath")
+        let eas = cfg("easCommand").isEmpty ? "eas" : cfg("easCommand")
+        let token = cfg("expoToken")
+        let env = token.isEmpty ? "" : "EXPO_TOKEN=\(sh(token)) "
+        let easArgs: String
+        if operation == "build" {
+            easArgs = "build --platform \(sh(platform)) --profile production --non-interactive --no-wait"
+        } else {
+            easArgs = "submit --platform \(sh(platform)) --profile production --non-interactive"
+        }
+        return "cd \(sh(appPath)) && \(env)\(sh(eas)) \(easArgs) 2>&1"
+    }
+
+    func runShell(_ command: String) -> (Int32, String) {
+        let task = Process()
+        task.launchPath = "/bin/zsh"
+        task.arguments = ["-lc", command]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
+        do { try task.run() } catch {
+            return (127, "无法启动命令：\(error.localizedDescription)")
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        return (task.terminationStatus, String(data: data, encoding: .utf8) ?? "")
     }
 
     // MARK: - Pipeline runs

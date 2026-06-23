@@ -1,9 +1,11 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma, Restaurant } from '@prisma/client';
+import { MediaService } from '../media/media.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AttachMediaDto } from './dto/attach-media.dto';
 import type { CreateCycleDto } from './dto/create-cycle.dto';
@@ -34,7 +36,12 @@ const STORE_WHERE: Prisma.RestaurantWhereInput = {
 
 @Injectable()
 export class AbcScoresService {
-  constructor(private readonly prismaService: PrismaService) {}
+  private readonly logger = new Logger(AbcScoresService.name);
+
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly mediaService: MediaService,
+  ) {}
 
   async listCycles(query: ListCyclesQueryDto): Promise<AbcCycleSummary[]> {
     const where: Prisma.AbcScoreCycleWhereInput = {};
@@ -146,14 +153,81 @@ export class AbcScoresService {
 
   async getLeaderboard(cycleId: number): Promise<AbcLeaderboard> {
     const cycle = await this.loadCycle(cycleId);
-    const [restaurants, scores] = await Promise.all([
+    const [restaurants, scores] = await this.loadStoresAndScores(cycleId);
+
+    return this.buildLeaderboard(cycle, restaurants, scores);
+  }
+
+  // 首页用：最新已发布周期的排行榜，趋势对照上一个已发布周期。无已发布周期返回 null。
+  async getPublishedLeaderboard(): Promise<AbcLeaderboard | null> {
+    const published = await this.prismaService.abcScoreCycle.findFirst({
+      where: { status: 'published' },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!published) {
+      return null;
+    }
+
+    const previous = await this.prismaService.abcScoreCycle.findFirst({
+      where: { status: 'published', id: { not: published.id } },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const [[restaurants, scores], previousTotals] = await Promise.all([
+      this.loadStoresAndScores(published.id),
+      previous
+        ? this.loadCycleTotals(previous.id)
+        : Promise.resolve(new Map<number, number>()),
+    ]);
+
+    return this.buildLeaderboard(
+      published,
+      restaurants,
+      scores,
+      previousTotals,
+    );
+  }
+
+  private loadStoresAndScores(
+    cycleId: number,
+  ): Promise<[Restaurant[], ScoreRecord[]]> {
+    return Promise.all([
       this.prismaService.restaurant.findMany({
         where: STORE_WHERE,
         orderBy: { id: 'asc' },
       }),
-      this.prismaService.abcStoreScore.findMany({ where: { cycleId } }),
+      this.prismaService.abcStoreScore.findMany({
+        where: { cycleId },
+        include: { media: { orderBy: { createdAt: 'desc' } } },
+      }),
     ]);
+  }
 
+  private async loadCycleTotals(cycleId: number): Promise<Map<number, number>> {
+    const scores = await this.prismaService.abcStoreScore.findMany({
+      where: { cycleId },
+      select: {
+        restaurantId: true,
+        marketingScore: true,
+        operationsScore: true,
+      },
+    });
+
+    return new Map(
+      scores.map((score) => [
+        score.restaurantId,
+        (score.marketingScore ?? 0) + (score.operationsScore ?? 0),
+      ]),
+    );
+  }
+
+  private buildLeaderboard(
+    cycle: CycleRecord,
+    restaurants: Restaurant[],
+    scores: ScoreRecord[],
+    previousTotals?: Map<number, number>,
+  ): AbcLeaderboard {
     const scoreByRestaurant = new Map(
       scores.map((score) => [score.restaurantId, score]),
     );
@@ -162,14 +236,23 @@ export class AbcScoresService {
         const score = scoreByRestaurant.get(restaurant.id);
         const marketingScore = score?.marketingScore ?? null;
         const operationsScore = score?.operationsScore ?? null;
+        const totalScore = (marketingScore ?? 0) + (operationsScore ?? 0);
+        const previousTotal = previousTotals?.get(restaurant.id);
 
         return {
           restaurantId: restaurant.id,
           storeName: restaurant.name,
+          storeAddress: restaurant.address,
+          photoUrl: restaurant.photoUrl ?? null,
           marketingScore,
           operationsScore,
-          totalScore: (marketingScore ?? 0) + (operationsScore ?? 0),
+          totalScore,
           grade: (score?.grade as AbcGrade | undefined) ?? null,
+          trend:
+            previousTotal === undefined ? null : totalScore - previousTotal,
+          focus: score?.operationsNotes ?? null,
+          auditDate: score?.operationsFilledAt?.toISOString() ?? null,
+          reportObjectKey: score?.media?.[0]?.objectKey ?? null,
         };
       })
       .sort(
@@ -199,6 +282,36 @@ export class AbcScoresService {
     });
 
     return this.mapCycleSummary(published);
+  }
+
+  // 删除整个周期（含已发布）。分数与报告记录通过外键级联一并删除，
+  // 报告文件本体在删库后尽力从存储清理（失败不影响删除结果）。
+  async deleteCycle(cycleId: number): Promise<{ id: number }> {
+    await this.loadCycle(cycleId);
+
+    const media = await this.prismaService.abcScoreMedia.findMany({
+      where: { storeScore: { cycleId } },
+      select: { objectKey: true },
+    });
+
+    await this.prismaService.abcScoreCycle.delete({ where: { id: cycleId } });
+    await this.deleteMediaObjects(media.map((item) => item.objectKey));
+
+    return { id: cycleId };
+  }
+
+  private async deleteMediaObjects(objectKeys: string[]): Promise<void> {
+    await Promise.all(
+      objectKeys.map(async (objectKey) => {
+        try {
+          await this.mediaService.deleteFile(objectKey);
+        } catch (error) {
+          this.logger.warn(
+            `Failed to delete ABC report object ${objectKey}: ${String(error)}`,
+          );
+        }
+      }),
+    );
   }
 
   private async fillScore(

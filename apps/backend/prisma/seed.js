@@ -66,6 +66,10 @@ const PERMISSIONS = [
     key: 'abc.score.publish',
     description: 'Publish the ABC score leaderboard',
   },
+  {
+    key: 'case.share.review',
+    description: 'Review (approve/reject) shared cases from partners',
+  },
 ];
 
 const TRAINING_POSITIONS = [

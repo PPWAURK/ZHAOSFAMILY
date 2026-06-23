@@ -52,10 +52,16 @@ export type AbcLeaderboardEntry = {
   rank: number;
   restaurantId: number;
   storeName: string;
+  storeAddress: string;
+  photoUrl: string | null;
   marketingScore: number | null;
   operationsScore: number | null;
   totalScore: number;
   grade: AbcGrade | null;
+  trend: number | null;
+  focus: string | null;
+  auditDate: string | null;
+  reportObjectKey: string | null;
 };
 
 export type AbcLeaderboard = {
