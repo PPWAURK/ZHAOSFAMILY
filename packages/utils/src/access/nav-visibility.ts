@@ -43,6 +43,8 @@ export const MANAGEMENT_JOB_ROLES = [
   "store-manager",
   "front-manager",
   "back-manager",
+  "front-assistant",
+  "back-assistant",
 ] as const;
 
 // 总部层岗位：可见最敏感模块（库存 / 岗位管理 / 系统角色）。
