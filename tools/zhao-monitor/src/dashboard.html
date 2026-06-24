@@ -6,211 +6,372 @@
 <title>部署监测 · ZHAO</title>
 <style>
   :root{
-    --bg:#f7f6f3; --surface:#ffffff; --surface2:#f1efe8; --text:#1f1f1d;
-    --muted:#5f5e5a; --hint:#8a8980; --border:rgba(0,0,0,.12);
+    --bg:#f7f6f3; --rail:#ebe8df; --surface:#ffffff; --surface2:#f1efe8;
+    --text:#1f1f1d; --muted:#5f5e5a; --hint:#8a8980; --border:rgba(0,0,0,.12);
     --ok:#1d9e75; --okbg:#e1f5ee; --okt:#0f6e56;
     --warn:#ba7517; --warnbg:#faeeda; --warnt:#854f0b;
-    --bad:#e24b4a; --badbg:#fcebeb; --badt:#a32d2d;
-    --accent:#a32d2d;
+    --bad:#d64a49; --badbg:#fcebeb; --badt:#9d2f2f;
+    --accent:#a32d2d; --accent2:#6f0d10;
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#1a1a18; --surface:#242422; --surface2:#2c2c2a; --text:#f1efe8;
-      --muted:#b4b2a9; --hint:#888780; --border:rgba(255,255,255,.14);
+      --bg:#1a1a18; --rail:#20201e; --surface:#262624; --surface2:#30302d;
+      --text:#f1efe8; --muted:#b4b2a9; --hint:#888780; --border:rgba(255,255,255,.14);
       --ok:#5dcaa5; --okbg:#0f3a30; --okt:#9fe1cb;
       --warn:#ef9f27; --warnbg:#3a2e10; --warnt:#fac775;
       --bad:#f09595; --badbg:#3a1717; --badt:#f7c1c1;
-      --accent:#e24b4a;
+      --accent:#e24b4a; --accent2:#f09595;
     }
   }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
-  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
-    -webkit-font-smoothing:antialiased;padding:18px 20px 22px}
-  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-  .brand{display:flex;align-items:center;gap:10px}
-  .dot{width:11px;height:11px;border-radius:50%;background:var(--hint);transition:background .3s}
-  .dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)} .dot.warn{background:var(--warn)}
-  h1{font-size:17px;font-weight:600;margin:0;letter-spacing:.2px}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}
+  button,input,textarea{font:inherit}
+  a{color:inherit;text-decoration:none}
+  .shell{height:100vh;display:grid;grid-template-columns:188px minmax(0,1fr);background:var(--bg)}
+  .sidebar{background:var(--rail);border-right:.5px solid var(--border);padding:18px 12px;display:flex;flex-direction:column;gap:16px}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--hint);transition:background .25s}
+  .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+  .brand-title{font-size:14px;font-weight:700;line-height:1.2}
+  .brand-sub{font-size:11px;color:var(--hint);margin-top:2px}
+  .nav{display:flex;flex-direction:column;gap:4px}
+  .nav button{width:100%;justify-content:flex-start;border:0;background:transparent;color:var(--muted);border-radius:8px;padding:8px 9px;font-size:13px;cursor:pointer}
+  .nav button:hover{background:var(--surface2);color:var(--text)}
+  .nav button.active{background:var(--surface);color:var(--text);font-weight:650;box-shadow:0 1px 1px rgba(0,0,0,.04)}
+  .sidebar-foot{margin-top:auto;padding:0 8px;font-size:11px;color:var(--hint);line-height:1.5}
+  .main{min-width:0;height:100vh;display:flex;flex-direction:column}
+  .topbar{height:58px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 22px;border-bottom:.5px solid var(--border);background:var(--bg)}
+  .page-title{font-size:18px;font-weight:700;margin:0}
+  .page-note{font-size:12px;color:var(--hint);margin-top:2px}
+  .top-actions{display:flex;align-items:center;gap:9px}
   .when{font-size:11px;color:var(--hint);font-variant-numeric:tabular-nums}
-  button{font:inherit;font-size:12px;color:var(--text);background:var(--surface);border:.5px solid var(--border);
-    border-radius:8px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
-  button:hover{background:var(--surface2)} button:active{transform:scale(.97)}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-  .card{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:14px 16px}
-  .card .lbl{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:9px}
-  .card .val{display:flex;align-items:baseline;gap:9px}
-  .state{font-size:20px;font-weight:600}
+  .content{min-height:0;overflow:auto;padding:20px 22px 24px}
+  .view{display:none;max-width:980px}
+  .view.active{display:block;animation:fade .16s ease-out}
+  @keyframes fade{from{opacity:.55;transform:translateY(3px)}to{opacity:1;transform:none}}
+  .section{margin-bottom:20px}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:10px}
+  .section h2{font-size:13px;margin:0;color:var(--muted);font-weight:650}
+  .section-desc{font-size:11px;color:var(--hint)}
+  .status-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .status-card,.panel{background:var(--surface);border:.5px solid var(--border);border-radius:10px;padding:14px 16px}
+  .status-card .label{font-size:12px;color:var(--muted);margin-bottom:9px}
+  .status-card .value{display:flex;align-items:baseline;gap:9px}
+  .state{font-size:21px;font-weight:720}
   .state.ok{color:var(--ok)} .state.bad{color:var(--bad)} .state.warn{color:var(--warn)}
   .meta{font-size:12px;color:var(--hint)}
   .sub{font-size:11px;color:var(--hint);margin-top:7px;word-break:break-all}
-  .sectitle{font-size:12px;color:var(--muted);margin:0 0 8px 2px}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);
-    border:.5px solid var(--border);border-radius:9px;padding:9px 13px;margin-bottom:8px}
-  .row .name{font-size:13px;font-weight:500}
-  .pill{font-size:11px;padding:3px 9px;border-radius:7px}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:.5px solid var(--border);border-radius:9px;padding:10px 13px}
+  .row:hover{background:var(--surface2)}
+  .row .name{font-size:13px;font-weight:620}
+  .row .detail{font-size:12px;color:var(--hint)}
+  .pill{font-size:11px;padding:3px 9px;border-radius:7px;white-space:nowrap}
   .pill.ok{background:var(--okbg);color:var(--okt)}
   .pill.warn{background:var(--warnbg);color:var(--warnt)}
   .pill.bad{background:var(--badbg);color:var(--badt)}
   .pill.muted{background:var(--surface2);color:var(--muted)}
-  .ops{display:flex;gap:8px;flex-wrap:wrap}
-  .op.primary{background:var(--accent);color:#fff;border-color:transparent;font-weight:600}
-  .op.primary:hover{filter:brightness(1.08);background:var(--accent)}
-  .toast{margin-top:11px;font-size:12px;min-height:16px;color:var(--muted)}
-  .toast.ok{color:var(--okt)} .toast.bad{color:var(--badt)}
-  .links{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
-  a{color:inherit;text-decoration:none}
-  .panel{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
-  .frow{display:flex;align-items:center;gap:10px;margin-bottom:9px}
-  .frow label{flex:0 0 142px;font-size:12px;color:var(--muted)}
-  input{font:inherit;font-size:12px;color:var(--text);background:var(--bg);
-    border:.5px solid var(--border);border-radius:7px;padding:6px 9px;min-width:0}
-  input:focus{outline:none;border-color:var(--accent)}
-  .frow input{flex:1}
-  textarea{width:100%;min-height:300px;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--text);
-    background:var(--bg);border:.5px solid var(--border);border-radius:8px;padding:10px;resize:vertical}
-  textarea:focus{outline:none;border-color:var(--accent)}
-  .sgroup{font-size:11px;color:var(--hint);margin:12px 0 7px;text-transform:uppercase;letter-spacing:.06em}
-  .srow{display:flex;align-items:center;gap:9px;margin-bottom:8px;flex-wrap:wrap}
-  .sname{flex:0 0 168px;font-size:12px;font-family:ui-monospace,Menlo,monospace}
-  .sstat{display:block;font-size:10px;color:var(--hint);font-family:-apple-system,sans-serif}
-  .sstat.set{color:var(--okt)} .sstat.unset{color:var(--badt)}
-  .srow input{flex:1}
-  .srow button{font-size:11px;padding:5px 10px}
-  .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--hint);border-top-color:transparent;
-    border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  button.action{font-size:12px;color:var(--text);background:var(--surface);border:.5px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+  button.action:hover{background:var(--surface2)}
+  button.action:active{transform:scale(.98)}
+  button.primary{background:var(--accent);color:#fff;border-color:transparent;font-weight:650}
+  button.primary:hover{filter:brightness(1.07);background:var(--accent)}
+  button.danger{color:var(--badt);border-color:var(--bad)}
+  button.icon{padding:7px 10px}
+  .tool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .tool-link{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:.5px solid var(--border);border-radius:9px;padding:12px 13px;font-size:13px}
+  .tool-link span{color:var(--hint)}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .panel h3{font-size:14px;margin:0 0 4px}
+  .panel p{font-size:12px;color:var(--hint);margin:0 0 12px;line-height:1.45}
+  .config-summary{display:grid;grid-template-columns:120px 1fr;gap:6px 10px;font-size:12px;margin:12px 0 0}
+  .config-summary dt{color:var(--muted)}
+  .config-summary dd{margin:0;color:var(--text);word-break:break-all}
+  .logbox{min-height:150px;max-height:260px;overflow:auto;background:var(--surface);border:.5px solid var(--border);border-radius:9px;padding:12px;font:12px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;color:var(--muted)}
+  .toast{min-height:22px;font-size:12px;color:var(--muted);padding:8px 10px;border-radius:8px;background:var(--surface);border:.5px solid var(--border)}
+  .toast.ok{color:var(--okt);background:var(--okbg)}
+  .toast.bad{color:var(--badt);background:var(--badbg)}
+  .form-grid{display:grid;grid-template-columns:1fr;gap:9px}
+  .frow{display:grid;grid-template-columns:158px minmax(0,1fr);align-items:center;gap:10px}
+  .frow label{font-size:12px;color:var(--muted)}
+  input{font-size:12px;color:var(--text);background:var(--bg);border:.5px solid var(--border);border-radius:7px;padding:7px 9px;min-width:0}
+  input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  textarea{width:100%;min-height:360px;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--text);background:var(--bg);border:.5px solid var(--border);border-radius:8px;padding:10px;resize:vertical}
+  .group-title{font-size:11px;color:var(--hint);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.06em}
+  .secret-row{display:grid;grid-template-columns:180px minmax(0,1fr) auto;gap:9px;align-items:center;margin-bottom:8px}
+  .secret-name{font-size:12px;font-family:ui-monospace,Menlo,monospace}
+  .secret-status{display:block;font-size:10px;color:var(--hint);font-family:-apple-system,sans-serif;margin-top:2px}
+  .secret-status.set{color:var(--okt)} .secret-status.unset{color:var(--badt)}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
   @keyframes sp{to{transform:rotate(360deg)}}
-  .pulse{animation:pl 1s ease}
-  @keyframes pl{0%{opacity:.4}100%{opacity:1}}
+  @media (max-width:720px){
+    .shell{grid-template-columns:1fr}
+    .sidebar{height:auto;border-right:0;border-bottom:.5px solid var(--border)}
+    .nav{display:grid;grid-template-columns:repeat(4,1fr)}
+    .sidebar-foot{display:none}
+    .main{height:auto;min-height:100vh}
+    html,body{overflow:auto}
+    .status-grid,.split,.tool-grid{grid-template-columns:1fr}
+    .frow,.secret-row{grid-template-columns:1fr}
+  }
 </style>
 </head>
 <body>
-  <div class="top">
+<div class="shell">
+  <aside class="sidebar">
     <div class="brand">
       <span class="dot" id="overall"></span>
-      <h1>部署监测 · ZHAO</h1>
+      <div>
+        <div class="brand-title">ZHAO Monitor</div>
+        <div class="brand-sub">部署监测与发布工具</div>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <span class="when" id="when">加载中…</span>
-      <button onclick="togglePanel('settings')" title="设置">⚙</button>
-      <button onclick="togglePanel('secrets')" title="密钥">🔑</button>
-      <button onclick="togglePanel('server')" title="服务器 .env">🖥</button>
-      <button onclick="togglePanel('git')" title="Git 提交">📝</button>
-      <button onclick="nativeRefresh()"><span id="rfx">↻</span> 刷新</button>
+    <nav class="nav">
+      <button class="active" data-view="overview" onclick="setView('overview')">概览</button>
+      <button data-view="pipelines" onclick="setView('pipelines')">流水线</button>
+      <button data-view="deploy" onclick="setView('deploy')">部署</button>
+      <button data-view="mobile" onclick="setView('mobile')">Mobile EAS</button>
+      <button data-view="server" onclick="setView('server')">服务器 .env</button>
+      <button data-view="git" onclick="setView('git')">Git</button>
+      <button data-view="secrets" onclick="setView('secrets')">Secrets</button>
+      <button data-view="settings" onclick="setView('settings')">设置</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div id="nav-status">等待首次刷新</div>
+      <div>本机命令通过 macOS 直接执行。</div>
     </div>
-  </div>
+  </aside>
 
-  <div id="settings" class="panel" style="display:none">
-    <p class="sectitle">配置 · 换 VPS / Web 云时在此修改</p>
-    <div class="frow"><label>后端 Health URL</label><input id="cfg-backendHealthURL" placeholder="https://…/health"></div>
-    <div class="frow"><label>Web URL</label><input id="cfg-webURL" placeholder="https://…"></div>
-    <div class="frow"><label>GitHub 仓库</label><input id="cfg-repo" placeholder="owner/repo"></div>
-    <div class="frow"><label>部署分支 ref</label><input id="cfg-ref" placeholder="main"></div>
-    <div class="frow"><label>CI workflow</label><input id="cfg-ciWorkflow" placeholder="ci.yml"></div>
-    <div class="frow"><label>后端 workflow</label><input id="cfg-backendWorkflow" placeholder="deploy-backend.yml"></div>
-    <div class="frow"><label>Web workflow</label><input id="cfg-webWorkflow" placeholder="deploy-web.yml"></div>
-    <div class="sgroup">服务器 SSH（用于读写 .env）</div>
-    <div class="frow"><label>SSH 主机</label><input id="cfg-sshHost" placeholder="1.2.3.4"></div>
-    <div class="frow"><label>SSH 用户</label><input id="cfg-sshUser" placeholder="ubuntu"></div>
-    <div class="frow"><label>SSH 端口</label><input id="cfg-sshPort" placeholder="22"></div>
-    <div class="frow"><label>SSH 私钥路径</label><input id="cfg-sshKeyPath" placeholder="~/.ssh/zhao_deploy"></div>
-    <div class="frow"><label>.env 路径</label><input id="cfg-envPath" placeholder="/opt/…/.env"></div>
-    <div class="sgroup">本地（用于 Git 提交）</div>
-    <div class="frow"><label>本地仓库路径</label><input id="cfg-repoPath" placeholder="/Users/…/zhao-family"></div>
-    <div class="sgroup">本地 EAS（用于 Mobile build / submit）</div>
-    <div class="frow"><label>Mobile app 路径</label><input id="cfg-mobileAppPath" placeholder="/Users/…/zhao-family/apps/mobile"></div>
-    <div class="frow"><label>EAS 命令</label><input id="cfg-easCommand" placeholder="eas"></div>
-    <div class="frow"><label>EXPO_TOKEN</label><input id="cfg-expoToken" type="password" placeholder="留空则使用本机 eas login"></div>
-    <div class="ops" style="margin-top:11px">
-      <button class="op primary" onclick="saveConfig()">保存</button>
-      <button onclick="togglePanel('settings')">取消</button>
-      <button onclick="resetConfig()">恢复默认</button>
-    </div>
-  </div>
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 class="page-title" id="page-title">概览</h1>
+        <div class="page-note" id="page-note">日常运维状态和最近动作。</div>
+      </div>
+      <div class="top-actions">
+        <span class="when" id="when">加载中...</span>
+        <button class="action icon" onclick="nativeRefresh()" title="刷新"><span id="rfx">↻</span></button>
+      </div>
+    </header>
 
-  <div id="secrets" class="panel" style="display:none">
-    <p class="sectitle">GitHub Secrets · 部署凭证</p>
-    <p style="font-size:11px;color:var(--hint);margin:0 0 4px">GitHub 不可回显已存的值，只能查看状态并覆盖。值经本地 gh 加密上传，不存进 app。</p>
-    <div id="secrets-list"></div>
-    <div class="ops" style="margin-top:10px">
-      <button onclick="refreshSecrets()">刷新状态</button>
-      <button onclick="togglePanel('secrets')">关闭</button>
-    </div>
-  </div>
+    <section class="content">
+      <div id="toast" class="toast">等待操作。</div>
 
-  <div id="server" class="panel" style="display:none">
-    <p class="sectitle">服务器 .env · 经 SSH 读写</p>
-    <p style="font-size:11px;color:var(--hint);margin:0 0 8px">值会真实显示（在你 VPS 上）。保存会先备份为 <code>.env.bak</code>；改动需重启/重部署后端才生效。</p>
-    <textarea id="env-text" spellcheck="false" placeholder="点「读取」从服务器拉取…"></textarea>
-    <div class="ops" style="margin-top:10px">
-      <button onclick="readEnv()">读取</button>
-      <button class="op primary" onclick="saveEnv()">保存到服务器</button>
-      <button onclick="togglePanel('server')">关闭</button>
-    </div>
-  </div>
+      <div id="view-overview" class="view active">
+        <div class="section">
+          <div class="section-head">
+            <h2>服务状态</h2>
+            <span class="section-desc">每 30 秒自动刷新</span>
+          </div>
+          <div class="status-grid">
+            <div class="status-card">
+              <div class="label">Backend</div>
+              <div class="value"><span class="state" id="be-state">--</span><span class="meta" id="be-meta">检测中 <span class="spin"></span></span></div>
+              <div class="sub" id="be-sub">--</div>
+            </div>
+            <div class="status-card">
+              <div class="label">Web</div>
+              <div class="value"><span class="state" id="we-state">--</span><span class="meta" id="we-meta">检测中 <span class="spin"></span></span></div>
+              <div class="sub" id="we-sub">--</div>
+            </div>
+          </div>
+        </div>
 
-  <div id="git" class="panel" style="display:none">
-    <p class="sectitle">Git · 提交本地改动</p>
-    <div id="git-branch" style="font-size:12px;color:var(--muted);margin-bottom:8px">…</div>
-    <div id="git-files" style="font:12px/1.6 ui-monospace,Menlo,monospace;max-height:180px;overflow:auto;
-      background:var(--bg);border:.5px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px">—</div>
-    <input id="git-msg" placeholder="提交信息…" style="width:100%;margin-bottom:10px">
-    <div class="ops">
-      <button onclick="gitCommit(false)">提交</button>
-      <button class="op primary" onclick="gitCommit(true)">提交并推送</button>
-      <button onclick="gitStatus()">刷新</button>
-      <button onclick="togglePanel('git')">关闭</button>
-    </div>
-  </div>
+        <div class="section">
+          <div class="section-head">
+            <h2>最近流水线</h2>
+            <button class="action" onclick="setView('pipelines')">查看全部</button>
+          </div>
+          <div class="list" id="pipelines-overview"></div>
+        </div>
 
-  <div class="grid">
-    <div class="card">
-      <div class="lbl">Backend</div>
-      <div class="val"><span class="state" id="be-state">—</span><span class="meta" id="be-meta">检测中 <span class="spin"></span></span></div>
-      <div class="sub" id="be-sub">—</div>
-    </div>
-    <div class="card">
-      <div class="lbl">Web</div>
-      <div class="val"><span class="state" id="we-state">—</span><span class="meta" id="we-meta">检测中 <span class="spin"></span></span></div>
-      <div class="sub" id="we-sub">—</div>
-    </div>
-  </div>
+        <div class="section">
+          <div class="section-head"><h2>快捷入口</h2></div>
+          <div class="tool-grid">
+            <a class="tool-link" id="a-actions" href="#">GitHub Actions <span>↗</span></a>
+            <a class="tool-link" id="a-web" href="#">打开 Web <span>↗</span></a>
+            <a class="tool-link" id="a-health" href="#">Health JSON <span>↗</span></a>
+          </div>
+        </div>
+      </div>
 
-  <p class="sectitle">流水线（GitHub Actions）· 实时</p>
-  <div id="pipelines">
-    <div class="row"><span class="name">CI 质量门禁</span><span class="pill muted">加载中…</span></div>
-    <div class="row"><span class="name">Deploy Backend</span><span class="pill muted">加载中…</span></div>
-    <div class="row"><span class="name">Deploy Web</span><span class="pill muted">加载中…</span></div>
-  </div>
+      <div id="view-pipelines" class="view">
+        <div class="section">
+          <div class="section-head">
+            <h2>GitHub Actions</h2>
+            <button class="action" onclick="nativeRefresh()">刷新流水线</button>
+          </div>
+          <div class="list" id="pipelines"></div>
+        </div>
+      </div>
 
-  <p class="sectitle" style="margin-top:16px">操作 · 一键触发</p>
-  <div class="ops">
-    <button class="op primary" onclick="fire('all','确认：触发 CI 并把【前端 + 后端】部署到生产？')">一键 CI + CD</button>
-    <button class="op" onclick="fire('ci',null)">运行 CI</button>
-    <button class="op" onclick="fire('backend','确认：把【后端】部署到生产？')">部署后端</button>
-    <button class="op" onclick="fire('web','确认：把【Web】部署到生产？')">部署 Web</button>
-  </div>
-  <div id="toast" class="toast"></div>
+      <div id="view-deploy" class="view">
+        <div class="section">
+          <div class="section-head">
+            <h2>生产部署</h2>
+            <span class="section-desc">通过本机已登录的 gh 触发 workflow</span>
+          </div>
+          <div class="split">
+            <div class="panel">
+              <h3>质量门禁</h3>
+              <p>触发 CI workflow，验证当前 ref 的质量门禁。</p>
+              <button class="action" onclick="fire('ci')">运行 CI</button>
+            </div>
+            <div class="panel">
+              <h3>一键 CI + CD</h3>
+              <p>依次触发 CI、后端部署、Web 部署。用于完整发布。</p>
+              <button class="action primary" onclick="fire('all')">一键 CI + CD</button>
+            </div>
+            <div class="panel">
+              <h3>后端</h3>
+              <p>触发后端 PM2 部署 workflow，会影响生产 API。</p>
+              <button class="action danger" onclick="fire('backend')">部署后端</button>
+            </div>
+            <div class="panel">
+              <h3>Web</h3>
+              <p>构建并上传静态 Web 到 OVH hosting。</p>
+              <button class="action danger" onclick="fire('web')">部署 Web</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  <p class="sectitle" style="margin-top:16px">Mobile · EAS</p>
-  <div class="ops">
-    <button class="op" onclick="easLocal('mobileAndroidBuild','确认：触发 Android production EAS Build？')">Android Build</button>
-    <button class="op primary" onclick="easLocal('mobileAndroidSubmit','确认：提交最新 Android production build 到 Google Play？')">Android Submit</button>
-    <button class="op" onclick="easLocal('mobileIosBuild','确认：触发 iOS production EAS Build？')">iOS Build</button>
-    <button class="op primary" onclick="easLocal('mobileIosSubmit','确认：提交最新 iOS production build 到 App Store Connect / TestFlight？')">iOS Submit</button>
-  </div>
+      <div id="view-mobile" class="view">
+        <div class="section">
+          <div class="section-head">
+            <h2>Mobile EAS</h2>
+            <button class="action" onclick="setView('settings')">编辑配置</button>
+          </div>
+          <div class="split">
+            <div class="panel">
+              <h3>Android</h3>
+              <p>使用 production profile 触发 Android build 或提交最新 build。</p>
+              <div class="actions">
+                <button class="action" onclick="easLocal('mobileAndroidBuild')">Build</button>
+                <button class="action primary" onclick="easLocal('mobileAndroidSubmit')">Submit latest</button>
+              </div>
+            </div>
+            <div class="panel">
+              <h3>iOS</h3>
+              <p>使用 production profile 触发 iOS build 或提交最新 build 到 App Store Connect / TestFlight。</p>
+              <div class="actions">
+                <button class="action" onclick="easLocal('mobileIosBuild')">Build</button>
+                <button class="action primary" onclick="easLocal('mobileIosSubmit')">Submit latest</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="margin-top:12px">
+            <h3>本机配置</h3>
+            <dl class="config-summary">
+              <dt>Mobile app</dt><dd id="mobile-path">--</dd>
+              <dt>EAS 命令</dt><dd id="mobile-eas">--</dd>
+              <dt>Token 来源</dt><dd id="mobile-token">--</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-head"><h2>EAS 输出</h2><span class="section-desc">命令完成后显示 stdout / stderr</span></div>
+          <div class="logbox" id="eas-log">尚未执行 EAS 命令。</div>
+        </div>
+      </div>
 
-  <div class="links">
-    <a id="a-actions" href="#"><button>GitHub Actions ↗</button></a>
-    <a id="a-web" href="#"><button>打开 Web ↗</button></a>
-    <a id="a-health" href="#"><button>Health JSON ↗</button></a>
-  </div>
+      <div id="view-server" class="view">
+        <div class="section">
+          <div class="section-head">
+            <h2>服务器 .env</h2>
+            <span class="section-desc">经 SSH 读写，保存前会确认</span>
+          </div>
+          <textarea id="env-text" spellcheck="false" placeholder="点「读取」从服务器拉取..."></textarea>
+          <div class="actions" style="margin-top:10px">
+            <button class="action" onclick="readEnv()">读取</button>
+            <button class="action danger" onclick="saveEnv()">保存到服务器</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-git" class="view">
+        <div class="section">
+          <div class="section-head">
+            <h2>Git 工作区</h2>
+            <button class="action" onclick="gitStatus()">刷新</button>
+          </div>
+          <div class="panel">
+            <div id="git-branch" class="meta" style="margin-bottom:8px">...</div>
+            <div id="git-files" class="logbox" style="min-height:130px">--</div>
+            <input id="git-msg" placeholder="提交信息..." style="width:100%;margin:10px 0">
+            <div class="actions">
+              <button class="action" onclick="gitCommit(false)">提交</button>
+              <button class="action primary" onclick="gitCommit(true)">提交并推送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-secrets" class="view">
+        <div class="section">
+          <div class="section-head">
+            <h2>GitHub Secrets</h2>
+            <button class="action" onclick="refreshSecrets()">刷新状态</button>
+          </div>
+          <div class="panel">
+            <p>GitHub 不可回显已存的值，只能查看状态并覆盖。值经本地 gh 加密上传。</p>
+            <div id="secrets-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-settings" class="view">
+        <div class="section">
+          <div class="section-head">
+            <h2>设置</h2>
+            <span class="section-desc">保存后停留在设置页</span>
+          </div>
+          <div class="panel">
+            <div class="group-title">监测与 GitHub</div>
+            <div class="form-grid">
+              <div class="frow"><label>后端 Health URL</label><input id="cfg-backendHealthURL" placeholder="https://.../health"></div>
+              <div class="frow"><label>Web URL</label><input id="cfg-webURL" placeholder="https://..."></div>
+              <div class="frow"><label>GitHub 仓库</label><input id="cfg-repo" placeholder="owner/repo"></div>
+              <div class="frow"><label>部署分支 ref</label><input id="cfg-ref" placeholder="main"></div>
+              <div class="frow"><label>CI workflow</label><input id="cfg-ciWorkflow" placeholder="ci.yml"></div>
+              <div class="frow"><label>后端 workflow</label><input id="cfg-backendWorkflow" placeholder="deploy-backend.yml"></div>
+              <div class="frow"><label>Web workflow</label><input id="cfg-webWorkflow" placeholder="deploy-web.yml"></div>
+            </div>
+            <div class="group-title">服务器 SSH</div>
+            <div class="form-grid">
+              <div class="frow"><label>SSH 主机</label><input id="cfg-sshHost" placeholder="1.2.3.4"></div>
+              <div class="frow"><label>SSH 用户</label><input id="cfg-sshUser" placeholder="ubuntu"></div>
+              <div class="frow"><label>SSH 端口</label><input id="cfg-sshPort" placeholder="22"></div>
+              <div class="frow"><label>SSH 私钥路径</label><input id="cfg-sshKeyPath" placeholder="~/.ssh/zhao_deploy"></div>
+              <div class="frow"><label>.env 路径</label><input id="cfg-envPath" placeholder="/opt/.../.env"></div>
+            </div>
+            <div class="group-title">本地与 Mobile</div>
+            <div class="form-grid">
+              <div class="frow"><label>本地仓库路径</label><input id="cfg-repoPath" placeholder="/Users/.../zhao-family"></div>
+              <div class="frow"><label>Mobile app 路径</label><input id="cfg-mobileAppPath" placeholder="/Users/.../zhao-family/apps/mobile"></div>
+              <div class="frow"><label>EAS 命令</label><input id="cfg-easCommand" placeholder="eas"></div>
+              <div class="frow"><label>EXPO_TOKEN</label><input id="cfg-expoToken" type="password" placeholder="留空则使用本机 eas login"></div>
+            </div>
+            <div class="actions" style="margin-top:14px">
+              <button class="action primary" onclick="saveConfig()">保存设置</button>
+              <button class="action" onclick="resetConfig()">恢复默认</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
 
 <script>
   var CFG={};
+  var currentView='overview';
+  var lastRuns=[];
+  var secretsBuilt=false;
   var FIELDS=['backendHealthURL','webURL','repo','ref','ciWorkflow','backendWorkflow','webWorkflow',
-              'sshHost','sshUser','sshPort','sshKeyPath','envPath','repoPath','mobileAppPath',
-              'easCommand','expoToken'];
+              'sshHost','sshUser','sshPort','sshKeyPath','envPath','repoPath','mobileAppPath','easCommand','expoToken'];
   var SECRETS=[
     {n:'DEPLOY_SSH_HOST',g:'后端 (SSH)'},{n:'DEPLOY_SSH_USER',g:'后端 (SSH)'},
     {n:'DEPLOY_SSH_KEY',g:'后端 (SSH)',file:true},{n:'DEPLOY_SSH_PORT',g:'后端 (SSH)'},
@@ -219,43 +380,62 @@
     {n:'WEB_SFTP_PASSWORD',g:'Web (SFTP)'},{n:'WEB_SFTP_PORT',g:'Web (SFTP)'},
     {n:'WEB_SFTP_REMOTE_DIR',g:'Web (SFTP)'}
   ];
-  var secretsBuilt=false;
+  var WORKFLOWS=[
+    {wf:'CI',label:'CI 质量门禁'},
+    {wf:'Deploy Backend',label:'Deploy Backend'},
+    {wf:'Deploy Web',label:'Deploy Web'}
+  ];
+  var PAGES={
+    overview:['概览','日常运维状态和最近动作。'],
+    pipelines:['流水线','查看最近 GitHub Actions 状态。'],
+    deploy:['部署','集中触发 CI、后端和 Web 发布。'],
+    mobile:['Mobile EAS','本机执行 EAS build / submit。'],
+    server:['服务器 .env','经 SSH 读取和保存后端环境变量。'],
+    git:['Git','查看工作区并提交本地改动。'],
+    secrets:['Secrets','查看和覆盖 GitHub 部署凭证。'],
+    settings:['设置','统一管理监测、部署和本机命令配置。']
+  };
+  var LABEL={
+    ci:'运行 CI',backend:'部署后端',web:'部署 Web',all:'一键 CI + CD',
+    mobileAndroidBuild:'Android EAS Build',
+    mobileAndroidSubmit:'Android EAS Submit latest',
+    mobileIosBuild:'iOS EAS Build',
+    mobileIosSubmit:'iOS EAS Submit latest'
+  };
+  var IMPACT={
+    ci:'将触发 CI workflow，不会直接部署生产。',
+    backend:'将触发后端生产部署 workflow，影响生产 API。',
+    web:'将触发 Web 生产部署 workflow，影响 zhaoplatforme.com。',
+    all:'将依次触发 CI、后端部署、Web 部署，用于完整生产发布。',
+    mobileAndroidBuild:'将在本机 apps/mobile 下触发 Android production EAS Build。',
+    mobileAndroidSubmit:'将在本机 apps/mobile 下提交最新 Android production build 到 Google Play。',
+    mobileIosBuild:'将在本机 apps/mobile 下触发 iOS production EAS Build。',
+    mobileIosSubmit:'将在本机 apps/mobile 下提交最新 iOS production build 到 App Store Connect / TestFlight。'
+  };
 
-  function host(u){ try{ return new URL(u).host + new URL(u).pathname.replace(/\/$/,''); }catch(e){ return u; } }
-  function togglePanel(id){
-    ['settings','secrets','server','git'].forEach(function(p){ if(p!==id) document.getElementById(p).style.display='none'; });
-    var s=document.getElementById(id); s.style.display = s.style.display==='none'?'block':'none';
-    if(s.style.display==='block'){ if(id==='secrets') refreshSecrets(); if(id==='server') readEnv(); if(id==='git') gitStatus(); }
+  function host(u){ try{ var x=new URL(u); return x.host + x.pathname.replace(/\/$/,''); }catch(e){ return u; } }
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function showToast(msg,cls){ var t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+(cls||''); }
+  function setView(id){
+    currentView=id;
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.id==='view-'+id); });
+    document.querySelectorAll('.nav button').forEach(function(b){ b.classList.toggle('active', b.dataset.view===id); });
+    document.getElementById('page-title').textContent=PAGES[id][0];
+    document.getElementById('page-note').textContent=PAGES[id][1];
+    if(id==='secrets') refreshSecrets();
+    if(id==='git') gitStatus();
+    if(id==='server' && !document.getElementById('env-text').value.trim()) readEnv();
+    if(id==='mobile') renderMobileConfig();
   }
-  function gitStatus(){ document.getElementById('git-files').textContent='读取中…'; try{ window.webkit.messageHandlers.gitStatus.postMessage(''); }catch(e){} }
-  window.renderGit=function(t){
-    var lines=(t||'').split('\n').filter(function(l){return l.length;}); var branch='',files=[];
-    lines.forEach(function(l){ if(l.indexOf('## ')===0) branch=l.slice(3); else files.push(l); });
-    window._gitBranch=(branch||'').split('.')[0].split(' ')[0];
-    document.getElementById('git-branch').textContent='分支: '+(branch||'?');
-    var box=document.getElementById('git-files');
-    if(!files.length){ box.textContent='工作区干净，无改动'; }
-    else { box.innerHTML=files.map(function(f){ return '<div>'+f.replace(/[&<]/g,function(c){return c==='&'?'&amp;':'&lt;';})+'</div>'; }).join(''); }
-  };
-  function gitCommit(push){
-    var msg=document.getElementById('git-msg').value.trim();
-    if(!msg){ showToast('请输入提交信息','bad'); return; }
-    if(push && !confirm('确认提交并推送到 '+(window._gitBranch||'当前分支')+'？\n推送到 main 会自动触发 CI/CD。')) return;
-    showToast(push?'提交并推送…':'提交…','');
-    try{ window.webkit.messageHandlers.gitCommit.postMessage(JSON.stringify({message:msg,push:!!push})); }catch(e){ showToast('失败','bad'); }
+  function confirmAction(key){
+    var msg='确认执行：'+(LABEL[key]||key)+'\n\n'+(IMPACT[key]||'')+'\n\n目标 ref：'+(CFG.ref||'main')+'\n仓库：'+(CFG.repo||'')+'\n\n继续？';
+    if(!confirm(msg)) return false;
+    return confirm('再次确认：现在执行「'+(LABEL[key]||key)+'」？');
   }
-  window.gitDone=function(ok,msg){
-    showToast((ok?'✓ 完成':'✗ 失败')+(msg?' — '+msg:''), ok?'ok':'bad');
-    if(ok){ document.getElementById('git-msg').value=''; gitStatus(); }
-  };
-  function readEnv(){ document.getElementById('env-text').value='# 读取中…'; try{ window.webkit.messageHandlers.readEnv.postMessage(''); }catch(e){} }
-  window.renderEnv=function(t){ document.getElementById('env-text').value=t; };
-  function saveEnv(){
-    if(!confirm('确认把编辑后的内容写回服务器 .env？（会先备份为 .bak，改动需重启后端生效）')) return;
-    showToast('保存到服务器…','');
-    try{ window.webkit.messageHandlers.saveEnv.postMessage(document.getElementById('env-text').value); }catch(e){ showToast('失败','bad'); }
+  function nativeRefresh(){
+    document.getElementById('rfx').innerHTML='<span class="spin"></span>';
+    try{ window.webkit.messageHandlers.refresh.postMessage(''); }catch(e){}
   }
-  window.envSaved=function(ok,msg){ showToast(ok?'✓ .env 已保存（已备份 .bak）· 需重启/重部署后端生效':'✗ 保存失败 — '+(msg||''), ok?'ok':'bad'); };
 
   window.applyConfig=function(cfg){
     CFG=cfg||{};
@@ -265,28 +445,139 @@
     document.getElementById('a-actions').href='https://github.com/'+(CFG.repo||'')+'/actions';
     document.getElementById('a-web').href=CFG.webURL||'#';
     document.getElementById('a-health').href=CFG.backendHealthURL||'#';
+    renderMobileConfig();
     if(!secretsBuilt) buildSecrets();
   };
   function saveConfig(){
     var obj={}; FIELDS.forEach(function(k){ obj[k]=(document.getElementById('cfg-'+k).value||'').trim(); });
-    showToast('保存中…','');
+    showToast('保存设置中...','');
     try{ window.webkit.messageHandlers.saveConfig.postMessage(JSON.stringify(obj)); }catch(e){ showToast('保存失败','bad'); }
   }
-  function resetConfig(){ try{ window.webkit.messageHandlers.resetConfig.postMessage(''); }catch(e){} }
-  window.configSaved=function(cfg){ applyConfig(cfg); togglePanel('settings'); showToast('✓ 配置已保存','ok'); nativeRefresh(); };
+  function resetConfig(){
+    if(!confirm('确认恢复默认配置？当前本机保存的设置会被清除。')) return;
+    try{ window.webkit.messageHandlers.resetConfig.postMessage(''); }catch(e){}
+  }
+  window.configSaved=function(cfg){ applyConfig(cfg); showToast('✓ 设置已保存','ok'); nativeRefresh(); };
+  function renderMobileConfig(){
+    document.getElementById('mobile-path').textContent=CFG.mobileAppPath||'--';
+    document.getElementById('mobile-eas').textContent=CFG.easCommand||'eas';
+    document.getElementById('mobile-token').textContent=CFG.expoToken?'本地 EXPO_TOKEN':'本机 eas login';
+  }
+
+  function setCard(prefix,up,ms,detail){
+    var st=document.getElementById(prefix+'-state'), mt=document.getElementById(prefix+'-meta');
+    if(up){ st.textContent='在线'; st.className='state ok'; } else { st.textContent='离线'; st.className='state bad'; }
+    mt.textContent=(up?(ms+'ms'):'无法连接')+(detail?' · '+detail:'');
+  }
+  window.updateStatus=function(d){
+    setCard('be', d.backend==='up', d.backendMs, d.backendDb?('database '+d.backendDb):'');
+    setCard('we', d.web==='up', d.webMs, d.webCode?('HTTP '+d.webCode):'');
+    var both=d.backend==='up'&&d.web==='up';
+    document.getElementById('overall').className='dot '+(both?'ok':(d.backend==='up'||d.web==='up'?'warn':'bad'));
+    document.getElementById('rfx').textContent='↻';
+    document.getElementById('when').textContent='更新于 '+d.time;
+    document.getElementById('nav-status').textContent='最后更新 '+d.time;
+  };
+
+  function fire(key){
+    if(!confirmAction(key)) return;
+    showToast('触发中... '+(LABEL[key]||key),'');
+    try{ window.webkit.messageHandlers.dispatch.postMessage(key); }
+    catch(e){ showToast('无法调用 gh（需在已登录 gh 的机器上）','bad'); }
+  }
+  window.dispatchResult=function(key,ok,msg){
+    showToast((ok?'✓ 已触发 ':'✗ 失败 ')+(LABEL[key]||key)+(msg?' — '+msg:''), ok?'ok':'bad');
+  };
+  function easLocal(key){
+    if(!confirmAction(key)) return;
+    var title=LABEL[key]||key;
+    document.getElementById('eas-log').textContent='运行中... '+title;
+    showToast('本机执行中... '+title,'');
+    try{ window.webkit.messageHandlers.easLocal.postMessage(key); }
+    catch(e){ showToast('无法调用本机 EAS 命令','bad'); }
+  }
+  window.easLocalDone=function(key,ok,msg){
+    document.getElementById('eas-log').textContent=(msg&&msg.trim())?msg:(ok?'命令已完成，无输出。':'命令失败，无输出。');
+    showToast((ok?'✓ 完成 ':'✗ 失败 ')+(LABEL[key]||key), ok?'ok':'bad');
+  };
+
+  function ago(iso){ var s=Math.max(0,(Date.now()-new Date(iso).getTime())/1000);
+    if(s<60) return Math.floor(s)+'秒前'; if(s<3600) return Math.floor(s/60)+'分前';
+    if(s<86400) return Math.floor(s/3600)+'时前'; return Math.floor(s/86400)+'天前'; }
+  function pipelineRows(runs,limit){
+    runs=runs||[];
+    var rows=WORKFLOWS.map(function(w){
+      var r=null; for(var i=0;i<runs.length;i++){ if(runs[i].workflowName===w.wf){ r=runs[i]; break; } }
+      var pill='无运行', cls='muted', meta='';
+      if(r){
+        meta=(r.event||'')+' · '+(r.headBranch||'')+' · '+ago(r.createdAt);
+        if(r.status!=='completed'){ pill=(r.status==='queued'?'排队':'进行中'); cls='warn'; }
+        else if(r.conclusion==='success'){ pill='成功'; cls='ok'; }
+        else if(r.conclusion==='failure'){ pill='失败'; cls='bad'; }
+        else { pill=r.conclusion||'--'; cls='muted'; }
+      }
+      var url=(r&&r.url)?r.url:('https://github.com/'+(CFG.repo||'')+'/actions');
+      return '<a class="row" href="'+esc(url)+'"><span><span class="name">'+esc(w.label)+'</span>'+
+             (meta?'<span class="detail"> · '+esc(meta)+'</span>':'')+'</span>'+
+             '<span class="pill '+cls+'">'+esc(pill)+'</span></a>';
+    });
+    return (limit?rows.slice(0,limit):rows).join('');
+  }
+  window.renderPipelines=function(runs){
+    lastRuns=runs||[];
+    document.getElementById('pipelines').innerHTML=pipelineRows(lastRuns);
+    document.getElementById('pipelines-overview').innerHTML=pipelineRows(lastRuns,3);
+  };
+
+  function readEnv(){
+    document.getElementById('env-text').value='# 读取中...';
+    try{ window.webkit.messageHandlers.readEnv.postMessage(''); }catch(e){}
+  }
+  window.renderEnv=function(t){ document.getElementById('env-text').value=t; };
+  function saveEnv(){
+    var msg='确认保存服务器 .env？\n\n会写入：'+(CFG.envPath||'')+'\n会先备份为 .bak；后端需要重启/重部署后生效。';
+    if(!confirm(msg) || !confirm('再次确认：写回服务器 .env？')) return;
+    showToast('保存到服务器...','');
+    try{ window.webkit.messageHandlers.saveEnv.postMessage(document.getElementById('env-text').value); }catch(e){ showToast('失败','bad'); }
+  }
+  window.envSaved=function(ok,msg){ showToast(ok?'✓ .env 已保存（已备份 .bak）':'✗ 保存失败 — '+(msg||''), ok?'ok':'bad'); };
+
+  function gitStatus(){ document.getElementById('git-files').textContent='读取中...'; try{ window.webkit.messageHandlers.gitStatus.postMessage(''); }catch(e){} }
+  window.renderGit=function(t){
+    var lines=(t||'').split('\n').filter(function(l){return l.length;}); var branch='',files=[];
+    lines.forEach(function(l){ if(l.indexOf('## ')===0) branch=l.slice(3); else files.push(l); });
+    window._gitBranch=(branch||'').split('.')[0].split(' ')[0];
+    document.getElementById('git-branch').textContent='分支: '+(branch||'?');
+    document.getElementById('git-files').textContent=files.length?files.join('\n'):'工作区干净，无改动';
+  };
+  function gitCommit(push){
+    var msg=document.getElementById('git-msg').value.trim();
+    if(!msg){ showToast('请输入提交信息','bad'); return; }
+    if(push){
+      var text='确认提交并推送到 '+(window._gitBranch||'当前分支')+'？\n\n推送到 main 会自动触发 CI/CD。';
+      if(!confirm(text) || !confirm('再次确认：提交并推送？')) return;
+    }
+    showToast(push?'提交并推送...':'提交...','');
+    try{ window.webkit.messageHandlers.gitCommit.postMessage(JSON.stringify({message:msg,push:!!push})); }catch(e){ showToast('失败','bad'); }
+  }
+  window.gitDone=function(ok,msg){
+    showToast((ok?'✓ 完成':'✗ 失败')+(msg?' — '+msg:''), ok?'ok':'bad');
+    if(ok){ document.getElementById('git-msg').value=''; gitStatus(); }
+  };
 
   function buildSecrets(){
     var box=document.getElementById('secrets-list'); box.innerHTML=''; var lastG='';
     SECRETS.forEach(function(s){
-      if(s.g!==lastG){ lastG=s.g; var h=document.createElement('div'); h.className='sgroup'; h.textContent=s.g; box.appendChild(h); }
-      var row=document.createElement('div'); row.className='srow';
-      var nm=document.createElement('div'); nm.className='sname';
-      nm.innerHTML=s.n+'<span class="sstat" id="stat-'+s.n+'">…</span>'; row.appendChild(nm);
+      if(s.g!==lastG){ lastG=s.g; var h=document.createElement('div'); h.className='group-title'; h.textContent=s.g; box.appendChild(h); }
+      var row=document.createElement('div'); row.className='secret-row';
+      var nm=document.createElement('div'); nm.className='secret-name';
+      nm.innerHTML=s.n+'<span class="secret-status" id="stat-'+s.n+'">...</span>'; row.appendChild(nm);
       var inp=document.createElement('input'); inp.type='password'; inp.id='sec-'+s.n;
-      inp.placeholder=s.file?'(用文件选择器)':'新值（留空不改）'; if(s.file) inp.disabled=true; row.appendChild(inp);
-      if(s.file){ var fb=document.createElement('button'); fb.textContent='选择文件…'; fb.onclick=function(){ pickFile(s.n); }; row.appendChild(fb); }
-      else { var b=document.createElement('button'); b.textContent='设置'; b.onclick=function(){ setSecretVal(s.n); }; row.appendChild(b); }
-      box.appendChild(row);
+      inp.placeholder=s.file?'用文件选择器':'新值（留空不改）'; if(s.file) inp.disabled=true; row.appendChild(inp);
+      var b=document.createElement('button'); b.className='action';
+      b.textContent=s.file?'选择文件...':'设置';
+      b.onclick=function(){ s.file?pickFile(s.n):setSecretVal(s.n); };
+      row.appendChild(b); box.appendChild(row);
     });
     secretsBuilt=true;
   }
@@ -295,95 +586,25 @@
     var m={}; (arr||[]).forEach(function(x){ m[x.name]=x.updatedAt; });
     SECRETS.forEach(function(s){
       var el=document.getElementById('stat-'+s.n); if(!el) return;
-      if(m[s.n]){ el.textContent=' ✓ 已设置 · '+(m[s.n]||'').slice(0,10); el.className='sstat set'; }
-      else { el.textContent=' ✗ 未设置'; el.className='sstat unset'; }
+      if(m[s.n]){ el.textContent=' ✓ 已设置 · '+(m[s.n]||'').slice(0,10); el.className='secret-status set'; }
+      else { el.textContent=' ✗ 未设置'; el.className='secret-status unset'; }
     });
   };
   function setSecretVal(name){
     var v=document.getElementById('sec-'+name).value;
     if(!v){ showToast('请输入 '+name+' 的值','bad'); return; }
-    showToast('设置 '+name+' …','');
+    if(!confirm('确认覆盖 GitHub Secret：'+name+'？') || !confirm('再次确认：覆盖 '+name+'？')) return;
+    showToast('设置 '+name+' ...','');
     try{ window.webkit.messageHandlers.setSecret.postMessage(JSON.stringify({name:name,value:v})); }catch(e){ showToast('失败','bad'); }
   }
-  function pickFile(name){ showToast('设置 '+name+' …',''); try{ window.webkit.messageHandlers.pickKeyFile.postMessage(name); }catch(e){} }
+  function pickFile(name){
+    if(!confirm('确认选择文件并覆盖 GitHub Secret：'+name+'？')) return;
+    showToast('设置 '+name+' ...','');
+    try{ window.webkit.messageHandlers.pickKeyFile.postMessage(name); }catch(e){}
+  }
   window.secretSet=function(name,ok,msg){
     if(ok){ var i=document.getElementById('sec-'+name); if(i) i.value=''; showToast('✓ 已设置 '+name,'ok'); refreshSecrets(); }
     else showToast('✗ '+name+' 失败 — '+(msg||''),'bad');
-  };
-
-  function nativeRefresh(){
-    var r=document.getElementById('rfx'); r.innerHTML='<span class="spin"></span>';
-    try{ window.webkit.messageHandlers.refresh.postMessage(''); }catch(e){}
-  }
-  function setCard(prefix,up,ms,detail){
-    var st=document.getElementById(prefix+'-state'), mt=document.getElementById(prefix+'-meta');
-    if(up){ st.textContent='在线'; st.className='state ok'; } else { st.textContent='离线'; st.className='state bad'; }
-    mt.textContent=(up?(ms+'ms'):'无法连接')+(detail?' · '+detail:'');
-    mt.classList.add('pulse'); setTimeout(function(){mt.classList.remove('pulse')},1000);
-  }
-  window.updateStatus=function(d){
-    setCard('be', d.backend==='up', d.backendMs, d.backendDb?('database '+d.backendDb):'');
-    setCard('we', d.web==='up', d.webMs, d.webCode?('HTTP '+d.webCode):'');
-    var ov=document.getElementById('overall'), both=d.backend==='up'&&d.web==='up';
-    ov.className='dot '+(both?'ok':(d.backend==='up'||d.web==='up'?'warn':'bad'));
-    document.getElementById('rfx').textContent='↻';
-    document.getElementById('when').textContent='更新于 '+d.time;
-  };
-
-  var LABEL={
-    ci:'CI',backend:'Deploy Backend',web:'Deploy Web',all:'CI + CD',
-    mobileAndroidBuild:'Android EAS Build',
-    mobileAndroidSubmit:'Android EAS Submit',
-    mobileIosBuild:'iOS EAS Build',
-    mobileIosSubmit:'iOS EAS Submit'
-  };
-  function showToast(msg,cls){ var t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+(cls||''); }
-  function fire(key,confirmMsg){
-    if(confirmMsg && !confirm(confirmMsg)) return;
-    showToast('触发中… '+(LABEL[key]||key)+' …','');
-    try{ window.webkit.messageHandlers.dispatch.postMessage(key); }
-    catch(e){ showToast('无法调用 gh（需在已登录 gh 的机器上）','bad'); }
-  }
-  window.dispatchResult=function(key,ok,msg){
-    showToast((ok?'✓ 已触发 ':'✗ 失败 ')+(LABEL[key]||key)+(msg?' — '+msg:'')+(ok?'（流水线状态见下方，实时刷新）':''), ok?'ok':'bad');
-  };
-  function easLocal(key,confirmMsg){
-    if(confirmMsg && !confirm(confirmMsg)) return;
-    showToast('本机执行中… '+(LABEL[key]||key)+' …','');
-    try{ window.webkit.messageHandlers.easLocal.postMessage(key); }
-    catch(e){ showToast('无法调用本机 EAS 命令','bad'); }
-  }
-  window.easLocalDone=function(key,ok,msg){
-    showToast((ok?'✓ 完成 ':'✗ 失败 ')+(LABEL[key]||key)+(msg?' — '+msg:''), ok?'ok':'bad');
-  };
-
-  var WORKFLOWS=[
-    {wf:'CI',label:'CI 质量门禁'},
-    {wf:'Deploy Backend',label:'Deploy Backend'},
-    {wf:'Deploy Web',label:'Deploy Web'}
-  ];
-  function ago(iso){ var s=Math.max(0,(Date.now()-new Date(iso).getTime())/1000);
-    if(s<60) return Math.floor(s)+'秒前'; if(s<3600) return Math.floor(s/60)+'分前';
-    if(s<86400) return Math.floor(s/3600)+'时前'; return Math.floor(s/86400)+'天前'; }
-  window.renderPipelines=function(runs){
-    runs=runs||[];
-    var html=WORKFLOWS.map(function(w){
-      var r=null; for(var i=0;i<runs.length;i++){ if(runs[i].workflowName===w.wf){ r=runs[i]; break; } }
-      var pill='无运行', cls='muted', meta='';
-      if(r){
-        meta=(r.event||'')+' · '+(r.headBranch||'')+' · '+ago(r.createdAt);
-        if(r.status!=='completed'){ pill=(r.status==='queued'?'排队':'进行中'); cls='warn'; }
-        else if(r.conclusion==='success'){ pill='成功'; cls='ok'; }
-        else if(r.conclusion==='failure'){ pill='失败'; cls='bad'; }
-        else { pill=r.conclusion||'—'; cls='muted'; }
-      }
-      var url=(r&&r.url)?r.url:('https://github.com/'+(CFG.repo||'')+'/actions');
-      return '<a class="row" href="'+url+'"><span class="name">'+w.label+'</span>'+
-             '<span style="display:flex;gap:9px;align-items:center">'+
-             (meta?'<span class="meta">'+meta+'</span>':'')+
-             '<span class="pill '+cls+'">'+pill+'</span></span></a>';
-    }).join('');
-    document.getElementById('pipelines').innerHTML=html;
   };
 </script>
 </body>

@@ -13,16 +13,12 @@ import type {
 // Suppliers that enforce stock rules on the order flow (0 stock = out of order).
 export const STOCK_ENFORCED_SUPPLIER_IDS = new Set<string>(["8"]);
 
-export function supplierEnforcesStock(
-  supplierId: number | string | null | undefined,
-): boolean {
+export function supplierEnforcesStock(supplierId: number | string | null | undefined): boolean {
   if (supplierId === null || supplierId === undefined) return false;
   return STOCK_ENFORCED_SUPPLIER_IDS.has(String(supplierId));
 }
 
-function buildProductVariants(
-  product: OrderProductApiRecord,
-): OrderProductVariant[] {
+function buildProductVariants(product: OrderProductApiRecord): OrderProductVariant[] {
   const variantFields = [
     {
       key: "1",
@@ -45,12 +41,7 @@ function buildProductVariants(
   ];
 
   const variants = variantFields
-    .filter(
-      (variant) =>
-        variant.specification ||
-        variant.unit ||
-        Number.isFinite(variant.price),
-    )
+    .filter((variant) => variant.specification || variant.unit || Number.isFinite(variant.price))
     .map((variant) => ({
       id: `${product.id}:${variant.key}`,
       specification: variant.specification || null,
@@ -77,12 +68,11 @@ export async function fetchOrderSuppliers(): Promise<OrderSupplier[]> {
     name: supplier.name,
     sortOrder: supplier.sortOrder,
     includeAllProductsInOrder: supplier.includeAllProductsInOrder,
+    orderNotice: supplier.orderNotice ?? null,
   }));
 }
 
-export async function fetchOrderProducts(
-  supplierId: string,
-): Promise<OrderProduct[]> {
+export async function fetchOrderProducts(supplierId: string): Promise<OrderProduct[]> {
   const products = await apiClient.get<OrderProductApiRecord[]>(
     `/products?supplierId=${encodeURIComponent(supplierId)}`,
   );
@@ -99,18 +89,15 @@ export async function fetchOrderProducts(
     nameCn: product.nameCn,
     nameFr: product.designationFr,
     unit: product.unit,
-    price:
-      typeof product.unitPriceHt === "number" ? product.unitPriceHt : null,
+    price: typeof product.unitPriceHt === "number" ? product.unitPriceHt : null,
     image: product.image,
     specification: product.specification,
     specification2: product.specification2,
     specification3: product.specification3,
     unit2: product.unit2,
     unit3: product.unit3,
-    price2:
-      typeof product.unitPriceHt2 === "number" ? product.unitPriceHt2 : null,
-    price3:
-      typeof product.unitPriceHt3 === "number" ? product.unitPriceHt3 : null,
+    price2: typeof product.unitPriceHt2 === "number" ? product.unitPriceHt2 : null,
+    price3: typeof product.unitPriceHt3 === "number" ? product.unitPriceHt3 : null,
     variants: buildProductVariants(product),
   }));
 }
@@ -144,9 +131,7 @@ export function getOrderProductUnit(product: OrderProduct): string {
   return product.unit || product.specification || "—";
 }
 
-export function getOrderProductVariants(
-  product: OrderProduct,
-): OrderProductVariant[] {
+export function getOrderProductVariants(product: OrderProduct): OrderProductVariant[] {
   if (Array.isArray(product.variants) && product.variants.length > 0) {
     return product.variants;
   }

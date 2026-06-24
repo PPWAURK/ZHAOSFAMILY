@@ -10,6 +10,7 @@ describe('SuppliersService', () => {
             name: 'JFC',
             sortOrder: 2,
             includeAllProductsInOrder: false,
+            orderNotice: null,
           },
         ]),
       },
@@ -24,6 +25,7 @@ describe('SuppliersService', () => {
         name: true,
         sortOrder: true,
         includeAllProductsInOrder: true,
+        orderNotice: true,
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
@@ -33,6 +35,7 @@ describe('SuppliersService', () => {
         name: 'JFC',
         sortOrder: 2,
         includeAllProductsInOrder: false,
+        orderNotice: null,
       },
     ]);
   });

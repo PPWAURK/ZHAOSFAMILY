@@ -1102,6 +1102,385 @@
   color: #111;
 }
 
+/* Store detail — mobile-parity approval UI */
+.detailHero {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 20px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+}
+
+.detailHeroCode {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+.detailHeroName {
+  margin: 0;
+  font-family: var(--zh-serif);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.detailHeroAddress {
+  margin: 0;
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  color: var(--ink-60);
+}
+
+.detailHeroStats {
+  display: flex;
+  gap: 28px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--red-soft);
+}
+
+.detailHeroStat {
+  display: grid;
+  gap: 4px;
+}
+
+.detailHeroStatLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+}
+
+.detailHeroStatValue {
+  font-family: var(--zh-serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.detailActionList {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 24px;
+}
+
+.detailActionCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 88px;
+  padding: 18px 20px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.detailActionCard:hover {
+  border-color: var(--red);
+  background: var(--red-soft);
+  transform: translateY(-2px);
+}
+
+.detailActionContent {
+  display: grid;
+  gap: 6px;
+}
+
+.detailActionLabel {
+  font-family: var(--zh-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.detailActionHint {
+  font-family: var(--zh-serif);
+  font-size: 13px;
+  color: var(--ink-60);
+}
+
+.detailActionCount {
+  font-family: var(--zh-serif);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.subviewBack {
+  align-self: flex-start;
+  margin: 0 0 18px;
+  padding: 9px 14px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--red);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.subviewBack:hover {
+  border-color: var(--red);
+}
+
+.detailSection {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 24px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--red-soft-2);
+}
+
+.sectionTitle {
+  font-family: var(--zh-serif);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sectionCount {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink-40);
+}
+
+.userCardList {
+  display: grid;
+  gap: 12px;
+}
+
+.userCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+}
+
+.userName {
+  margin: 0;
+  font-family: var(--zh-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.userEmail {
+  margin: 4px 0 0;
+  font-family: var(--zh-serif);
+  font-size: 13px;
+  color: var(--ink-40);
+}
+
+.userMeta {
+  margin: 4px 0 0;
+  font-family: var(--zh-serif);
+  font-size: 13px;
+  color: var(--ink-60);
+}
+
+.userCardActions {
+  display: flex;
+  gap: 10px;
+}
+
+.userCardActions .approvalButton {
+  flex: 1;
+}
+
+.teamCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.teamCardIdentity {
+  min-width: 0;
+}
+
+.roleSelectPanel {
+  max-height: 280px;
+  padding: 0 16px;
+  border: 1px solid var(--red-soft-2);
+  overflow-y: auto;
+}
+
+.roleSwitchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 0;
+  border-top: 1px solid var(--red-soft);
+  cursor: pointer;
+}
+
+.roleSwitchRow:first-child {
+  border-top: 0;
+}
+
+.roleSwitchLabel {
+  font-family: var(--zh-serif);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.roleSwitchLabelActive {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 24px;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switchTrack {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.16);
+  transition: background 0.2s ease;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.switch input:checked ~ .switchTrack {
+  background: #34c759;
+}
+
+.switch input:checked ~ .switchThumb {
+  transform: translateX(18px);
+}
+
+.switch input:disabled {
+  cursor: not-allowed;
+}
+
+.switch input:disabled ~ .switchTrack {
+  opacity: 0.55;
+}
+
+.teamSearch {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  outline: none;
+}
+
+.teamSearch:focus {
+  border-color: var(--red);
+}
+
+.filterScroller {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filterPill {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--ink-60);
+  cursor: pointer;
+  font-family: var(--zh-serif);
+  font-size: 13px;
+}
+
+.filterPill:hover {
+  border-color: var(--red);
+}
+
+.filterPillActive {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  font-weight: 700;
+}
+
+.statsList {
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+}
+
+.statsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--red-soft);
+}
+
+.statsRow:last-child {
+  border-bottom: 0;
+}
+
+.statsRowLabel {
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  color: var(--ink-60);
+}
+
+.statsRowValue {
+  font-family: var(--zh-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
 /* Footer + back link */
 .backRow {
   margin-top: 48px;

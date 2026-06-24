@@ -97,6 +97,35 @@ export function dashboardPostNotification(
   };
 }
 
+const ABC_LEADERBOARD_PUBLISHED: Record<
+  NotificationLanguage,
+  (label: string) => LocalizedText
+> = {
+  zh: (label) => ({
+    title: '门店评分榜已发布',
+    body: `「${label}」门店评分排行榜已发布，快来看看你的门店排名！`,
+  }),
+  en: (label) => ({
+    title: 'Store ranking published',
+    body: `The "${label}" store score ranking is out. See where your store landed!`,
+  }),
+  fr: (label) => ({
+    title: 'Classement publié',
+    body: `Le classement des boutiques « ${label} » est disponible. Découvrez votre rang !`,
+  }),
+};
+
+export function abcLeaderboardPublishedNotification(
+  language: string | null | undefined,
+  cycleId: number | bigint,
+  label: string,
+): NotificationPayload {
+  return {
+    ...ABC_LEADERBOARD_PUBLISHED[normalizeLanguage(language)](label),
+    data: { type: 'abc-leaderboard', cycleId: String(cycleId) },
+  };
+}
+
 const CASE_SHARE_LIKE: Record<
   NotificationLanguage,
   (actorName: string) => LocalizedText

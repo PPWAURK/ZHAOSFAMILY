@@ -66,6 +66,7 @@ function scrollToPageBottom() {
 export default function StepProducts({
   lang,
   supplierId,
+  orderNotice,
   products,
   isLoading,
   loadError,
@@ -89,8 +90,8 @@ export default function StepProducts({
       });
     }
 
-    return Array.from(categories.values()).sort((a, b) =>
-      a.order - b.order || a.label.localeCompare(b.label, lang),
+    return Array.from(categories.values()).sort(
+      (a, b) => a.order - b.order || a.label.localeCompare(b.label, lang),
     );
   }, [products, copy, lang]);
   const visibleProducts = useMemo(() => {
@@ -99,8 +100,7 @@ export default function StepProducts({
     }
 
     return products.filter(
-      (product) =>
-        getProductCategory(product, UNCATEGORIZED_CATEGORY) === selectedCategory,
+      (product) => getProductCategory(product, UNCATEGORIZED_CATEGORY) === selectedCategory,
     );
   }, [products, selectedCategory]);
   const total = products.reduce(
@@ -119,14 +119,21 @@ export default function StepProducts({
   );
 
   useEffect(() => {
-    const categoryExists = categoryOptions.some(
-      (category) => category.value === selectedCategory,
-    );
+    const categoryExists = categoryOptions.some((category) => category.value === selectedCategory);
 
     if (selectedCategory !== ALL_CATEGORIES && !categoryExists) {
       setSelectedCategory(ALL_CATEGORIES);
     }
   }, [categoryOptions, selectedCategory]);
+
+  function changeQtyBy(variantId, delta, stock) {
+    const current = Number(quantities[variantId]) || 0;
+    let next = Math.max(0, current + delta);
+    if (stockEnforced && Number.isFinite(stock) && next > stock) {
+      next = stock;
+    }
+    onChangeQty(variantId, next);
+  }
 
   function renderCategoryFilter() {
     if (products.length === 0) {
@@ -158,10 +165,7 @@ export default function StepProducts({
     }
 
     return (
-      <aside
-        className={styles.floatingScrollControls}
-        aria-label={copy.productQuickToolsLabel}
-      >
+      <aside className={styles.floatingScrollControls} aria-label={copy.productQuickToolsLabel}>
         <button
           type="button"
           className={styles.floatingScrollButton}
@@ -200,9 +204,7 @@ export default function StepProducts({
     }
 
     if (products.length === 0) {
-      return (
-        <div className={styles.statePanel}>{copy.emptyProductCatalog}</div>
-      );
+      return <div className={styles.statePanel}>{copy.emptyProductCatalog}</div>;
     }
 
     return (
@@ -220,10 +222,10 @@ export default function StepProducts({
           {visibleProducts.map((product) => {
             const productName = getOrderProductName(product, lang);
             const productMeta = [product.reference].filter(Boolean).join(" · ");
+            const rawCategory = product.category?.trim();
+            const categoryLabel = rawCategory ? getProductCategoryLabel(rawCategory, copy) : "";
             const variants = getOrderProductVariants(product);
-            const stock = stockEnforced
-              ? Number(stockMap?.[String(product.id)] ?? 0)
-              : null;
+            const stock = stockEnforced ? Number(stockMap?.[String(product.id)] ?? 0) : null;
             const isOutOfStock = stockEnforced && stock <= 0;
 
             return (
@@ -237,22 +239,15 @@ export default function StepProducts({
                 </span>
                 <span className={styles.productNameCell}>
                   <span className={styles.productName}>{productName}</span>
-                  {productMeta ? (
-                    <span className={styles.productMeta}>{productMeta}</span>
-                  ) : null}
+                  {productMeta ? <span className={styles.productMeta}>{productMeta}</span> : null}
                   {stockEnforced ? (
-                    <span
-                      className={
-                        isOutOfStock
-                          ? styles.productStockOut
-                          : styles.productStockOk
-                      }
-                    >
+                    <span className={isOutOfStock ? styles.productStockOut : styles.productStockOk}>
                       {isOutOfStock ? copy.outOfStock : copy.inStock}
                     </span>
                   ) : null}
                 </span>
                 <span className={styles.productCellStack}>
+                  <span className={styles.specRefLabel}>{copy.caseSpecReference}</span>
                   {variants.map((variant) => (
                     <span key={variant.id} className={styles.productCellValue}>
                       {variant.specification || "—"}
@@ -268,34 +263,50 @@ export default function StepProducts({
                     }
 
                     return (
-                      <input
-                        key={variant.id}
-                        type="number"
-                        min="0"
-                        step="1"
-                        {...inputProps}
-                        className={styles.qtyInput}
-                        value={qty === 0 ? "" : qty}
-                        placeholder={isOutOfStock ? "—" : "0"}
-                        disabled={isOutOfStock}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          let parsed =
-                            raw === "" ? 0 : Math.max(0, Number(raw));
-                          if (
-                            stockEnforced &&
-                            Number.isFinite(stock) &&
-                            parsed > stock
-                          ) {
-                            parsed = stock;
+                      <span key={variant.id} className={styles.qtyStepper}>
+                        <button
+                          type="button"
+                          className={styles.stepperBtn}
+                          onClick={() => changeQtyBy(variant.id, -1, stock)}
+                          disabled={isOutOfStock || qty <= 0}
+                          aria-label="−"
+                          tabIndex={-1}
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          {...inputProps}
+                          className={styles.qtyInput}
+                          value={qty === 0 ? "" : qty}
+                          placeholder={isOutOfStock ? "—" : "0"}
+                          disabled={isOutOfStock}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            let parsed = raw === "" ? 0 : Math.max(0, Number(raw));
+                            if (stockEnforced && Number.isFinite(stock) && parsed > stock) {
+                              parsed = stock;
+                            }
+                            onChangeQty(variant.id, Number.isFinite(parsed) ? parsed : 0);
+                          }}
+                          aria-label={`${productName} ${variant.specification || variant.unit || ""}`.trim()}
+                        />
+                        <button
+                          type="button"
+                          className={styles.stepperBtn}
+                          onClick={() => changeQtyBy(variant.id, 1, stock)}
+                          disabled={
+                            isOutOfStock ||
+                            (stockEnforced && Number.isFinite(stock) && qty >= stock)
                           }
-                          onChangeQty(
-                            variant.id,
-                            Number.isFinite(parsed) ? parsed : 0,
-                          );
-                        }}
-                        aria-label={`${productName} ${variant.specification || variant.unit || ""}`.trim()}
-                      />
+                          aria-label="+"
+                          tabIndex={-1}
+                        >
+                          +
+                        </button>
+                      </span>
                     );
                   })}
                 </span>
@@ -309,9 +320,7 @@ export default function StepProducts({
                 <span className={`${styles.productSubtotal} ${styles.productCellStack}`}>
                   {variants.map((variant) => {
                     const qty = Number(quantities[variant.id]) || 0;
-                    const subtotal = Number.isFinite(variant.price)
-                      ? qty * variant.price
-                      : null;
+                    const subtotal = Number.isFinite(variant.price) ? qty * variant.price : null;
 
                     return (
                       <span key={variant.id} className={styles.productCellValue}>
@@ -320,6 +329,9 @@ export default function StepProducts({
                     );
                   })}
                 </span>
+                {categoryLabel ? (
+                  <span className={styles.productCatPill}>{categoryLabel}</span>
+                ) : null}
               </div>
             );
           })}
@@ -341,6 +353,13 @@ export default function StepProducts({
         <h2 className={styles.sectionHeading}>{step?.title}</h2>
         <p className={styles.sectionHint}>{step?.hint}</p>
       </header>
+
+      {supplierId && orderNotice ? (
+        <div className={styles.orderNotice}>
+          <span className={styles.orderNoticeLabel}>{copy.orderNoticeLabel}</span>
+          {orderNotice}
+        </div>
+      ) : null}
 
       <div className={styles.listHeader}>
         <p className={styles.listHeading}>{copy.productList}</p>

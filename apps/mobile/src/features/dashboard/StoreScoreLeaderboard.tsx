@@ -1,6 +1,6 @@
+import { useEffect, useState } from "react";
 import {
   Image,
-  type ImageSourcePropType,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -9,105 +9,55 @@ import {
 
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
-import storeScore1 from "@/features/dashboard/assets/store-score/store-1.jpg";
-import storeScore2 from "@/features/dashboard/assets/store-score/store-2.jpg";
-import storeScore3 from "@/features/dashboard/assets/store-score/store-3.jpg";
-import storeScore4 from "@/features/dashboard/assets/store-score/store-4.jpg";
+import zhaoLogo from "@/features/auth/assets/logozhao正方形.jpg";
+import {
+  fetchPublishedLeaderboard,
+  type StoreScoreEntry,
+  type StoreScoreGrade,
+} from "@/features/dashboard/abcLeaderboardApi";
 
 const colors = authControlStyles.colors;
-
-type StoreScoreGrade = "A" | "B" | "C";
-
-type StoreScoreEntry = {
-  id: string;
-  name: string;
-  area: string;
-  grade: StoreScoreGrade;
-  score: number;
-  trend: string;
-  auditDate: string;
-  focus: Record<AuthLanguage, string>;
-  image: ImageSourcePropType;
-};
-
-const STORE_SCORE_ENTRIES: StoreScoreEntry[] = [
-  {
-    id: "opera",
-    name: "ZHAO Opera",
-    area: "Paris 02",
-    grade: "A",
-    score: 96,
-    trend: "+4",
-    auditDate: "2026-06-10",
-    focus: { zh: "出品稳定", en: "Stable output", fr: "Qualité stable" },
-    image: storeScore1,
-  },
-  {
-    id: "saint-lazare",
-    name: "ZHAO Saint-Lazare",
-    area: "Paris 08",
-    grade: "B",
-    score: 84,
-    trend: "+3",
-    auditDate: "2026-06-09",
-    focus: { zh: "服务提速", en: "Faster service", fr: "Service accéléré" },
-    image: storeScore2,
-  },
-  {
-    id: "bastille",
-    name: "ZHAO Bastille",
-    area: "Paris 11",
-    grade: "B",
-    score: 84,
-    trend: "-1",
-    auditDate: "2026-06-08",
-    focus: { zh: "晚高峰复盘", en: "Peak review", fr: "Revue heure de pointe" },
-    image: storeScore3,
-  },
-  {
-    id: "republique",
-    name: "ZHAO Republique",
-    area: "Paris 10",
-    grade: "C",
-    score: 64,
-    trend: "-4",
-    auditDate: "2026-06-07",
-    focus: { zh: "卫生复查", en: "Hygiene recheck", fr: "Contrôle hygiène" },
-    image: storeScore4,
-  },
-];
 
 const COPY = {
   zh: {
     kicker: "Store Score · Ranking",
     title: "门店评分排行榜",
-    subtitle: "先使用虚假数据展示每家门店的 A / B / C 等级，后续可替换为真实评分接口。",
+    subtitle: "展示最新一期已发布的门店 A / B / C 评分与排名。",
     storeUnit: "家",
     auditLabel: "检查",
     tieLabel: "并列",
     trackingLabel: "后续追踪",
+    loadingLabel: "正在加载排行榜…",
+    emptyLabel: "暂无已发布的评分周期，敬请期待。",
+    errorLabel: "排行榜加载失败，请稍后重试。",
     placeLabel: (rank: number) => `第 ${rank} 名`,
   },
   en: {
     kicker: "Store Score · Ranking",
     title: "Store score ranking",
     subtitle:
-      "Mock data for each store's A / B / C grade. This can later be wired to the real scoring API.",
+      "Latest published A / B / C grades and ranking for each store.",
     storeUnit: "stores",
     auditLabel: "Audit",
     tieLabel: "Tie",
     trackingLabel: "Follow-up",
+    loadingLabel: "Loading ranking…",
+    emptyLabel: "No published scoring cycle yet — stay tuned.",
+    errorLabel: "Could not load the ranking. Please try again later.",
     placeLabel: (rank: number) => `No. ${rank}`,
   },
   fr: {
     kicker: "Store Score · Ranking",
     title: "Classement des boutiques",
     subtitle:
-      "Données fictives pour afficher les niveaux A / B / C de chaque boutique. La section pourra ensuite utiliser l'API réelle.",
+      "Derniers niveaux A / B / C publiés et classement de chaque boutique.",
     storeUnit: "boutiques",
     auditLabel: "Audit",
     tieLabel: "Ex aequo",
     trackingLabel: "Suivi",
+    loadingLabel: "Chargement du classement…",
+    emptyLabel: "Aucun cycle de notation publié pour l'instant.",
+    errorLabel: "Échec du chargement du classement. Réessayez plus tard.",
     placeLabel: (rank: number) => `Rang ${rank}`,
   },
 };
@@ -117,6 +67,10 @@ const GRADE_COLORS: Record<StoreScoreGrade, string> = {
   B: "#b8860b",
   C: colors.red,
 };
+
+function gradeColor(grade: StoreScoreGrade | null): string {
+  return grade ? GRADE_COLORS[grade] : colors.ink20;
+}
 
 const MEDAL_COLORS: Record<number, string> = {
   1: "#d4af37",
@@ -157,9 +111,14 @@ function getPodiumOrder(top: RankedEntry[]): RankedEntry[] {
   return [top[1], top[0], top[2]];
 }
 
-function getGradeCount(grade: StoreScoreGrade): number {
-  return STORE_SCORE_ENTRIES.filter((entry) => entry.grade === grade).length;
+function getGradeCount(
+  entries: StoreScoreEntry[],
+  grade: StoreScoreGrade,
+): number {
+  return entries.filter((entry) => entry.grade === grade).length;
 }
+
+type LeaderboardStatus = "loading" | "ready" | "empty" | "error";
 
 type StoreScoreLeaderboardProps = {
   language: AuthLanguage;
@@ -172,7 +131,44 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
   // pin the podium row to that inner width — otherwise its three flex columns
   // size to content inside the vertical ScrollView and overflow the screen.
   const podiumWidth = width - 40;
-  const rankedEntries = getRankedEntries(STORE_SCORE_ENTRIES);
+
+  const [entries, setEntries] = useState<StoreScoreEntry[]>([]);
+  const [status, setStatus] = useState<LeaderboardStatus>("loading");
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadLeaderboard(): Promise<void> {
+      setStatus("loading");
+      try {
+        const mapped = await fetchPublishedLeaderboard();
+
+        if (isCancelled) return;
+
+        if (!mapped || mapped.length === 0) {
+          setEntries([]);
+          setStatus("empty");
+          return;
+        }
+
+        setEntries(mapped);
+        setStatus("ready");
+      } catch {
+        if (!isCancelled) {
+          setEntries([]);
+          setStatus("error");
+        }
+      }
+    }
+
+    void loadLeaderboard();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const rankedEntries = getRankedEntries(entries);
   const podiumEntries = getPodiumOrder(rankedEntries.slice(0, 3));
   const trackingEntries = rankedEntries.slice(3);
 
@@ -186,13 +182,27 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
         <Text style={styles.subtitle}>{copy.subtitle}</Text>
       </View>
 
+      {status !== "ready" ? (
+        <Text style={styles.stateText}>
+          {status === "loading"
+            ? copy.loadingLabel
+            : status === "error"
+              ? copy.errorLabel
+              : copy.emptyLabel}
+        </Text>
+      ) : null}
+
+      {status === "ready" ? (
+        <>
       <View style={styles.summary}>
         {(["A", "B", "C"] as StoreScoreGrade[]).map((grade) => (
           <View key={grade} style={styles.summaryItem}>
             <Text style={[styles.summaryGrade, { color: GRADE_COLORS[grade] }]}>
               {grade}
             </Text>
-            <Text style={styles.summaryCount}>{getGradeCount(grade)}</Text>
+            <Text style={styles.summaryCount}>
+              {getGradeCount(entries, grade)}
+            </Text>
             <Text style={styles.summaryUnit}>{copy.storeUnit}</Text>
           </View>
         ))}
@@ -211,7 +221,7 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
             >
               <View style={styles.podiumPhotoWrap}>
                 <Image
-                  source={entry.image}
+                  source={entry.photoUri ? { uri: entry.photoUri } : zhaoLogo}
                   style={[
                     styles.podiumPhoto,
                     isWinner ? styles.podiumPhotoWinner : null,
@@ -242,22 +252,28 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
                 >
                   {entry.score}
                 </Text>
-                <View style={[styles.gradeChip, { borderColor: GRADE_COLORS[entry.grade] }]}>
-                  <Text style={[styles.gradeText, { color: GRADE_COLORS[entry.grade] }]}>
-                    {entry.grade}
-                  </Text>
-                </View>
+                {entry.grade ? (
+                  <View style={[styles.gradeChip, { borderColor: gradeColor(entry.grade) }]}>
+                    <Text style={[styles.gradeText, { color: gradeColor(entry.grade) }]}>
+                      {entry.grade}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
-              <Text
-                style={[styles.trend, { color: trendDown ? colors.red : colors.success }]}
-              >
-                {entry.trend}
-                {entry.isTied ? ` · ${copy.tieLabel}` : ""}
-              </Text>
-              <Text style={styles.podiumFocus} numberOfLines={1}>
-                {entry.focus[language]}
-              </Text>
+              {entry.trend || entry.isTied ? (
+                <Text
+                  style={[styles.trend, { color: trendDown ? colors.red : colors.success }]}
+                >
+                  {entry.trend}
+                  {entry.isTied ? `${entry.trend ? " · " : ""}${copy.tieLabel}` : ""}
+                </Text>
+              ) : null}
+              {entry.focus ? (
+                <Text style={styles.podiumFocus} numberOfLines={1}>
+                  {entry.focus}
+                </Text>
+              ) : null}
             </View>
           );
         })}
@@ -274,7 +290,10 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
                 <Text style={styles.trackRank}>
                   {String(entry.displayRank).padStart(2, "0")}
                 </Text>
-                <Image source={entry.image} style={styles.trackPhoto} />
+                <Image
+                  source={entry.photoUri ? { uri: entry.photoUri } : zhaoLogo}
+                  style={styles.trackPhoto}
+                />
                 <View style={styles.trackInfo}>
                   <Text style={styles.trackName} numberOfLines={1}>
                     {entry.name}
@@ -287,8 +306,8 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
                       style={[
                         styles.trackBarFill,
                         {
-                          width: `${entry.score}%`,
-                          backgroundColor: GRADE_COLORS[entry.grade],
+                          width: `${Math.min(entry.score, 100)}%`,
+                          backgroundColor: gradeColor(entry.grade),
                         },
                       ]}
                     />
@@ -296,19 +315,23 @@ export function StoreScoreLeaderboard({ language }: StoreScoreLeaderboardProps) 
                 </View>
                 <View style={styles.trackRight}>
                   <Text style={styles.trackScore}>{entry.score}</Text>
-                  <Text
-                    style={[
-                      styles.trend,
-                      { color: trendDown ? colors.red : colors.success },
-                    ]}
-                  >
-                    {entry.trend}
-                  </Text>
+                  {entry.trend ? (
+                    <Text
+                      style={[
+                        styles.trend,
+                        { color: trendDown ? colors.red : colors.success },
+                      ]}
+                    >
+                      {entry.trend}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             );
           })}
         </View>
+      ) : null}
+        </>
       ) : null}
     </View>
   );
@@ -332,6 +355,12 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: 6,
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.ink60,
+  },
+  stateText: {
+    marginTop: 4,
     fontSize: 13,
     lineHeight: 20,
     color: colors.ink60,

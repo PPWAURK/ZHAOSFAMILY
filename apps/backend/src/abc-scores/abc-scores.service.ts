@@ -5,7 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma, Restaurant } from '@prisma/client';
+import { ACCOUNT_STATUS } from '../auth/account-status';
 import { MediaService } from '../media/media.service';
+import {
+  abcLeaderboardPublishedNotification,
+  normalizeLanguage,
+  type NotificationLanguage,
+} from '../notifications/notification-content';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AttachMediaDto } from './dto/attach-media.dto';
 import type { CreateCycleDto } from './dto/create-cycle.dto';
@@ -41,6 +48,7 @@ export class AbcScoresService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly mediaService: MediaService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async listCycles(query: ListCyclesQueryDto): Promise<AbcCycleSummary[]> {
@@ -281,7 +289,54 @@ export class AbcScoresService {
       data: { status: 'published', publishedAt: new Date() },
     });
 
+    await this.notifyLeaderboardPublished(published);
+
     return this.mapCycleSummary(published);
+  }
+
+  /**
+   * Best-effort broadcast push when a cycle is published, so every approved
+   * teammate is invited to open the home leaderboard. Grouped by preferred
+   * language; delivery failures must never fail publishing, so errors are
+   * swallowed after logging.
+   */
+  private async notifyLeaderboardPublished(cycle: CycleRecord): Promise<void> {
+    try {
+      const audience = await this.prismaService.user.findMany({
+        where: { accountStatus: ACCOUNT_STATUS.approved },
+        select: { id: true, preferredLanguage: true },
+      });
+      if (audience.length === 0) {
+        return;
+      }
+
+      const idsByLanguage = new Map<NotificationLanguage, number[]>();
+      for (const user of audience) {
+        const language = normalizeLanguage(user.preferredLanguage);
+        const ids = idsByLanguage.get(language) ?? [];
+        ids.push(user.id);
+        idsByLanguage.set(language, ids);
+      }
+
+      await Promise.all(
+        [...idsByLanguage].map(([language, ids]) =>
+          this.notificationsService.sendToUsers(
+            ids,
+            abcLeaderboardPublishedNotification(
+              language,
+              cycle.id,
+              cycle.label,
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send ABC leaderboard push for cycle ${cycle.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   // 删除整个周期（含已发布）。分数与报告记录通过外键级联一并删除，

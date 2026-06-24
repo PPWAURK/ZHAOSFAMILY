@@ -17,15 +17,17 @@ import {
   updatePermissionUserApproval,
   updatePermissionUserJobRole,
 } from "@/features/permissions/services/permissionsApi";
-import { STORES_COPY } from "@/features/stores/constants/stores-copy";
+import {
+  STORES_COPY,
+  STORE_JOB_ROLE_OPTIONS,
+} from "@/features/stores/constants/stores-copy";
 import { fetchStoresPageStores } from "@/features/stores/services/restaurantsApi";
 import {
   formatJobRoleLabel,
-  getOrganizationJobRoleGroups,
-  getStoreJobRoleGroups,
   normalizeJobRoleString,
   normalizeJobRoleValues,
   parseJobRoleValues,
+  STORE_ASSIGNABLE_JOB_ROLE_VALUES,
 } from "@/shared/constants/job-roles";
 import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import { useToast } from "@/shared/components/toast/ToastProvider";
@@ -50,16 +52,6 @@ function formatStatus(status, labels) {
   return labels.status[status] || status || "-";
 }
 
-function getDefaultReviewDraft(user, storeId) {
-  return {
-    restaurantId: String(user.restaurant?.id ?? storeId),
-    // Leave the assignment empty: user.jobRole is the *applied* position (shown
-    // read-only), not an assignable workstation. Pre-seeding it would submit a
-    // non-assignable role and get a 403 from the backend.
-    jobRole: "",
-  };
-}
-
 function getJobRoleValues(user) {
   return `${user?.jobRole || user?.position || user?.role || ""}`
     .split(",")
@@ -76,6 +68,20 @@ function canManageHoldingJobRole(user) {
   );
 }
 
+// Mirror mobile: holding/admins may assign any role; store/regional managers
+// only the line-staff roles the backend accepts (others get a 403 on save).
+function getVisibleRoleOptions(lang, user) {
+  const options = STORE_JOB_ROLE_OPTIONS[lang] || STORE_JOB_ROLE_OPTIONS.zh;
+
+  if (canManageHoldingJobRole(user)) {
+    return options;
+  }
+
+  const assignable = new Set(STORE_ASSIGNABLE_JOB_ROLE_VALUES);
+
+  return options.filter((option) => assignable.has(option.value));
+}
+
 function toggleJobRoleValue(jobRole, value) {
   const values = parseJobRoleValues(jobRole);
   const nextValues = values.includes(value)
@@ -85,256 +91,154 @@ function toggleJobRoleValue(jobRole, value) {
   return normalizeJobRoleValues(nextValues).join(",");
 }
 
-function StoreSelect({ ariaLabel, disabled, onChange, options, value }) {
-  return (
-    <select
-      aria-label={ariaLabel}
-      className={styles.approvalSelect}
-      disabled={disabled}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
+function userMatchesSearch(user, searchTerm) {
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  if (!normalizedSearch) return true;
+
+  return `${user.name || ""} ${user.email || ""}`
+    .toLowerCase()
+    .includes(normalizedSearch);
 }
 
-function JobRoleGroupPicker({ disabled, groups, labels, onChange, value }) {
+function userHasRole(user, roleValue) {
+  if (!roleValue) return true;
+
+  return parseJobRoleValues(user.jobRole).includes(roleValue);
+}
+
+// A vertical switch list — the web mirror of mobile's RoleMultiSelector.
+function RoleSwitchList({ disabled, options, value, onChange }) {
   const selectedValues = parseJobRoleValues(value);
 
   return (
-    <div className={styles.jobRoleGroupPicker}>
-      {groups.map((group) => (
-        <div className={styles.jobRoleGroup} key={group.id}>
-          <span className={styles.jobRoleGroupLabel}>{group.label}</span>
-          <div className={styles.jobRoleOptionGrid}>
-            {group.options.map((option) => {
-              const isSelected = selectedValues.includes(option.value);
+    <div className={styles.roleSelectPanel}>
+      {options.map((option) => {
+        const isActive = selectedValues.includes(option.value);
 
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="checkbox"
-                  aria-checked={isSelected}
-                  aria-label={`${labels.selectJobRole}: ${option.label}`}
-                  className={`${styles.jobRoleOption} ${
-                    isSelected ? styles.jobRoleOptionSelected : ""
-                  }`}
-                  disabled={disabled}
-                  onClick={() => onChange(toggleJobRoleValue(value, option.value))}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+        return (
+          <label className={styles.roleSwitchRow} key={option.value}>
+            <span
+              className={`${styles.roleSwitchLabel} ${
+                isActive ? styles.roleSwitchLabelActive : ""
+              }`}
+            >
+              {option.label}
+            </span>
+            <span className={styles.switch}>
+              <input
+                type="checkbox"
+                aria-label={option.label}
+                checked={isActive}
+                disabled={disabled}
+                onChange={() => onChange(toggleJobRoleValue(value, option.value))}
+              />
+              <span className={styles.switchTrack} aria-hidden="true" />
+              <span className={styles.switchThumb} aria-hidden="true" />
+            </span>
+          </label>
+        );
+      })}
     </div>
   );
 }
 
-function PendingUserTable({
-  drafts,
-  emptyText,
+function ActionCard({ count, hint, label, onClick }) {
+  return (
+    <button type="button" className={styles.detailActionCard} onClick={onClick}>
+      <span className={styles.detailActionContent}>
+        <span className={styles.detailActionLabel}>{label}</span>
+        <span className={styles.detailActionHint}>{hint}</span>
+      </span>
+      <span className={styles.detailActionCount}>{count}</span>
+    </button>
+  );
+}
+
+function PendingUserCard({
+  appliedRoleLabel,
+  draft,
+  isReviewing,
+  labels,
+  onPatchDraft,
+  onReview,
+  roleOptions,
+  user,
+}) {
+  return (
+    <article className={styles.userCard}>
+      <div>
+        <p className={styles.userName}>{user.name || "-"}</p>
+        <p className={styles.userEmail}>{user.email || "-"}</p>
+        <p className={styles.userMeta}>{formatStatus(user.accountStatus, labels)}</p>
+        <p className={styles.userMeta}>
+          {labels.appliedRole}: {appliedRoleLabel}
+        </p>
+      </div>
+      <RoleSwitchList
+        disabled={isReviewing}
+        options={roleOptions}
+        value={draft.jobRole}
+        onChange={onPatchDraft}
+      />
+      <div className={styles.userCardActions}>
+        <button
+          type="button"
+          className={styles.approvalButton}
+          disabled={isReviewing || !draft.jobRole}
+          onClick={() => onReview("approved")}
+        >
+          {isReviewing ? labels.reviewing : labels.approve}
+        </button>
+        <button
+          type="button"
+          className={`${styles.approvalButton} ${styles.approvalButtonMuted}`}
+          disabled={isReviewing}
+          onClick={() => onReview("rejected")}
+        >
+          {labels.reject}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function TeamUserCard({
+  draft,
+  isRemoving,
+  isSaving,
   labels,
   lang,
   onPatchDraft,
-  onReviewUser,
-  reviewingUserId,
-  roleGroups,
-  stores,
-  users,
+  onRemove,
+  roleOptions,
+  user,
 }) {
-  if (users.length === 0) {
-    return <div className={styles.statePanel}>{emptyText}</div>;
-  }
+  const isBusy = isSaving || isRemoving;
 
   return (
-    <div className={styles.approvalTableWrap}>
-      <table className={styles.approvalTable}>
-        <thead>
-          <tr>
-            <th>{labels.table.name}</th>
-            <th>{labels.table.email}</th>
-            <th>{labels.table.store}</th>
-            <th>{labels.table.jobRole}</th>
-            <th>{labels.table.status}</th>
-            <th>{labels.table.action}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => {
-            const draft = drafts[String(user.id)] ?? getDefaultReviewDraft(user, "");
-            const isReviewing = reviewingUserId === user.id;
-
-            return (
-              <tr key={user.id}>
-                <td>{user.name || "-"}</td>
-                <td>{user.email || "-"}</td>
-                <td>
-                  <StoreSelect
-                    ariaLabel={labels.selectStore}
-                    disabled={isReviewing}
-                    value={draft.restaurantId}
-                    options={stores.map((store) => ({
-                      value: store.id,
-                      label: store.name,
-                    }))}
-                    onChange={(value) =>
-                      onPatchDraft(user.id, { restaurantId: value })
-                    }
-                  />
-                </td>
-                <td>
-                  <div className={styles.appliedRole}>
-                    <span className={styles.appliedRoleLabel}>
-                      {labels.appliedRole}
-                    </span>
-                    <span>{formatJobRoleLabel(user.jobRole, lang)}</span>
-                  </div>
-                  <JobRoleGroupPicker
-                    disabled={isReviewing}
-                    groups={roleGroups}
-                    labels={labels}
-                    value={draft.jobRole}
-                    onChange={(value) => onPatchDraft(user.id, { jobRole: value })}
-                  />
-                </td>
-                <td>{formatStatus(user.accountStatus, labels)}</td>
-                <td>
-                  <div className={styles.approvalActions}>
-                    <button
-                      type="button"
-                      className={styles.approvalButton}
-                      disabled={isReviewing || !draft.jobRole}
-                      onClick={() => onReviewUser(user.id, "approved")}
-                    >
-                      {isReviewing ? labels.reviewing : labels.approve}
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.approvalButton} ${styles.approvalButtonMuted}`}
-                      disabled={isReviewing}
-                      onClick={() => onReviewUser(user.id, "rejected")}
-                    >
-                      {labels.reject}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function TeamUserTable({
-  emptyText,
-  lang,
-  labels,
-  onPatchTeamDraft,
-  onRemoveUser,
-  onSaveJobRole,
-  removingUserId,
-  roleGroups,
-  savingUserId,
-  teamDrafts,
-  users,
-}) {
-  if (users.length === 0) {
-    return <div className={styles.statePanel}>{emptyText}</div>;
-  }
-
-  return (
-    <div className={styles.approvalTableWrap}>
-      <table className={styles.approvalTable}>
-        <thead>
-          <tr>
-            <th>{labels.table.name}</th>
-            <th>{labels.table.email}</th>
-            <th>{labels.table.jobRole}</th>
-            <th>{labels.table.status}</th>
-            <th>{labels.table.action}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => {
-            const draftJobRole =
-              teamDrafts[String(user.id)] ?? normalizeJobRoleString(user.jobRole);
-            const isApproved = user.accountStatus === "approved";
-            const isRejected = user.accountStatus === "rejected";
-            const isSaving = savingUserId === user.id;
-            const isRemoving = removingUserId === user.id;
-            const isBusy = isSaving || isRemoving;
-            const hasChanged =
-              normalizeJobRoleString(draftJobRole) !==
-              normalizeJobRoleString(user.jobRole);
-
-            return (
-              <tr key={user.id}>
-                <td>{user.name || "-"}</td>
-                <td>{user.email || "-"}</td>
-                <td>
-                  {isApproved ? (
-                    <JobRoleGroupPicker
-                      disabled={isBusy}
-                      groups={roleGroups}
-                      labels={labels}
-                      value={draftJobRole}
-                      onChange={(value) => onPatchTeamDraft(user.id, value)}
-                    />
-                  ) : (
-                    formatJobRoleLabel(user.jobRole, lang)
-                  )}
-                </td>
-                <td>{formatStatus(user.accountStatus, labels)}</td>
-                <td>
-                  {isApproved ? (
-                    <div className={styles.approvalActions}>
-                      <button
-                        type="button"
-                        className={styles.approvalButton}
-                        disabled={isBusy || !draftJobRole || !hasChanged}
-                        onClick={() => onSaveJobRole(user.id)}
-                      >
-                        {isSaving ? labels.savingRole : labels.saveRole}
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.approvalButton} ${styles.approvalButtonDanger}`}
-                        disabled={isBusy}
-                        onClick={() => onRemoveUser(user)}
-                      >
-                        {isRemoving ? labels.removing : labels.remove}
-                      </button>
-                    </div>
-                  ) : isRejected ? (
-                    <button
-                      type="button"
-                      className={`${styles.approvalButton} ${styles.approvalButtonDanger}`}
-                      disabled={isRemoving}
-                      onClick={() => onRemoveUser(user)}
-                    >
-                      {isRemoving ? labels.deletingUser : labels.deleteUser}
-                    </button>
-                  ) : (
-                    "-"
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <article className={styles.userCard}>
+      <div className={styles.teamCardHeader}>
+        <div className={styles.teamCardIdentity}>
+          <p className={styles.userName}>{user.name || "-"}</p>
+          <p className={styles.userEmail}>{user.email || "-"}</p>
+          <p className={styles.userMeta}>{formatJobRoleLabel(user.jobRole, lang)}</p>
+        </div>
+        <button
+          type="button"
+          className={`${styles.approvalButton} ${styles.approvalButtonDanger}`}
+          disabled={isBusy}
+          onClick={() => onRemove(user)}
+        >
+          {isRemoving ? labels.removing : labels.remove}
+        </button>
+      </div>
+      <RoleSwitchList
+        disabled={isBusy}
+        options={roleOptions}
+        value={draft}
+        onChange={(nextJobRole) => onPatchDraft(user.id, nextJobRole)}
+      />
+    </article>
   );
 }
 
@@ -347,7 +251,6 @@ export default function StoreApprovalPage() {
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [store, setStore] = useState(null);
-  const [stores, setStores] = useState([]);
   const [users, setUsers] = useState([]);
   const [reviewDrafts, setReviewDrafts] = useState({});
   const [teamDrafts, setTeamDrafts] = useState({});
@@ -356,22 +259,50 @@ export default function StoreApprovalPage() {
   const [reviewingUserId, setReviewingUserId] = useState(null);
   const [savingUserId, setSavingUserId] = useState(null);
   const [removingUserId, setRemovingUserId] = useState(null);
+  const [detailView, setDetailView] = useState("overview");
+  const [teamSearchTerm, setTeamSearchTerm] = useState("");
+  const [teamRoleFilter, setTeamRoleFilter] = useState("");
 
   const t = STORES_COPY[lang];
   const page = t.approval;
-  const roleGroups = canManageHoldingJobRole(user)
-    ? getOrganizationJobRoleGroups(lang)
-    : getStoreJobRoleGroups(lang);
+  const roleOptions = useMemo(() => getVisibleRoleOptions(lang, user), [lang, user]);
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
 
   const storeUsers = useMemo(
-    () => users.filter((user) => isUserInStore(user, storeId)),
+    () => users.filter((item) => isUserInStore(item, storeId)),
     [storeId, users],
   );
   const pendingUsers = useMemo(
-    () => storeUsers.filter((user) => user.accountStatus === "pending"),
+    () => storeUsers.filter((item) => item.accountStatus === "pending"),
     [storeUsers],
   );
+  const teamUsers = useMemo(
+    () => storeUsers.filter((item) => item.accountStatus === "approved"),
+    [storeUsers],
+  );
+  const activeStoreUsers = useMemo(
+    () =>
+      storeUsers.filter(
+        (item) =>
+          item.accountStatus === "pending" || item.accountStatus === "approved",
+      ),
+    [storeUsers],
+  );
+  const filteredTeamUsers = useMemo(
+    () =>
+      teamUsers.filter(
+        (item) =>
+          userMatchesSearch(item, teamSearchTerm) &&
+          userHasRole(item, teamRoleFilter),
+      ),
+    [teamUsers, teamSearchTerm, teamRoleFilter],
+  );
+  const roleStats = roleOptions.map((roleOption) => ({
+    ...roleOption,
+    count: activeStoreUsers.filter((item) =>
+      parseJobRoleValues(item.jobRole).includes(roleOption.value),
+    ).length,
+  }));
 
   useEffect(() => {
     let isCancelled = false;
@@ -395,21 +326,20 @@ export default function StoreApprovalPage() {
         const nextDrafts = {};
         const nextTeamDrafts = {};
 
-        nextUsers.forEach((user) => {
-          if (!isUserInStore(user, storeId)) {
+        nextUsers.forEach((item) => {
+          if (!isUserInStore(item, storeId)) {
             return;
           }
 
-          if (user.accountStatus === "pending") {
-            nextDrafts[String(user.id)] = getDefaultReviewDraft(user, storeId);
+          if (item.accountStatus === "pending") {
+            nextDrafts[String(item.id)] = { jobRole: "" };
           }
 
-          if (user.accountStatus === "approved") {
-            nextTeamDrafts[String(user.id)] = normalizeJobRoleString(user.jobRole);
+          if (item.accountStatus === "approved") {
+            nextTeamDrafts[String(item.id)] = normalizeJobRoleString(item.jobRole);
           }
         });
 
-        setStores(nextStores);
         setStore(nextStore);
         setUsers(nextUsers);
         setReviewDrafts(nextDrafts);
@@ -420,7 +350,6 @@ export default function StoreApprovalPage() {
         }
 
         setStore(null);
-        setStores([]);
         setUsers([]);
         setErrorMessage(error instanceof Error ? error.message : page.loadError);
       } finally {
@@ -437,14 +366,11 @@ export default function StoreApprovalPage() {
     };
   }, [page.loadError, storeId]);
 
-  function patchReviewDraft(userId, patch) {
+  function patchReviewDraft(userId, jobRole) {
     setErrorMessage("");
     setReviewDrafts((current) => ({
       ...current,
-      [String(userId)]: {
-        ...(current[String(userId)] ?? {}),
-        ...patch,
-      },
+      [String(userId)]: { jobRole },
     }));
   }
 
@@ -467,7 +393,8 @@ export default function StoreApprovalPage() {
         accountStatus,
         accountStatus === "approved"
           ? {
-              restaurantId: Number(draft.restaurantId),
+              // Assign to the store being reviewed (mirrors mobile — no picker).
+              restaurantId: Number(storeId),
               jobRole: draft.jobRole,
             }
           : {},
@@ -529,9 +456,9 @@ export default function StoreApprovalPage() {
     }
   }
 
-  async function saveJobRole(userId) {
-    const nextJobRole = teamDrafts[String(userId)];
-
+  // Auto-saves on every toggle (mirrors mobile — the green switch is the
+  // feedback, no explicit save button).
+  async function saveJobRole(userId, nextJobRole) {
     if (!nextJobRole) {
       return;
     }
@@ -554,13 +481,23 @@ export default function StoreApprovalPage() {
         ...current,
         [String(updatedUser.id)]: normalizeJobRoleString(updatedUser.jobRole),
       }));
-      toast.success(page.roleSaved);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : page.roleSaveError);
     } finally {
       setSavingUserId(null);
     }
   }
+
+  function openDetailView(nextView) {
+    setDetailView(nextView);
+    setErrorMessage("");
+    if (nextView !== "team") {
+      setTeamSearchTerm("");
+      setTeamRoleFilter("");
+    }
+  }
+
+  const isOverview = detailView === "overview";
 
   return (
     <main className={styles.page}>
@@ -642,55 +579,194 @@ export default function StoreApprovalPage() {
 
         {!isLoading && !errorMessage && store ? (
           <>
-            <section className={styles.approvalSummary}>
-              <article>
-                <span>{page.pendingHeading}</span>
-                <strong>{pendingUsers.length}</strong>
-              </article>
-              <article>
-                <span>{page.teamHeading}</span>
-                <strong>{storeUsers.length}</strong>
-              </article>
-              <article>
-                <span>{t.codeLabel}</span>
-                <strong>{store.storeCode}</strong>
-              </article>
+            <section className={styles.detailHero}>
+              <span className={styles.detailHeroCode}>{store.storeCode}</span>
+              <h2 className={styles.detailHeroName}>{store.name}</h2>
+              <p className={styles.detailHeroAddress}>{store.address || "-"}</p>
+              <div className={styles.detailHeroStats}>
+                <div className={styles.detailHeroStat}>
+                  <span className={styles.detailHeroStatLabel}>
+                    {page.pendingHeading}
+                  </span>
+                  <strong className={styles.detailHeroStatValue}>
+                    {pendingUsers.length}
+                  </strong>
+                </div>
+                <div className={styles.detailHeroStat}>
+                  <span className={styles.detailHeroStatLabel}>{page.team}</span>
+                  <strong className={styles.detailHeroStatValue}>
+                    {teamUsers.length}
+                  </strong>
+                </div>
+              </div>
             </section>
 
-            <p className={styles.listHeading}>
-              <span>{page.pendingHeading}</span>
-              <span className={styles.listHeadingCount}>{pendingUsers.length}</span>
-            </p>
-            <PendingUserTable
-              drafts={reviewDrafts}
-              emptyText={page.noPending}
-              labels={page}
-              lang={lang}
-              reviewingUserId={reviewingUserId}
-              roleGroups={roleGroups}
-              stores={stores}
-              users={pendingUsers}
-              onPatchDraft={patchReviewDraft}
-              onReviewUser={reviewUser}
-            />
+            {!isOverview ? (
+              <button
+                type="button"
+                className={styles.subviewBack}
+                onClick={() => openDetailView("overview")}
+              >
+                ← {page.backToOverview}
+              </button>
+            ) : null}
 
-            <p className={styles.listHeading}>
-              <span>{page.teamHeading}</span>
-              <span className={styles.listHeadingCount}>{storeUsers.length}</span>
-            </p>
-            <TeamUserTable
-              emptyText={page.noTeam}
-              lang={lang}
-              labels={page}
-              removingUserId={removingUserId}
-              roleGroups={roleGroups}
-              savingUserId={savingUserId}
-              teamDrafts={teamDrafts}
-              users={storeUsers}
-              onPatchTeamDraft={patchTeamDraft}
-              onRemoveUser={removeUser}
-              onSaveJobRole={saveJobRole}
-            />
+            {isOverview ? (
+              <div className={styles.detailActionList}>
+                <ActionCard
+                  count={pendingUsers.length}
+                  hint={page.pendingCardHint}
+                  label={page.pendingHeading}
+                  onClick={() => openDetailView("pending")}
+                />
+                <ActionCard
+                  count={teamUsers.length}
+                  hint={page.teamCardHint}
+                  label={page.team}
+                  onClick={() => openDetailView("team")}
+                />
+                <ActionCard
+                  count={activeStoreUsers.length}
+                  hint={page.statsCardHint}
+                  label={page.stats}
+                  onClick={() => openDetailView("stats")}
+                />
+              </div>
+            ) : null}
+
+            {detailView === "pending" ? (
+              <section className={styles.detailSection}>
+                <div className={styles.sectionHeader}>
+                  <span className={styles.sectionTitle}>{page.pendingHeading}</span>
+                  <span className={styles.sectionCount}>{pendingUsers.length}</span>
+                </div>
+                {pendingUsers.length === 0 ? (
+                  <div className={styles.statePanel}>{page.noPending}</div>
+                ) : (
+                  <div className={styles.userCardList}>
+                    {pendingUsers.map((item) => (
+                      <PendingUserCard
+                        key={item.id}
+                        appliedRoleLabel={formatJobRoleLabel(item.jobRole, lang)}
+                        draft={reviewDrafts[String(item.id)] ?? { jobRole: "" }}
+                        isReviewing={reviewingUserId === item.id}
+                        labels={page}
+                        roleOptions={roleOptions}
+                        user={item}
+                        onPatchDraft={(jobRole) => patchReviewDraft(item.id, jobRole)}
+                        onReview={(status) => void reviewUser(item.id, status)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            {detailView === "team" ? (
+              <section className={styles.detailSection}>
+                <div className={styles.sectionHeader}>
+                  <span className={styles.sectionTitle}>{page.team}</span>
+                  <span className={styles.sectionCount}>
+                    {filteredTeamUsers.length}
+                  </span>
+                </div>
+                <input
+                  type="search"
+                  className={styles.teamSearch}
+                  placeholder={page.searchPlaceholder}
+                  value={teamSearchTerm}
+                  onChange={(event) => setTeamSearchTerm(event.target.value)}
+                />
+                <div className={styles.filterScroller}>
+                  <button
+                    type="button"
+                    className={`${styles.filterPill} ${
+                      !teamRoleFilter ? styles.filterPillActive : ""
+                    }`}
+                    onClick={() => setTeamRoleFilter("")}
+                  >
+                    {page.filterAll}
+                  </button>
+                  {roleOptions.map((roleOption) => {
+                    const isActive = teamRoleFilter === roleOption.value;
+
+                    return (
+                      <button
+                        key={roleOption.value}
+                        type="button"
+                        className={`${styles.filterPill} ${
+                          isActive ? styles.filterPillActive : ""
+                        }`}
+                        onClick={() => setTeamRoleFilter(roleOption.value)}
+                      >
+                        {roleOption.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {teamUsers.length === 0 ? (
+                  <div className={styles.statePanel}>{page.noTeam}</div>
+                ) : filteredTeamUsers.length === 0 ? (
+                  <div className={styles.statePanel}>{page.noSearchResult}</div>
+                ) : (
+                  <div className={styles.userCardList}>
+                    {filteredTeamUsers.map((item) => (
+                      <TeamUserCard
+                        key={item.id}
+                        draft={
+                          teamDrafts[String(item.id)] ??
+                          normalizeJobRoleString(item.jobRole)
+                        }
+                        isRemoving={removingUserId === item.id}
+                        isSaving={savingUserId === item.id}
+                        labels={page}
+                        lang={lang}
+                        roleOptions={roleOptions}
+                        user={item}
+                        onPatchDraft={(userId, nextJobRole) => {
+                          patchTeamDraft(userId, nextJobRole);
+                          void saveJobRole(userId, nextJobRole);
+                        }}
+                        onRemove={removeUser}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            {detailView === "stats" ? (
+              <section className={styles.detailSection}>
+                <div className={styles.sectionHeader}>
+                  <span className={styles.sectionTitle}>{page.stats}</span>
+                  <span className={styles.sectionCount}>
+                    {activeStoreUsers.length}
+                  </span>
+                </div>
+                <div className={styles.statsList}>
+                  <div className={styles.statsRow}>
+                    <span className={styles.statsRowLabel}>{page.totalMembers}</span>
+                    <span className={styles.statsRowValue}>
+                      {activeStoreUsers.length}
+                    </span>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <span className={styles.statsRowLabel}>{page.pendingHeading}</span>
+                    <span className={styles.statsRowValue}>{pendingUsers.length}</span>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <span className={styles.statsRowLabel}>{page.team}</span>
+                    <span className={styles.statsRowValue}>{teamUsers.length}</span>
+                  </div>
+                  {roleStats.map((roleStat) => (
+                    <div className={styles.statsRow} key={roleStat.value}>
+                      <span className={styles.statsRowLabel}>{roleStat.label}</span>
+                      <span className={styles.statsRowValue}>{roleStat.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </>
         ) : null}
 

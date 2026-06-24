@@ -3,6 +3,7 @@ export type SupplierSummary = {
   name: string;
   sortOrder: number;
   includeAllProductsInOrder: boolean;
+  orderNotice: string | null;
 };
 
 export type SupplierDetail = SupplierSummary;

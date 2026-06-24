@@ -33,8 +33,10 @@ export const SUPPLIERS_COPY = {
     fieldName: "名称",
     fieldSortOrder: "排序",
     fieldIncludeAll: "默认全部商品",
+    fieldOrderNotice: "下单须知",
 
     namePlaceholder: "如：Metro 法国",
+    orderNoticePlaceholder: "填写下单须知，例如截单时间、起送金额、配送说明等。",
 
     save: "保存",
     cancel: "取消",
@@ -132,8 +134,11 @@ export const SUPPLIERS_COPY = {
     fieldName: "Name",
     fieldSortOrder: "Sort order",
     fieldIncludeAll: "Include all products",
+    fieldOrderNotice: "Order notice",
 
     namePlaceholder: "e.g., Metro France",
+    orderNoticePlaceholder:
+      "Add an order notice, e.g. cut-off time, minimum order, delivery notes.",
 
     save: "Save",
     cancel: "Cancel",
@@ -232,8 +237,11 @@ export const SUPPLIERS_COPY = {
     fieldName: "Nom",
     fieldSortOrder: "Ordre",
     fieldIncludeAll: "Tous les produits par défaut",
+    fieldOrderNotice: "Consignes de commande",
 
     namePlaceholder: "ex. Metro France",
+    orderNoticePlaceholder:
+      "Consignes de commande : heure limite, minimum de commande, livraison…",
 
     save: "Enregistrer",
     cancel: "Annuler",

@@ -8,11 +8,13 @@ import * as Notifications from "expo-notifications";
 export type NotificationEntry = "home" | "training" | "case-shares";
 
 // Maps a notification's `data.type` (set by the backend) to a dashboard entry.
-// Account approvals and announcements land on the home desk; new training
-// material opens the training module; case likes/comments open the cases tab.
+// Account approvals, announcements and published store rankings land on the
+// home desk; new training material opens the training module; case
+// likes/comments open the cases tab.
 const TYPE_TO_ENTRY: Record<string, NotificationEntry> = {
   "account-approved": "home",
   "dashboard-news": "home",
+  "abc-leaderboard": "home",
   "training-material": "training",
   "case-share": "case-shares",
 };

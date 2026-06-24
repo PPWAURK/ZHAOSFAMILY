@@ -3,6 +3,7 @@ export type SupplierApiRecord = {
   name?: string | null;
   sortOrder?: number | null;
   includeAllProductsInOrder?: boolean | null;
+  orderNotice?: string | null;
 };
 
 export type SupplierSummary = {
@@ -11,12 +12,14 @@ export type SupplierSummary = {
   name: string;
   sortOrder: number;
   includeAllProductsInOrder: boolean;
+  orderNotice: string;
 };
 
 export type SupplierInput = {
   name: string;
   sortOrder?: number;
   includeAllProductsInOrder?: boolean;
+  orderNotice?: string;
 };
 
 export type SupplierPatch = Partial<SupplierInput>;

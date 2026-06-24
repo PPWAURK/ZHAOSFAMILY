@@ -97,7 +97,9 @@
   display: block;
   height: 1.5px;
   background: currentColor;
-  transition: transform 0.25s ease, opacity 0.2s ease;
+  transition:
+    transform 0.25s ease,
+    opacity 0.2s ease;
 }
 
 .menuToggleOpen .menuToggleIcon span:nth-child(1) {
@@ -216,6 +218,30 @@
   color: var(--ink-60);
   max-width: 620px;
   font-family: var(--zh-serif);
+}
+
+/* Supplier order notice (shown on the products step) */
+.orderNotice {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--red);
+  background: var(--red-soft);
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.orderNoticeLabel {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 600;
 }
 
 /* Stepper */
@@ -683,6 +709,74 @@
   border-color: var(--red);
 }
 
+/* Card-only elements — hidden on the desktop table layout, revealed in the
+   phone/tablet card media query below. */
+.productNameRow {
+  display: contents;
+}
+
+.productCatPill {
+  display: none;
+}
+
+.specRefLabel {
+  display: none;
+}
+
+/* Quantity stepper — input + (− / +) buttons used together, on every layout. */
+.qtyStepper {
+  display: inline-flex;
+  align-items: stretch;
+  width: 100%;
+  max-width: 132px;
+  border: 1px solid var(--red-soft-2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.stepperBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  border: none;
+  background: var(--red-soft);
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.stepperBtn:hover:not(:disabled) {
+  background: var(--red-soft-2);
+}
+
+.stepperBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qtyStepper .qtyInput {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  border: none;
+  border-left: 1px solid var(--red-soft-2);
+  border-right: 1px solid var(--red-soft-2);
+  border-radius: 0;
+  text-align: center;
+  padding: 8px 2px;
+}
+
+.unitPriceInline {
+  display: none;
+}
+
 .productTotal {
   display: flex;
   justify-content: space-between;
@@ -925,7 +1019,9 @@
   text-decoration: none;
   padding: 6px 0;
   border-bottom: 1px solid var(--red-soft-2);
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .backLink:hover {
@@ -993,7 +1089,10 @@
   text-transform: uppercase;
   color: var(--red);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .toastClose:hover {
@@ -1050,6 +1149,151 @@
   }
 }
 
+/* Phone + tablet: card grid with stepper. Desktop (>1200px) keeps the table. */
+@media (max-width: 1200px) {
+  .productTable {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    overflow-x: visible;
+    min-width: 0;
+    border-top: none;
+  }
+
+  .productTable .productRow.productHeader {
+    display: none;
+  }
+
+  .productTable .productRow {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    gap: 4px 14px;
+    align-items: start;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--red-soft-2);
+    border-radius: 16px;
+    background: var(--paper);
+  }
+
+  /* Let every cell shrink so long text wraps instead of overflowing the card. */
+  .productTable .productRow > * {
+    min-width: 0;
+  }
+
+  /* category pill — top-left, above everything */
+  .productTable .productRow > :nth-child(7) {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-bottom: 2px;
+  }
+
+  .productCatPill {
+    display: inline-block;
+    box-sizing: border-box;
+    max-width: 100%;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--red);
+    background: var(--red-soft);
+    border: 1px solid var(--red-soft-2);
+    border-radius: 999px;
+    padding: 3px 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* image (left) */
+  .productTable .productRow > :nth-child(1) {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .productImageFrame,
+  .productImagePlaceholder {
+    width: 84px;
+    height: 84px;
+    border-radius: 14px;
+    border: none;
+  }
+
+  /* name (right of the image) */
+  .productTable .productRow > :nth-child(2) {
+    grid-row: 2;
+    grid-column: 2;
+    align-self: start;
+  }
+
+  .productName {
+    font-size: 14px;
+  }
+
+  /* "format du carton" — label + value, below the image */
+  .productTable .productRow > :nth-child(3) {
+    grid-row: 3;
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 6px;
+  }
+
+  .specRefLabel {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ink-40);
+  }
+
+  .productTable .productRow > :nth-child(3) .productCellValue {
+    min-height: 0;
+    font-family: var(--zh-serif);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* stepper — bottom left (image column width) */
+  .productTable .productRow > :nth-child(4) {
+    grid-row: 4;
+    grid-column: 1;
+    margin-top: 8px;
+    align-self: center;
+  }
+
+  .stepperBtn {
+    width: 28px;
+    font-size: 18px;
+  }
+
+  /* unit · price — to the right of the stepper/input */
+  .productTable .productRow > :nth-child(5) {
+    grid-row: 4;
+    grid-column: 2;
+    align-self: center;
+    justify-self: start;
+    margin-top: 8px;
+  }
+
+  .unitPriceInline {
+    display: inline;
+  }
+
+  /* hide the desktop-only subtotal cell + running total */
+  .productTable .productRow > :nth-child(6) {
+    display: none;
+  }
+
+  .productTotal {
+    display: none;
+  }
+}
+
 @media (max-width: 520px) {
   .top {
     flex-direction: column;
@@ -1090,63 +1334,43 @@
     justify-content: center;
   }
 
+  /* Phone tweaks on top of the shared card design below */
   .productTable {
-    margin-right: -24px;
-    padding-right: 24px;
+    column-gap: 10px;
   }
 
-  .productHeader {
-    display: none;
-  }
-
-  .productRow {
-    display: grid;
-    grid-template-columns: 52px 1fr auto;
-    grid-template-rows: auto auto auto;
-    gap: 4px 10px;
-    align-items: center;
-    min-width: 0;
-    padding: 12px 0;
-  }
-
-  .productRow > :nth-child(1) {
-    grid-row: 1 / 4;
-    grid-column: 1;
-  }
-
-  .productRow > :nth-child(2) {
-    grid-row: 1;
-    grid-column: 2 / -1;
-  }
-
-  .productRow > :nth-child(3) {
-    grid-row: 2;
-    grid-column: 2 / -1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    color: var(--ink-50);
-    font-size: 12px;
-  }
-
-  .productRow > :nth-child(4) {
-    grid-row: 3;
-    grid-column: 2;
-    margin-right: 8px;
-  }
-
-  .productRow > :nth-child(5) {
-    grid-row: 3;
-    grid-column: 3;
-  }
-
-  .productRow > :nth-child(6) {
-    display: none;
+  /* Compact image/stepper column so name + unit keep room in 2-up cards */
+  .productTable .productRow {
+    grid-template-columns: 74px minmax(0, 1fr);
+    padding: 11px;
+    column-gap: 10px;
   }
 
   .productImageFrame,
   .productImagePlaceholder {
-    width: 52px;
-    height: 52px;
+    width: 70px;
+    height: 70px;
+  }
+
+  .productName {
+    font-size: 13px;
+  }
+
+  .specRefLabel {
+    font-size: 10px;
+  }
+
+  .stepperBtn {
+    width: 24px;
+    font-size: 16px;
+  }
+
+  .qtyStepper .qtyInput {
+    padding: 7px 2px;
+  }
+
+  /* unit · price stays to the right of the stepper, wrapping if needed */
+  .productTable .productRow > :nth-child(5) {
+    font-size: 12px;
   }
 }

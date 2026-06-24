@@ -1,4 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ACCOUNT_STATUS } from '../auth/account-status';
 import { AbcScoresService } from './abc-scores.service';
 
 const ACTOR = { id: 7, permissions: [] };
@@ -43,6 +44,7 @@ function createPrismaServiceMock() {
       findUnique: jest.fn(),
       count: jest.fn(),
     },
+    user: { findMany: jest.fn() },
   };
 }
 
@@ -50,15 +52,25 @@ function createMediaServiceMock() {
   return { deleteFile: jest.fn() };
 }
 
+function createNotificationsServiceMock() {
+  return { sendToUsers: jest.fn().mockResolvedValue(undefined) };
+}
+
 describe('AbcScoresService', () => {
   let prisma: ReturnType<typeof createPrismaServiceMock>;
   let media: ReturnType<typeof createMediaServiceMock>;
+  let notifications: ReturnType<typeof createNotificationsServiceMock>;
   let service: AbcScoresService;
 
   beforeEach(() => {
     prisma = createPrismaServiceMock();
     media = createMediaServiceMock();
-    service = new AbcScoresService(prisma as never, media as never);
+    notifications = createNotificationsServiceMock();
+    service = new AbcScoresService(
+      prisma as never,
+      media as never,
+      notifications as never,
+    );
   });
 
   describe('getProgress', () => {
@@ -232,6 +244,71 @@ describe('AbcScoresService', () => {
         update: operationsData,
         include: { media: { orderBy: { createdAt: 'desc' } } },
       });
+    });
+  });
+
+  describe('publishCycle', () => {
+    it('publishes a draft and pushes one grouped notification per language', async () => {
+      prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
+      prisma.abcScoreCycle.update.mockResolvedValue({
+        ...DRAFT_CYCLE,
+        status: 'published',
+        publishedAt: new Date('2026-06-24T09:00:00.000Z'),
+      });
+      prisma.user.findMany.mockResolvedValue([
+        { id: 11, preferredLanguage: 'zh' },
+        { id: 12, preferredLanguage: 'fr' },
+        { id: 13, preferredLanguage: 'zh' },
+        { id: 14, preferredLanguage: null },
+      ]);
+
+      const summary = await service.publishCycle(1);
+
+      expect(summary.status).toBe('published');
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { accountStatus: ACCOUNT_STATUS.approved },
+        select: { id: true, preferredLanguage: true },
+      });
+      // zh → [11, 13] ; fr → [12, 14] (null retombe sur le défaut fr).
+      expect(notifications.sendToUsers).toHaveBeenCalledTimes(2);
+      expect(notifications.sendToUsers).toHaveBeenCalledWith(
+        [11, 13],
+        expect.objectContaining({
+          data: { type: 'abc-leaderboard', cycleId: '1' },
+        }),
+      );
+      expect(notifications.sendToUsers).toHaveBeenCalledWith(
+        [12, 14],
+        expect.objectContaining({
+          data: { type: 'abc-leaderboard', cycleId: '1' },
+        }),
+      );
+    });
+
+    it('is idempotent and does not re-notify an already published cycle', async () => {
+      prisma.abcScoreCycle.findUnique.mockResolvedValue({
+        ...DRAFT_CYCLE,
+        status: 'published',
+      });
+
+      await service.publishCycle(1);
+
+      expect(prisma.abcScoreCycle.update).not.toHaveBeenCalled();
+      expect(notifications.sendToUsers).not.toHaveBeenCalled();
+    });
+
+    it('still publishes when the push broadcast fails', async () => {
+      prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
+      prisma.abcScoreCycle.update.mockResolvedValue({
+        ...DRAFT_CYCLE,
+        status: 'published',
+        publishedAt: new Date('2026-06-24T09:00:00.000Z'),
+      });
+      prisma.user.findMany.mockRejectedValue(new Error('db down'));
+
+      const summary = await service.publishCycle(1);
+
+      expect(summary.status).toBe('published');
     });
   });
 

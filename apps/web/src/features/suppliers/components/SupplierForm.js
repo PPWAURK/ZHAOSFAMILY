@@ -12,6 +12,7 @@ function toInitial(initial) {
         ? String(initial.sortOrder)
         : "",
     includeAllProductsInOrder: !!initial?.includeAllProductsInOrder,
+    orderNotice: initial?.orderNotice || "",
   };
 }
 
@@ -42,6 +43,7 @@ export default function SupplierForm({
         name: form.name.trim(),
         sortOrder: Number.isFinite(sort) ? sort : undefined,
         includeAllProductsInOrder: form.includeAllProductsInOrder,
+        orderNotice: form.orderNotice.trim(),
       });
     } catch (err) {
       setError(err?.message || copy.saveError);
@@ -93,6 +95,19 @@ export default function SupplierForm({
             />
             {copy.fieldIncludeAll}
           </label>
+        </div>
+
+        <div className={`${styles.field} ${styles.fieldFull}`}>
+          <label className={styles.fieldLabel}>{copy.fieldOrderNotice}</label>
+          <textarea
+            className={styles.textarea}
+            value={form.orderNotice}
+            onChange={(e) => patch("orderNotice", e.target.value)}
+            placeholder={copy.orderNoticePlaceholder}
+            rows={4}
+            maxLength={2000}
+            disabled={submitting}
+          />
         </div>
       </div>
 

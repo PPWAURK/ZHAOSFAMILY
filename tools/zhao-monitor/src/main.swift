@@ -255,7 +255,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 .replacingOccurrences(of: "\n", with: " ")
             DispatchQueue.main.async {
                 self.webView.evaluateJavaScript(
-                    "window.easLocalDone('\(key)', \(code == 0), \(self.jsString(String(detail.suffix(180)))))",
+                    "window.easLocalDone('\(key)', \(code == 0), \(self.jsString(detail)))",
                     completionHandler: nil)
                 self.fetchPipelines()
             }
@@ -266,12 +266,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let appPath = cfg("mobileAppPath")
         let eas = cfg("easCommand").isEmpty ? "eas" : cfg("easCommand")
         let token = cfg("expoToken")
-        let env = token.isEmpty ? "" : "EXPO_TOKEN=\(sh(token)) "
+        let path = "/Users/shihongwang/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        let tokenEnv = token.isEmpty ? "" : "EXPO_TOKEN=\(sh(token)) "
+        let env = "PATH=\(sh(path)) \(tokenEnv)"
         let easArgs: String
         if operation == "build" {
             easArgs = "build --platform \(sh(platform)) --profile production --non-interactive --no-wait"
         } else {
-            easArgs = "submit --platform \(sh(platform)) --profile production --non-interactive"
+            easArgs = "submit --platform \(sh(platform)) --profile production --latest --non-interactive"
         }
         return "cd \(sh(appPath)) && \(env)\(sh(eas)) \(easArgs) 2>&1"
     }

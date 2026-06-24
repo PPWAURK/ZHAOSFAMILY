@@ -130,8 +130,7 @@ export default function NewOrderPage() {
   const t = NEW_ORDER_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const isEditingOrder = Boolean(editOrderId);
-  const storeName =
-    user?.store?.name || user?.storeName || user?.establishment || "—";
+  const storeName = user?.store?.name || user?.storeName || user?.establishment || "—";
 
   const hasAnyProduct = useMemo(
     () => Object.values(quantities).some((q) => Number(q) > 0),
@@ -151,9 +150,7 @@ export default function NewOrderPage() {
       if (totalQty <= 0) continue;
       const stock = Number(stockMap?.[String(product.id)] ?? 0);
       if (totalQty > stock) {
-        const name =
-          (lang === "zh" ? product.nameCn : product.nameFr || product.nameCn) ||
-          "—";
+        const name = (lang === "zh" ? product.nameCn : product.nameFr || product.nameCn) || "—";
         return { name, stock };
       }
     }
@@ -453,9 +450,7 @@ export default function NewOrderPage() {
 
         <h1 className={styles.title}>
           {isEditingOrder ? t.editTitle : t.title}
-          <span className={styles.titleEm}>
-            {isEditingOrder ? t.editTitleEm : t.titleEm}
-          </span>
+          <span className={styles.titleEm}>{isEditingOrder ? t.editTitleEm : t.titleEm}</span>
           {isEditingOrder ? t.editTitleSuffix : t.titleSuffix}
         </h1>
 
@@ -465,15 +460,9 @@ export default function NewOrderPage() {
             : t.lede}
         </p>
 
-        {isLoadingEditOrder ? (
-          <div className={styles.statePanel}>{t.loadingEditOrder}</div>
-        ) : null}
+        {isLoadingEditOrder ? <div className={styles.statePanel}>{t.loadingEditOrder}</div> : null}
 
-        <OrderStepper
-          steps={t.steps}
-          currentIndex={stepIndex}
-          onJump={handleJump}
-        />
+        <OrderStepper steps={t.steps} currentIndex={stepIndex} onJump={handleJump} />
 
         <motion.div
           key={stepIndex}
@@ -498,15 +487,16 @@ export default function NewOrderPage() {
             <StepProducts
               lang={lang}
               supplierId={supplierId}
+              orderNotice={
+                suppliers.find((item) => String(item.id) === String(supplierId))?.orderNotice || ""
+              }
               products={products}
               isLoading={isLoadingProducts}
               loadError={productsError}
               quantities={quantities}
               stockMap={stockMap}
               stockEnforced={supplierEnforcesStock(supplierId)}
-              onChangeQty={(id, value) =>
-                setQuantities((prev) => ({ ...prev, [id]: value }))
-              }
+              onChangeQty={(id, value) => setQuantities((prev) => ({ ...prev, [id]: value }))}
               copy={t}
             />
           ) : null}

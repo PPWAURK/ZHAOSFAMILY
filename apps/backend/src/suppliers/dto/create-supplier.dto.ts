@@ -22,4 +22,9 @@ export class CreateSupplierDto {
   @IsOptional()
   @IsBoolean({ message: 'INCLUDE_ALL_INVALID' })
   includeAllProductsInOrder?: boolean;
+
+  @IsOptional()
+  @IsString({ message: 'ORDER_NOTICE_INVALID' })
+  @Length(0, 2000, { message: 'ORDER_NOTICE_INVALID_LENGTH' })
+  orderNotice?: string;
 }

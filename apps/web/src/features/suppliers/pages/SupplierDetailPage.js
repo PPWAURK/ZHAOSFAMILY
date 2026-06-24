@@ -235,6 +235,15 @@ export default function SupplierDetailPage({ supplierId }) {
           <>
             <h1 className={styles.title}>{supplier.name}</h1>
 
+            {supplier.orderNotice ? (
+              <div className={styles.orderNotice}>
+                <span className={styles.orderNoticeLabel}>
+                  {t.fieldOrderNotice}
+                </span>
+                {supplier.orderNotice}
+              </div>
+            ) : null}
+
             {pageError ? (
               <div className={styles.notFound} style={{ marginBottom: 16 }}>
                 {pageError}

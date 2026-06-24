@@ -37,10 +37,13 @@ export const NEW_ORDER_COPY = {
     storeList: "门店列表",
     supplierList: "供应商列表",
     productList: "产品列表",
+    orderNoticeLabel: "下单须知",
     productImage: "图片",
     productSpecification: "规格",
     productUnit: "单位",
     productPrice: "单价",
+    caseSpecReference: "整箱规格参考",
+    noPrice: "暂无价格",
     quantity: "数量",
     subtotal: "小计",
     productQuickToolsLabel: "商品快捷工具",
@@ -158,7 +161,8 @@ export const NEW_ORDER_COPY = {
     editTitle: "Edit an ",
     editTitleEm: "existing order",
     editTitleSuffix: ".",
-    editLede: "Editing order {number}. The supplier stays locked; update quantities or delivery date, then regenerate the PDF.",
+    editLede:
+      "Editing order {number}. The supplier stays locked; update quantities or delivery date, then regenerate the PDF.",
     back: "Back to home",
     steps: [
       {
@@ -183,10 +187,13 @@ export const NEW_ORDER_COPY = {
     storeList: "Store list",
     supplierList: "Supplier list",
     productList: "Product list",
+    orderNoticeLabel: "Order notice",
     productImage: "Image",
     productSpecification: "Spec",
     productUnit: "Unit",
     productPrice: "Unit price",
+    caseSpecReference: "Case spec (ref.)",
+    noPrice: "No price",
     quantity: "Qty",
     subtotal: "Subtotal",
     productQuickToolsLabel: "Product quick tools",
@@ -304,7 +311,8 @@ export const NEW_ORDER_COPY = {
     editTitle: "Modifier une ",
     editTitleEm: "commande existante",
     editTitleSuffix: ".",
-    editLede: "Modification de la commande {number}. Le fournisseur reste verrouillé ; ajustez les quantités ou la date, puis regénérez le PDF.",
+    editLede:
+      "Modification de la commande {number}. Le fournisseur reste verrouillé ; ajustez les quantités ou la date, puis regénérez le PDF.",
     back: "Retour à l'accueil",
     steps: [
       {
@@ -329,10 +337,13 @@ export const NEW_ORDER_COPY = {
     storeList: "Liste des boutiques",
     supplierList: "Liste des fournisseurs",
     productList: "Liste des produits",
+    orderNoticeLabel: "Consignes de commande",
     productImage: "Image",
     productSpecification: "Format",
     productUnit: "Unité",
     productPrice: "Prix unitaire",
+    caseSpecReference: "Format du carton",
+    noPrice: "Prix indisponible",
     quantity: "Qté",
     subtotal: "Sous-total",
     productQuickToolsLabel: "Outils rapides produits",
@@ -435,10 +446,8 @@ export const NEW_ORDER_COPY = {
       "Impossible de charger la commande historique. Revenez à l'historique puis réessayez.",
     orderCannotEdit:
       "Cette commande contient déjà un retour et ne peut pas être modifiée directement.",
-    pdfOpenError:
-      "Impossible d'ouvrir l'aperçu PDF. Rouvrez-le depuis l'historique.",
-    editSupplierLocked:
-      "Le fournisseur ne peut pas être modifié lors de l'édition d'une commande.",
+    pdfOpenError: "Impossible d'ouvrir l'aperçu PDF. Rouvrez-le depuis l'historique.",
+    editSupplierLocked: "Le fournisseur ne peut pas être modifié lors de l'édition d'une commande.",
     stockLabel: "Stock",
     inStock: "En stock",
     outOfStock: "En rupture",
@@ -529,7 +538,11 @@ export const MOCK_PRODUCTS = {
     },
     {
       id: "chicken-thigh",
-      name: { zh: "去骨鸡腿 kg", en: "Boneless chicken thigh (kg)", fr: "Cuisse de poulet désossée (kg)" },
+      name: {
+        zh: "去骨鸡腿 kg",
+        en: "Boneless chicken thigh (kg)",
+        fr: "Cuisse de poulet désossée (kg)",
+      },
       unit: { zh: "公斤", en: "kg", fr: "kg" },
       price: 7.8,
     },

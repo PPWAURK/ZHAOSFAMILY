@@ -8,6 +8,7 @@ export type SupplierListItem = {
   name: string;
   sortOrder: number;
   includeAllProductsInOrder: boolean;
+  orderNotice: string | null;
 };
 
 const SUPPLIER_SELECT = {
@@ -15,6 +16,7 @@ const SUPPLIER_SELECT = {
   name: true,
   sortOrder: true,
   includeAllProductsInOrder: true,
+  orderNotice: true,
 } as const;
 
 type SupplierRow = SupplierListItem;
@@ -25,7 +27,16 @@ function toSupplierListItem(supplier: SupplierRow): SupplierListItem {
     name: supplier.name,
     sortOrder: supplier.sortOrder,
     includeAllProductsInOrder: supplier.includeAllProductsInOrder,
+    orderNotice: supplier.orderNotice ?? null,
   };
+}
+
+function normalizeOrderNotice(value: string | undefined): string | null {
+  if (value === undefined) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 @Injectable()
@@ -62,6 +73,7 @@ export class SuppliersService {
         name: dto.name.trim(),
         sortOrder: nextSortOrder,
         includeAllProductsInOrder: dto.includeAllProductsInOrder ?? false,
+        orderNotice: normalizeOrderNotice(dto.orderNotice),
       },
       select: SUPPLIER_SELECT,
     });
@@ -82,6 +94,9 @@ export class SuppliersService {
         ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
         ...(dto.includeAllProductsInOrder !== undefined
           ? { includeAllProductsInOrder: dto.includeAllProductsInOrder }
+          : {}),
+        ...(dto.orderNotice !== undefined
+          ? { orderNotice: normalizeOrderNotice(dto.orderNotice) }
           : {}),
       },
       select: SUPPLIER_SELECT,
