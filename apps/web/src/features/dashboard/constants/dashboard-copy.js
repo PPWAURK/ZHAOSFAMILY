@@ -1,7 +1,4 @@
-import {
-  HEADQUARTER_JOB_ROLES,
-  MANAGEMENT_JOB_ROLES,
-} from "@zhao/utils";
+import { HEADQUARTER_JOB_ROLES, MANAGEMENT_JOB_ROLES } from "@zhao/utils";
 
 export const DASHBOARD_NAV = [
   {
@@ -15,39 +12,11 @@ export const DASHBOARD_NAV = [
         fr: "Accueil",
       },
       {
-        id: "stores",
-        href: "/dashboard/stores",
-        zh: "门店管理",
-        en: "Store management",
-        fr: "Gestion des boutiques",
-        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
-      },
-      {
-        id: "abc-scores",
-        href: "/dashboard/abc-scores",
-        zh: "ABC 评分排行榜",
-        en: "ABC scoreboard",
-        fr: "Classement ABC",
-        requiredPermission: "abc.score.read",
-        // 营销/运营账号靠权限可见；总部（holding/regional）靠岗位兜底，
-        // 与「系统角色」入口同样的 OR 双条件。
-        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
-      },
-      {
         id: "profile",
         href: "/dashboard/profile",
         zh: "个人资料",
         en: "Profile",
         fr: "Profil",
-      },
-      {
-        id: "permissions",
-        href: "/dashboard/permissions",
-        zh: "系统角色",
-        en: "System roles",
-        fr: "Rôles système",
-        requiredPermission: "system.permission.manage",
-        visibleForJobRoles: ["holding"],
       },
     ],
   },
@@ -74,15 +43,6 @@ export const DASHBOARD_NAV = [
         zh: "学习资料",
         en: "Learning materials",
         fr: "Ressources",
-      },
-      {
-        id: "training-positions",
-        href: "/dashboard/training/positions",
-        zh: "岗位管理",
-        en: "Positions",
-        fr: "Postes",
-        requiredPermission: "training.position.manage",
-        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
       },
     ],
   },
@@ -121,14 +81,6 @@ export const DASHBOARD_NAV = [
         fr: "Fournisseurs",
         visibleForJobRoles: ["holding"],
       },
-      {
-        id: "inventory-zhao-bureau",
-        href: "/dashboard/inventory",
-        zh: "ZHAO Bureau 库存",
-        en: "ZHAO Bureau stock",
-        fr: "Stock ZHAO Bureau",
-        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
-      },
     ],
   },
   {
@@ -145,6 +97,22 @@ export const DASHBOARD_NAV = [
         // their list to their own store and the page is read-only for them.
         visibleForJobRoles: ["store-manager"],
       },
+    ],
+  },
+  {
+    id: "management",
+    items: [
+      {
+        id: "abc-scores",
+        href: "/dashboard/abc-scores",
+        zh: "ABC 评分排行榜",
+        en: "ABC scoreboard",
+        fr: "Classement ABC",
+        requiredPermission: "abc.score.read",
+        // 营销/运营账号靠权限可见；总部（holding/regional）靠岗位兜底，
+        // 与「系统角色」入口同样的 OR 双条件。
+        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
+      },
       {
         id: "case-shares-review",
         href: "/dashboard/case-shares-review",
@@ -153,14 +121,66 @@ export const DASHBOARD_NAV = [
         fr: "Validation des cas",
         requiredPermission: "case.share.review",
       },
+      {
+        id: "permissions",
+        href: "/dashboard/permissions",
+        zh: "系统角色",
+        en: "System roles",
+        fr: "Rôles système",
+        requiredPermission: "system.permission.manage",
+        visibleForJobRoles: ["holding"],
+      },
+      {
+        id: "stores",
+        href: "/dashboard/stores",
+        zh: "门店管理",
+        en: "Store management",
+        fr: "Gestion des boutiques",
+        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
+      },
+      {
+        id: "training-positions",
+        href: "/dashboard/training/positions",
+        zh: "岗位管理",
+        en: "Positions",
+        fr: "Postes",
+        requiredPermission: "training.position.manage",
+        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
+      },
+      {
+        id: "inventory-zhao-bureau",
+        href: "/dashboard/inventory",
+        zh: "ZHAO Bureau 库存",
+        en: "ZHAO Bureau stock",
+        fr: "Stock ZHAO Bureau",
+        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
+      },
     ],
   },
 ];
 
 export const DASHBOARD_NAV_GROUP_LABELS = {
-  zh: { menu: "菜单模块", learning: "学习模块", orders: "订单模块", people: "人事模块" },
-  en: { menu: "MENU MODULE", learning: "LEARNING MODULE", orders: "ORDER MODULE", people: "PEOPLE MODULE" },
-  fr: { menu: "MODULE MENU", learning: "MODULE FORMATION", orders: "MODULE COMMANDES", people: "MODULE RH" },
+  zh: {
+    menu: "菜单模块",
+    learning: "学习模块",
+    orders: "订单模块",
+    people: "人事模块",
+    management: "管理模块",
+  },
+  en: {
+    menu: "MENU MODULE",
+    learning: "LEARNING MODULE",
+    orders: "ORDER MODULE",
+    people: "PEOPLE MODULE",
+    management: "MANAGEMENT MODULE",
+  },
+  fr: {
+    menu: "MODULE MENU",
+    learning: "MODULE FORMATION",
+    orders: "MODULE COMMANDES",
+    people: "MODULE RH",
+    management: "MODULE GESTION",
+  },
 };
 
 export const DASHBOARD_MENU_LABELS = {
@@ -228,7 +248,7 @@ export const DASHBOARD_COPY = {
         index: "01",
         label: "门店",
         title: "门店运营",
-        detail: "查看你负责的门店、班次与当日要点。",
+        detail: "查看你负责的门店",
       },
       {
         id: "training",
@@ -249,8 +269,7 @@ export const DASHBOARD_COPY = {
       kicker: "Internal Editorial · Newsroom",
       title: "今日动态",
       titleAccent: "内部资讯台",
-      subtitle:
-        "延续当前 dashboard 的入口结构，并在下方加入编辑部风格的信息流，用于浏览通知、表彰与运营提醒。",
+      subtitle: "下方编辑部的信息流，用于浏览通知、表彰与运营提醒。",
       overviewLabel: "总览",
       stats: {
         total: "全局总数",
@@ -352,7 +371,8 @@ export const DASHBOARD_COPY = {
     scoreLeaderboard: {
       kicker: "Store Score · Ranking",
       title: "门店评分排行榜",
-      subtitle: "展示最新已发布周期每家门店的 A / B / C 等级与评分，点击门店可查看运营上传的评分报告。",
+      subtitle:
+        "展示最新已发布周期每家门店的 A / B / C 等级与评分，点击门店可查看运营上传的评分报告。",
       summaryLabel: "等级统计",
       trackingLabel: "后续追踪",
       tieLabel: "并列",
@@ -468,7 +488,8 @@ export const DASHBOARD_COPY = {
       openAttachment: "Open attachment",
       publish: {
         title: "Publish update",
-        subtitle: "Write real content for store teams. It is saved to the backend and appears below.",
+        subtitle:
+          "Write real content for store teams. It is saved to the backend and appears below.",
         titleLabel: "Title",
         titlePlaceholder: "Example: Lunch rush production rhythm updated",
         summaryLabel: "Summary",
@@ -511,7 +532,8 @@ export const DASHBOARD_COPY = {
     scoreLeaderboard: {
       kicker: "Store Score · Ranking",
       title: "Store score ranking",
-      subtitle: "A / B / C grade and score for each store from the latest published cycle. Click a store to open the operations audit report.",
+      subtitle:
+        "A / B / C grade and score for each store from the latest published cycle. Click a store to open the operations audit report.",
       summaryLabel: "Grade summary",
       trackingLabel: "Follow-up",
       tieLabel: "Tie",
@@ -605,8 +627,7 @@ export const DASHBOARD_COPY = {
         news: {
           index: "01",
           title: "Nouvelles actualites",
-          subtitle:
-            "Rythme des boutiques, cadence editoriale et synchronisation reseau.",
+          subtitle: "Rythme des boutiques, cadence editoriale et synchronisation reseau.",
         },
         congrats: {
           index: "02",
@@ -616,8 +637,7 @@ export const DASHBOARD_COPY = {
         issues: {
           index: "03",
           title: "Points de vigilance",
-          subtitle:
-            "Sujets a traiter, risques a maitriser et actions a lancer.",
+          subtitle: "Sujets a traiter, risques a maitriser et actions a lancer.",
         },
       },
       cardsLabel: "elements",
@@ -636,8 +656,7 @@ export const DASHBOARD_COPY = {
         summaryLabel: "Resume",
         summaryPlaceholder: "Expliquez en une phrase pourquoi c'est important",
         bodyLabel: "Texte",
-        bodyPlaceholder:
-          "Ajoutez contexte, actions attendues, responsables ou notes de lecture",
+        bodyPlaceholder: "Ajoutez contexte, actions attendues, responsables ou notes de lecture",
         tagsLabel: "Tags",
         tagsPlaceholder: "Separes par virgule, par exemple Service, Audit",
         attachmentLabel: "Piece jointe",
@@ -674,7 +693,8 @@ export const DASHBOARD_COPY = {
     scoreLeaderboard: {
       kicker: "Store Score · Ranking",
       title: "Classement des boutiques",
-      subtitle: "Niveaux A / B / C et notes de chaque boutique du dernier cycle publie. Cliquez sur une boutique pour ouvrir le rapport d'audit.",
+      subtitle:
+        "Niveaux A / B / C et notes de chaque boutique du dernier cycle publie. Cliquez sur une boutique pour ouvrir le rapport d'audit.",
       summaryLabel: "Synthese des notes",
       trackingLabel: "Suivi",
       tieLabel: "Ex aequo",

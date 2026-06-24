@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import OrderProductImage from "@/features/orders/components/OrderProductImage";
 import {
@@ -77,6 +77,8 @@ export default function StepProducts({
   stockEnforced,
 }) {
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const categoryFilterRef = useRef(null);
   const step = copy.steps.find((item) => item.id === "products");
   const categoryOptions = useMemo(() => {
     const categories = new Map();
@@ -126,6 +128,32 @@ export default function StepProducts({
     }
   }, [categoryOptions, selectedCategory]);
 
+  useEffect(() => {
+    if (!categoryMenuOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      if (categoryFilterRef.current && !categoryFilterRef.current.contains(event.target)) {
+        setCategoryMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setCategoryMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [categoryMenuOpen]);
+
   function changeQtyBy(variantId, delta, stock) {
     const current = Number(quantities[variantId]) || 0;
     let next = Math.max(0, current + delta);
@@ -140,22 +168,52 @@ export default function StepProducts({
       return null;
     }
 
+    const options = [
+      { value: ALL_CATEGORIES, label: copy.productAllCategories },
+      ...categoryOptions,
+    ];
+    const current = options.find((option) => option.value === selectedCategory) || options[0];
+
     return (
-      <label className={styles.listCategoryFilter}>
+      <div className={styles.listCategoryFilter} ref={categoryFilterRef}>
         <span>{copy.productCategoryLabel}</span>
-        <select
-          className={styles.listCategorySelect}
-          value={selectedCategory}
-          onChange={(event) => setSelectedCategory(event.target.value)}
-        >
-          <option value={ALL_CATEGORIES}>{copy.productAllCategories}</option>
-          {categoryOptions.map((category) => (
-            <option key={category.value} value={category.value}>
-              {category.label}
-            </option>
-          ))}
-        </select>
-      </label>
+        <div className={styles.categoryDropdown}>
+          <button
+            type="button"
+            className={styles.categoryDropdownButton}
+            onClick={() => setCategoryMenuOpen((open) => !open)}
+            aria-haspopup="listbox"
+            aria-expanded={categoryMenuOpen}
+          >
+            <span>{current.label}</span>
+            <span className={styles.categoryDropdownCaret} aria-hidden="true">
+              ▾
+            </span>
+          </button>
+          {categoryMenuOpen ? (
+            <ul className={styles.categoryMenu} role="listbox">
+              {options.map((option) => (
+                <li key={option.value}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={option.value === selectedCategory}
+                    className={`${styles.categoryMenuItem} ${
+                      option.value === selectedCategory ? styles.categoryMenuItemActive : ""
+                    }`}
+                    onClick={() => {
+                      setSelectedCategory(option.value);
+                      setCategoryMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </div>
     );
   }
 
