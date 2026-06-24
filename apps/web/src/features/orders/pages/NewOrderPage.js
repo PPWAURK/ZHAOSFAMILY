@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import Sidebar from "@/features/dashboard/components/Sidebar";
@@ -20,6 +21,7 @@ import {
   fetchOrderInventory,
   fetchOrderProducts,
   fetchOrderSuppliers,
+  getOrderProductVariants,
   supplierEnforcesStock,
 } from "@/features/orders/services/orderCatalogApi";
 import {
@@ -28,6 +30,7 @@ import {
   fetchPurchaseOrderPdf,
   updatePurchaseOrder,
 } from "@/features/orders/services/ordersApi";
+import { shareOrderPdf } from "@/features/orders/services/orderPdfSharing";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/orders/new-order-page.module.css";
 
@@ -106,6 +109,7 @@ async function openPurchaseOrderPdf(orderId, previewWindow = null) {
 }
 
 export default function NewOrderPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [lang, setLang] = usePreferredLanguage();
   const [editOrderId] = useState(getEditOrderIdFromLocation);
@@ -126,6 +130,9 @@ export default function NewOrderPage() {
   const [error, setError] = useState("");
   const [toastOpen, setToastOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [latestCreatedOrder, setLatestCreatedOrder] = useState(null);
+  const [sharePromptOpen, setSharePromptOpen] = useState(false);
+  const [isSharingOrder, setIsSharingOrder] = useState(false);
 
   const t = NEW_ORDER_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -135,6 +142,23 @@ export default function NewOrderPage() {
   const hasAnyProduct = useMemo(
     () => Object.values(quantities).some((q) => Number(q) > 0),
     [quantities],
+  );
+
+  const estimatedTotal = useMemo(
+    () =>
+      products.reduce(
+        (sum, product) =>
+          sum +
+          getOrderProductVariants(product).reduce((variantSum, variant) => {
+            const qty = Number(quantities[variant.id]) || 0;
+            if (!Number.isFinite(variant.price)) {
+              return variantSum;
+            }
+            return variantSum + qty * variant.price;
+          }, 0),
+        0,
+      ),
+    [products, quantities],
   );
 
   const stockViolation = useMemo(() => {
@@ -353,10 +377,8 @@ export default function NewOrderPage() {
       return;
     }
 
-    const previewWindow = window.open("about:blank", "_blank");
-    if (previewWindow) {
-      previewWindow.opener = null;
-    }
+    const previewWindow = isEditingOrder ? window.open("about:blank", "_blank") : null;
+    if (previewWindow) previewWindow.opener = null;
 
     try {
       setSubmitting(true);
@@ -365,10 +387,15 @@ export default function NewOrderPage() {
         ? await updatePurchaseOrder(editOrderId, { deliveryDate, quantities })
         : await createPurchaseOrder({ deliveryDate, quantities });
 
-      try {
-        await openPurchaseOrderPdf(savedOrder.id, previewWindow);
-      } catch (pdfError) {
-        setError(resolveErrorMessage(pdfError, t.pdfOpenError));
+      if (isEditingOrder) {
+        try {
+          await openPurchaseOrderPdf(savedOrder.id, previewWindow);
+        } catch (pdfError) {
+          setError(resolveErrorMessage(pdfError, t.pdfOpenError));
+        }
+      } else {
+        setLatestCreatedOrder(savedOrder);
+        setSharePromptOpen(true);
       }
 
       setSubmitting(false);
@@ -385,6 +412,39 @@ export default function NewOrderPage() {
       }
       setError(resolveErrorMessage(nextError, t.submitError));
       setSubmitting(false);
+    }
+  }
+
+  async function handleShareCreatedOrder() {
+    if (!latestCreatedOrder || isSharingOrder) {
+      return;
+    }
+
+    setIsSharingOrder(true);
+    setError("");
+
+    try {
+      const result = await shareOrderPdf(latestCreatedOrder);
+
+      if (result === "shared") {
+        setSharePromptOpen(false);
+        router.push("/dashboard/orders");
+        return;
+      }
+
+      if (result === "cancelled") {
+        return;
+      }
+
+      if (result === "downloaded") {
+        setSharePromptOpen(false);
+        router.push("/dashboard/orders");
+        return;
+      }
+
+      setError(t.pdfShareError);
+    } finally {
+      setIsSharingOrder(false);
     }
   }
 
@@ -544,6 +604,11 @@ export default function NewOrderPage() {
                 : isEditingOrder
                   ? t.updateOrder
                   : t.submit}
+              {!submitting && estimatedTotal > 0 ? (
+                <span className={styles.btnTotal}>
+                  {` · ${estimatedTotal.toFixed(2)} ${t.currencySymbol}`}
+                </span>
+              ) : null}
             </button>
           ) : (
             <button
@@ -574,6 +639,55 @@ export default function NewOrderPage() {
         closeLabel={t.toastClose}
         onClose={() => setToastOpen(false)}
       />
+
+      {sharePromptOpen && latestCreatedOrder ? (
+        <div className={styles.shareOverlay} role="presentation">
+          <motion.section
+            className={styles.shareDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-share-title"
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className={styles.shareHeader}>
+              <span className={styles.shareIcon} aria-hidden="true">
+                ↗
+              </span>
+              <div>
+                <h2 id="order-share-title" className={styles.shareTitle}>
+                  {t.sharePromptTitle}
+                </h2>
+                <p className={styles.shareSubtitle}>{t.sharePromptSubtitle}</p>
+              </div>
+            </div>
+
+            <p className={styles.shareMeta}>
+              {t.orderNumberLabel}: {latestCreatedOrder.number || latestCreatedOrder.id}
+            </p>
+
+            <div className={styles.shareActions}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={handleShareCreatedOrder}
+                disabled={isSharingOrder}
+              >
+                {isSharingOrder ? t.sharingOrder : t.shareToWechatButton}
+              </button>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={() => setSharePromptOpen(false)}
+                disabled={isSharingOrder}
+              >
+                {t.shareLaterButton}
+              </button>
+            </div>
+          </motion.section>
+        </div>
+      ) : null}
     </main>
   );
 }

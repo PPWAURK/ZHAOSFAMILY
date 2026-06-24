@@ -1374,7 +1374,7 @@ export class OrdersService {
     const safeRestaurantName =
       restaurantName.replace(/[/\\?%*:|"<>]/g, '').trim() || 'restaurant';
 
-    return `${safeRestaurantName}-${deliveryDate}.pdf`;
+    return `${safeRestaurantName} ${deliveryDate}.pdf`;
   }
 
   private buildOrderItemKey(

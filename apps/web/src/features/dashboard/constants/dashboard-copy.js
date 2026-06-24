@@ -119,7 +119,7 @@ export const DASHBOARD_NAV = [
         zh: "供应商管理",
         en: "Suppliers",
         fr: "Fournisseurs",
-        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
+        visibleForJobRoles: ["holding"],
       },
       {
         id: "inventory-zhao-bureau",

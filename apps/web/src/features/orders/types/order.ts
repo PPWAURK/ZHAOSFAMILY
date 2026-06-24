@@ -11,7 +11,14 @@ export type CreatePurchaseOrderInput = {
   quantities: QuantityMap;
 };
 
-export type PurchaseOrder = Record<string, unknown>;
+export type PurchaseOrder = Record<string, unknown> & {
+  id: number | string;
+  number?: string | null;
+  restaurantName?: string | null;
+  deliveryDate?: string | null;
+  bonUrl?: string | null;
+  commandeUrl?: string | null;
+};
 
 export type PurchaseReturn = Record<string, unknown>;
 

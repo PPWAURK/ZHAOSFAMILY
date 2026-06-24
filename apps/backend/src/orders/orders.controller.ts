@@ -13,6 +13,7 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { basename } from 'path';
 import { AuthService, type AuthUser } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { CreateOrderReturnDto } from './dto/create-order-return.dto';
@@ -151,7 +152,7 @@ export class OrdersController {
       await this.getActor(authorization),
     );
 
-    response.download(filePath);
+    response.download(filePath, basename(filePath));
   }
 
   @Delete(':id')

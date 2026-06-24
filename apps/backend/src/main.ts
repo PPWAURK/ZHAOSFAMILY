@@ -30,6 +30,7 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix(apiPrefix);
   app.enableCors({
     credentials: true,
+    exposedHeaders: ['Content-Disposition'],
     origin: corsOrigins,
   });
   app.useGlobalPipes(
