@@ -70,14 +70,25 @@ export class OrdersDocumentService {
   private readonly cjkFontPath = this.cjkFontCandidatePaths.find((path) =>
     existsSync(path),
   );
+  private readonly cjkBoldFontCandidatePaths = [
+    join(this.backendAssetsDir, 'fonts', 'NotoSansCJKsc-Bold.otf'),
+    join(this.workspaceBackendAssetsDir, 'fonts', 'NotoSansCJKsc-Bold.otf'),
+    join(this.cwdAssetsDir, 'fonts', 'NotoSansCJKsc-Bold.otf'),
+    join(this.storageRoot, 'assets', 'fonts', 'NotoSansCJKsc-Bold.otf'),
+    '/System/Library/Fonts/PingFang.ttc',
+    '/System/Library/Fonts/STHeiti Medium.ttc',
+  ];
+  private readonly cjkBoldFontPath = this.cjkBoldFontCandidatePaths.find(
+    (path) => existsSync(path),
+  );
 
   private readonly pdfColors = {
     primary: '#ab1e24',
     primaryDark: '#7f1b21',
-    text: '#1f1f1f',
-    textSoft: '#958184',
-    muted: '#6b6b6b',
-    mutedSoft: '#b09ea0',
+    text: '#111111',
+    textSoft: '#5f4f52',
+    muted: '#444444',
+    mutedSoft: '#6f6063',
     border: '#e4c3c5',
     rowAlt: '#fdf4f5',
     rowZero: '#fcf7f7',
@@ -174,6 +185,9 @@ export class OrdersDocumentService {
 
     try {
       doc.registerFont('NotoSansSC', this.cjkFontPath);
+      if (this.cjkBoldFontPath) {
+        doc.registerFont('NotoSansSCBold', this.cjkBoldFontPath);
+      }
       doc.font('NotoSansSC');
     } catch (error) {
       this.logger.error(
@@ -216,7 +230,7 @@ export class OrdersDocumentService {
 
     doc
       .fillColor(this.pdfColors.white)
-      .font('NotoSansSC')
+      .font(this.resolveFontForText('Commande', true))
       .fontSize(18)
       .text('Commande', left, titleY + 13, {
         width: right - left,
@@ -262,7 +276,7 @@ export class OrdersDocumentService {
 
     doc
       .fillColor(this.pdfColors.primaryDark)
-      .font('NotoSansSC')
+      .font(this.resolveCjkFont(true))
       .fontSize(11)
       .text(
         `Fournisseur: ${this.sanitizeLabel(input.supplierName)}`,
@@ -278,6 +292,7 @@ export class OrdersDocumentService {
 
     doc
       .fillColor(this.pdfColors.text)
+      .font(this.resolveCjkFont(true))
       .fontSize(10)
       .text(
         `Adresse: ${this.sanitizeLabel(input.deliveryAddress)}`,
@@ -307,7 +322,7 @@ export class OrdersDocumentService {
         .fill();
       doc
         .fillColor(this.pdfColors.white)
-        .font('NotoSansSC')
+        .font(this.resolveFontForText('Produit FR / ZH', true))
         .fontSize(10)
         .text('Produit FR / ZH', left + 8, y + 7, { width: colProduct - 12 })
         .text('Qte', left + colProduct + 4, y + 7, {
@@ -335,15 +350,15 @@ export class OrdersDocumentService {
       const productNameFrHeight = this.measureTextHeight(
         doc,
         productNameFr,
-        this.resolveFontForText(productNameFr),
-        10,
+        this.resolveFontForText(productNameFr, true),
+        10.5,
         productColumnWidth,
       );
       const productNameZhHeight = this.measureTextHeight(
         doc,
         productNameZh,
-        this.resolveFontForText(productNameZh),
-        9,
+        this.resolveFontForText(productNameZh, true),
+        9.5,
         productColumnWidth,
       );
       const rowHeight = Math.max(
@@ -412,15 +427,15 @@ export class OrdersDocumentService {
 
     doc
       .fillColor(primaryTextColor)
-      .font(this.resolveFontForText(layout.productNameFr))
-      .fontSize(10)
+      .font(this.resolveFontForText(layout.productNameFr, true))
+      .fontSize(10.5)
       .text(layout.productNameFr, layout.left + 8, y + 6, {
         width: layout.productColumnWidth,
       });
 
     doc
-      .font(this.resolveFontForText(layout.productNameZh))
-      .fontSize(9)
+      .font(this.resolveFontForText(layout.productNameZh, true))
+      .fontSize(9.5)
       .fillColor(secondaryTextColor)
       .text(
         layout.productNameZh,
@@ -432,7 +447,7 @@ export class OrdersDocumentService {
       );
 
     doc
-      .font('Helvetica')
+      .font('Helvetica-Bold')
       .fillColor(primaryTextColor)
       .fontSize(10)
       .text(
@@ -446,7 +461,7 @@ export class OrdersDocumentService {
       );
 
     doc
-      .font(this.resolveFontForText(layout.orderUnit))
+      .font(this.resolveFontForText(layout.orderUnit, true))
       .fillColor(primaryTextColor)
       .fontSize(10)
       .text(
@@ -460,7 +475,7 @@ export class OrdersDocumentService {
       );
 
     doc
-      .font('Helvetica')
+      .font('Helvetica-Bold')
       .fillColor(primaryTextColor)
       .fontSize(10)
       .text(
@@ -524,7 +539,7 @@ export class OrdersDocumentService {
 
     doc
       .fillColor(this.pdfColors.primaryDark)
-      .font('NotoSansSC')
+      .font(this.resolveFontForText('Articles total', true))
       .fontSize(11)
       .text(`Articles total: ${input.totalItems}`, x + 10, y + 12, {
         width: cardWidth - 20,
@@ -569,8 +584,16 @@ export class OrdersDocumentService {
     doc.restore();
   }
 
-  private resolveFontForText(value: string): string {
-    return this.containsCjk(value) ? 'NotoSansSC' : 'Helvetica';
+  private resolveFontForText(value: string, bold = false): string {
+    if (this.containsCjk(value)) {
+      return this.resolveCjkFont(bold);
+    }
+
+    return bold ? 'Helvetica-Bold' : 'Helvetica';
+  }
+
+  private resolveCjkFont(bold = false): string {
+    return bold && this.cjkBoldFontPath ? 'NotoSansSCBold' : 'NotoSansSC';
   }
 
   private sanitizePlainLabel(value: string | null | undefined): string {
