@@ -80,7 +80,13 @@ const ELEVATED_APPLICATION_JOB_ROLES = new Set([
 ]);
 const MANAGE_STORE_JOB_ROLES_PERMISSION = 'employee.job_role.manage_store';
 const SYSTEM_PERMISSION_MANAGE = 'system.permission.manage';
-const MANAGEABLE_JOB_ROLE_VALUES = new Set([
+const STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES = new Set([
+  'front-manager',
+  'back-manager',
+  'front-assistant',
+  'back-assistant',
+  'front-of-house',
+  'back-of-house',
   'front-server',
   'front-host',
   'front-cashier',
@@ -91,6 +97,10 @@ const MANAGEABLE_JOB_ROLE_VALUES = new Set([
   'back-hot-appetizer',
   'back-cold-appetizer',
   'back-rice',
+]);
+const REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES = new Set([
+  STORE_MANAGER_JOB_ROLE,
+  ...STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
 ]);
 
 const BUILT_IN_ROLE_ORDER = new Map<string, number>(
@@ -744,7 +754,7 @@ export class PermissionsService {
 
     if (
       canApproveStoreJobRole &&
-      this.areStoreJobRolesManageable(this.parseJobRoles(jobRole))
+      this.areJobRolesAssignableByViewer(viewer, this.parseJobRoles(jobRole))
     ) {
       return;
     }
@@ -786,7 +796,9 @@ export class PermissionsService {
       );
     }
 
-    if (!this.areStoreJobRolesManageable(this.parseJobRoles(jobRole))) {
+    if (
+      !this.areJobRolesAssignableByViewer(viewer, this.parseJobRoles(jobRole))
+    ) {
       throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
     }
   }
@@ -890,11 +902,23 @@ export class PermissionsService {
     );
   }
 
-  private areStoreJobRolesManageable(jobRoles: Set<string>): boolean {
-    return (
-      jobRoles.size > 0 &&
-      [...jobRoles].every((role) => MANAGEABLE_JOB_ROLE_VALUES.has(role))
-    );
+  private areJobRolesAssignableByViewer(
+    viewer: AuthUser,
+    jobRoles: Set<string>,
+  ): boolean {
+    if (jobRoles.size === 0) {
+      return false;
+    }
+
+    const viewerRoles = this.parseJobRoles(viewer.jobRole);
+    const assignableRoles = viewerRoles.has(REGIONAL_MANAGER_JOB_ROLE)
+      ? REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES
+      : viewerRoles.has(STORE_MANAGER_JOB_ROLE) ||
+          viewer.permissions.includes(MANAGE_STORE_JOB_ROLES_PERMISSION)
+        ? STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES
+        : new Set<string>();
+
+    return [...jobRoles].every((role) => assignableRoles.has(role));
   }
 
   private parseJobRoles(jobRole: string | null | undefined): Set<string> {

@@ -1,10 +1,16 @@
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import type { StoreJobRoleOption } from "@/features/stores/storeTypes";
 
-// Line-staff roles a store manager is allowed to assign — must stay in sync
-// with the backend's MANAGEABLE_JOB_ROLE_VALUES (permissions.service.ts).
-// Anything outside this set is rejected (403) for non-holding viewers.
-export const STORE_ASSIGNABLE_JOB_ROLE_VALUES = [
+// Job-role hierarchy for store tools. Keep this in sync with
+// permissions.service.ts: holding can assign all, regional managers can assign
+// store-manager and below, store managers can assign floor/kitchen leads and below.
+export const STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES = [
+  "front-manager",
+  "back-manager",
+  "front-assistant",
+  "back-assistant",
+  "front-of-house",
+  "back-of-house",
   "front-host",
   "front-cashier",
   "front-server",
@@ -16,6 +22,13 @@ export const STORE_ASSIGNABLE_JOB_ROLE_VALUES = [
   "back-cold-appetizer",
   "back-rice",
 ];
+
+export const REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES = [
+  "store-manager",
+  ...STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
+];
+
+export const STORE_ASSIGNABLE_JOB_ROLE_VALUES = STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES;
 
 export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> = {
   zh: [
@@ -139,7 +152,8 @@ export const STORE_COPY = {
     deleteCancel: "Cancel",
     deleteConfirm: "Delete",
     deleteEmployee: "Delete employee",
-    deleteEmployeeBody: "This employee will no longer be able to sign in and will be removed from the team list.",
+    deleteEmployeeBody:
+      "This employee will no longer be able to sign in and will be removed from the team list.",
     deleteEmployeeTitle: "Delete this employee?",
     employeeDeleted: "Employee deleted.",
     employeeDeleteError: "Employee could not be deleted.",

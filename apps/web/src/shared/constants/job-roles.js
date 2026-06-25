@@ -1,6 +1,12 @@
 const DEFAULT_LANGUAGE = "zh";
 
-export const STORE_ASSIGNABLE_JOB_ROLE_VALUES = [
+export const STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES = [
+  "front-manager",
+  "back-manager",
+  "front-assistant",
+  "back-assistant",
+  "front-of-house",
+  "back-of-house",
   "front-host",
   "front-cashier",
   "front-server",
@@ -12,6 +18,13 @@ export const STORE_ASSIGNABLE_JOB_ROLE_VALUES = [
   "back-cold-appetizer",
   "back-rice",
 ];
+
+export const REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES = [
+  "store-manager",
+  ...STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
+];
+
+export const STORE_ASSIGNABLE_JOB_ROLE_VALUES = STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES;
 
 const ORGANIZATION_JOB_ROLE_VALUES = [
   "holding",
@@ -166,10 +179,8 @@ export function normalizeJobRoleValues(values) {
   return uniqueValues.sort((left, right) => {
     const leftIndex = JOB_ROLE_ORDER.indexOf(left);
     const rightIndex = JOB_ROLE_ORDER.indexOf(right);
-    const normalizedLeftIndex =
-      leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
-    const normalizedRightIndex =
-      rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+    const normalizedLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+    const normalizedRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
 
     return normalizedLeftIndex - normalizedRightIndex || left.localeCompare(right);
   });
@@ -204,13 +215,7 @@ export function getStoreJobRoleGroups(lang = DEFAULT_LANGUAGE) {
     ),
     toGroup(
       "back",
-      [
-        "back-dishwasher",
-        "back-noodle",
-        "back-hot-appetizer",
-        "back-cold-appetizer",
-        "back-rice",
-      ],
+      ["back-dishwasher", "back-noodle", "back-hot-appetizer", "back-cold-appetizer", "back-rice"],
       lang,
     ),
   ];

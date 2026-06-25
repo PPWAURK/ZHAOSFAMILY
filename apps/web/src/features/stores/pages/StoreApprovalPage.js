@@ -17,17 +17,15 @@ import {
   updatePermissionUserApproval,
   updatePermissionUserJobRole,
 } from "@/features/permissions/services/permissionsApi";
-import {
-  STORES_COPY,
-  STORE_JOB_ROLE_OPTIONS,
-} from "@/features/stores/constants/stores-copy";
+import { STORES_COPY, STORE_JOB_ROLE_OPTIONS } from "@/features/stores/constants/stores-copy";
 import { fetchStoresPageStores } from "@/features/stores/services/restaurantsApi";
 import {
   formatJobRoleLabel,
   normalizeJobRoleString,
   normalizeJobRoleValues,
   parseJobRoleValues,
-  STORE_ASSIGNABLE_JOB_ROLE_VALUES,
+  REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
+  STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
 } from "@/shared/constants/job-roles";
 import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import { useToast } from "@/shared/components/toast/ToastProvider";
@@ -63,13 +61,16 @@ function canManageHoldingJobRole(user) {
   const roleValues = getJobRoleValues(user);
 
   return (
-    roleValues.includes("holding") ||
-    (user?.permissions || []).includes("system.permission.manage")
+    roleValues.includes("holding") || (user?.permissions || []).includes("system.permission.manage")
   );
 }
 
-// Mirror mobile: holding/admins may assign any role; store/regional managers
-// only the line-staff roles the backend accepts (others get a 403 on save).
+function canManageRegionalJobRoles(user) {
+  return getJobRoleValues(user).includes("regional-manager");
+}
+
+// Mirror mobile: holding/admins may assign any role; regional and store
+// managers use the same hierarchy enforced by the backend.
 function getVisibleRoleOptions(lang, user) {
   const options = STORE_JOB_ROLE_OPTIONS[lang] || STORE_JOB_ROLE_OPTIONS.zh;
 
@@ -77,13 +78,20 @@ function getVisibleRoleOptions(lang, user) {
     return options;
   }
 
-  const assignable = new Set(STORE_ASSIGNABLE_JOB_ROLE_VALUES);
+  const assignable = new Set(
+    canManageRegionalJobRoles(user)
+      ? REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES
+      : STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
+  );
 
   return options.filter((option) => assignable.has(option.value));
 }
 
-function toggleJobRoleValue(jobRole, value) {
-  const values = parseJobRoleValues(jobRole);
+function toggleJobRoleValue(jobRole, value, allowedValues = null) {
+  const allowedValueSet = allowedValues ? new Set(allowedValues) : null;
+  const values = parseJobRoleValues(jobRole).filter(
+    (role) => !allowedValueSet || allowedValueSet.has(role),
+  );
   const nextValues = values.includes(value)
     ? values.filter((item) => item !== value)
     : [...values, value];
@@ -95,9 +103,7 @@ function userMatchesSearch(user, searchTerm) {
   const normalizedSearch = searchTerm.trim().toLowerCase();
   if (!normalizedSearch) return true;
 
-  return `${user.name || ""} ${user.email || ""}`
-    .toLowerCase()
-    .includes(normalizedSearch);
+  return `${user.name || ""} ${user.email || ""}`.toLowerCase().includes(normalizedSearch);
 }
 
 function userHasRole(user, roleValue) {
@@ -107,8 +113,10 @@ function userHasRole(user, roleValue) {
 }
 
 // A vertical switch list — the web mirror of mobile's RoleMultiSelector.
-function RoleSwitchList({ disabled, options, value, onChange }) {
-  const selectedValues = parseJobRoleValues(value);
+function RoleSwitchList({ disabled, options, requireSelection = false, value, onChange }) {
+  const optionValues = options.map((option) => option.value);
+  const optionValueSet = new Set(optionValues);
+  const selectedValues = parseJobRoleValues(value).filter((role) => optionValueSet.has(role));
 
   return (
     <div className={styles.roleSelectPanel}>
@@ -129,8 +137,8 @@ function RoleSwitchList({ disabled, options, value, onChange }) {
                 type="checkbox"
                 aria-label={option.label}
                 checked={isActive}
-                disabled={disabled}
-                onChange={() => onChange(toggleJobRoleValue(value, option.value))}
+                disabled={disabled || (requireSelection && isActive && selectedValues.length === 1)}
+                onChange={() => onChange(toggleJobRoleValue(value, option.value, optionValues))}
               />
               <span className={styles.switchTrack} aria-hidden="true" />
               <span className={styles.switchThumb} aria-hidden="true" />
@@ -235,6 +243,7 @@ function TeamUserCard({
       <RoleSwitchList
         disabled={isBusy}
         options={roleOptions}
+        requireSelection
         value={draft}
         onChange={(nextJobRole) => onPatchDraft(user.id, nextJobRole)}
       />
@@ -283,17 +292,14 @@ export default function StoreApprovalPage() {
   const activeStoreUsers = useMemo(
     () =>
       storeUsers.filter(
-        (item) =>
-          item.accountStatus === "pending" || item.accountStatus === "approved",
+        (item) => item.accountStatus === "pending" || item.accountStatus === "approved",
       ),
     [storeUsers],
   );
   const filteredTeamUsers = useMemo(
     () =>
       teamUsers.filter(
-        (item) =>
-          userMatchesSearch(item, teamSearchTerm) &&
-          userHasRole(item, teamRoleFilter),
+        (item) => userMatchesSearch(item, teamSearchTerm) && userHasRole(item, teamRoleFilter),
       ),
     [teamUsers, teamSearchTerm, teamRoleFilter],
   );
@@ -321,8 +327,7 @@ export default function StoreApprovalPage() {
           return;
         }
 
-        const nextStore =
-          nextStores.find((item) => String(item.id) === String(storeId)) ?? null;
+        const nextStore = nextStores.find((item) => String(item.id) === String(storeId)) ?? null;
         const nextDrafts = {};
         const nextTeamDrafts = {};
 
@@ -401,9 +406,7 @@ export default function StoreApprovalPage() {
       );
 
       setUsers((current) =>
-        current.map((item) =>
-          String(item.id) === String(userId) ? updatedUser : item,
-        ),
+        current.map((item) => (String(item.id) === String(userId) ? updatedUser : item)),
       );
       setReviewDrafts((current) => {
         const nextDrafts = { ...current };
@@ -425,9 +428,10 @@ export default function StoreApprovalPage() {
 
   async function removeUser(targetUser) {
     const isRejected = targetUser.accountStatus === "rejected";
-    const confirmMessage = (
-      isRejected ? page.deleteUserConfirm : page.removeConfirm
-    ).replace("{name}", targetUser.name || targetUser.email || "");
+    const confirmMessage = (isRejected ? page.deleteUserConfirm : page.removeConfirm).replace(
+      "{name}",
+      targetUser.name || targetUser.email || "",
+    );
 
     if (!(await confirm({ message: confirmMessage, tone: "danger" }))) {
       return;
@@ -439,9 +443,7 @@ export default function StoreApprovalPage() {
     try {
       await removePermissionUser(String(targetUser.id));
 
-      setUsers((current) =>
-        current.filter((item) => String(item.id) !== String(targetUser.id)),
-      );
+      setUsers((current) => current.filter((item) => String(item.id) !== String(targetUser.id)));
       setTeamDrafts((current) => {
         const nextDrafts = { ...current };
         delete nextDrafts[String(targetUser.id)];
@@ -467,15 +469,10 @@ export default function StoreApprovalPage() {
     setErrorMessage("");
 
     try {
-      const updatedUser = await updatePermissionUserJobRole(
-        String(userId),
-        nextJobRole,
-      );
+      const updatedUser = await updatePermissionUserJobRole(String(userId), nextJobRole);
 
       setUsers((current) =>
-        current.map((item) =>
-          String(item.id) === String(userId) ? updatedUser : item,
-        ),
+        current.map((item) => (String(item.id) === String(userId) ? updatedUser : item)),
       );
       setTeamDrafts((current) => ({
         ...current,
@@ -585,18 +582,12 @@ export default function StoreApprovalPage() {
               <p className={styles.detailHeroAddress}>{store.address || "-"}</p>
               <div className={styles.detailHeroStats}>
                 <div className={styles.detailHeroStat}>
-                  <span className={styles.detailHeroStatLabel}>
-                    {page.pendingHeading}
-                  </span>
-                  <strong className={styles.detailHeroStatValue}>
-                    {pendingUsers.length}
-                  </strong>
+                  <span className={styles.detailHeroStatLabel}>{page.pendingHeading}</span>
+                  <strong className={styles.detailHeroStatValue}>{pendingUsers.length}</strong>
                 </div>
                 <div className={styles.detailHeroStat}>
                   <span className={styles.detailHeroStatLabel}>{page.team}</span>
-                  <strong className={styles.detailHeroStatValue}>
-                    {teamUsers.length}
-                  </strong>
+                  <strong className={styles.detailHeroStatValue}>{teamUsers.length}</strong>
                 </div>
               </div>
             </section>
@@ -666,9 +657,7 @@ export default function StoreApprovalPage() {
               <section className={styles.detailSection}>
                 <div className={styles.sectionHeader}>
                   <span className={styles.sectionTitle}>{page.team}</span>
-                  <span className={styles.sectionCount}>
-                    {filteredTeamUsers.length}
-                  </span>
+                  <span className={styles.sectionCount}>{filteredTeamUsers.length}</span>
                 </div>
                 <input
                   type="search"
@@ -713,10 +702,7 @@ export default function StoreApprovalPage() {
                     {filteredTeamUsers.map((item) => (
                       <TeamUserCard
                         key={item.id}
-                        draft={
-                          teamDrafts[String(item.id)] ??
-                          normalizeJobRoleString(item.jobRole)
-                        }
+                        draft={teamDrafts[String(item.id)] ?? normalizeJobRoleString(item.jobRole)}
                         isRemoving={removingUserId === item.id}
                         isSaving={savingUserId === item.id}
                         labels={page}
@@ -739,16 +725,12 @@ export default function StoreApprovalPage() {
               <section className={styles.detailSection}>
                 <div className={styles.sectionHeader}>
                   <span className={styles.sectionTitle}>{page.stats}</span>
-                  <span className={styles.sectionCount}>
-                    {activeStoreUsers.length}
-                  </span>
+                  <span className={styles.sectionCount}>{activeStoreUsers.length}</span>
                 </div>
                 <div className={styles.statsList}>
                   <div className={styles.statsRow}>
                     <span className={styles.statsRowLabel}>{page.totalMembers}</span>
-                    <span className={styles.statsRowValue}>
-                      {activeStoreUsers.length}
-                    </span>
+                    <span className={styles.statsRowValue}>{activeStoreUsers.length}</span>
                   </div>
                   <div className={styles.statsRow}>
                     <span className={styles.statsRowLabel}>{page.pendingHeading}</span>

@@ -41,18 +41,29 @@ function resolveStatusLabel(status: string | null | undefined, copy: typeof STOR
 export function RoleMultiSelector({
   disabled,
   options,
+  requireSelection = false,
   value,
   onChange,
 }: {
   disabled?: boolean;
   options: StoreJobRoleOption[];
+  requireSelection?: boolean;
   value: string;
   onChange: (value: string) => void;
 }) {
-  const selectedValues = parseRoleValues(value);
+  const optionValues = options.map((option) => option.value);
+  const optionValueSet = new Set(optionValues);
+  const selectedValues = parseRoleValues(value).filter((roleValue) =>
+    optionValueSet.has(roleValue),
+  );
 
   function toggleRole(roleValue: string): void {
-    if (disabled) return;
+    if (
+      disabled ||
+      (requireSelection && selectedValues.includes(roleValue) && selectedValues.length === 1)
+    ) {
+      return;
+    }
 
     const nextValues = selectedValues.includes(roleValue)
       ? selectedValues.filter((currentValue) => currentValue !== roleValue)
@@ -72,16 +83,11 @@ export function RoleMultiSelector({
 
         return (
           <View key={option.value} style={styles.roleSwitchRow}>
-            <Text
-              style={[
-                styles.roleSwitchLabel,
-                isActive ? styles.roleSwitchLabelActive : null,
-              ]}
-            >
+            <Text style={[styles.roleSwitchLabel, isActive ? styles.roleSwitchLabelActive : null]}>
               {option.label}
             </Text>
             <Switch
-              disabled={disabled}
+              disabled={disabled || (requireSelection && isActive && selectedValues.length === 1)}
               ios_backgroundColor="rgba(120, 120, 128, 0.16)"
               style={styles.roleSwitch}
               thumbColor="#ffffff"
@@ -185,9 +191,7 @@ export function PendingUserCard({
       <View>
         <Text style={styles.userName}>{user.name || "-"}</Text>
         <Text style={styles.userEmail}>{user.email || "-"}</Text>
-        <Text style={styles.cardMeta}>
-          {resolveStatusLabel(user.accountStatus, copy)}
-        </Text>
+        <Text style={styles.cardMeta}>{resolveStatusLabel(user.accountStatus, copy)}</Text>
         <Text style={styles.cardMeta}>
           {copy.appliedRole}: {appliedRoleLabel}
         </Text>
@@ -195,6 +199,7 @@ export function PendingUserCard({
       <RoleMultiSelector
         disabled={isReviewing}
         options={roleOptions}
+        requireSelection
         value={draft.jobRole}
         onChange={onPatchDraft}
       />
@@ -258,10 +263,7 @@ export function TeamUserCard({
         <Pressable
           accessibilityRole="button"
           disabled={isSaving || isDeleting}
-          style={[
-            styles.teamDeleteButton,
-            isSaving || isDeleting ? { opacity: 0.56 } : null,
-          ]}
+          style={[styles.teamDeleteButton, isSaving || isDeleting ? { opacity: 0.56 } : null]}
           onPress={onDelete}
         >
           {isDeleting ? (
@@ -275,6 +277,7 @@ export function TeamUserCard({
         disabled={isSaving || isDeleting}
         options={roleOptions}
         value={draft.jobRole}
+        requireSelection
         onChange={onPatchDraft}
       />
     </View>

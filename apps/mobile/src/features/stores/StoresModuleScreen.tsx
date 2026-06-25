@@ -14,7 +14,8 @@ import {
 } from "@/features/stores/StoreModuleParts";
 import {
   STORE_COPY,
-  STORE_ASSIGNABLE_JOB_ROLE_VALUES,
+  REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
+  STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
   STORE_JOB_ROLE_OPTIONS,
 } from "@/features/stores/storeCopy";
 import {
@@ -58,28 +59,29 @@ function canManageHoldingRole(user: AuthUser): boolean {
   );
 }
 
-function getVisibleRoleOptions(
-  language: AuthLanguage,
-  user: AuthUser,
-): StoreJobRoleOption[] {
+function canManageRegionalJobRoles(user: AuthUser): boolean {
+  return getJobRoleValues(user).includes("regional-manager");
+}
+
+function getVisibleRoleOptions(language: AuthLanguage, user: AuthUser): StoreJobRoleOption[] {
   const options = STORE_JOB_ROLE_OPTIONS[language];
 
-  // Holding/admins may assign any role; everyone else (store/regional managers)
-  // can only assign the line-staff roles the backend accepts — offering
-  // management roles to them would just get a 403 on save.
+  // Holding/admins may assign any role; regional and store managers use
+  // the same hierarchy enforced by the backend.
   if (canManageHoldingRole(user)) {
     return options;
   }
 
-  const assignable = new Set(STORE_ASSIGNABLE_JOB_ROLE_VALUES);
+  const assignable = new Set(
+    canManageRegionalJobRoles(user)
+      ? REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES
+      : STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
+  );
 
   return options.filter((option) => assignable.has(option.value));
 }
 
-function getUsersForStore(
-  users: MobilePermissionUser[],
-  storeId: number,
-): MobilePermissionUser[] {
+function getUsersForStore(users: MobilePermissionUser[], storeId: number): MobilePermissionUser[] {
   return users.filter((user) => user.restaurant?.id === storeId);
 }
 
@@ -115,9 +117,7 @@ function userMatchesSearch(user: MobilePermissionUser, searchTerm: string): bool
   const normalizedSearch = searchTerm.trim().toLowerCase();
   if (!normalizedSearch) return true;
 
-  return `${user.name || ""} ${user.email || ""}`
-    .toLowerCase()
-    .includes(normalizedSearch);
+  return `${user.name || ""} ${user.email || ""}`.toLowerCase().includes(normalizedSearch);
 }
 
 function userHasRole(user: MobilePermissionUser, roleValue: string): boolean {
@@ -130,10 +130,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
   const confirm = useConfirm();
   const toast = useToast();
   const copy = STORE_COPY[language];
-  const roleOptions = useMemo(
-    () => getVisibleRoleOptions(language, user),
-    [language, user],
-  );
+  const roleOptions = useMemo(() => getVisibleRoleOptions(language, user), [language, user]);
   const [data, setData] = useState<StoresState>({ stores: [], users: [] });
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [detailView, setDetailView] = useState<StoreDetailView>("overview");
@@ -147,24 +144,15 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
   const [teamSearchTerm, setTeamSearchTerm] = useState("");
   const [teamRoleFilter, setTeamRoleFilter] = useState("");
 
-  const selectedStore =
-    data.stores.find((store) => store.id === selectedStoreId) || null;
-  const selectedStoreUsers = selectedStore
-    ? getUsersForStore(data.users, selectedStore.id)
-    : [];
-  const pendingUsers = selectedStoreUsers.filter(
-    (item) => item.accountStatus === "pending",
-  );
-  const teamUsers = selectedStoreUsers.filter(
-    (item) => item.accountStatus === "approved",
-  );
+  const selectedStore = data.stores.find((store) => store.id === selectedStoreId) || null;
+  const selectedStoreUsers = selectedStore ? getUsersForStore(data.users, selectedStore.id) : [];
+  const pendingUsers = selectedStoreUsers.filter((item) => item.accountStatus === "pending");
+  const teamUsers = selectedStoreUsers.filter((item) => item.accountStatus === "approved");
   const activeStoreUsers = selectedStoreUsers.filter(
     (item) => item.accountStatus === "pending" || item.accountStatus === "approved",
   );
   const filteredTeamUsers = teamUsers.filter(
-    (item) =>
-      userMatchesSearch(item, teamSearchTerm) &&
-      userHasRole(item, teamRoleFilter),
+    (item) => userMatchesSearch(item, teamSearchTerm) && userHasRole(item, teamRoleFilter),
   );
   const roleStats = roleOptions.map((roleOption) => ({
     ...roleOption,
@@ -353,9 +341,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
     }
   }
 
-  async function confirmDeleteTeamUser(
-    permissionUser: MobilePermissionUser,
-  ): Promise<void> {
+  async function confirmDeleteTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
     const confirmed = await confirm({
       title: copy.deleteEmployeeTitle,
       message: copy.deleteEmployeeBody,
@@ -488,10 +474,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
               style={styles.filterScroller}
             >
               <Pressable
-                style={[
-                  styles.filterPill,
-                  !teamRoleFilter ? styles.filterPillActive : null,
-                ]}
+                style={[styles.filterPill, !teamRoleFilter ? styles.filterPillActive : null]}
                 onPress={() => setTeamRoleFilter("")}
               >
                 <Text
@@ -509,17 +492,11 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
                 return (
                   <Pressable
                     key={roleOption.value}
-                    style={[
-                      styles.filterPill,
-                      isActive ? styles.filterPillActive : null,
-                    ]}
+                    style={[styles.filterPill, isActive ? styles.filterPillActive : null]}
                     onPress={() => setTeamRoleFilter(roleOption.value)}
                   >
                     <Text
-                      style={[
-                        styles.filterPillText,
-                        isActive ? styles.filterPillTextActive : null,
-                      ]}
+                      style={[styles.filterPillText, isActive ? styles.filterPillTextActive : null]}
                     >
                       {roleOption.label}
                     </Text>
@@ -622,9 +599,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
             const pendingCount = storeUsers.filter(
               (item) => item.accountStatus === "pending",
             ).length;
-            const teamCount = storeUsers.filter(
-              (item) => item.accountStatus === "approved",
-            ).length;
+            const teamCount = storeUsers.filter((item) => item.accountStatus === "approved").length;
 
             return (
               <StoreCard

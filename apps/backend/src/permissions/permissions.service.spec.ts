@@ -301,7 +301,7 @@ describe('PermissionsService', () => {
         id: 12,
         name: 'Store Staff',
         email: 'staff@zhao.test',
-        jobRole: 'front-server,front-host',
+        jobRole: 'front-manager,front-assistant',
         restaurant: {
           id: 7,
           name: 'ZHAO Test',
@@ -310,7 +310,7 @@ describe('PermissionsService', () => {
       });
     prismaService.user.update.mockResolvedValue({
       id: 12,
-      jobRole: 'front-server,front-host',
+      jobRole: 'front-manager,front-assistant',
     });
 
     await expect(
@@ -345,15 +345,15 @@ describe('PermissionsService', () => {
           permissions: ['employee.job_role.manage_store'],
         },
         12,
-        'front-server,front-host',
+        'front-manager,front-assistant',
       ),
     ).resolves.toMatchObject({
       id: 12,
-      jobRole: 'front-server,front-host',
+      jobRole: 'front-manager,front-assistant',
     });
     expect(prismaService.user.update).toHaveBeenCalledWith({
       where: { id: 12 },
-      data: { jobRole: 'front-server,front-host' },
+      data: { jobRole: 'front-manager,front-assistant' },
     });
   });
 
