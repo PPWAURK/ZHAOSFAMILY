@@ -5,3 +5,4 @@ export * from "./products";
 export * from "./recruitment";
 export * from "./restaurants";
 export * from "./suppliers";
+export * from "./waiting-queue";

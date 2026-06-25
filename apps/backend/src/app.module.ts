@@ -17,6 +17,7 @@ import { RecruitmentRequestsModule } from './recruitment-requests/recruitment-re
 import { RestaurantsModule } from './restaurants/restaurants.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { TrainingModule } from './training/training.module';
+import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { TrainingModule } from './training/training.module';
     MediaModule,
     MailModule,
     NotificationsModule,
+    WaitingQueueModule,
   ],
 })
 export class AppModule {}

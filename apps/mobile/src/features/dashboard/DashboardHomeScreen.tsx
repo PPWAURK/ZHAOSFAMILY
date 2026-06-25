@@ -49,6 +49,7 @@ import { ProfileScreen } from "@/features/profile/ProfileScreen";
 import { RecruitmentModuleScreen } from "@/features/recruitment/RecruitmentModuleScreen";
 import { StoresModuleScreen } from "@/features/stores/StoresModuleScreen";
 import { TrainingModuleScreen } from "@/features/training/TrainingModuleScreen";
+import { WaitingQueueModuleScreen } from "@/features/waiting-queue/WaitingQueueModuleScreen";
 
 type DashboardHomeScreenProps = {
   language: AuthLanguage;
@@ -550,6 +551,8 @@ export function DashboardHomeScreen({
             <RecruitmentModuleScreen language={language} />
           ) : activeEntry === "case-shares" ? (
             <CaseSharesModuleScreen language={language} />
+          ) : activeEntry === "waiting-queue" ? (
+            <WaitingQueueModuleScreen language={language} />
           ) : activeEntry === "training" ? (
             <TrainingModuleScreen language={language} />
           ) : (

@@ -151,6 +151,7 @@ model Restaurant {
   recruitmentRequests RecruitmentRequest[]
   abcStoreScores  AbcStoreScore[]
   caseShares      CaseShare[]
+  waitingQueueEntries WaitingQueueEntry[]
 
   @@map("restaurants")
 }
@@ -633,6 +634,26 @@ model CaseShareLike {
   @@unique([caseShareId, userId])
   @@index([userId, createdAt])
   @@map("case_share_likes")
+}
+
+model WaitingQueueEntry {
+  id              Int        @id @default(autoincrement())
+  restaurantId    Int        @map("restaurant_id")
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  createdByUserId Int?       @map("created_by_user_id")
+  customerName    String     @map("customer_name") @db.VarChar(100)
+  partySize       Int        @map("party_size")
+  hasDisabled     Boolean    @default(false) @map("has_disabled")
+  hasPregnant     Boolean    @default(false) @map("has_pregnant")
+  hasElderly      Boolean    @default(false) @map("has_elderly")
+  note            String?    @db.VarChar(500)
+  status          String     @default("waiting") @db.VarChar(20)
+  seatedAt        DateTime?  @map("seated_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  @@index([restaurantId, status, createdAt])
+  @@map("waiting_queue_entries")
 }
 
 model LegacyDocument {
