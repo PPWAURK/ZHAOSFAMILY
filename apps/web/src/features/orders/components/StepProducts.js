@@ -163,6 +163,58 @@ export default function StepProducts({
     onChangeQty(variantId, next);
   }
 
+  function renderQuantityStepper(productName, variant, stock, isOutOfStock) {
+    const qty = Number(quantities[variant.id]) || 0;
+    const inputProps = {};
+    if (stockEnforced && Number.isFinite(stock)) {
+      inputProps.max = stock;
+    }
+
+    return (
+      <span key={variant.id} className={styles.qtyStepper}>
+        <button
+          type="button"
+          className={styles.stepperBtn}
+          onClick={() => changeQtyBy(variant.id, -1, stock)}
+          disabled={isOutOfStock || qty <= 0}
+          aria-label="−"
+          tabIndex={-1}
+        >
+          −
+        </button>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          {...inputProps}
+          className={styles.qtyInput}
+          value={qty === 0 ? "" : qty}
+          placeholder={isOutOfStock ? "—" : "0"}
+          disabled={isOutOfStock}
+          onChange={(e) => {
+            const raw = e.target.value;
+            let parsed = raw === "" ? 0 : Math.max(0, Number(raw));
+            if (stockEnforced && Number.isFinite(stock) && parsed > stock) {
+              parsed = stock;
+            }
+            onChangeQty(variant.id, Number.isFinite(parsed) ? parsed : 0);
+          }}
+          aria-label={`${productName} ${variant.specification || variant.unit || ""}`.trim()}
+        />
+        <button
+          type="button"
+          className={styles.stepperBtn}
+          onClick={() => changeQtyBy(variant.id, 1, stock)}
+          disabled={isOutOfStock || (stockEnforced && Number.isFinite(stock) && qty >= stock)}
+          aria-label="+"
+          tabIndex={-1}
+        >
+          +
+        </button>
+      </span>
+    );
+  }
+
   function renderCategoryFilter() {
     if (products.length === 0) {
       return null;
@@ -313,60 +365,9 @@ export default function StepProducts({
                   ))}
                 </span>
                 <span className={styles.productCellStack}>
-                  {variants.map((variant) => {
-                    const qty = Number(quantities[variant.id]) || 0;
-                    const inputProps = {};
-                    if (stockEnforced && Number.isFinite(stock)) {
-                      inputProps.max = stock;
-                    }
-
-                    return (
-                      <span key={variant.id} className={styles.qtyStepper}>
-                        <button
-                          type="button"
-                          className={styles.stepperBtn}
-                          onClick={() => changeQtyBy(variant.id, -1, stock)}
-                          disabled={isOutOfStock || qty <= 0}
-                          aria-label="−"
-                          tabIndex={-1}
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          {...inputProps}
-                          className={styles.qtyInput}
-                          value={qty === 0 ? "" : qty}
-                          placeholder={isOutOfStock ? "—" : "0"}
-                          disabled={isOutOfStock}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            let parsed = raw === "" ? 0 : Math.max(0, Number(raw));
-                            if (stockEnforced && Number.isFinite(stock) && parsed > stock) {
-                              parsed = stock;
-                            }
-                            onChangeQty(variant.id, Number.isFinite(parsed) ? parsed : 0);
-                          }}
-                          aria-label={`${productName} ${variant.specification || variant.unit || ""}`.trim()}
-                        />
-                        <button
-                          type="button"
-                          className={styles.stepperBtn}
-                          onClick={() => changeQtyBy(variant.id, 1, stock)}
-                          disabled={
-                            isOutOfStock ||
-                            (stockEnforced && Number.isFinite(stock) && qty >= stock)
-                          }
-                          aria-label="+"
-                          tabIndex={-1}
-                        >
-                          +
-                        </button>
-                      </span>
-                    );
-                  })}
+                  {variants.map((variant) =>
+                    renderQuantityStepper(productName, variant, stock, isOutOfStock),
+                  )}
                 </span>
                 <span className={`${styles.productUnit} ${styles.productCellStack}`}>
                   {variants.map((variant) => (
@@ -390,6 +391,16 @@ export default function StepProducts({
                 {categoryLabel ? (
                   <span className={styles.productCatPill}>{categoryLabel}</span>
                 ) : null}
+                <span className={styles.productMobileQuantityRow}>
+                  {variants.map((variant) => (
+                    <span key={variant.id} className={styles.productMobileQuantityLine}>
+                      {renderQuantityStepper(productName, variant, stock, isOutOfStock)}
+                      <span className={styles.productMobileUnit}>
+                        {variant.unit || getOrderProductUnit(product)}
+                      </span>
+                    </span>
+                  ))}
+                </span>
               </div>
             );
           })}

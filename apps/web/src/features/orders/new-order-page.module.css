@@ -777,6 +777,10 @@
   display: none;
 }
 
+.productMobileQuantityRow {
+  display: none;
+}
+
 /* Quantity stepper — input + (− / +) buttons used together, on every layout. */
 .qtyStepper {
   display: inline-flex;
@@ -1317,7 +1321,7 @@
   }
 
   /* category pill — top-left, above everything */
-  .productTable .productRow > :nth-child(7) {
+  .productTable .productRow > .productCatPill {
     grid-row: 1;
     grid-column: 1 / -1;
     justify-self: start;
@@ -1392,30 +1396,49 @@
     color: var(--ink);
   }
 
-  /* stepper — bottom left (image column width) */
+  /* Desktop quantity and unit cells are replaced by the full-width mobile row. */
   .productTable .productRow > :nth-child(4) {
+    display: none;
+  }
+
+  .productTable .productRow > :nth-child(5) {
+    display: none;
+  }
+
+  .productMobileQuantityRow {
+    display: flex;
+    flex-direction: column;
     grid-row: 4;
-    grid-column: 1;
+    grid-column: 1 / -1;
+    gap: 8px;
     margin-top: 8px;
-    align-self: center;
+  }
+
+  .productMobileQuantityLine {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .productMobileQuantityLine .qtyStepper {
+    flex: 0 0 132px;
+    max-width: 132px;
+  }
+
+  .productMobileUnit {
+    min-width: 0;
+    color: var(--ink-60);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
   }
 
   .stepperBtn {
     width: 28px;
     font-size: 18px;
-  }
-
-  /* unit · price — to the right of the stepper/input */
-  .productTable .productRow > :nth-child(5) {
-    grid-row: 4;
-    grid-column: 2;
-    align-self: center;
-    justify-self: start;
-    margin-top: 8px;
-  }
-
-  .unitPriceInline {
-    display: inline;
   }
 
   /* hide the desktop-only subtotal cell + running total */
@@ -1488,10 +1511,11 @@
 
   /* Phone tweaks on top of the shared card design below */
   .productTable {
-    column-gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
-  /* Compact image/stepper column so name + unit keep room in 2-up cards */
+  /* Keep each card compact in the two-column phone grid. */
   .productTable .productRow {
     grid-template-columns: 74px minmax(0, 1fr);
     padding: 11px;
@@ -1521,8 +1545,28 @@
     padding: 7px 2px;
   }
 
-  /* unit · price stays to the right of the stepper, wrapping if needed */
-  .productTable .productRow > :nth-child(5) {
-    font-size: 12px;
+  .productMobileQuantityLine {
+    gap: 6px;
+  }
+
+  .productMobileQuantityLine .qtyStepper {
+    flex-basis: 54px;
+    max-width: 54px;
+  }
+
+  .productMobileQuantityLine .stepperBtn {
+    display: none;
+  }
+
+  .productMobileQuantityLine .qtyInput {
+    border-left: none;
+    border-right: none;
+  }
+
+  .productMobileUnit {
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
