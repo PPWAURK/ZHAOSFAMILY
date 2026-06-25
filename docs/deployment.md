@@ -62,13 +62,13 @@ ZHAO Monitor peut lancer les commandes EAS localement depuis `apps/mobile` pour
 | Secret | Valeur |
 | --- | --- |
 | `WEB_SFTP_HOST` | `ftp.cluster100.hosting.ovh.net` |
-| `WEB_SFTP_USER` | `zhaosfx` |
+| `WEB_SFTP_USER` | `zhaofsx` |
 | `WEB_SFTP_PASSWORD` | mot de passe SSH/SFTP OVH |
 | `WEB_SFTP_PORT` | `22` |
 | `WEB_SFTP_REMOTE_DIR` | docroot du site (ex. `www`) |
 
 > Variable optionnelle `NEXT_PUBLIC_API_BASE_URL` (défaut
-> `https://api.zhaoplatforme.com/backend3`).
+> `https://api.zhaosfamily.com/api`).
 
 ## Environnement backend sur le serveur
 

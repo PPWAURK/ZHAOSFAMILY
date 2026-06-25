@@ -5,6 +5,10 @@ import { AuthProvider } from "@/features/auth/context/AuthContext";
 export const metadata = {
   title: "ZHAO‘s Family",
   description: "Plateforme interne ZHAO's Family",
+  icons: {
+    icon: [{ url: "/logo2024/logozhao正方形.jpg", type: "image/png" }],
+    apple: [{ url: "/logo2024/logozhao正方形.jpg", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }) {
