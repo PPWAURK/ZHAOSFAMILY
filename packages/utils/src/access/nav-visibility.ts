@@ -50,6 +50,17 @@ export const MANAGEMENT_JOB_ROLES = [
 // 总部层岗位：可见最敏感模块（库存 / 岗位管理 / 系统角色）。
 export const HEADQUARTER_JOB_ROLES = ["holding", "regional-manager"] as const;
 
+// 门店管理岗位：可见「门店」入口。
+// 与后端 permissions.service.getManageableRestaurantWhere 的放行范围保持一致
+// （holding → 全部，regional-manager → 负责门店，store-manager → 本店）；
+// 其余岗位访问 /permissions/restaurants/manageable 会拿到 INSUFFICIENT_PERMISSIONS，
+// 因此不应看到入口。
+export const STORE_MANAGEMENT_JOB_ROLES = [
+  "holding",
+  "regional-manager",
+  "store-manager",
+] as const;
+
 // 一个账号可同时挂多个岗位，存为逗号分隔字符串（如 "front-host,front-cashier"）。
 export function resolveJobRoles(viewer: NavViewer): string[] {
   return `${viewer.jobRole || viewer.position || viewer.role || ""}`

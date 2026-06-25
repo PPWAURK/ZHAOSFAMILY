@@ -1,4 +1,8 @@
-import { HEADQUARTER_JOB_ROLES, MANAGEMENT_JOB_ROLES } from "@zhao/utils";
+import {
+  HEADQUARTER_JOB_ROLES,
+  MANAGEMENT_JOB_ROLES,
+  STORE_MANAGEMENT_JOB_ROLES,
+} from "@zhao/utils";
 
 export const DASHBOARD_NAV = [
   {
@@ -136,7 +140,8 @@ export const DASHBOARD_NAV = [
         zh: "门店管理",
         en: "Store management",
         fr: "Gestion des boutiques",
-        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
+        // 仅 holding / regional-manager / store-manager 可见，与后端门店列表放行范围一致。
+        visibleForJobRoles: STORE_MANAGEMENT_JOB_ROLES,
       },
       {
         id: "training-positions",
@@ -144,8 +149,9 @@ export const DASHBOARD_NAV = [
         zh: "岗位管理",
         en: "Positions",
         fr: "Postes",
+        // 仅按权限判断：没有 training.position.manage 就隐藏入口，
+        // 不再用总部岗位兜底（否则总部账号即使无权限也会看到入口并落到「无权限」页）。
         requiredPermission: "training.position.manage",
-        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
       },
       {
         id: "inventory-zhao-bureau",
@@ -153,7 +159,8 @@ export const DASHBOARD_NAV = [
         zh: "ZHAO Bureau 库存",
         en: "ZHAO Bureau stock",
         fr: "Stock ZHAO Bureau",
-        visibleForJobRoles: HEADQUARTER_JOB_ROLES,
+        // 仅总部（holding）可见，区域经理等其他岗位不显示此入口。
+        visibleForJobRoles: ["holding"],
       },
     ],
   },
@@ -727,5 +734,5 @@ export const DASHBOARD_SHORTCUT_HREFS = {
 // Visibilité des cartes raccourcis de l'accueil — alignée sur DASHBOARD_NAV.
 // Une entrée absente = visible par tous.
 export const DASHBOARD_SHORTCUT_RULES = {
-  stores: { visibleForJobRoles: MANAGEMENT_JOB_ROLES },
+  stores: { visibleForJobRoles: STORE_MANAGEMENT_JOB_ROLES },
 };
