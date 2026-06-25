@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { MediaService } from '../media/media.service';
 import { fixMojibakeFileName } from '../media/media-filename.utils';
 import { PrismaService } from '../prisma/prisma.service';
@@ -101,6 +102,18 @@ type TrainingStoreUserRow = {
   name: string;
   email: string;
   jobRole: string | null;
+  restaurant: {
+    id: number;
+    name: string;
+  };
+};
+
+type TrainingStoreProgressScope = {
+  userWhere: Prisma.UserWhereInput;
+  restaurant: {
+    id: number;
+    name: string;
+  };
 };
 
 const HOLDING_JOB_ROLE = 'holding';
@@ -519,27 +532,24 @@ export class TrainingService {
       throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
     }
 
-    const canViewAllStores = hasJobRole(
-      viewer.jobRole,
-      REGIONAL_MANAGER_JOB_ROLE,
-    );
+    const scope = await this.getStoreProgressScope(viewer);
     const [positions, mappings, materials, users] = await Promise.all([
       this.listActivePositionRows(),
       this.listJobRolePositionRows(),
       this.listRequiredMaterials(),
       this.prismaService.user.findMany({
-        where: canViewAllStores
-          ? {
-              jobRole: {
-                not: HOLDING_JOB_ROLE,
-              },
-            }
-          : { restaurantId: viewer.restaurantId },
+        where: scope.userWhere,
         select: {
           id: true,
           name: true,
           email: true,
           jobRole: true,
+          restaurant: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
         orderBy: [{ id: 'asc' }],
       }),
@@ -581,10 +591,7 @@ export class TrainingService {
     );
 
     return {
-      restaurant: {
-        id: canViewAllStores ? 0 : viewer.store.id,
-        name: canViewAllStores ? '全部门店' : viewer.store.name,
-      },
+      restaurant: scope.restaurant,
       users: usersProgress,
       summary: {
         employeeCount: usersProgress.length,
@@ -1060,15 +1067,75 @@ export class TrainingService {
   }
 
   private canViewStoreProgress(viewer: TrainingStoreViewer): boolean {
+    return (
+      isHoldingJobRole(viewer.jobRole) ||
+      hasJobRole(viewer.jobRole, STORE_MANAGER_JOB_ROLE) ||
+      hasJobRole(viewer.jobRole, REGIONAL_MANAGER_JOB_ROLE)
+    );
+  }
+
+  private async getStoreProgressScope(
+    viewer: TrainingStoreViewer,
+  ): Promise<TrainingStoreProgressScope> {
     if (isHoldingJobRole(viewer.jobRole)) {
-      return false;
+      return {
+        userWhere: {
+          jobRole: {
+            not: HOLDING_JOB_ROLE,
+          },
+        },
+        restaurant: {
+          id: 0,
+          name: '全部门店',
+        },
+      };
     }
 
-    return (
-      hasJobRole(viewer.jobRole, STORE_MANAGER_JOB_ROLE) ||
-      hasJobRole(viewer.jobRole, REGIONAL_MANAGER_JOB_ROLE) ||
-      viewer.permissions.includes('training.progress.view_store')
-    );
+    if (hasJobRole(viewer.jobRole, REGIONAL_MANAGER_JOB_ROLE)) {
+      const restaurantIds = await this.findRegionalManagedRestaurantIds(
+        viewer.id,
+      );
+
+      return {
+        userWhere: {
+          restaurantId: {
+            in: restaurantIds,
+          },
+        },
+        restaurant: {
+          id: 0,
+          name: '负责门店',
+        },
+      };
+    }
+
+    return {
+      userWhere: {
+        restaurantId: viewer.restaurantId,
+      },
+      restaurant: {
+        id: viewer.store.id,
+        name: viewer.store.name,
+      },
+    };
+  }
+
+  private async findRegionalManagedRestaurantIds(
+    viewerId: number,
+  ): Promise<number[]> {
+    const rows = await this.prismaService.legacyUserManagedRestaurant.findMany({
+      where: {
+        userId: viewerId,
+      },
+      select: {
+        restaurantId: true,
+      },
+      orderBy: {
+        restaurantId: 'asc',
+      },
+    });
+
+    return rows.map((row) => row.restaurantId);
   }
 
   private toStoreProgressUser(
@@ -1106,6 +1173,7 @@ export class TrainingService {
       name: user.name,
       email: user.email,
       jobRole: user.jobRole,
+      restaurant: user.restaurant,
       requiredTotal: requiredMaterials.length,
       requiredCompleted,
       completionPercent: calculateCompletionPercent(

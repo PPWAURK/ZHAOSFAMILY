@@ -4,53 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
-import { updatePermissionUserJobRole } from "@/features/permissions/services/permissionsApi";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
-import {
-  fetchTrainingMyPlan,
-  fetchTrainingStoreProgress,
-} from "@/features/training/services/trainingMediaApi";
+import { fetchTrainingMyPlan } from "@/features/training/services/trainingMediaApi";
 import {
   TRAINING_POSITION_MANAGE_PERMISSION,
 } from "@/features/training/utils/trainingPositions";
-import {
-  formatJobRoleLabel,
-  getStoreJobRoleGroups,
-  normalizeJobRoleValues,
-} from "@/shared/constants/job-roles";
-
-const TRAINING_STORE_PROGRESS_PERMISSION = "training.progress.view_store";
-const EMPLOYEE_JOB_ROLE_MANAGE_PERMISSION = "employee.job_role.manage_store";
-const ORGANIZATION_JOB_ROLE_VALUES = new Set([
-  "holding",
-  "regional-manager",
-  "store-manager",
-  "front-manager",
-  "back-manager",
-  "front-assistant",
-  "back-assistant",
-]);
-
-function getUserRoleValues(user) {
-  return `${user?.jobRole || ""}`
-    .split(",")
-    .map((role) => role.trim())
-    .filter(Boolean);
-}
-
-function getJobRoleValues(jobRole) {
-  return `${jobRole || ""}`
-    .split(",")
-    .map((role) => role.trim())
-    .filter(Boolean);
-}
-
-function canEditStoreJobRoles(jobRole) {
-  return !getJobRoleValues(jobRole).some((role) =>
-    ORGANIZATION_JOB_ROLE_VALUES.has(role),
-  );
-}
 
 const COURSE_GLYPHS = {
   VIDEO: "影",
@@ -102,47 +61,12 @@ function toCourseCard(material) {
   };
 }
 
-function formatDate(iso) {
-  if (!iso) {
-    return "-";
-  }
-
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return date.toLocaleDateString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
 export default function TrainingSpacePage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState("all");
-  const [storeFilter, setStoreFilter] = useState("all");
   const [trainingPlan, setTrainingPlan] = useState(null);
-  const [storeProgress, setStoreProgress] = useState(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planError, setPlanError] = useState("");
-  const [storeProgressError, setStoreProgressError] = useState("");
-  const [draftJobRolesByUserId, setDraftJobRolesByUserId] = useState({});
-  const [savingJobRoleUserId, setSavingJobRoleUserId] = useState(null);
-  const storeJobRoleGroups = getStoreJobRoleGroups("zh");
-
-  const roleValues = getUserRoleValues(user);
-  const isHoldingUser = roleValues.includes("holding");
-  const canViewStoreProgress =
-    !isHoldingUser &&
-    (roleValues.includes("store-manager") ||
-      roleValues.includes("regional-manager") ||
-      user?.permissions?.includes(TRAINING_STORE_PROGRESS_PERMISSION));
-  const canManageStoreJobRoles =
-    !isHoldingUser &&
-    (roleValues.includes("store-manager") ||
-      roleValues.includes("regional-manager") ||
-      user?.permissions?.includes(EMPLOYEE_JOB_ROLE_MANAGE_PERMISSION));
 
   useEffect(() => {
     let isActive = true;
@@ -150,34 +74,11 @@ export default function TrainingSpacePage() {
     async function loadTrainingPlan() {
       setIsLoadingPlan(true);
       setPlanError("");
-      setStoreProgressError("");
 
       try {
         const nextPlan = await fetchTrainingMyPlan();
         if (isActive) {
           setTrainingPlan(nextPlan);
-        }
-
-        if (canViewStoreProgress) {
-          try {
-            const nextStoreProgress = await fetchTrainingStoreProgress();
-            if (isActive) {
-              setStoreProgress(nextStoreProgress);
-              setDraftJobRolesByUserId(
-                Object.fromEntries(
-                  (nextStoreProgress.users || []).map((employee) => [
-                    employee.userId,
-                    getJobRoleValues(employee.jobRole),
-                  ]),
-                ),
-              );
-            }
-          } catch (error) {
-            if (isActive) {
-              setStoreProgress(null);
-              setStoreProgressError(error.message || "本店进度加载失败");
-            }
-          }
         }
       } catch (error) {
         if (isActive) {
@@ -195,51 +96,7 @@ export default function TrainingSpacePage() {
     return () => {
       isActive = false;
     };
-  }, [canViewStoreProgress]);
-
-  function updateDraftJobRoles(userId, roleValue) {
-    setDraftJobRolesByUserId((current) => {
-      const selectedRoles = current[userId] || [];
-      const nextRoles = selectedRoles.includes(roleValue)
-        ? selectedRoles.filter((item) => item !== roleValue)
-        : normalizeJobRoleValues([...selectedRoles, roleValue]);
-
-      return {
-        ...current,
-        [userId]: nextRoles,
-      };
-    });
-  }
-
-  async function saveEmployeeJobRoles(userId) {
-    const nextRoles = draftJobRolesByUserId[userId] || [];
-
-    if (nextRoles.length === 0) {
-      setStoreProgressError("至少保留一个岗位");
-      return;
-    }
-
-    setSavingJobRoleUserId(userId);
-    setStoreProgressError("");
-
-    try {
-      await updatePermissionUserJobRole(userId, nextRoles.join(","));
-      const nextStoreProgress = await fetchTrainingStoreProgress();
-      setStoreProgress(nextStoreProgress);
-      setDraftJobRolesByUserId(
-        Object.fromEntries(
-          (nextStoreProgress.users || []).map((employee) => [
-            employee.userId,
-            normalizeJobRoleValues(getJobRoleValues(employee.jobRole)),
-          ]),
-        ),
-      );
-    } catch (error) {
-      setStoreProgressError(error.message || "岗位保存失败");
-    } finally {
-      setSavingJobRoleUserId(null);
-    }
-  }
+  }, []);
 
   const canManagePositions = user?.permissions?.includes(
     TRAINING_POSITION_MANAGE_PERMISSION,
@@ -274,23 +131,6 @@ export default function TrainingSpacePage() {
       optional: optionalPlanItems.map(toCourseCard),
     };
   }, [optionalPlanItems, requiredPlanItems]);
-  const filteredStoreUsers = useMemo(() => {
-    const users = storeProgress?.users ?? [];
-
-    if (storeFilter === "completed") {
-      return users.filter(
-        (employee) =>
-          employee.requiredTotal > 0 && employee.completionPercent === 100,
-      );
-    }
-
-    if (storeFilter === "incomplete") {
-      return users.filter((employee) => employee.completionPercent < 100);
-    }
-
-    return users;
-  }, [storeFilter, storeProgress]);
-
   return (
     <TrainingLayout
       pageCopy={{
@@ -346,177 +186,6 @@ export default function TrainingSpacePage() {
             {planError ? (
               <section className={styles.uploadMessageError}>
                 培训任务加载失败：{planError}
-              </section>
-            ) : null}
-
-            {canViewStoreProgress ? (
-              <section className={styles.section}>
-                <div className={styles.sectionBar}>
-                  <h2 className={styles.sectionTitle}>
-                    <span className={styles.sectionCounter}>00</span>
-                    <span>本店进度</span>
-                    <span className={styles.sectionTitleEn}>
-                      Store training progress
-                    </span>
-                  </h2>
-                  <div className={styles.filterButtons}>
-                    {[
-                      ["all", "全部"],
-                      ["incomplete", "未完成"],
-                      ["completed", "已完成"],
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        className={`${styles.filterButton} ${
-                          storeFilter === value ? styles.filterButtonActive : ""
-                        }`}
-                        onClick={() => setStoreFilter(value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {storeProgressError ? (
-                  <div className={styles.materialEmpty}>
-                    本店进度暂时不可用：{storeProgressError}
-                  </div>
-                ) : storeProgress ? (
-                  <>
-                    <div className={styles.storeProgressSummary}>
-                      <span>{storeProgress.restaurant.name}</span>
-                      <strong>
-                        {storeProgress.summary.averageCompletionPercent}%
-                      </strong>
-                      <span>
-                        {storeProgress.summary.completedEmployeeCount}/
-                        {storeProgress.summary.employeeCount} 人完成必修
-                      </span>
-                    </div>
-                    <div className={styles.storeProgressTableWrap}>
-                      <table className={styles.storeProgressTable}>
-                        <thead>
-                          <tr>
-                            <th>员工</th>
-                            <th>岗位</th>
-                            <th>必修完成</th>
-                            <th>完成率</th>
-                            <th>最近学习</th>
-                            {canManageStoreJobRoles ? <th>操作</th> : null}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredStoreUsers.map((employee) => {
-                            const selectedRoles =
-                              draftJobRolesByUserId[employee.userId] ||
-                              normalizeJobRoleValues(
-                                getJobRoleValues(employee.jobRole),
-                              );
-                            const isSaving =
-                              savingJobRoleUserId === employee.userId;
-                            const canEditEmployeeJobRoles =
-                              canManageStoreJobRoles &&
-                              canEditStoreJobRoles(employee.jobRole);
-
-                            return (
-                              <tr key={employee.userId}>
-                                <td>
-                                  <strong>{employee.name}</strong>
-                                  <span>{employee.email}</span>
-                                </td>
-                                <td>
-                                  {canEditEmployeeJobRoles ? (
-                                    <div className={styles.jobRoleEditor}>
-                                      {storeJobRoleGroups.map((group) => (
-                                        <div
-                                          className={styles.jobRoleGroup}
-                                          key={group.id}
-                                        >
-                                          <span>{group.label}</span>
-                                          <div className={styles.jobRolePillRow}>
-                                            {group.options.map((option) => {
-                                              const isSelected =
-                                                selectedRoles.includes(
-                                                  option.value,
-                                                );
-
-                                              return (
-                                                <button
-                                                  key={option.value}
-                                                  type="button"
-                                                  className={`${styles.jobRolePill} ${
-                                                    isSelected
-                                                      ? styles.jobRolePillActive
-                                                      : ""
-                                                  }`}
-                                                  disabled={isSaving}
-                                                  onClick={() =>
-                                                    updateDraftJobRoles(
-                                                      employee.userId,
-                                                      option.value,
-                                                    )
-                                                  }
-                                                >
-                                                  {option.label}
-                                                </button>
-                                              );
-                                            })}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : canManageStoreJobRoles ? (
-                                    <span className={styles.jobRoleReadOnly}>
-                                      {formatJobRoleLabel(employee.jobRole, "zh")}
-                                      <small>非门店岗位由总部管理</small>
-                                    </span>
-                                  ) : (
-                                    formatJobRoleLabel(employee.jobRole, "zh")
-                                  )}
-                                </td>
-                                <td>
-                                  {employee.requiredCompleted}/
-                                  {employee.requiredTotal}
-                                </td>
-                                <td>{employee.completionPercent}%</td>
-                                <td>{formatDate(employee.lastOpenedAt)}</td>
-                                {canManageStoreJobRoles ? (
-                                  <td>
-                                    {canEditEmployeeJobRoles ? (
-                                      <button
-                                        type="button"
-                                        className={styles.permissionSaveButton}
-                                        disabled={isSaving}
-                                        onClick={() =>
-                                          saveEmployeeJobRoles(employee.userId)
-                                        }
-                                      >
-                                        {isSaving ? "保存中" : "保存"}
-                                      </button>
-                                    ) : (
-                                      <span className={styles.jobRoleReadOnly}>
-                                        总部
-                                      </span>
-                                    )}
-                                  </td>
-                                ) : null}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {filteredStoreUsers.length === 0 ? (
-                      <div className={styles.materialEmpty}>
-                        当前筛选下没有员工。
-                      </div>
-                    ) : null}
-                  </>
-                ) : isLoadingPlan ? (
-                  <div className={styles.materialEmpty}>正在加载本店进度...</div>
-                ) : null}
               </section>
             ) : null}
 

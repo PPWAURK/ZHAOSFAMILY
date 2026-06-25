@@ -49,6 +49,9 @@ describe('TrainingService', () => {
         findUnique: jest.fn(),
         findMany: jest.fn(),
       },
+      legacyUserManagedRestaurant: {
+        findMany: jest.fn(),
+      },
       role: {
         findMany: jest.fn(),
       },
@@ -1009,12 +1012,14 @@ describe('TrainingService', () => {
         name: 'Lina Zhao',
         email: 'lina@example.com',
         jobRole: 'front-of-house',
+        restaurant: { id: 3, name: 'Paris Opera' },
       },
       {
         id: 11,
         name: 'Ming Zhao',
         email: 'ming@example.com',
         jobRole: 'back-of-house',
+        restaurant: { id: 3, name: 'Paris Opera' },
       },
     ]);
     prismaService.trainingMaterialProgress.findMany.mockResolvedValue([
@@ -1083,7 +1088,7 @@ describe('TrainingService', () => {
     );
   });
 
-  it('rejects store progress access without a manager role or permission', async () => {
+  it('rejects store progress access without an organization role', async () => {
     const { service } = createService();
 
     await expect(
@@ -1092,13 +1097,166 @@ describe('TrainingService', () => {
         jobRole: 'front-of-house',
         restaurantId: 3,
         store: { id: 3, name: 'Paris Opera' },
-        permissions: [],
+        permissions: ['training.progress.view_store'],
       }),
     ).rejects.toMatchObject({ status: 403 });
   });
 
-  it('rejects store progress access for holding users', async () => {
-    const { service } = createService();
+  it('limits regional manager store progress to assigned restaurants', async () => {
+    const { service, prismaService } = createService();
+
+    prismaService.legacyUserManagedRestaurant.findMany.mockResolvedValue([
+      { restaurantId: 3 },
+      { restaurantId: 8 },
+    ]);
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      {
+        code: 'ALL',
+        nameZh: '全岗通用',
+        nameEn: 'All',
+        nameFr: 'Tous',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 0,
+      },
+      {
+        code: 'FOH',
+        nameZh: '前厅',
+        nameEn: 'Front of House',
+        nameFr: 'Salle',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 10,
+      },
+    ]);
+    prismaService.trainingMaterial.findMany.mockResolvedValue([
+      buildMaterialRow({ id: 1, positionId: 'FOH', isRequired: true }),
+      buildMaterialRow({ id: 2, positionId: 'ALL', isRequired: true }),
+    ]);
+    prismaService.user.findMany.mockResolvedValue([
+      {
+        id: 10,
+        name: 'Lina Zhao',
+        email: 'lina@example.com',
+        jobRole: 'front-of-house',
+        restaurant: { id: 3, name: 'Paris Opera' },
+      },
+    ]);
+    prismaService.trainingMaterialProgress.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.getStoreProgress({
+        id: 7,
+        jobRole: 'regional-manager',
+        restaurantId: 99,
+        store: { id: 99, name: 'Regional Office' },
+        permissions: [],
+      }),
+    ).resolves.toMatchObject({
+      restaurant: { id: 0, name: '负责门店' },
+      summary: {
+        employeeCount: 1,
+        completedEmployeeCount: 0,
+        averageCompletionPercent: 0,
+      },
+    });
+    expect(
+      prismaService.legacyUserManagedRestaurant.findMany,
+    ).toHaveBeenCalledWith({
+      where: { userId: 7 },
+      select: { restaurantId: true },
+      orderBy: { restaurantId: 'asc' },
+    });
+    expect(prismaService.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          restaurantId: {
+            in: [3, 8],
+          },
+        },
+      }),
+    );
+  });
+
+  it('summarizes all store training progress for holding users', async () => {
+    const { service, prismaService } = createService();
+
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      {
+        code: 'ALL',
+        nameZh: '全岗通用',
+        nameEn: 'All',
+        nameFr: 'Tous',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 0,
+      },
+      {
+        code: 'FOH',
+        nameZh: '前厅',
+        nameEn: 'Front of House',
+        nameFr: 'Salle',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 10,
+      },
+      {
+        code: 'BOH',
+        nameZh: '后厨',
+        nameEn: 'Back of House',
+        nameFr: 'Cuisine',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 20,
+      },
+    ]);
+    prismaService.trainingMaterial.findMany.mockResolvedValue([
+      buildMaterialRow({ id: 1, positionId: 'FOH', isRequired: true }),
+      buildMaterialRow({ id: 2, positionId: 'ALL', isRequired: true }),
+      buildMaterialRow({ id: 3, positionId: 'BOH', isRequired: true }),
+    ]);
+    prismaService.user.findMany.mockResolvedValue([
+      {
+        id: 10,
+        name: 'Lina Zhao',
+        email: 'lina@example.com',
+        jobRole: 'front-of-house',
+        restaurant: { id: 3, name: 'Paris Opera' },
+      },
+      {
+        id: 11,
+        name: 'Ming Zhao',
+        email: 'ming@example.com',
+        jobRole: 'back-of-house',
+        restaurant: { id: 8, name: 'Paris Marais' },
+      },
+    ]);
+    prismaService.trainingMaterialProgress.findMany.mockResolvedValue([
+      {
+        userId: 10,
+        materialId: 1,
+        status: 'completed',
+        progressPct: 100,
+        lastOpenedAt: new Date('2026-05-05T08:00:00.000Z'),
+        completedAt: new Date('2026-05-05T08:00:00.000Z'),
+      },
+      {
+        userId: 10,
+        materialId: 2,
+        status: 'completed',
+        progressPct: 100,
+        lastOpenedAt: new Date('2026-05-05T09:00:00.000Z'),
+        completedAt: new Date('2026-05-05T09:00:00.000Z'),
+      },
+      {
+        userId: 11,
+        materialId: 2,
+        status: 'completed',
+        progressPct: 100,
+        lastOpenedAt: new Date('2026-05-05T10:00:00.000Z'),
+        completedAt: new Date('2026-05-05T10:00:00.000Z'),
+      },
+    ]);
 
     await expect(
       service.getStoreProgress({
@@ -1106,9 +1264,39 @@ describe('TrainingService', () => {
         jobRole: 'holding',
         restaurantId: 99,
         store: { id: 99, name: 'ZHAO Holding' },
-        permissions: ['training.progress.view_store'],
+        permissions: [],
       }),
-    ).rejects.toMatchObject({ status: 403 });
+    ).resolves.toMatchObject({
+      restaurant: { id: 0, name: '全部门店' },
+      users: [
+        {
+          userId: 10,
+          requiredTotal: 2,
+          requiredCompleted: 2,
+          completionPercent: 100,
+        },
+        {
+          userId: 11,
+          requiredTotal: 2,
+          requiredCompleted: 1,
+          completionPercent: 50,
+        },
+      ],
+      summary: {
+        employeeCount: 2,
+        completedEmployeeCount: 1,
+        averageCompletionPercent: 75,
+      },
+    });
+    expect(prismaService.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          jobRole: {
+            not: 'holding',
+          },
+        },
+      }),
+    );
   });
 
   describe('job-role position mapping', () => {

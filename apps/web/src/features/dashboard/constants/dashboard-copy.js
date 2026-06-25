@@ -42,6 +42,14 @@ export const DASHBOARD_NAV = [
         fr: "Certifications",
       },
       {
+        id: "training-progress",
+        href: "/dashboard/training/progress",
+        zh: "培训进度",
+        en: "Training progress",
+        fr: "Progression formation",
+        visibleForJobRoles: STORE_MANAGEMENT_JOB_ROLES,
+      },
+      {
         id: "training-materials",
         href: "/dashboard/training/materials",
         zh: "学习资料",

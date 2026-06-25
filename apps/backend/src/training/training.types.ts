@@ -238,6 +238,10 @@ export type TrainingStoreProgressUserItem = {
   name: string;
   email: string;
   jobRole: string | null;
+  restaurant: {
+    id: number;
+    name: string;
+  };
   requiredTotal: number;
   requiredCompleted: number;
   completionPercent: number;

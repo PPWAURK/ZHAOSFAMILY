@@ -454,6 +454,14 @@ export const TRAINING_COPY = {
       optionalHeading: "选修 · 深度课程",
       optionalEn: "Optional · deep-dive",
     },
+    progress: {
+      topStage: "培训进度 · PROGRESS",
+      kicker: "ZHAO's · 培训 · 进度 · 门店",
+      title: "培训",
+      titleEm: "进度",
+      titleSuffix: "。",
+      lede: "按门店查看伙伴必修培训完成情况。总部看全部门店,区域经理看负责门店,店长看本门店。",
+    },
     certifications: {
       topStage: "认证管理 · CERTIFICATIONS",
       kicker: "ZHAO's · 培训 · 认证 · 资料",
@@ -583,6 +591,14 @@ export const TRAINING_COPY = {
       optionalHeading: "Electives · deep-dive",
       optionalEn: "Optional · deep-dive",
     },
+    progress: {
+      topStage: "Training progress · PROGRESS",
+      kicker: "ZHAO's · Training · Progress · Stores",
+      title: "Training",
+      titleEm: "Progress",
+      titleSuffix: ".",
+      lede: "Review required training completion by store. Holding sees every store, regional managers see assigned stores, and store managers see their own store.",
+    },
     certifications: {
       topStage: "Certifications · CERTIFICATIONS",
       kicker: "ZHAO's · Training · Certification · Resources",
@@ -711,6 +727,14 @@ export const TRAINING_COPY = {
       requiredEn: "Required by role",
       optionalHeading: "Électifs · approfondissement",
       optionalEn: "Optional · deep-dive",
+    },
+    progress: {
+      topStage: "Progression formation · PROGRESS",
+      kicker: "ZHAO's · Formation · Progression · Boutiques",
+      title: "Progression",
+      titleEm: "Formation",
+      titleSuffix: ".",
+      lede: "Suivez les formations obligatoires par boutique. Le siège voit toutes les boutiques, les responsables régionaux leurs boutiques, et les gérants leur boutique.",
     },
     certifications: {
       topStage: "Certifications · CERTIFICATIONS",
