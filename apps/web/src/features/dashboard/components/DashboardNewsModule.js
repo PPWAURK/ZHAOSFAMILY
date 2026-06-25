@@ -27,7 +27,7 @@ const INITIAL_FORM = {
   summary: "",
   body: "",
   category: "news",
-  visibility: "team",
+  visibility: "public",
   tags: "",
 };
 

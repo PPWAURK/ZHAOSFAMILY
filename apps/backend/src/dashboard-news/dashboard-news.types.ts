@@ -5,11 +5,7 @@ export const DASHBOARD_NEWS_CATEGORIES = [
   'quality',
 ] as const;
 
-export const DASHBOARD_NEWS_VISIBILITIES = [
-  'public',
-  'team',
-  'private',
-] as const;
+export const DASHBOARD_NEWS_VISIBILITIES = ['public', 'management'] as const;
 
 export type DashboardNewsCategory = (typeof DASHBOARD_NEWS_CATEGORIES)[number];
 

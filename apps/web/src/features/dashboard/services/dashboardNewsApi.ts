@@ -8,6 +8,13 @@ import type {
   UploadedDashboardNewsAttachment,
 } from "@/features/dashboard/types/dashboardNews";
 
+function normalizeVisibility(visibility?: string | null): string {
+  if (visibility === "private") return "management";
+  if (visibility === "team") return "public";
+
+  return visibility ?? "public";
+}
+
 function normalizePost(
   raw: DashboardNewsPostApiRecord | null,
 ): DashboardNewsPost | null {
@@ -19,7 +26,7 @@ function normalizePost(
     summary: raw.summary ?? "",
     body: raw.body ?? "",
     category: raw.category ?? "operations",
-    visibility: raw.visibility ?? "team",
+    visibility: normalizeVisibility(raw.visibility),
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     attachment: raw.attachment
       ? {

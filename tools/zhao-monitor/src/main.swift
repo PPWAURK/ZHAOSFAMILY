@@ -8,14 +8,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     var loaded = false
 
     let defaults: [String: String] = [
-        "backendHealthURL": "https://api.zhaoplatforme.com/backend3/health",
-        "webURL": "https://zhaoplatforme.com",
+        "backendHealthURL": "https://api.zhaosfamily.com/api/health",
+        "webURL": "https://zhaosfamily.com",
         "repo": "PPWAURK/ZHAOSFAMILY",
         "ref": "main",
         "ciWorkflow": "ci.yml",
         "backendWorkflow": "deploy-backend.yml",
         "webWorkflow": "deploy-web.yml",
-        "sshHost": "51.178.46.102",
+        "sshHost": "152.228.137.101",
         "sshUser": "ubuntu",
         "sshPort": "22",
         "sshKeyPath": "~/.ssh/zhao_deploy",
@@ -24,6 +24,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         "mobileAppPath": "/Users/shihongwang/Documents/03-Developpement/GitHub/zhao-family/apps/mobile",
         "easCommand": "eas",
         "expoToken": ""
+    ]
+    let legacyDefaults: [String: String] = [
+        "backendHealthURL": "https://api.zhaoplatforme.com/backend3/health",
+        "webURL": "https://zhaoplatforme.com",
+        "sshHost": "51.178.46.102"
     ]
     var config: [String: String] = [:]
 
@@ -39,9 +44,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         var merged = defaults
         if let data = try? Data(contentsOf: configFile),
            let saved = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
-            for (k, v) in saved where !v.isEmpty { merged[k] = v }
+            for (k, v) in saved where !v.isEmpty {
+                merged[k] = migrateLegacyConfigValue(key: k, value: v)
+            }
         }
         config = merged
+    }
+
+    func migrateLegacyConfigValue(key: String, value: String) -> String {
+        if legacyDefaults[key] == value {
+            return defaults[key] ?? value
+        }
+
+        switch key {
+        case "backendHealthURL":
+            return value
+                .replacingOccurrences(of: "https://api.zhaoplatforme.com/backend3/health",
+                                       with: "https://api.zhaosfamily.com/api/health")
+                .replacingOccurrences(of: "https://api.zhaoplatforme.com/backend3",
+                                       with: "https://api.zhaosfamily.com/api")
+                .replacingOccurrences(of: "https://api.zhaoplatforme.com/api",
+                                       with: "https://api.zhaosfamily.com/api")
+        case "webURL":
+            return value.replacingOccurrences(of: "https://zhaoplatforme.com",
+                                              with: "https://zhaosfamily.com")
+        case "sshHost":
+            return value == "51.178.46.102" ? "152.228.137.101" : value
+        default:
+            return value
+        }
     }
 
     @discardableResult

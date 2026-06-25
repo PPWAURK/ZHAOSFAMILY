@@ -70,6 +70,13 @@ function normalizeDashboardNewsBody(body: string): string {
   );
 }
 
+function normalizeDashboardNewsVisibility(visibility?: string | null): string {
+  if (visibility === "private") return "management";
+  if (visibility === "team") return "public";
+
+  return visibility ?? "public";
+}
+
 function normalizeNewsPost(raw: DashboardNewsPostApiRecord): DashboardNewsPost {
   const attachmentObjectKey = raw.attachment?.objectKey ?? "";
 
@@ -79,7 +86,7 @@ function normalizeNewsPost(raw: DashboardNewsPostApiRecord): DashboardNewsPost {
     summary: raw.summary ?? "",
     body: normalizeDashboardNewsBody(raw.body ?? ""),
     category: raw.category ?? "operations",
-    visibility: raw.visibility ?? "team",
+    visibility: normalizeDashboardNewsVisibility(raw.visibility),
     tags: Array.isArray(raw.tags) ? raw.tags.filter((tag) => typeof tag === "string") : [],
     attachment: raw.attachment
       ? {

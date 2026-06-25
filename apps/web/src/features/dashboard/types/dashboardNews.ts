@@ -1,4 +1,4 @@
-export type DashboardNewsVisibility = "team" | "store" | "all" | string;
+export type DashboardNewsVisibility = "public" | "management" | "all" | string;
 
 export type DashboardNewsCategory = "operations" | "training" | "all" | string;
 

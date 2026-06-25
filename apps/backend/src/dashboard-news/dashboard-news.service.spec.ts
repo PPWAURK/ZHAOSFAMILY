@@ -7,6 +7,7 @@ describe('DashboardNewsService publish notifications', () => {
     const prismaService = {
       dashboardPost: {
         create: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       user: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -84,7 +85,7 @@ describe('DashboardNewsService publish notifications', () => {
         accountStatus: 'approved',
         id: { not: 1 },
       },
-      select: { id: true, preferredLanguage: true },
+      select: { id: true, jobRole: true, preferredLanguage: true },
     });
     expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
@@ -93,6 +94,38 @@ describe('DashboardNewsService publish notifications', () => {
         title: '最新公告',
         data: { type: 'dashboard-news', postId: '7' },
       }),
+    );
+    expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
+      [4],
+      expect.objectContaining({ title: 'New announcement' }),
+    );
+  });
+
+  it('saves management visibility and only notifies management roles', async () => {
+    const { service, prismaService, notificationsService } = createService();
+    prismaService.dashboardPost.create.mockResolvedValue({
+      ...createdPostRow(),
+      visibility: 'management',
+    });
+    prismaService.user.findMany.mockResolvedValue([
+      { id: 2, jobRole: 'store-manager', preferredLanguage: 'zh' },
+      { id: 3, jobRole: 'front-server', preferredLanguage: 'zh' },
+      { id: 4, jobRole: 'front-assistant,front-host', preferredLanguage: 'en' },
+    ]);
+
+    await service.createPost(holdingActor, {
+      ...createDto,
+      visibility: 'management',
+    });
+
+    const [createCall] = prismaService.dashboardPost.create.mock.calls as [
+      [{ data: { visibility: string } }],
+    ];
+    expect(createCall[0].data.visibility).toBe('management');
+    expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
+    expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
+      [2],
+      expect.objectContaining({ title: '最新公告' }),
     );
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
       [4],
@@ -121,5 +154,64 @@ describe('DashboardNewsService publish notifications', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prismaService.dashboardPost.create).not.toHaveBeenCalled();
     expect(notificationsService.sendToUsers).not.toHaveBeenCalled();
+  });
+
+  it('does not include management visibility for line-staff readers', async () => {
+    const { service, prismaService } = createService();
+
+    await service.listPosts(
+      {
+        id: 8,
+        jobRole: 'front-server',
+        restaurantId: 2,
+        userLevel: 0,
+      },
+      {},
+    );
+
+    expect(prismaService.dashboardPost.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            {
+              OR: [{ visibility: 'public' }, { visibility: 'team' }],
+            },
+            {},
+          ],
+        },
+      }),
+    );
+  });
+
+  it('includes management visibility for management readers', async () => {
+    const { service, prismaService } = createService();
+
+    await service.listPosts(
+      {
+        id: 9,
+        jobRole: 'front-assistant,front-host',
+        restaurantId: 2,
+        userLevel: 0,
+      },
+      {},
+    );
+
+    expect(prismaService.dashboardPost.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            {
+              OR: [
+                { visibility: 'public' },
+                { visibility: 'team' },
+                { visibility: 'management' },
+                { visibility: 'private' },
+              ],
+            },
+            {},
+          ],
+        },
+      }),
+    );
   });
 });

@@ -294,8 +294,7 @@ export const DASHBOARD_COPY = {
       visibility: {
         all: "全部范围",
         public: "全员可见",
-        team: "门店团队",
-        private: "管理层",
+        management: "管理层",
       },
       sort: {
         newest: "最新优先",
@@ -328,7 +327,7 @@ export const DASHBOARD_COPY = {
       openAttachment: "查看附件",
       publish: {
         title: "发布动态",
-        subtitle: "写给门店团队阅读的真实内容，会保存到后台并出现在下方信息流。",
+        subtitle: "写给全员或管理层阅读的真实内容，会保存到后台并出现在下方信息流。",
         titleLabel: "标题",
         titlePlaceholder: "例如：午高峰出品节奏更新",
         summaryLabel: "摘要",
@@ -454,8 +453,7 @@ export const DASHBOARD_COPY = {
       visibility: {
         all: "All visibility",
         public: "All staff",
-        team: "Store teams",
-        private: "Managers",
+        management: "Managers",
       },
       sort: {
         newest: "Newest first",
@@ -489,7 +487,7 @@ export const DASHBOARD_COPY = {
       publish: {
         title: "Publish update",
         subtitle:
-          "Write real content for store teams. It is saved to the backend and appears below.",
+          "Write real content for all staff or managers. It is saved to the backend and appears below.",
         titleLabel: "Title",
         titlePlaceholder: "Example: Lunch rush production rhythm updated",
         summaryLabel: "Summary",
@@ -615,8 +613,7 @@ export const DASHBOARD_COPY = {
       visibility: {
         all: "Toute visibilite",
         public: "Tous les employes",
-        team: "Equipes boutique",
-        private: "Managers",
+        management: "Managers",
       },
       sort: {
         newest: "Plus recent",

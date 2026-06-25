@@ -24,6 +24,15 @@ import type {
 } from './dashboard-news.types';
 
 const HOLDING_JOB_ROLE = 'holding';
+const MANAGEMENT_JOB_ROLES = [
+  HOLDING_JOB_ROLE,
+  'regional-manager',
+  'store-manager',
+  'front-manager',
+  'back-manager',
+  'front-assistant',
+  'back-assistant',
+] as const;
 
 type DashboardPostWithRelations = Prisma.DashboardPostGetPayload<{
   include: {
@@ -89,7 +98,7 @@ export class DashboardNewsService {
         summary: dto.summary.trim(),
         body: dto.body.trim(),
         category: dto.category,
-        visibility: 'public',
+        visibility: dto.visibility,
         tagsJson: JSON.stringify(this.normalizeTags(dto.tags ?? [])),
         attachmentName: dto.attachmentName?.trim() || null,
         attachmentMimeType: dto.attachmentMimeType?.trim() || null,
@@ -113,8 +122,8 @@ export class DashboardNewsService {
 
   /**
    * Best-effort broadcast push when a post is published. Audience follows the
-   * post's visibility (public → everyone, team → same restaurant, private →
-   * nobody); the author is never notified about their own post. Delivery
+   * post's visibility (public → everyone, management → management roles); the
+   * author is never notified about their own post. Delivery
    * failures must not fail publishing, so errors are swallowed after logging.
    */
   private async notifyPostPublished(
@@ -122,11 +131,7 @@ export class DashboardNewsService {
     post: DashboardNewsPost,
   ): Promise<void> {
     try {
-      const audience = await this.findPostAudience(
-        post.visibility,
-        post.restaurantId,
-        actor.id,
-      );
+      const audience = await this.findPostAudience(post.visibility, actor.id);
       if (audience.length === 0) {
         return;
       }
@@ -158,21 +163,29 @@ export class DashboardNewsService {
 
   private async findPostAudience(
     visibility: DashboardNewsVisibility,
-    restaurantId: number,
     authorId: number,
   ): Promise<{ id: number; preferredLanguage: string | null }[]> {
-    if (visibility === 'private') {
-      return [];
-    }
-
-    return this.prismaService.user.findMany({
+    const users = await this.prismaService.user.findMany({
       where: {
         accountStatus: ACCOUNT_STATUS.approved,
         id: { not: authorId },
-        ...(visibility === 'team' ? { restaurantId } : {}),
       },
-      select: { id: true, preferredLanguage: true },
+      select: { id: true, jobRole: true, preferredLanguage: true },
     });
+
+    if (visibility === 'management') {
+      return users
+        .filter((user) => this.hasManagementJobRole(user.jobRole))
+        .map((user) => ({
+          id: user.id,
+          preferredLanguage: user.preferredLanguage,
+        }));
+    }
+
+    return users.map((user) => ({
+      id: user.id,
+      preferredLanguage: user.preferredLanguage,
+    }));
   }
 
   async deletePost(actor: DashboardNewsActor, id: number): Promise<void> {
@@ -205,20 +218,22 @@ export class DashboardNewsService {
   private buildVisibilityWhere(
     actor: DashboardNewsActor,
   ): Prisma.DashboardPostWhereInput {
-    const privateVisibility: Prisma.DashboardPostWhereInput[] = [
-      { visibility: 'private', authorId: actor.id },
-    ];
+    const managementVisibility: Prisma.DashboardPostWhereInput[] = [];
 
-    if (actor.userLevel >= 2) {
-      privateVisibility.push({ visibility: 'private' });
+    if (this.hasManagementJobRole(actor.jobRole)) {
+      managementVisibility.push(
+        { visibility: 'management' },
+        { visibility: 'private' },
+      );
     }
 
+    // Legacy "team" posts are treated as public after visibility was simplified
+    // to only all-staff and management scopes.
     return {
       OR: [
         { visibility: 'public' },
-        { author: { jobRole: { contains: HOLDING_JOB_ROLE } } },
-        { visibility: 'team', restaurantId: actor.restaurantId },
-        ...privateVisibility,
+        { visibility: 'team' },
+        ...managementVisibility,
       ],
     };
   }
@@ -233,8 +248,12 @@ export class DashboardNewsService {
       where.category = query.category;
     }
 
-    if (query.visibility) {
-      where.visibility = query.visibility;
+    if (query.visibility === 'public') {
+      where.visibility = { in: ['public', 'team'] };
+    }
+
+    if (query.visibility === 'management') {
+      where.visibility = { in: ['management', 'private'] };
     }
 
     if (searchTerm) {
@@ -291,10 +310,20 @@ export class DashboardNewsService {
   }
 
   private isHoldingActor(actor: DashboardNewsActor): boolean {
-    return `${actor.jobRole || ''}`
+    return this.parseJobRoles(actor.jobRole).includes(HOLDING_JOB_ROLE);
+  }
+
+  private hasManagementJobRole(jobRole: string | null): boolean {
+    const jobRoles = this.parseJobRoles(jobRole);
+
+    return MANAGEMENT_JOB_ROLES.some((role) => jobRoles.includes(role));
+  }
+
+  private parseJobRoles(jobRole: string | null): string[] {
+    return `${jobRole || ''}`
       .split(',')
       .map((role) => role.trim().toLowerCase())
-      .includes(HOLDING_JOB_ROLE);
+      .filter(Boolean);
   }
 
   private async deleteDashboardAttachment(
@@ -317,7 +346,7 @@ export class DashboardNewsService {
       summary: post.summary,
       body: post.body,
       category: post.category as DashboardNewsCategory,
-      visibility: post.visibility as DashboardNewsVisibility,
+      visibility: this.mapVisibility(post.visibility),
       tags: this.parseTags(post.tagsJson),
       attachment: this.mapAttachment(post),
       restaurantId: post.restaurantId,
@@ -353,5 +382,17 @@ export class DashboardNewsService {
       bucket: post.attachmentBucket,
       objectKey: post.attachmentObjectKey,
     };
+  }
+
+  private mapVisibility(visibility: string): DashboardNewsVisibility {
+    if (visibility === 'private') {
+      return 'management';
+    }
+
+    if (visibility === 'team') {
+      return 'public';
+    }
+
+    return visibility as DashboardNewsVisibility;
   }
 }

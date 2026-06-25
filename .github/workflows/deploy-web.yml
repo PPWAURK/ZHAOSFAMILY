@@ -1,7 +1,7 @@
 name: Deploy Web
 
 # Builds the Next.js static export (apps/web -> out/) and uploads it over SFTP
-# to the OVH shared hosting that serves zhaoplatforme.com. Apex root, so no
+# to the OVH shared hosting that serves zhaosfamily.com. Apex root, so no
 # basePath. The API base URL is injected at build time.
 #
 # Required secrets: WEB_SFTP_HOST, WEB_SFTP_USER, WEB_SFTP_PASSWORD,
@@ -43,7 +43,7 @@ jobs:
 
       - name: Build web (static export)
         env:
-          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL || 'https://api.zhaoplatforme.com/backend3' }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL || 'https://api.zhaosfamily.com/api' }}
         run: pnpm --filter @zhao/web build
 
       - name: Upload out/ via SFTP
