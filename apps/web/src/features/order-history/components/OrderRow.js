@@ -98,7 +98,7 @@ export default function OrderRow({
           type="button"
           className={styles.rowAction}
           onClick={() => onCreateReturn(order)}
-          disabled={deletingOrder}
+          disabled={!order.canReturn || deletingOrder}
         >
           {copy.returnOrder}
         </button>
@@ -106,7 +106,7 @@ export default function OrderRow({
           type="button"
           className={`${styles.rowAction} ${styles.rowActionDanger}`}
           onClick={() => onDeleteOrder(order)}
-          disabled={deletingOrder}
+          disabled={!order.canDelete || deletingOrder}
         >
           {deletingOrder ? copy.deletingOrder : copy.deleteOrder}
         </button>

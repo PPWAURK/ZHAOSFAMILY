@@ -241,8 +241,13 @@ export class OrdersService {
     actor: OrderActor,
     request: OrdersRequestContext,
   ): Promise<unknown[]> {
+    const canViewAllStores = this.hasHoldingScope(actor);
+    const where: Prisma.PurchaseOrderWhereInput = canViewAllStores
+      ? {}
+      : { restaurantId: actor.restaurantId };
+
     const orders = await this.prismaService.purchaseOrder.findMany({
-      where: { restaurantId: actor.restaurantId },
+      where,
       include: {
         supplier: { select: { id: true, name: true } },
         restaurant: { select: { id: true, name: true } },
@@ -254,6 +259,10 @@ export class OrdersService {
     });
 
     return orders.map((order) => {
+      const canManageOrder = this.canManageRestaurantOrder(
+        actor,
+        order.restaurantId,
+      );
       const commandeUrl = this.ordersDocumentService.buildOrderUrl(
         request,
         order.id,
@@ -273,7 +282,9 @@ export class OrdersService {
         commandeUrl,
         bonUrl: commandeUrl,
         createdAt: order.createdAt.toISOString(),
-        canEdit: order.returns.length === 0,
+        canEdit: canManageOrder && order.returns.length === 0,
+        canReturn: canManageOrder,
+        canDelete: canManageOrder && order.returns.length === 0,
         returnCount: order.returns.length,
         createdBy: {
           id: order.createdByUser.id,
@@ -447,7 +458,7 @@ export class OrdersService {
       throw new NotFoundException('ORDER_NOT_FOUND');
     }
 
-    this.assertRestaurantScope(actor, order.restaurantId);
+    this.assertRestaurantReadScope(actor, order.restaurantId);
 
     const commandeUrl = this.ordersDocumentService.buildOrderUrl(
       request,
@@ -647,8 +658,12 @@ export class OrdersService {
   }
 
   async listOrderReturns(actor: OrderActor): Promise<unknown[]> {
+    const where: Prisma.PurchaseReturnWhereInput = this.hasHoldingScope(actor)
+      ? {}
+      : { restaurantId: actor.restaurantId };
+
     const returns = await this.prismaService.purchaseReturn.findMany({
-      where: { restaurantId: actor.restaurantId },
+      where,
       include: {
         purchaseOrder: {
           select: { id: true, number: true, deliveryDate: true },
@@ -709,7 +724,7 @@ export class OrdersService {
       throw new NotFoundException('ORDER_NOT_FOUND');
     }
 
-    this.assertRestaurantScope(actor, order.restaurantId);
+    this.assertRestaurantReadScope(actor, order.restaurantId);
 
     const returnedItems = await this.prismaService.purchaseReturnItem.findMany({
       where: { purchaseReturn: { purchaseOrderId: orderId } },
@@ -938,7 +953,7 @@ export class OrdersService {
       throw new NotFoundException('ORDER_NOT_FOUND');
     }
 
-    this.assertRestaurantScope(actor, order.restaurantId);
+    this.assertRestaurantReadScope(actor, order.restaurantId);
 
     return this.ordersDocumentService.resolveExistingOrderFile(
       order.bonFileName,
@@ -1344,9 +1359,28 @@ export class OrdersService {
   }
 
   private assertRestaurantScope(actor: OrderActor, restaurantId: number): void {
-    if (actor.restaurantId !== restaurantId) {
+    if (!this.canManageRestaurantOrder(actor, restaurantId)) {
       throw new ForbiddenException('ORDER_OUTSIDE_RESTAURANT_SCOPE');
     }
+  }
+
+  private assertRestaurantReadScope(
+    actor: OrderActor,
+    restaurantId: number,
+  ): void {
+    if (
+      !this.hasHoldingScope(actor) &&
+      !this.canManageRestaurantOrder(actor, restaurantId)
+    ) {
+      throw new ForbiddenException('ORDER_OUTSIDE_RESTAURANT_SCOPE');
+    }
+  }
+
+  private canManageRestaurantOrder(
+    actor: OrderActor,
+    restaurantId: number,
+  ): boolean {
+    return actor.restaurantId === restaurantId;
   }
 
   private parseDeliveryDate(raw: string): Date {

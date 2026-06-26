@@ -56,6 +56,8 @@ function toOrderRow(order) {
     status: "recorded",
     commandeUrl: order.commandeUrl,
     canEdit: order.canEdit !== false,
+    canReturn: order.canReturn !== false,
+    canDelete: order.canDelete !== false,
   };
 }
 
@@ -160,6 +162,8 @@ export default function OrderHistoryPage() {
   }
 
   async function handleOpenReturn(order) {
+    if (!order?.id || order.canReturn === false) return;
+
     try {
       setActiveOrder(order);
       setReturnDraft(null);
@@ -215,7 +219,7 @@ export default function OrderHistoryPage() {
   }
 
   async function handleDeleteOrder(order) {
-    if (!order?.id) return;
+    if (!order?.id || order.canDelete === false) return;
     const orderId = String(order.id);
 
     const confirmed = await confirm({

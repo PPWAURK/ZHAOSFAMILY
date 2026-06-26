@@ -255,6 +255,143 @@ describe('OrdersService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('lists only current restaurant orders for store users', async () => {
+    prismaService.purchaseOrder.findMany.mockResolvedValue([]);
+
+    await service.listOrders(
+      { id: 7, restaurantId: 3, jobRole: 'store-manager', permissions: [] },
+      { protocol: 'http', get: () => 'localhost:3002' },
+    );
+
+    expect(prismaService.purchaseOrder.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { restaurantId: 3 },
+      }),
+    );
+  });
+
+  it('lists all restaurant orders for holding viewers', async () => {
+    prismaService.purchaseOrder.findMany.mockResolvedValue([
+      {
+        id: 42,
+        number: 'PO-20260601-0042',
+        supplierId: 1,
+        supplier: { id: 1, name: 'Metro' },
+        restaurantId: 5,
+        restaurant: { id: 5, name: 'ZHAO Bastille' },
+        createdByUser: {
+          id: 9,
+          name: 'Store User',
+          email: 'store@zhao.test',
+        },
+        deliveryDate: new Date('2026-06-02T00:00:00.000Z'),
+        deliveryAddress: '2 rue test',
+        totalItems: 3,
+        totalAmount: 30,
+        createdAt: new Date('2026-06-01T10:00:00.000Z'),
+        returns: [],
+      },
+      {
+        id: 41,
+        number: 'PO-20260601-0041',
+        supplierId: 2,
+        supplier: { id: 2, name: 'Boucherie' },
+        restaurantId: 3,
+        restaurant: { id: 3, name: 'ZHAO Opera' },
+        createdByUser: {
+          id: 7,
+          name: 'Manager',
+          email: 'manager@zhao.test',
+        },
+        deliveryDate: new Date('2026-06-02T00:00:00.000Z'),
+        deliveryAddress: '1 rue test',
+        totalItems: 2,
+        totalAmount: 20,
+        createdAt: new Date('2026-06-01T09:00:00.000Z'),
+        returns: [],
+      },
+    ]);
+
+    const result = (await service.listOrders(
+      { id: 1, restaurantId: 3, jobRole: 'holding', permissions: [] },
+      { protocol: 'http', get: () => 'localhost:3002' },
+    )) as Array<Record<string, unknown>>;
+
+    expect(prismaService.purchaseOrder.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+      }),
+    );
+    expect(result.map((order) => order.restaurantId)).toEqual([5, 3]);
+    expect(result[0]).toMatchObject({
+      canEdit: false,
+      canReturn: false,
+      canDelete: false,
+    });
+    expect(result[1]).toMatchObject({
+      canEdit: true,
+      canReturn: true,
+      canDelete: true,
+    });
+  });
+
+  it('lists all restaurant order returns for holding viewers', async () => {
+    prismaService.purchaseReturn.findMany.mockResolvedValue([
+      {
+        id: 10,
+        purchaseOrderId: 42,
+        purchaseOrder: {
+          id: 42,
+          number: 'PO-20260601-0042',
+          deliveryDate: new Date('2026-06-02T00:00:00.000Z'),
+        },
+        supplierId: 1,
+        supplier: { id: 1, name: 'Metro' },
+        restaurantId: 5,
+        restaurant: { id: 5, name: 'ZHAO Bastille' },
+        reason: 'Damaged',
+        notes: null,
+        totalItems: 1,
+        createdAt: new Date('2026-06-03T10:00:00.000Z'),
+        items: [],
+      },
+    ]);
+
+    const result = (await service.listOrderReturns({
+      id: 1,
+      restaurantId: 3,
+      jobRole: 'holding',
+      permissions: [],
+    })) as Array<Record<string, unknown>>;
+
+    expect(prismaService.purchaseReturn.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+      }),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      restaurantId: 5,
+      restaurantName: 'ZHAO Bastille',
+    });
+  });
+
+  it('allows holding viewers to resolve cross-store order files', async () => {
+    prismaService.purchaseOrder.findUnique.mockResolvedValue({
+      restaurantId: 5,
+      bonFileName: 'order.pdf',
+    });
+
+    await expect(
+      service.resolveOrderFilePath(42, {
+        id: 1,
+        restaurantId: 3,
+        jobRole: 'holding',
+        permissions: [],
+      }),
+    ).resolves.toBe('/tmp/order.pdf');
+  });
+
   it('builds a return draft with remaining quantities', async () => {
     prismaService.purchaseOrder.findUnique.mockResolvedValue({
       id: 42,

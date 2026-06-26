@@ -51,7 +51,7 @@ ZHAO Monitor peut lancer les commandes EAS localement depuis `apps/mobile` pour
 
 | Secret | Valeur |
 | --- | --- |
-| `DEPLOY_SSH_HOST` | `51.178.46.102` |
+| `DEPLOY_SSH_HOST` | `152.228.137.101` |
 | `DEPLOY_SSH_USER` | `ubuntu` (membre du groupe docker) |
 | `DEPLOY_SSH_KEY` | clé privée SSH dédiée (PEM complet) |
 | `DEPLOY_SSH_PORT` | `22` |
