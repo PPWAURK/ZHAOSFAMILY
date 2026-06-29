@@ -161,7 +161,9 @@ describe('TrainingQuizService.getMyRecords', () => {
       completedCount: 2,
     });
 
-    expect(prismaService.trainingMaterialProgress.findMany).toHaveBeenCalledWith({
+    expect(
+      prismaService.trainingMaterialProgress.findMany,
+    ).toHaveBeenCalledWith({
       where: { userId: 42, status: 'completed' },
       select: {
         materialId: true,

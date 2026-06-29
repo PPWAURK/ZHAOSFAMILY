@@ -50,9 +50,7 @@ export class ScreenSecurityEventService {
   ): Promise<PaginatedScreenSecurityEvents> {
     const page = query.page && query.page > 0 ? query.page : DEFAULT_PAGE;
     const pageSize = Math.min(
-      query.pageSize && query.pageSize > 0
-        ? query.pageSize
-        : DEFAULT_PAGE_SIZE,
+      query.pageSize && query.pageSize > 0 ? query.pageSize : DEFAULT_PAGE_SIZE,
       MAX_PAGE_SIZE,
     );
 

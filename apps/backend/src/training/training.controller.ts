@@ -318,9 +318,7 @@ export class TrainingController {
   @Get('screen-security-events')
   @UseGuards(PermissionGuard)
   @RequirePermissions(SCREEN_SECURITY_PERMISSIONS.audit)
-  listScreenSecurityEvents(
-    @Query() query: ListScreenSecurityEventsQueryDto,
-  ) {
+  listScreenSecurityEvents(@Query() query: ListScreenSecurityEventsQueryDto) {
     return this.screenSecurityEventService.list(query);
   }
 

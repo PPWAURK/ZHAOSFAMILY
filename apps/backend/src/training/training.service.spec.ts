@@ -808,7 +808,7 @@ describe('TrainingService', () => {
     prismaService.trainingQuizAttempt.findMany.mockResolvedValue([]);
 
     await expect(
-      service.getMyPlan({ id: 7, jobRole: 'front-host' }),
+      service.getMyPlan({ id: 7, jobRole: 'front-of-house' }),
     ).resolves.toMatchObject({
       summary: {
         requiredTotal: 1,

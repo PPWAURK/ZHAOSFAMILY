@@ -261,7 +261,14 @@ function normalizeQuizGatedProgress(
   quizMaterialIds: Set<number>,
   passedQuizMaterialIds: Set<number>,
 ): TrainingMaterialProgressItem {
-  if (isEffectivelyCompleted(progress, materialId, quizMaterialIds, passedQuizMaterialIds)) {
+  if (
+    isEffectivelyCompleted(
+      progress,
+      materialId,
+      quizMaterialIds,
+      passedQuizMaterialIds,
+    )
+  ) {
     return progress;
   }
 
@@ -293,7 +300,8 @@ function toPlanMaterialItem(
   quizMaterialIds: Set<number>,
   passedQuizMaterialIds: Set<number>,
 ): TrainingPlanMaterialItem {
-  const progress = progressByMaterialId.get(material.id) ?? getDefaultProgress(material.id);
+  const progress =
+    progressByMaterialId.get(material.id) ?? getDefaultProgress(material.id);
 
   return {
     ...material,
