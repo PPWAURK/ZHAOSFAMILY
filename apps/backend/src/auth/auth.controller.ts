@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Headers, Patch, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   AuthService,
   type AuthUser,
@@ -16,26 +17,33 @@ import { RefreshSessionDto } from './dto/refresh-session.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateCurrentUserDto } from './dto/update-current-user.dto';
 import { parseBearerToken } from './auth-token.utils';
+import { Public } from './decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('login')
   login(@Body() loginDto: LoginDto): Promise<AuthSessionResponse> {
     return this.authService.login(loginDto);
   }
 
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   @Post('register')
   register(@Body() registerDto: RegisterDto): Promise<RegisterResponse> {
     return this.authService.register(registerDto);
   }
 
+  @Public()
   @Post('refresh')
   refresh(@Body() dto: RefreshSessionDto): Promise<AuthSessionResponse> {
     return this.authService.refresh(dto.refreshToken);
   }
 
+  @Public()
   @Post('accept-invitation')
   acceptInvitation(
     @Body() dto: AcceptInvitationDto,
@@ -43,6 +51,8 @@ export class AuthController {
     return this.authService.acceptInvitation(dto);
   }
 
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   @Post('forgot-password')
   forgotPassword(
     @Body() dto: ForgotPasswordDto,
@@ -50,6 +60,8 @@ export class AuthController {
     return this.authService.forgotPassword(dto);
   }
 
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('reset-password')
   resetPassword(
     @Body() dto: ResetPasswordDto,
@@ -89,6 +101,7 @@ export class AuthController {
     );
   }
 
+  @Public()
   @Post('logout')
   async logout(@Body() dto: LogoutDto): Promise<{ message: 'LOGGED_OUT' }> {
     await this.authService.logout(dto.refreshToken);

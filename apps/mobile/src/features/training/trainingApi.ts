@@ -50,7 +50,9 @@ function getApiBaseUrl(): string {
 }
 
 export function getTrainingMaterialFileUrl(objectKey: string): string {
-  return `${getApiBaseUrl()}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  const url = `${getApiBaseUrl()}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  const token = getAccessToken();
+  return token ? `${url}&token=${encodeURIComponent(token)}` : url;
 }
 
 export async function updateTrainingMaterialProgress(

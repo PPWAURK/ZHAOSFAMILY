@@ -34,6 +34,16 @@ export const CASE_SHARE_PERMISSIONS = {
   review: 'case.share.review',
 } as const;
 
+export const CATALOG_PERMISSIONS = {
+  manageProducts: 'catalog.product.manage',
+  manageSuppliers: 'catalog.supplier.manage',
+  manageRestaurants: 'catalog.restaurant.manage',
+} as const;
+
+export const INVENTORY_PERMISSIONS = {
+  createMovement: 'inventory.movement.create',
+} as const;
+
 export const ABC_SCORE_PERMISSIONS = {
   read: 'abc.score.read',
   fillMarketing: 'abc.score.fill_marketing',

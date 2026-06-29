@@ -1,4 +1,4 @@
-import { createCaseSharesApi } from "@zhao/api";
+import { createCaseSharesApi, getAccessToken } from "@zhao/api";
 import type {
   CaseShareCommentItem,
   CaseShareItem,
@@ -79,5 +79,7 @@ export function uploadCaseImage(
 }
 
 export function buildCaseImageUrl(objectKey: string): string {
-  return `${MOBILE_API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  const url = `${MOBILE_API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  const token = getAccessToken();
+  return token ? `${url}&token=${encodeURIComponent(token)}` : url;
 }

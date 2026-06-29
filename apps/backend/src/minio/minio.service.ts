@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -122,8 +123,27 @@ export class MinioService implements OnModuleInit {
   async statObject(
     objectKey: string,
   ): Promise<Awaited<ReturnType<Minio.Client['statObject']>>> {
-    return this.runStorageOperation(() =>
-      this.client.statObject(this.bucket, objectKey),
+    try {
+      return await this.runStorageOperation(() =>
+        this.client.statObject(this.bucket, objectKey),
+      );
+    } catch (error) {
+      if (this.isObjectNotFoundError(error)) {
+        throw new NotFoundException('OBJECT_NOT_FOUND');
+      }
+
+      throw error;
+    }
+  }
+
+  private isObjectNotFoundError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const storageError = error as StorageError;
+    return (
+      storageError.code === 'NotFound' || storageError.statusCode === 404
     );
   }
 

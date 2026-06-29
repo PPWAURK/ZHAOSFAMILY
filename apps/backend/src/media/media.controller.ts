@@ -7,6 +7,7 @@ import {
   Query,
   Req,
   Res,
+  UnauthorizedException,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -18,9 +19,24 @@ import { tmpdir } from 'os';
 import * as path from 'path';
 import type { Request, Response } from 'express';
 import { MediaService, type UploadedMedia } from './media.service';
+import { AuthService } from '../auth/auth.service';
+import { parseBearerToken } from '../auth/auth-token.utils';
+import { Public } from '../auth/decorators/public.decorator';
 
 const MEDIA_UPLOAD_MAX_BYTES = 5 * 1024 * 1024 * 1024;
 const MEDIA_UPLOAD_TEMP_DIR = path.join(tmpdir(), 'zhao-media-uploads');
+
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  'video/mp4',
+  'video/quicktime',
+  'audio/mpeg',
+  'audio/mp4',
+]);
 
 mkdirSync(MEDIA_UPLOAD_TEMP_DIR, { recursive: true });
 
@@ -59,7 +75,10 @@ function parseRangeHeader(
 
 @Controller('media')
 export class MediaController {
-  constructor(private readonly mediaService: MediaService) {}
+  constructor(
+    private readonly mediaService: MediaService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Post('upload')
   @UseInterceptors(
@@ -74,6 +93,13 @@ export class MediaController {
       limits: {
         fileSize: MEDIA_UPLOAD_MAX_BYTES,
       },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+          callback(new BadRequestException('FILE_TYPE_NOT_ALLOWED'), false);
+          return;
+        }
+        callback(null, true);
+      },
     }),
   )
   async upload(
@@ -87,15 +113,30 @@ export class MediaController {
     return this.mediaService.upload(file, { folder });
   }
 
+  // Public so browsers can load <img>/<video> src URLs directly (no header
+  // support there). Authentication is still mandatory: accepts a Bearer
+  // header for API/server callers, or a `?token=` query param fallback for
+  // markup-driven loads, both validated against the real session below.
+  @Public()
   @Get('file')
   async getFile(
     @Query('objectKey') objectKey: string | undefined,
+    @Query('token') tokenParam: string | undefined,
     @Req() request: Request,
     @Res() response: Response,
   ): Promise<void> {
     if (!objectKey) {
       throw new BadRequestException('OBJECT_KEY_IS_REQUIRED');
     }
+
+    const accessToken =
+      parseBearerToken(request.headers.authorization) ?? tokenParam;
+
+    if (!accessToken) {
+      throw new UnauthorizedException('ACCESS_TOKEN_REQUIRED');
+    }
+
+    await this.authService.getCurrentUser(accessToken);
 
     const metadata = await this.mediaService.getFileMetadata(objectKey);
     const range = parseRangeHeader(request.headers.range, metadata.size);

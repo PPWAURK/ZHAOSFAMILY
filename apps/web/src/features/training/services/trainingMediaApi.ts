@@ -1,4 +1,4 @@
-import { API_URL, apiClient } from "@/shared/api/api-client";
+import { apiClient, buildMediaFileUrl } from "@/shared/api/api-client";
 import type {
   CreateTrainingMaterialInput,
   CreateTrainingPositionInput,
@@ -175,5 +175,5 @@ export async function fetchTrainingDiagnostics(): Promise<TrainingDiagnostics> {
 }
 
 export function getTrainingMediaUrl(objectKey: string): string {
-  return `${API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  return buildMediaFileUrl(objectKey);
 }

@@ -4,13 +4,13 @@ import { HealthService } from './health.service';
 describe('HealthService', () => {
   it('returns the health payload when the database ping succeeds', async () => {
     const prismaService = {
-      $queryRawUnsafe: jest.fn().mockResolvedValue([{ value: 1 }]),
+      $queryRaw: jest.fn().mockResolvedValue([{ value: 1 }]),
     };
     const healthService = new HealthService(prismaService as never);
 
     const result = await healthService.getHealthStatus();
 
-    expect(prismaService.$queryRawUnsafe).toHaveBeenCalledWith('SELECT 1');
+    expect(prismaService.$queryRaw).toHaveBeenCalled();
     expect(result.status).toBe('ok');
     expect(result.database).toBe('up');
     expect(result.timestamp).toEqual(expect.any(String));
@@ -18,7 +18,7 @@ describe('HealthService', () => {
 
   it('throws a service unavailable exception when the database ping fails', async () => {
     const prismaService = {
-      $queryRawUnsafe: jest.fn().mockRejectedValue(new Error('offline')),
+      $queryRaw: jest.fn().mockRejectedValue(new Error('offline')),
     };
     const healthService = new HealthService(prismaService as never);
 

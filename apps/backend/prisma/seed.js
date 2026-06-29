@@ -70,6 +70,22 @@ const PERMISSIONS = [
     key: 'case.share.review',
     description: 'Review (approve/reject) shared cases from partners',
   },
+  {
+    key: 'catalog.product.manage',
+    description: 'Create, update, and delete products',
+  },
+  {
+    key: 'catalog.supplier.manage',
+    description: 'Create, update, and delete suppliers',
+  },
+  {
+    key: 'catalog.restaurant.manage',
+    description: 'Create, update, and delete restaurants',
+  },
+  {
+    key: 'inventory.movement.create',
+    description: 'Record manual inventory stock movements',
+  },
 ];
 
 const TRAINING_POSITIONS = [
@@ -337,12 +353,14 @@ const ROLES = [
   {
     name: 'store-manager',
     description: 'Store manager baseline access',
+    // No `recruitment.request.manage`: store managers SEND recruitment requests
+    // (scoped to their own store) — only HQ reviewers hold the manage permission.
     permissions: [
       'employee.job_role.manage_store',
       'training.material.read',
       'training.material.play',
       'training.progress.view_store',
-      'recruitment.request.manage',
+      'inventory.movement.create',
     ],
   },
   {

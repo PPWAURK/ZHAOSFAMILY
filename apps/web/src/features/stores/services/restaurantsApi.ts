@@ -1,4 +1,4 @@
-import { API_URL, apiClient } from "@/shared/api/api-client";
+import { API_URL, apiClient, buildMediaFileUrl } from "@/shared/api/api-client";
 import { createRestaurantsApi } from "@zhao/api";
 import { fetchManageableRestaurants } from "@/features/permissions/services/permissionsApi";
 import type {
@@ -134,7 +134,5 @@ export async function uploadStorePhoto(file: File): Promise<string> {
     throw new Error("STORE_PHOTO_UPLOAD_MISSING_OBJECT_KEY");
   }
 
-  return `${API_URL}/media/file?objectKey=${encodeURIComponent(
-    uploaded.objectKey,
-  )}`;
+  return buildMediaFileUrl(uploaded.objectKey);
 }

@@ -65,3 +65,12 @@ export {
   getRefreshToken,
   setRefreshToken,
 };
+
+// Browsers render <img>/<video>/<a> src URLs without an Authorization
+// header, so media URLs carry the access token as a query param instead.
+// The backend's /media/file route validates it the same way as the header.
+export function buildMediaFileUrl(objectKey: string): string {
+  const url = `${API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  const token = getAccessToken();
+  return token ? `${url}&token=${encodeURIComponent(token)}` : url;
+}

@@ -1,3 +1,4 @@
+import { getAccessToken } from "@zhao/api";
 import { mobileApiClient } from "@/lib/api";
 import { MOBILE_API_URL } from "@/lib/env";
 
@@ -59,14 +60,20 @@ function getApiOrigin(): string {
   }
 }
 
+function getMediaToken(): string {
+  const token = getAccessToken();
+  return token ? `&token=${encodeURIComponent(token)}` : "";
+}
+
 function getDashboardNewsAttachmentUrl(objectKey: string): string {
-  return `${getApiOrigin()}/api/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  return `${getApiOrigin()}/api/media/file?objectKey=${encodeURIComponent(objectKey)}${getMediaToken()}`;
 }
 
 function normalizeDashboardNewsBody(body: string): string {
   return body.replace(
-    /https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\/media\/file\?objectKey=/g,
-    `${getApiOrigin()}/api/media/file?objectKey=`,
+    /https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\/media\/file\?objectKey=([^"'\s<>]+)/g,
+    (_match, key: string) =>
+      `${getApiOrigin()}/api/media/file?objectKey=${key}${getMediaToken()}`,
   );
 }
 

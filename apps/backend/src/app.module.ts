@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AbcScoresModule } from './abc-scores/abc-scores.module';
 import { AuthModule } from './auth/auth.module';
 import { CaseSharesModule } from './case-shares/case-shares.module';
@@ -25,6 +27,13 @@ import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
       isGlobal: true,
       envFilePath: ['.env'],
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60_000,
+        limit: 100,
+      },
+    ]),
     PrismaModule,
     AuthModule,
     AbcScoresModule,
@@ -43,6 +52,9 @@ import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
     MailModule,
     NotificationsModule,
     WaitingQueueModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

@@ -41,6 +41,9 @@ export function parseTranslations(
   const options: Record<string, LocalizedText> = {};
 
   for (const [key, optionValue] of Object.entries(optionsSource)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      continue;
+    }
     const localized = parseLocalized(optionValue);
     if (hasAnyText(localized)) {
       options[key] = localized;

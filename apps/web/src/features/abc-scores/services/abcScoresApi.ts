@@ -11,7 +11,7 @@ import type {
   ListAbcCyclesQuery,
 } from "@zhao/types";
 
-import { API_URL, apiClient } from "@/shared/api/api-client";
+import { apiClient, buildMediaFileUrl } from "@/shared/api/api-client";
 
 const abcScoresApi = createAbcScoresApi(apiClient);
 
@@ -101,5 +101,5 @@ export async function uploadAbcReport(
 }
 
 export function resolveAbcMediaUrl(objectKey: string): string {
-  return `${API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  return buildMediaFileUrl(objectKey);
 }

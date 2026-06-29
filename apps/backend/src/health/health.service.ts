@@ -1,4 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type HealthStatus = {
@@ -13,7 +14,7 @@ export class HealthService {
 
   async getHealthStatus(): Promise<HealthStatus> {
     try {
-      await this.prismaService.$queryRawUnsafe('SELECT 1');
+      await this.prismaService.$queryRaw(Prisma.sql`SELECT 1`);
     } catch {
       throw new ServiceUnavailableException('Database unavailable');
     }

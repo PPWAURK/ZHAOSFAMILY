@@ -179,6 +179,90 @@ function buildCsv(suppliers, t) {
   return rows.join("\r\n");
 }
 
+function StoreSelect({ stores, value, allLabel, label, onChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedStore = stores.find((store) => String(store.id) === value);
+  const selectedLabel = selectedStore?.name || allLabel;
+
+  return (
+    <div
+      className={styles.storeSelect}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsOpen(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className={`${styles.filterControl} ${styles.storeSelectButton}`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-label={label}
+        onClick={() => setIsOpen((prev) => !prev)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setIsOpen(false);
+          }
+        }}
+      >
+        <span>{selectedLabel}</span>
+        <span className={styles.storeSelectChevron} aria-hidden="true" />
+      </button>
+
+      {isOpen ? (
+        <div
+          className={styles.storeSelectMenu}
+          role="listbox"
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setIsOpen(false);
+            }
+          }}
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={value === ""}
+            className={`${styles.storeSelectOption} ${
+              value === "" ? styles.storeSelectOptionActive : ""
+            }`}
+            onClick={() => {
+              onChange("");
+              setIsOpen(false);
+            }}
+          >
+            {allLabel}
+          </button>
+          {stores.map((store) => {
+            const storeValue = String(store.id);
+            const isSelected = value === storeValue;
+
+            return (
+              <button
+                key={store.id}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                className={`${styles.storeSelectOption} ${
+                  isSelected ? styles.storeSelectOptionActive : ""
+                }`}
+                onClick={() => {
+                  onChange(storeValue);
+                  setIsOpen(false);
+                }}
+              >
+                {store.name}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function OrderStatsPage() {
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -362,41 +446,40 @@ export default function OrderStatsPage() {
 
         <div className={styles.filters} aria-label={t.store}>
           {stats?.canViewAllStores ? (
-            <div className={styles.filterField}>
+            <div className={`${styles.filterField} ${styles.storeField}`}>
               <span className={styles.filterLabel}>{t.store}</span>
-              <select
-                className={styles.filterControl}
+              <StoreSelect
+                stores={stats.stores}
                 value={storeId}
-                onChange={(event) => setStoreId(event.target.value)}
-              >
-                <option value="">{t.storeAll}</option>
-                {stats.stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
+                allLabel={t.storeAll}
+                label={t.store}
+                onChange={setStoreId}
+              />
             </div>
           ) : null}
           <div className={styles.filterField}>
             <span className={styles.filterLabel}>{t.from}</span>
-            <input
-              type="date"
-              className={styles.filterControl}
-              value={from}
-              max={to || undefined}
-              onChange={(event) => setFrom(event.target.value)}
-            />
+            <div className={styles.dateControlWrap}>
+              <input
+                type="date"
+                className={`${styles.filterControl} ${styles.dateControl}`}
+                value={from}
+                max={to || undefined}
+                onChange={(event) => setFrom(event.target.value)}
+              />
+            </div>
           </div>
           <div className={styles.filterField}>
             <span className={styles.filterLabel}>{t.to}</span>
-            <input
-              type="date"
-              className={styles.filterControl}
-              value={to}
-              min={from || undefined}
-              onChange={(event) => setTo(event.target.value)}
-            />
+            <div className={styles.dateControlWrap}>
+              <input
+                type="date"
+                className={`${styles.filterControl} ${styles.dateControl}`}
+                value={to}
+                min={from || undefined}
+                onChange={(event) => setTo(event.target.value)}
+              />
+            </div>
           </div>
           <div className={styles.actions}>
             <button

@@ -2,6 +2,7 @@ import { json, urlencoded } from 'express';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 function parseCorsOrigins(corsOrigin: string | undefined): string[] {
@@ -20,6 +21,8 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const apiPrefix = configService.get<string>('API_PREFIX') || 'api';
   const port = Number(configService.get<string>('PORT') || 3002);
+
+  app.use(helmet());
   const corsOrigins = parseCorsOrigins(
     configService.get<string>('CORS_ORIGINS') ||
       configService.get<string>('CORS_ORIGIN'),

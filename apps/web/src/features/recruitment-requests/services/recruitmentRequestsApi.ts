@@ -1,5 +1,6 @@
 import { createRecruitmentRequestsApi } from "@zhao/api";
 import type {
+  CreateRecruitmentRequestRequest,
   ListRecruitmentRequestsQuery,
   RecruitmentRequestItem,
   UpdateRecruitmentRequestRequest,
@@ -16,9 +17,21 @@ export async function fetchRecruitmentRequests(
   return Array.isArray(requests) ? requests : [];
 }
 
+export function createRecruitmentRequest(
+  input: CreateRecruitmentRequestRequest,
+): Promise<RecruitmentRequestItem> {
+  return recruitmentRequestsApi.create(input);
+}
+
 export function updateRecruitmentRequest(
   id: number | string,
   input: UpdateRecruitmentRequestRequest,
 ): Promise<RecruitmentRequestItem> {
   return recruitmentRequestsApi.update(id, input);
+}
+
+export function deleteRecruitmentRequest(
+  id: number | string,
+): Promise<{ id: number }> {
+  return recruitmentRequestsApi.delete(id);
 }

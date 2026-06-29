@@ -406,6 +406,120 @@
   text-align: center;
 }
 
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 24px;
+  margin-bottom: 36px;
+  background: var(--red-soft);
+  border: 1px solid var(--red-soft-2);
+}
+
+.formTitle {
+  margin: 0;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 120px;
+  gap: 14px;
+  align-items: end;
+}
+
+.formInput,
+.form .filterSelect {
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  min-height: 38px;
+  padding: 9px 11px;
+}
+
+.formNotes {
+  min-height: 96px;
+  padding: 11px;
+  resize: vertical;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.sendList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sendCard {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+}
+
+.sendCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sendCardTitle {
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.sendCardMeta {
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.sendCardNotes {
+  margin: 4px 0 0;
+  color: var(--ink-60);
+  font-family: var(--zh-serif);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sendDelete {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  color: var(--red);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sendDelete:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .footer {
   padding-top: 28px;
   border-top: 1px solid var(--red-soft-2);
@@ -444,5 +558,9 @@
 
   .rowActions {
     justify-content: flex-start;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
   }
 }

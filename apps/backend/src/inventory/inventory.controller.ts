@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { ListInventoryQueryDto } from './dto/list-inventory-query.dto';
@@ -8,6 +15,8 @@ import {
   type InventoryLineItem,
   type InventoryMovementItem,
 } from './inventory.service';
+import { PermissionGuard } from '../auth/guards/permission.guard';
+import { INVENTORY_PERMISSIONS, RequirePermissions } from '../auth/permissions';
 
 @Controller('inventory')
 export class InventoryController {
@@ -32,6 +41,8 @@ export class InventoryController {
   }
 
   @Post('movements')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(INVENTORY_PERMISSIONS.createMovement)
   createMovement(
     @Body() dto: CreateMovementDto,
   ): Promise<InventoryMovementItem> {

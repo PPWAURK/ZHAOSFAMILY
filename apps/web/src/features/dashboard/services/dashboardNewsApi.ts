@@ -1,4 +1,4 @@
-import { API_URL, apiClient } from "@/shared/api/api-client";
+import { apiClient, buildMediaFileUrl } from "@/shared/api/api-client";
 import { isDefined } from "@/shared/utils/typeGuards";
 import type {
   CreateDashboardNewsPostInput,
@@ -135,5 +135,5 @@ export async function deleteDashboardNewsPost(id: string): Promise<void> {
 }
 
 export function getDashboardNewsAttachmentUrl(objectKey: string): string {
-  return `${API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
+  return buildMediaFileUrl(objectKey);
 }

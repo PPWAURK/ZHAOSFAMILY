@@ -106,7 +106,8 @@ export const DASHBOARD_NAV = [
         fr: "Demandes recrutement",
         requiredPermission: "recruitment.request.manage",
         // Store managers (by job role) also see the entry — the backend scopes
-        // their list to their own store and the page is read-only for them.
+        // their list to their own store. They get the send view (submit + track
+        // own requests); only `recruitment.request.manage` unlocks the HQ desk.
         visibleForJobRoles: ["store-manager"],
       },
     ],

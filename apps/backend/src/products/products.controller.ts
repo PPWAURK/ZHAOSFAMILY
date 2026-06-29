@@ -9,12 +9,15 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService, type ProductListItem } from './products.service';
+import { PermissionGuard } from '../auth/guards/permission.guard';
+import { CATALOG_PERMISSIONS, RequirePermissions } from '../auth/permissions';
 
 @Controller('products')
 export class ProductsController {
@@ -33,11 +36,15 @@ export class ProductsController {
   }
 
   @Post()
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(CATALOG_PERMISSIONS.manageProducts)
   createProduct(@Body() dto: CreateProductDto): Promise<ProductListItem> {
     return this.productsService.createProduct(dto);
   }
 
   @Patch(':id')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(CATALOG_PERMISSIONS.manageProducts)
   updateProduct(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
@@ -46,6 +53,8 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(CATALOG_PERMISSIONS.manageProducts)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteProduct(@Param('id') id: string): Promise<void> {
     await this.productsService.deleteProduct(id);

@@ -1,4 +1,8 @@
-import { ApiClientError, API_URL, apiClient } from "@/shared/api/api-client";
+import {
+  ApiClientError,
+  apiClient,
+  buildMediaFileUrl,
+} from "@/shared/api/api-client";
 import { isDefined } from "@/shared/utils/typeGuards";
 import { createProductsApi, createSuppliersApi } from "@zhao/api";
 import type {
@@ -172,7 +176,5 @@ export async function uploadProductImage(file: File): Promise<string> {
     throw new Error("PRODUCT_IMAGE_UPLOAD_MISSING_OBJECT_KEY");
   }
 
-  return `${API_URL}/media/file?objectKey=${encodeURIComponent(
-    uploaded.objectKey,
-  )}`;
+  return buildMediaFileUrl(uploaded.objectKey);
 }
