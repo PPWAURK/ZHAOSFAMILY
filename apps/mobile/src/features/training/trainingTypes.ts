@@ -124,7 +124,19 @@ export type TrainingRecord = {
   positionId: string;
   type: string;
   isRequired: boolean;
+  description: string | null;
+  originalName: string;
+  mimeType: string;
+  objectKey: string;
+  sizeBytes: string;
+  bucket: string;
+  createdAt: string;
+  updatedAt: string;
   completedAt: string | null;
+  hasQuiz: boolean;
+  quizPassed: boolean;
+  bestQuizScore: number | null;
+  quizAttemptsUsed: number;
   quizScore: number | null;
 };
 

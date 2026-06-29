@@ -37,6 +37,18 @@ export async function submitTrainingQuiz(
   );
 }
 
+export async function reportScreenSecurityEvent(
+  eventType: "screenshot" | "recording",
+  screenName?: string,
+  deviceInfo?: Record<string, unknown>,
+): Promise<void> {
+  await mobileApiClient.post("/training/screen-security-events", {
+    eventType,
+    screenName: screenName ?? null,
+    deviceInfo: deviceInfo ?? null,
+  });
+}
+
 export async function fetchTrainingMyTitles(): Promise<TrainingMyTitles> {
   return mobileApiClient.get<TrainingMyTitles>("/training/my-titles");
 }
@@ -67,7 +79,7 @@ export async function updateTrainingMaterialProgress(
 
 export async function downloadTrainingMaterialToCache(
   material: TrainingPlanMaterial,
-): Promise<string> {
+): Promise<{ fileUri: string; directoryUri: string }> {
   const accessToken = getAccessToken() || (await secureTokenStorage.getAccessToken());
 
   if (!accessToken) {
@@ -92,7 +104,10 @@ export async function downloadTrainingMaterialToCache(
     },
   );
 
-  return downloadedFile.uri;
+  return {
+    fileUri: downloadedFile.uri,
+    directoryUri: cacheDirectory.uri,
+  };
 }
 
 function buildTrainingCacheDirectoryName(): string {

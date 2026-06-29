@@ -17,6 +17,7 @@ import type {
   CaseShareStatus,
   CaseShareType,
 } from "@zhao/types";
+import { useScreenName } from "@/lib/useScreenName";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { useConfirm } from "@/components/confirm/ConfirmProvider";
 import { useToast } from "@/components/toast/ToastProvider";
@@ -71,6 +72,7 @@ function assetToUpload(
 export function CaseSharesModuleScreen({
   language,
 }: CaseSharesModuleScreenProps) {
+  useScreenName("case-shares");
   const copy = CASE_SHARES_COPY[language];
   const confirm = useConfirm();
   const toast = useToast();

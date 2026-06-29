@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
+import { useScreenName } from "@/lib/useScreenName";
 import { useNotificationNavigation } from "@/lib/useNotificationNavigation";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
@@ -196,6 +197,7 @@ export function DashboardHomeScreen({
   onChangePassword,
   onUpdateProfile,
 }: DashboardHomeScreenProps) {
+  useScreenName("dashboard");
   const copy = DASHBOARD_COPY[language];
   const orderCopy = ORDER_COPY[language];
   const [activeEntry, setActiveEntry] = useState("home");
@@ -862,7 +864,7 @@ export function DashboardHomeScreen({
                     </View>
                     <View style={styles.pdfViewer}>
                       {pdfPreviewPost?.attachment?.href ? (
-                        <ProtectedScreen>
+                        <ProtectedScreen screenName="dashboard-home-pdf-preview">
                           <WebView
                             originWhitelist={["*"]}
                             source={{ uri: pdfPreviewPost.attachment.href }}

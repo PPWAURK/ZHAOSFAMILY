@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Directory, File } from "expo-file-system";
+import { useScreenName } from "@/lib/useScreenName";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
@@ -11,9 +12,12 @@ import {
 } from "@/features/training/trainingApi";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { TrainingAchievements } from "@/features/training/TrainingAchievements";
+import { TrainingGuidedPlan } from "@/features/training/TrainingGuidedPlan";
+import { TrainingOptionalLibrary } from "@/features/training/TrainingOptionalLibrary";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
 import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
 import { applyMaterialProgress } from "@/features/training/trainingProgressRules";
+import { buildTrainingGuidedFlow } from "@/features/training/trainingFlowState";
 import { trainingStyles as styles } from "@/features/training/trainingStyles";
 import {
   buildPdfViewerHtml,
@@ -25,6 +29,7 @@ import type {
   TrainingMaterialProgress,
   TrainingPlan,
   TrainingPlanMaterial,
+  TrainingRecord,
   UpdateTrainingProgressInput,
 } from "@/features/training/trainingTypes";
 
@@ -32,100 +37,48 @@ type TrainingModuleScreenProps = {
   language: AuthLanguage;
 };
 
-function clampPercent(value: number): number {
-  if (!Number.isFinite(value)) return 0;
+type TrainingView = "hub" | "required" | "optional" | "achievements";
 
-  return Math.max(0, Math.min(100, value));
-}
-
-function formatSize(sizeBytes: string): string {
-  const size = Number(sizeBytes);
-
-  if (!Number.isFinite(size) || size <= 0) return "-";
-  if (size < 1024 * 1024) return `${Math.ceil(size / 1024)} KB`;
-
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getPositionLabel(
-  code: string,
-  labels: Record<string, string>,
+function formatTemplate(
+  template: string,
+  values: Record<string, string | number>,
 ): string {
-  return labels[code] || code;
-}
-
-function TrainingMaterialCard({
-  copy,
-  material,
-  onOpen,
-}: {
-  copy: typeof TRAINING_COPY.zh;
-  material: TrainingPlanMaterial;
-  onOpen: (material: TrainingPlanMaterial) => void;
-}) {
-  const progressPct = clampPercent(material.progress.progressPct);
-  const materialType = copy.materialTypes[material.type] || material.type;
-  const status = copy.statuses[material.progress.status] || material.progress.status;
-
-  return (
-    <Pressable style={styles.card} onPress={() => onOpen(material)}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{material.title}</Text>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{status}</Text>
-        </View>
-      </View>
-      <Text style={styles.cardDescription}>
-        {material.description || material.originalName}
-      </Text>
-      <Text style={styles.cardMeta}>
-        {material.positionId} · {materialType} · {formatSize(material.sizeBytes)}
-        {material.hasQuiz ? ` · ${copy.quizTag}` : ""}
-      </Text>
-      <Text style={styles.cardOpenText}>{copy.open}</Text>
-      <View style={styles.cardProgressTrack}>
-        <View style={[styles.cardProgressValue, { width: `${progressPct}%` }]} />
-      </View>
-    </Pressable>
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replace(`{${key}}`, String(value)),
+    template,
   );
 }
 
-function TrainingSection({
-  copy,
-  materials,
-  onOpen,
-  title,
-}: {
-  copy: typeof TRAINING_COPY.zh;
-  materials: TrainingPlanMaterial[];
-  onOpen: (material: TrainingPlanMaterial) => void;
-  title: string;
-}) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionCount}>{materials.length}</Text>
-      </View>
-      {materials.length > 0 ? (
-        <View style={styles.list}>
-          {materials.map((material) => (
-            <TrainingMaterialCard
-              key={`${material.id}-${material.positionId}`}
-              copy={copy}
-              material={material}
-              onOpen={onOpen}
-            />
-          ))}
-        </View>
-      ) : (
-        <Text style={styles.emptyText}>{copy.empty}</Text>
-      )}
-    </View>
-  );
+function buildCompletedMaterialFromRecord(
+  record: TrainingRecord,
+): TrainingPlanMaterial {
+  return {
+    id: record.materialId,
+    positionId: record.positionId,
+    type: record.type,
+    isRequired: record.isRequired,
+    title: record.title,
+    description: record.description,
+    originalName: record.originalName,
+    mimeType: record.mimeType,
+    sizeBytes: record.sizeBytes,
+    bucket: record.bucket,
+    objectKey: record.objectKey,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    hasQuiz: record.hasQuiz,
+    progress: {
+      materialId: record.materialId,
+      status: "completed",
+      progressPct: 100,
+      lastOpenedAt: record.completedAt,
+      completedAt: record.completedAt,
+    },
+  };
 }
 
 export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
+  useScreenName("training");
   const copy = TRAINING_COPY[language];
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -136,17 +89,9 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
   const [previewFileUri, setPreviewFileUri] = useState("");
   const [previewBaseUri, setPreviewBaseUri] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [activeView, setActiveView] = useState<"plan" | "achievements">("plan");
+  const [activeView, setActiveView] = useState<TrainingView>("hub");
   const [quizMaterialId, setQuizMaterialId] = useState<number | null>(null);
   const [achievementsRefresh, setAchievementsRefresh] = useState(0);
-
-  const positionLabels = useMemo(
-    () =>
-      (plan?.positionCodes || []).map((code) =>
-        getPositionLabel(code, copy.positionLabels),
-      ),
-    [copy.positionLabels, plan?.positionCodes],
-  );
 
   async function loadPlan(): Promise<void> {
     try {
@@ -166,8 +111,6 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     void loadPlan();
   }, [copy.error]);
 
-  const completionPercent = clampPercent(plan?.summary.completionPercent ?? 0);
-
   async function syncMaterialProgress(
     materialId: number,
     input: UpdateTrainingProgressInput,
@@ -178,8 +121,6 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         previous ? applyMaterialProgress(previous, materialId, progress) : previous,
       );
 
-      // Completing a (non-quiz) material can unlock a title server-side, so
-      // refresh the achievements panel — mirrors the quiz-pass path.
       if (progress.status === "completed") {
         setAchievementsRefresh((value) => value + 1);
       }
@@ -207,7 +148,6 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     setPreviewMaterial(material);
 
     if (material.progress.status !== "completed") {
-      // Opening the content is more important than blocking on progress sync.
       void syncMaterialProgress(material.id, {
         status: "in_progress",
         progressPct: Math.max(material.progress.progressPct, 5),
@@ -215,14 +155,11 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     }
 
     try {
-      const localFileUri = await downloadTrainingMaterialToCache(material);
+      const { fileUri: localFileUri, directoryUri: localDirUri } =
+        await downloadTrainingMaterialToCache(material);
 
       if (isVideoMaterial(material)) {
-        const videoDirPath = localFileUri.substring(
-          0,
-          localFileUri.lastIndexOf("/"),
-        );
-        const videoDir = new Directory(videoDirPath);
+        const videoDir = new Directory(localDirUri);
         const playerFile = new File(videoDir, "player.html");
         const resumePct =
           material.progress.status === "in_progress"
@@ -232,20 +169,18 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         setPreviewFileUri(playerFile.uri);
         setPreviewBaseUri(videoDir.uri);
       } else if (isPdfMaterial(material)) {
-        const pdfDirPath = localFileUri.substring(
-          0,
-          localFileUri.lastIndexOf("/"),
-        );
-        const pdfDir = new Directory(pdfDirPath);
+        const pdfDir = new Directory(localDirUri);
         const viewerFile = new File(pdfDir, "pdf-viewer.html");
-        const base64 = await new File(localFileUri).base64();
+        const downloadedFile = new File(localFileUri);
+        const base64 = await downloadedFile.base64();
         await viewerFile.write(buildPdfViewerHtml(base64));
         setPreviewFileUri(viewerFile.uri);
         setPreviewBaseUri(pdfDir.uri);
       } else {
         setPreviewFileUri(localFileUri);
       }
-    } catch {
+    } catch (error) {
+      console.error("Training material load failed:", error);
       setPreviewError(copy.previewError);
     } finally {
       setIsLoadingPreview(false);
@@ -270,147 +205,236 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     setAchievementsRefresh((value) => value + 1);
   }
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TrackingText size={10.5}>{copy.kicker}</TrackingText>
-        <Text style={styles.title}>{copy.title}</Text>
-        <Text style={styles.intro}>{copy.intro}</Text>
-      </View>
+  function handleBackToHub(): void {
+    setActiveView("hub");
+  }
 
-      <View style={styles.segment}>
-        {(["plan", "achievements"] as const).map((key) => (
-          <Pressable
-            key={key}
-            style={[
-              styles.segmentItem,
-              activeView === key ? styles.segmentItemActive : null,
-            ]}
-            onPress={() => setActiveView(key)}
-          >
-            <Text
+  function renderSubViewHeader(title: string): React.ReactNode {
+    return (
+      <View style={styles.subViewHeader}>
+        <Pressable style={styles.subViewBack} onPress={handleBackToHub}>
+          <Text style={styles.subViewBackText}>← {copy.hubBack}</Text>
+        </Pressable>
+        <Text style={styles.sectionSubTitle}>{title}</Text>
+        <View style={{ width: 60 }} />
+      </View>
+    );
+  }
+
+  function renderHub(): React.ReactNode {
+    if (!plan) return null;
+
+    const flow = buildTrainingGuidedFlow(plan);
+    const completionPercent = plan.summary.completionPercent;
+
+    const requiredAction = flow.completedAllRequired
+      ? copy.hubActionDone
+      : flow.hasStartedRequiredMaterials
+        ? copy.hubActionContinue
+        : copy.hubActionStart;
+
+    const requiredMeta = flow.hasRequiredMaterials
+      ? `${flow.requiredCompleted}/${flow.requiredTotal} ${copy.requiredDone.toLowerCase()}`
+      : copy.guidedOptionalReady;
+
+    const optionalMeta = formatTemplate(copy.hubMaterialCount, {
+      count: plan.optional.length,
+    });
+
+    const achievementMeta = copy.tabAchievements;
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.hubProgressCard}>
+          <View style={styles.hubProgressHeader}>
+            <Text style={styles.hubProgressLabel}>{copy.hubOverallProgress}</Text>
+            <Text style={styles.hubProgressValue}>{completionPercent}%</Text>
+          </View>
+          <View style={styles.hubProgressTrack}>
+            <View
               style={[
-                styles.segmentText,
-                activeView === key ? styles.segmentTextActive : null,
+                styles.hubProgressFill,
+                { width: `${Math.min(100, Math.max(0, completionPercent))}%` },
+              ]}
+            />
+          </View>
+          <View style={styles.hubProgressStats}>
+            <Text style={styles.hubProgressStat}>
+              {copy.requiredDone}: {flow.requiredCompleted}/{flow.requiredTotal}
+            </Text>
+            <Text style={styles.hubProgressStat}>
+              {copy.completed}: {flow.totalCompleted}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.hubEntryList}>
+          <Pressable
+            style={[styles.hubEntryCard, styles.hubEntryCardRequired]}
+            onPress={() => setActiveView("required")}
+          >
+            <View style={[styles.hubEntryIcon, styles.hubEntryIconRequired]}>
+              <Text style={[styles.hubEntryIconText, styles.hubEntryIconTextRequired]}>
+                印
+              </Text>
+            </View>
+            <View style={styles.hubEntryBody}>
+              <Text style={styles.hubEntryTitle}>{copy.hubRequiredJourney}</Text>
+              <Text style={styles.hubEntrySubtitle}>{copy.hubRequiredJourneyBody}</Text>
+              <Text style={styles.hubEntryMeta}>{requiredMeta}</Text>
+            </View>
+            <View
+              style={[
+                styles.hubEntryAction,
+                flow.completedAllRequired ? styles.hubEntryActionDone : null,
               ]}
             >
-              {key === "plan" ? copy.tabPlan : copy.tabAchievements}
-            </Text>
+              <Text
+                style={[
+                  styles.hubEntryActionText,
+                  flow.completedAllRequired ? styles.hubEntryActionTextDone : null,
+                ]}
+              >
+                {requiredAction}
+              </Text>
+            </View>
           </Pressable>
-        ))}
-      </View>
 
-      {activeView === "achievements" ? (
-        <TrainingAchievements
+          <Pressable
+            style={styles.hubEntryCard}
+            onPress={() => setActiveView("optional")}
+          >
+            <View style={[styles.hubEntryIcon, styles.hubEntryIconOptional]}>
+              <Text style={[styles.hubEntryIconText, styles.hubEntryIconTextOptional]}>
+                库
+              </Text>
+            </View>
+            <View style={styles.hubEntryBody}>
+              <Text style={styles.hubEntryTitle}>{copy.hubOptionalLibrary}</Text>
+              <Text style={styles.hubEntrySubtitle}>{copy.hubOptionalLibraryBody}</Text>
+              <Text style={styles.hubEntryMeta}>{optionalMeta}</Text>
+            </View>
+            <View style={styles.hubEntryAction}>
+              <Text style={styles.hubEntryActionText}>{copy.hubEnter}</Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={styles.hubEntryCard}
+            onPress={() => setActiveView("achievements")}
+          >
+            <View style={[styles.hubEntryIcon, styles.hubEntryIconAchievement]}>
+              <Text
+                style={[styles.hubEntryIconText, styles.hubEntryIconTextAchievement]}
+              >
+                誉
+              </Text>
+            </View>
+            <View style={styles.hubEntryBody}>
+              <Text style={styles.hubEntryTitle}>{copy.hubAchievements}</Text>
+              <Text style={styles.hubEntrySubtitle}>{copy.hubAchievementsBody}</Text>
+              <Text style={styles.hubEntryMeta}>{achievementMeta}</Text>
+            </View>
+            <View style={styles.hubEntryAction}>
+              <Text style={styles.hubEntryActionText}>{copy.hubEnter}</Text>
+            </View>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {quizMaterialId !== null ? (
+        <TrainingQuizModal
           copy={copy}
           language={language}
-          refreshToken={achievementsRefresh}
+          materialId={quizMaterialId}
+          onClose={() => setQuizMaterialId(null)}
+          onPassed={handleQuizPassed}
         />
-      ) : null}
-
-      {activeView === "plan" && isLoading ? (
-        <ZhaoLoadingIndicator label={copy.loading} />
-      ) : null}
-
-      {activeView === "plan" && !isLoading && errorMessage ? (
+      ) : (
         <>
-          <Text style={styles.message}>{errorMessage}</Text>
-          <Pressable style={styles.refreshButton} onPress={() => void loadPlan()}>
-            <Text style={styles.refreshButtonText}>{copy.refresh}</Text>
-          </Pressable>
-        </>
-      ) : null}
+          <View style={styles.header}>
+            <TrackingText size={10.5}>{copy.kicker}</TrackingText>
+            <Text style={styles.title}>{copy.title}</Text>
+            <Text style={styles.intro}>{copy.intro}</Text>
+          </View>
 
-      {activeView === "plan" && !isLoading && !errorMessage && plan ? (
-        <>
-          <View style={styles.progressCard}>
-            <View style={styles.progressHeader}>
-              <View>
-                <Text style={styles.progressLabel}>{copy.progress}</Text>
-                <Text style={styles.progressNumber}>{completionPercent}%</Text>
-              </View>
+          {activeView === "hub" ? null : renderSubViewHeader(
+            activeView === "required"
+              ? copy.hubRequiredJourney
+              : activeView === "optional"
+                ? copy.hubOptionalLibrary
+                : copy.hubAchievements,
+          )}
+
+          {isLoading ? <ZhaoLoadingIndicator label={copy.loading} /> : null}
+
+          {!isLoading && errorMessage ? (
+            <>
+              <Text style={styles.message}>{errorMessage}</Text>
               <Pressable style={styles.refreshButton} onPress={() => void loadPlan()}>
                 <Text style={styles.refreshButtonText}>{copy.refresh}</Text>
               </Pressable>
-            </View>
-            <View style={styles.progressTrack}>
-              <View
-                style={[styles.progressValue, { width: `${completionPercent}%` }]}
-              />
-            </View>
-            <View style={styles.statGrid}>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>{copy.requiredDone}</Text>
-                <Text style={styles.statValue}>
-                  {plan.summary.requiredCompleted}/{plan.summary.requiredTotal}
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>{copy.completed}</Text>
-                <Text style={styles.statValue}>
-                  {
-                    [...plan.required, ...plan.optional].filter(
-                      (item) => item.progress.status === "completed",
-                    ).length
-                  }
-                </Text>
-              </View>
-            </View>
-          </View>
+            </>
+          ) : null}
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{copy.positions}</Text>
-            <View style={styles.pillRow}>
-              {positionLabels.map((label) => (
-                <View key={label} style={styles.pill}>
-                  <Text style={styles.pillText}>{label}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          {!isLoading && !errorMessage && plan ? (
+            <>
+              {activeView === "hub" ? renderHub() : null}
 
-          <TrainingSection
+              {activeView === "required" ? (
+                <TrainingGuidedPlan
+                  copy={copy}
+                  plan={plan}
+                  onOpenMaterial={(material) => void handleOpenMaterial(material)}
+                  onRefresh={() => void loadPlan()}
+                />
+              ) : null}
+
+              {activeView === "optional" ? (
+                <TrainingOptionalLibrary
+                  copy={copy}
+                  plan={plan}
+                  onOpenMaterial={(material) => void handleOpenMaterial(material)}
+                />
+              ) : null}
+
+              {activeView === "achievements" ? (
+                <TrainingAchievements
+                  copy={copy}
+                  language={language}
+                  onOpenRecord={(record) =>
+                    void handleOpenMaterial(buildCompletedMaterialFromRecord(record))}
+                  refreshToken={achievementsRefresh}
+                />
+              ) : null}
+            </>
+          ) : null}
+
+          <TrainingPreviewModal
             copy={copy}
-            materials={plan.required}
-            title={copy.required}
-            onOpen={(material) => void handleOpenMaterial(material)}
-          />
-          <TrainingSection
-            copy={copy}
-            materials={plan.optional}
-            title={copy.optional}
-            onOpen={(material) => void handleOpenMaterial(material)}
+            material={previewMaterial}
+            fileUri={previewFileUri}
+            baseUri={previewBaseUri}
+            isLoading={isLoadingPreview}
+            errorMessage={previewError}
+            onClose={handleClosePreview}
+            onRetry={() => {
+              if (previewMaterial) void handleOpenMaterial(previewMaterial);
+            }}
+            onWebViewLoadEnd={() => setIsLoadingPreview(false)}
+            onWebViewError={() => {
+              setPreviewError(copy.previewError);
+              setIsLoadingPreview(false);
+            }}
+            onStartQuiz={handleStartQuiz}
+            syncProgress={syncMaterialProgress}
           />
         </>
-      ) : null}
-
-      <TrainingPreviewModal
-        copy={copy}
-        material={previewMaterial}
-        fileUri={previewFileUri}
-        baseUri={previewBaseUri}
-        isLoading={isLoadingPreview}
-        errorMessage={previewError}
-        onClose={handleClosePreview}
-        onRetry={() => {
-          if (previewMaterial) void handleOpenMaterial(previewMaterial);
-        }}
-        onWebViewLoadEnd={() => setIsLoadingPreview(false)}
-        onWebViewError={() => {
-          setPreviewError(copy.previewError);
-          setIsLoadingPreview(false);
-        }}
-        onStartQuiz={handleStartQuiz}
-        syncProgress={syncMaterialProgress}
-      />
-
-      <TrainingQuizModal
-        copy={copy}
-        language={language}
-        materialId={quizMaterialId}
-        onClose={() => setQuizMaterialId(null)}
-        onPassed={handleQuizPassed}
-      />
+      )}
     </View>
   );
 }

@@ -3,6 +3,7 @@ import { Linking, Pressable, ScrollView, Share, Text, TextInput, View } from "re
 import type { ShareAction } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
+import { useScreenName } from "@/lib/useScreenName";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
@@ -64,6 +65,7 @@ export function OrderModuleScreen({
   storeName,
   onProductViewChange,
 }: OrderModuleScreenProps) {
+  useScreenName("orders");
   const copy = ORDER_COPY[language];
   const [mode, setMode] = useState<OrderModuleMode>("new");
   const [suppliers, setSuppliers] = useState<OrderSupplier[]>([]);

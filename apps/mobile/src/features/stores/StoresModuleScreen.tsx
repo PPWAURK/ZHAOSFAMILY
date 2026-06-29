@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import type { AuthUser } from "@zhao/types";
+import { useScreenName } from "@/lib/useScreenName";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { useConfirm } from "@/components/confirm/ConfirmProvider";
 import { useToast } from "@/components/toast/ToastProvider";
@@ -127,6 +128,7 @@ function userHasRole(user: MobilePermissionUser, roleValue: string): boolean {
 }
 
 export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) {
+  useScreenName("stores");
   const confirm = useConfirm();
   const toast = useToast();
   const copy = STORE_COPY[language];

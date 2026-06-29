@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Image, Modal, Platform, Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { useConfirm } from "@/components/confirm/ConfirmProvider";
 import type { TRAINING_COPY } from "@/features/training/trainingCopy";
 import {
   assessViewerStats,
-  IMAGE_MIN_VIEW_SECONDS,
-  pdfMinReadSeconds,
-  VIDEO_COMPLETION_WATCHED_PCT,
   type ViewerStats,
 } from "@/features/training/trainingProgressRules";
 import { trainingStyles as styles } from "@/features/training/trainingStyles";
@@ -47,55 +44,6 @@ type TrainingPreviewModalProps = {
   ) => Promise<TrainingMaterialProgress | null>;
 };
 
-function getMarkCompleteHint(
-  copy: TrainingCopySet,
-  material: TrainingPlanMaterial,
-): string {
-  if (isVideoMaterial(material)) return copy.markCompleteHintVideo;
-  if (isPdfMaterial(material)) return copy.markCompleteHintPdf;
-
-  return copy.markCompleteHintImage;
-}
-
-function formatTemplate(
-  template: string,
-  values: Record<string, number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [key, value]) => text.replace(`{${key}}`, String(value)),
-    template,
-  );
-}
-
-// Live tracking feedback so a disabled button never looks broken.
-function getTrackingStatus(
-  copy: TrainingCopySet,
-  stats: ViewerStats | null,
-): string | null {
-  if (!stats) return null;
-
-  if (stats.kind === "video") {
-    return formatTemplate(copy.trackingVideo, {
-      watched: stats.watchedPct,
-      required: VIDEO_COMPLETION_WATCHED_PCT,
-    });
-  }
-
-  if (stats.kind === "pdf") {
-    return formatTemplate(copy.trackingPdf, {
-      maxPage: stats.maxPage,
-      numPages: stats.numPages,
-      readSeconds: stats.readSeconds,
-      requiredSeconds: pdfMinReadSeconds(stats.numPages),
-    });
-  }
-
-  return formatTemplate(copy.trackingImage, {
-    seconds: stats.viewedSeconds,
-    required: IMAGE_MIN_VIEW_SECONDS,
-  });
-}
-
 export function TrainingPreviewModal({
   copy,
   material,
@@ -111,6 +59,7 @@ export function TrainingPreviewModal({
   syncProgress,
 }: TrainingPreviewModalProps) {
   const confirm = useConfirm();
+  const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<ViewerStats | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
@@ -121,12 +70,15 @@ export function TrainingPreviewModal({
   const materialId = material?.id ?? null;
   const hasQuiz = material?.hasQuiz ?? false;
   const assessment = stats ? assessViewerStats(stats) : null;
-  // Quiz-gated materials are completed by passing the quiz, not by viewing —
-  // the viewer threshold only unlocks the "start quiz" action.
   const viewedEnough = assessment?.canMarkComplete ?? false;
   const canShowPreview = Boolean(material && fileUri);
   const shouldShowImagePreview = canShowPreview && isImageMaterial(material);
   const shouldShowWebPreview = canShowPreview && !shouldShowImagePreview;
+
+  const progressPct = Math.min(
+    100,
+    Math.max(0, material?.progress.progressPct ?? 0),
+  );
 
   useEffect(() => {
     setStats(null);
@@ -135,11 +87,8 @@ export function TrainingPreviewModal({
     setHasSyncFailed(false);
     lastSyncedPctRef.current = material?.progress.progressPct ?? 0;
     latestPctRef.current = material?.progress.progressPct ?? 0;
-    // The completion session restarts whenever another material is opened.
   }, [materialId]);
 
-  // Images and any material without an instrumented viewer (e.g. articles)
-  // fall back to dwell-time tracking so they always have a completion path.
   const usesDwellTracking =
     canShowPreview && !isVideoMaterial(material) && !isPdfMaterial(material);
 
@@ -167,8 +116,6 @@ export function TrainingPreviewModal({
       setIsCompleted(true);
       setHasSyncFailed(false);
     } else if (progress) {
-      // Backend kept it in_progress (e.g. a quiz still gates completion) —
-      // don't fake a completed state the server didn't grant.
       setHasSyncFailed(false);
     } else {
       setHasSyncFailed(true);
@@ -209,7 +156,6 @@ export function TrainingPreviewModal({
         }
       });
     }
-    // Only viewer stats updates should re-trigger the sync pipeline.
   }, [stats]);
 
   async function handleMarkCompletePress(): Promise<void> {
@@ -225,7 +171,6 @@ export function TrainingPreviewModal({
   }
 
   function handleClose(): void {
-    // Best-effort flush so progress survives even if periodic syncs failed.
     if (
       materialId !== null &&
       !isCompleted &&
@@ -240,135 +185,146 @@ export function TrainingPreviewModal({
     onClose();
   }
 
+  function renderFooter(): React.ReactNode {
+    if (!material || errorMessage) return null;
+
+    if (isCompleted) {
+      return (
+        <View style={styles.viewerFooter}>
+          <View style={styles.viewerCompletedBadge}>
+            <Text style={styles.viewerCompletedText}>
+              ✓ {copy.statuses.completed}
+            </Text>
+          </View>
+          {hasQuiz ? (
+            <Pressable
+              style={styles.markCompleteButton}
+              onPress={() => onStartQuiz(material)}
+            >
+              <Text style={styles.markCompleteButtonText}>{copy.reviewQuiz}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      );
+    }
+
+    if (hasQuiz) {
+      return (
+        <View style={styles.viewerFooter}>
+          <Pressable
+            style={styles.markCompleteButton}
+            onPress={() => onStartQuiz(material)}
+          >
+            <Text style={styles.markCompleteButtonText}>{copy.startQuiz}</Text>
+          </Pressable>
+          <Text style={styles.viewerFooterHint}>
+            {viewedEnough ? copy.quizGateReady : copy.quizGateHint}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.viewerFooter}>
+        <Pressable
+          disabled={!assessment?.canMarkComplete || isMarking}
+          style={[
+            styles.markCompleteButton,
+            !assessment?.canMarkComplete || isMarking
+              ? styles.markCompleteButtonDisabled
+              : null,
+          ]}
+          onPress={() => void handleMarkCompletePress()}
+        >
+          <Text style={styles.markCompleteButtonText}>
+            {copy.markComplete}
+          </Text>
+        </Pressable>
+        {hasSyncFailed ? (
+          <Text style={styles.syncFailedText}>{copy.progressSyncFailed}</Text>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <Modal
       animationType="slide"
-      presentationStyle="overFullScreen"
-      transparent
+      presentationStyle="fullScreen"
       visible={!!material}
       onRequestClose={handleClose}
     >
-      <View style={styles.previewModalRoot}>
-        <SafeAreaView edges={["bottom"]} style={styles.previewPanel}>
-          <View style={styles.previewHeader}>
-            <View style={styles.previewTitleGroup}>
-              <Text style={styles.cardMeta}>{material?.positionId || "-"}</Text>
-              <Text style={styles.previewTitle} numberOfLines={2}>
-                {material?.title || "-"}
-              </Text>
-            </View>
-            <Pressable style={styles.previewCloseButton} onPress={handleClose}>
-              <Text style={styles.refreshButtonText}>{copy.close}</Text>
-            </Pressable>
+      <SafeAreaView
+        edges={["top", "bottom"]}
+        style={[styles.viewerRoot, { paddingTop: insets.top }]}
+      >
+        <View style={styles.viewerHeader}>
+          <View style={styles.viewerHeaderTitleGroup}>
+            <Text style={styles.viewerHeaderMeta}>
+              {material?.positionId || "-"}
+            </Text>
+            <Text style={styles.viewerHeaderTitle} numberOfLines={2}>
+              {material?.title || "-"}
+            </Text>
           </View>
-          <View style={styles.previewBody}>
-            {shouldShowImagePreview ? (
-              <Image
-                resizeMode="contain"
-                source={{ uri: fileUri }}
-                style={styles.previewImage}
+          <Pressable style={styles.previewCloseButton} onPress={handleClose}>
+            <Text style={styles.refreshButtonText}>{copy.close}</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.viewerProgressBar}>
+          <View style={[styles.viewerProgressFill, { width: `${progressPct}%` }]} />
+        </View>
+
+        <View style={styles.viewerBody}>
+          {shouldShowImagePreview ? (
+            <Image
+              resizeMode="contain"
+              source={{ uri: fileUri }}
+              style={styles.previewImage}
+            />
+          ) : null}
+          {shouldShowWebPreview ? (
+            <WebView
+              allowFileAccess
+              allowFileAccessFromFileURLs
+              allowingReadAccessToURL={baseUri || fileUri}
+              allowsFullscreenVideo
+              allowsInlineMediaPlayback={Platform.OS === "ios"}
+              mediaPlaybackRequiresUserAction={false}
+              mixedContentMode="always"
+              originWhitelist={["*"]}
+              source={{ uri: fileUri }}
+              startInLoadingState
+              style={styles.previewWebView}
+              onLoadEnd={onWebViewLoadEnd}
+              onError={onWebViewError}
+              onMessage={(event) => {
+                const message = parseViewerMessage(event.nativeEvent.data);
+                if (message) setStats(message);
+              }}
+            />
+          ) : null}
+          {isLoading ? (
+            <View style={styles.viewerLoadingOverlay}>
+              <ZhaoLoadingIndicator
+                label={copy.previewLoading}
+                variant="overlay"
               />
-            ) : null}
-            {shouldShowWebPreview ? (
-              <WebView
-                allowFileAccess
-                allowFileAccessFromFileURLs
-                allowingReadAccessToURL={baseUri || fileUri}
-                allowsFullscreenVideo
-                allowsInlineMediaPlayback={Platform.OS === "ios"}
-                mediaPlaybackRequiresUserAction={false}
-                mixedContentMode="always"
-                originWhitelist={["*"]}
-                source={{ uri: fileUri }}
-                startInLoadingState
-                style={styles.previewWebView}
-                onLoadEnd={onWebViewLoadEnd}
-                onError={onWebViewError}
-                onMessage={(event) => {
-                  const message = parseViewerMessage(event.nativeEvent.data);
-                  if (message) setStats(message);
-                }}
-              />
-            ) : null}
-            {isLoading ? (
-              <View style={styles.previewOverlay}>
-                <ZhaoLoadingIndicator
-                  label={copy.previewLoading}
-                  variant="overlay"
-                />
-              </View>
-            ) : null}
-            {errorMessage ? (
-              <View style={styles.previewOverlay}>
-                <Text style={styles.message}>{errorMessage}</Text>
-                <Pressable style={styles.refreshButton} onPress={onRetry}>
-                  <Text style={styles.refreshButtonText}>{copy.retry}</Text>
-                </Pressable>
-              </View>
-            ) : null}
-          </View>
-          {material && !errorMessage ? (
-            <View style={styles.previewFooter}>
-              {hasQuiz ? (
-                <>
-                  {isCompleted ? (
-                    <Text style={styles.completedBadgeText}>
-                      ✓ {copy.statuses.completed}
-                    </Text>
-                  ) : null}
-                  <Pressable
-                    style={styles.markCompleteButton}
-                    onPress={() => onStartQuiz(material)}
-                  >
-                    <Text style={styles.markCompleteButtonText}>
-                      {isCompleted ? copy.reviewQuiz : copy.startQuiz}
-                    </Text>
-                  </Pressable>
-                  {!isCompleted ? (
-                    <Text style={styles.markCompleteHint}>
-                      {viewedEnough
-                        ? copy.quizGateReady
-                        : (getTrackingStatus(copy, stats) ?? copy.quizGateHint)}
-                    </Text>
-                  ) : null}
-                </>
-              ) : isCompleted ? (
-                <Text style={styles.completedBadgeText}>
-                  ✓ {copy.statuses.completed}
-                </Text>
-              ) : (
-                <>
-                  <Pressable
-                    disabled={!assessment?.canMarkComplete || isMarking}
-                    style={[
-                      styles.markCompleteButton,
-                      !assessment?.canMarkComplete || isMarking
-                        ? styles.markCompleteButtonDisabled
-                        : null,
-                    ]}
-                    onPress={() => void handleMarkCompletePress()}
-                  >
-                    <Text style={styles.markCompleteButtonText}>
-                      {copy.markComplete}
-                    </Text>
-                  </Pressable>
-                  {!assessment?.canMarkComplete ? (
-                    <Text style={styles.markCompleteHint}>
-                      {getTrackingStatus(copy, stats) ??
-                        getMarkCompleteHint(copy, material)}
-                    </Text>
-                  ) : null}
-                  {hasSyncFailed ? (
-                    <Text style={styles.syncFailedText}>
-                      {copy.progressSyncFailed}
-                    </Text>
-                  ) : null}
-                </>
-              )}
             </View>
           ) : null}
-        </SafeAreaView>
-      </View>
+          {errorMessage ? (
+            <View style={styles.viewerErrorOverlay}>
+              <Text style={styles.message}>{errorMessage}</Text>
+              <Pressable style={styles.refreshButton} onPress={onRetry}>
+                <Text style={styles.refreshButtonText}>{copy.retry}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+
+        {renderFooter()}
+      </SafeAreaView>
     </Modal>
   );
 }

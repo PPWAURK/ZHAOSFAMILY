@@ -22,10 +22,23 @@ async function bootstrap(): Promise<void> {
   const apiPrefix = configService.get<string>('API_PREFIX') || 'api';
   const port = Number(configService.get<string>('PORT') || 3002);
 
-  app.use(helmet());
   const corsOrigins = parseCorsOrigins(
     configService.get<string>('CORS_ORIGINS') ||
       configService.get<string>('CORS_ORIGIN'),
+  );
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "blob:"],
+          frameAncestors: corsOrigins,
+        },
+      },
+    }),
   );
 
   app.use(json({ limit: '6mb' }));

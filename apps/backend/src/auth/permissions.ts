@@ -18,6 +18,11 @@ export const TRAINING_PROGRESS_PERMISSIONS = {
   viewStore: 'training.progress.view_store',
 } as const;
 
+export const SCREEN_SECURITY_PERMISSIONS = {
+  audit: 'screen_security.audit',
+  delete: 'screen_security.delete',
+} as const;
+
 export const SYSTEM_PERMISSIONS = {
   managePermissions: 'system.permission.manage',
 } as const;

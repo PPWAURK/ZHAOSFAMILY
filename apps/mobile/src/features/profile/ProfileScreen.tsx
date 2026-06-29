@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
+import { useScreenName } from "@/lib/useScreenName";
 import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
@@ -100,6 +101,7 @@ export function ProfileScreen({
   onChangePassword,
   onUpdateProfile,
 }: ProfileScreenProps) {
+  useScreenName("profile");
   const copy = PROFILE_COPY[language];
   const displayName = useMemo(() => resolveDisplayName(user, copy.noValue), [copy.noValue, user]);
   const [avatar, setAvatar] = useState(user.avatarUrl || user.avatar || null);

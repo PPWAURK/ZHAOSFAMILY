@@ -86,6 +86,14 @@ const PERMISSIONS = [
     key: 'inventory.movement.create',
     description: 'Record manual inventory stock movements',
   },
+  {
+    key: 'screen_security.audit',
+    description: 'View screen security audit log (screenshot and recording events)',
+  },
+  {
+    key: 'screen_security.delete',
+    description: 'Delete screen security event records',
+  },
 ];
 
 const TRAINING_POSITIONS = [

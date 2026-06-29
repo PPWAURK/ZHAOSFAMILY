@@ -228,6 +228,55 @@ function buildProgressMap(
   return new Map(rows.map((row) => [row.materialId, toProgressItem(row)]));
 }
 
+function buildPassedQuizMaterialIds(
+  rows: { quiz: { materialId: number } }[],
+): Set<number> {
+  return new Set(rows.map((row) => row.quiz.materialId));
+}
+
+function buildUserMaterialKey(userId: number, materialId: number): string {
+  return `${userId}:${materialId}`;
+}
+
+function isEffectivelyCompleted(
+  progress: TrainingMaterialProgressItem,
+  materialId: number,
+  quizMaterialIds: Set<number>,
+  passedQuizMaterialIds: Set<number>,
+): boolean {
+  if (progress.status !== 'completed') {
+    return false;
+  }
+
+  if (!quizMaterialIds.has(materialId)) {
+    return true;
+  }
+
+  return passedQuizMaterialIds.has(materialId);
+}
+
+function normalizeQuizGatedProgress(
+  materialId: number,
+  progress: TrainingMaterialProgressItem,
+  quizMaterialIds: Set<number>,
+  passedQuizMaterialIds: Set<number>,
+): TrainingMaterialProgressItem {
+  if (isEffectivelyCompleted(progress, materialId, quizMaterialIds, passedQuizMaterialIds)) {
+    return progress;
+  }
+
+  if (quizMaterialIds.has(materialId) && progress.status === 'completed') {
+    return {
+      ...progress,
+      status: 'in_progress',
+      progressPct: Math.min(progress.progressPct, 99),
+      completedAt: null,
+    };
+  }
+
+  return progress;
+}
+
 function getDefaultProgress(materialId: number): TrainingMaterialProgressItem {
   return {
     materialId,
@@ -242,11 +291,18 @@ function toPlanMaterialItem(
   material: TrainingMaterialItem,
   progressByMaterialId: Map<number, TrainingMaterialProgressItem>,
   quizMaterialIds: Set<number>,
+  passedQuizMaterialIds: Set<number>,
 ): TrainingPlanMaterialItem {
+  const progress = progressByMaterialId.get(material.id) ?? getDefaultProgress(material.id);
+
   return {
     ...material,
-    progress:
-      progressByMaterialId.get(material.id) ?? getDefaultProgress(material.id),
+    progress: normalizeQuizGatedProgress(
+      material.id,
+      progress,
+      quizMaterialIds,
+      passedQuizMaterialIds,
+    ),
     hasQuiz: quizMaterialIds.has(material.id),
   };
 }
@@ -480,12 +536,13 @@ export class TrainingService {
       mappings,
     );
     const materials = await this.listMaterialsForPositionCodes(positionCodes);
+    const materialIds = materials.map((material) => material.id);
     const progressRows =
       await this.prismaService.trainingMaterialProgress.findMany({
         where: {
           userId: user.id,
           materialId: {
-            in: materials.map((material) => material.id),
+            in: materialIds,
           },
         },
         select: {
@@ -497,13 +554,30 @@ export class TrainingService {
         },
       });
     const quizRows = await this.prismaService.trainingQuiz.findMany({
-      where: { materialId: { in: materials.map((material) => material.id) } },
+      where: { materialId: { in: materialIds } },
       select: { materialId: true },
     });
+    const passedQuizAttemptRows =
+      await this.prismaService.trainingQuizAttempt.findMany({
+        where: {
+          userId: user.id,
+          passed: true,
+          quiz: { materialId: { in: materialIds } },
+        },
+        select: { quiz: { select: { materialId: true } } },
+      });
     const quizMaterialIds = new Set(quizRows.map((quiz) => quiz.materialId));
+    const passedQuizMaterialIds = buildPassedQuizMaterialIds(
+      passedQuizAttemptRows,
+    );
     const progressByMaterialId = buildProgressMap(progressRows);
     const materialItems = materials.map((material) =>
-      toPlanMaterialItem(material, progressByMaterialId, quizMaterialIds),
+      toPlanMaterialItem(
+        material,
+        progressByMaterialId,
+        quizMaterialIds,
+        passedQuizMaterialIds,
+      ),
     );
     const required = materialItems.filter((material) => material.isRequired);
     const requiredCompleted = required.filter(
@@ -554,14 +628,16 @@ export class TrainingService {
         orderBy: [{ id: 'asc' }],
       }),
     ]);
+    const materialIds = materials.map((material) => material.id);
+    const userIds = users.map((user) => user.id);
     const progressRows =
       await this.prismaService.trainingMaterialProgress.findMany({
         where: {
           userId: {
-            in: users.map((user) => user.id),
+            in: userIds,
           },
           materialId: {
-            in: materials.map((material) => material.id),
+            in: materialIds,
           },
         },
         select: {
@@ -573,6 +649,28 @@ export class TrainingService {
           completedAt: true,
         },
       });
+    const quizRows = await this.prismaService.trainingQuiz.findMany({
+      where: { materialId: { in: materialIds } },
+      select: { materialId: true },
+    });
+    const quizMaterialIds = new Set(quizRows.map((quiz) => quiz.materialId));
+    const passedQuizAttemptRows =
+      await this.prismaService.trainingQuizAttempt.findMany({
+        where: {
+          userId: { in: userIds },
+          passed: true,
+          quiz: { materialId: { in: materialIds } },
+        },
+        select: {
+          userId: true,
+          quiz: { select: { materialId: true } },
+        },
+      });
+    const passedQuizMaterialKeys = new Set(
+      passedQuizAttemptRows.map((row) =>
+        buildUserMaterialKey(row.userId, row.quiz.materialId),
+      ),
+    );
     const usersProgress = users.map((user) =>
       this.toStoreProgressUser(
         user,
@@ -580,6 +678,8 @@ export class TrainingService {
         mappings,
         materials,
         progressRows,
+        quizMaterialIds,
+        passedQuizMaterialKeys,
       ),
     );
     const completedEmployeeCount = usersProgress.filter(
@@ -1144,6 +1244,8 @@ export class TrainingService {
     mappings: TrainingJobRolePositionRow[],
     materials: TrainingMaterialItem[],
     progressRows: StoreTrainingProgressRow[],
+    quizMaterialIds: Set<number>,
+    passedQuizMaterialKeys: Set<string>,
   ): TrainingStoreProgress['users'][number] {
     const { positionCodes } = resolveTrainingPositionCodes(
       user.jobRole,
@@ -1163,7 +1265,19 @@ export class TrainingService {
     );
     const completedIds = new Set(
       relevantProgressRows
-        .filter((progress) => progress.status === 'completed')
+        .filter((progress) => {
+          if (progress.status !== 'completed') {
+            return false;
+          }
+
+          if (!quizMaterialIds.has(progress.materialId)) {
+            return true;
+          }
+
+          return passedQuizMaterialKeys.has(
+            buildUserMaterialKey(user.id, progress.materialId),
+          );
+        })
         .map((progress) => progress.materialId),
     );
     const requiredCompleted = completedIds.size;

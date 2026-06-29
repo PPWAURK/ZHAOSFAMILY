@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import * as ScreenCapture from "expo-screen-capture";
+import { reportScreenSecurityEvent } from "@/features/training/trainingApi";
 
 // ---------------------------------------------------------------------------
 // iOS recording detection via UIScreen.isCaptured
@@ -42,6 +43,8 @@ type ProtectedScreenProps = {
   children: ReactNode;
   /** Set to false to temporarily allow screenshots on this screen. */
   enabled?: boolean;
+  /** Screen identifier reported in security audit events. */
+  screenName?: string;
 };
 
 /**
@@ -64,6 +67,7 @@ type ProtectedScreenProps = {
 export function ProtectedScreen({
   children,
   enabled = true,
+  screenName,
 }: ProtectedScreenProps) {
   const [isRecording, setIsRecording] = useState(false);
   const isMountedRef = useRef(true);
@@ -113,6 +117,13 @@ export function ProtectedScreen({
       (captured: boolean) => {
         if (isMountedRef.current) {
           setIsRecording(captured);
+
+          if (captured) {
+            reportScreenSecurityEvent("recording", screenName, {
+              platform: Platform.OS,
+              osVersion: Platform.Version,
+            }).catch(() => {});
+          }
         }
       },
     );

@@ -168,6 +168,14 @@ export const DASHBOARD_NAV = [
         requiredPermission: "training.position.manage",
       },
       {
+        id: "screen-security",
+        href: "/dashboard/screen-security",
+        zh: "屏幕安全审计",
+        en: "Screen security audit",
+        fr: "Audit sécurité écran",
+        requiredPermission: "screen_security.audit",
+      },
+      {
         id: "inventory-zhao-bureau",
         href: "/dashboard/inventory",
         zh: "ZHAO Bureau 库存",

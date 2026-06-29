@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import type { WaitingQueueEntry } from "@zhao/types";
+import { useScreenName } from "@/lib/useScreenName";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import {
   TrackingText,
@@ -36,6 +37,7 @@ function waitingMinutes(createdAt: string, now: number): number {
 export function WaitingQueueModuleScreen({
   language,
 }: WaitingQueueModuleScreenProps) {
+  useScreenName("waiting-queue");
   const copy = WAITING_QUEUE_COPY[language];
   const [entries, setEntries] = useState<WaitingQueueEntry[]>([]);
   const [now, setNow] = useState(() => Date.now());

@@ -17,6 +17,7 @@ import { parseBearerToken } from '../auth/auth-token.utils';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import {
   RequirePermissions,
+  SCREEN_SECURITY_PERMISSIONS,
   TRAINING_MATERIAL_PERMISSIONS,
   TRAINING_POSITION_PERMISSIONS,
 } from '../auth/permissions';
@@ -24,11 +25,15 @@ import { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
 import { CreateTrainingPositionDto } from './dto/create-training-position.dto';
 import { ListTrainingCoursesQueryDto } from './dto/list-training-courses-query.dto';
 import { ListTrainingMaterialsQueryDto } from './dto/list-training-materials-query.dto';
+import { CreateScreenSecurityEventDto } from './dto/create-screenshot-event.dto';
+import { DeleteScreenSecurityEventsDto } from './dto/delete-screen-security-events.dto';
+import { ListScreenSecurityEventsQueryDto } from './dto/list-screen-security-events-query.dto';
 import { SubmitQuizAttemptDto } from './dto/submit-quiz-attempt.dto';
 import { UpdateTrainingMaterialDto } from './dto/update-training-material.dto';
 import { UpdateTrainingPositionDto } from './dto/update-training-position.dto';
 import { UpdateTrainingProgressDto } from './dto/update-training-progress.dto';
 import { UpsertJobRolePositionDto } from './dto/upsert-job-role-position.dto';
+import { ScreenSecurityEventService } from './screenshot-event.service';
 import { TrainingService } from './training.service';
 import { TrainingQuizService } from './training-quiz.service';
 import { TrainingTitleService } from './training-title.service';
@@ -54,6 +59,7 @@ export class TrainingController {
     private readonly trainingService: TrainingService,
     private readonly quizService: TrainingQuizService,
     private readonly titleService: TrainingTitleService,
+    private readonly screenSecurityEventService: ScreenSecurityEventService,
     private readonly authService: AuthService,
   ) {}
 
@@ -293,5 +299,44 @@ export class TrainingController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{ message: 'TRAINING_MATERIAL_DELETED' }> {
     return this.trainingService.deleteMaterial(id);
+  }
+
+  @Post('screen-security-events')
+  async recordScreenSecurityEvent(
+    @Headers('authorization') authorization: string | undefined,
+    @Body() dto: CreateScreenSecurityEventDto,
+  ): Promise<{ message: 'SCREEN_SECURITY_EVENT_RECORDED' }> {
+    const user = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    await this.screenSecurityEventService.record(user.id, dto);
+
+    return { message: 'SCREEN_SECURITY_EVENT_RECORDED' };
+  }
+
+  @Get('screen-security-events')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(SCREEN_SECURITY_PERMISSIONS.audit)
+  listScreenSecurityEvents(
+    @Query() query: ListScreenSecurityEventsQueryDto,
+  ) {
+    return this.screenSecurityEventService.list(query);
+  }
+
+  @Delete('screen-security-events')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(SCREEN_SECURITY_PERMISSIONS.delete)
+  async deleteScreenSecurityEvents(
+    @Body() dto: DeleteScreenSecurityEventsDto,
+  ): Promise<{ message: string; deletedCount: number }> {
+    const deletedCount = await this.screenSecurityEventService.deleteMany(
+      dto.ids,
+    );
+
+    return {
+      message: 'SCREEN_SECURITY_EVENTS_DELETED',
+      deletedCount,
+    };
   }
 }

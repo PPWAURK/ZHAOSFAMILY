@@ -38,7 +38,8 @@ model User {
   purchaseOrders    PurchaseOrder[]            @relation("CreatedByUser")
   purchaseReturns   PurchaseReturn[]           @relation("CreatedByUserReturns")
   trainingProgress  TrainingMaterialProgress[]
-  trainingQuizAttempts TrainingQuizAttempt[]
+  trainingQuizAttempts  TrainingQuizAttempt[]
+  screenSecurityEvents  ScreenSecurityEvent[]
   trainingTitles    UserTrainingTitle[]
   dashboardPosts    DashboardPost[]            @relation("DashboardPostAuthor")
   refreshSessions   RefreshSession[]
@@ -445,6 +446,22 @@ model TrainingQuizAttempt {
   @@index([userId, quizId])
   @@index([quizId])
   @@map("training_quiz_attempts")
+}
+
+model ScreenSecurityEvent {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  eventType  String   @default("screenshot") @map("event_type") @db.VarChar(20)
+  screenName String?  @map("screen_name") @db.VarChar(100)
+  deviceInfo Json?    @map("device_info")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("screen_security_events")
 }
 
 model TrainingTitle {

@@ -14,6 +14,30 @@ type TrainingCopy = {
   progress: string;
   positions: string;
   requiredDone: string;
+  guidedStageIntro: string;
+  guidedStageLearning: string;
+  guidedStageCompleted: string;
+  guidedIntroTitle: string;
+  guidedIntroBody: string;
+  guidedLearningTitle: string;
+  guidedLearningBody: string;
+  guidedCompletedTitle: string;
+  guidedCompletedBody: string;
+  guidedLibraryTitle: string;
+  guidedLibraryBody: string;
+  guidedJourney: string;
+  guidedLibrary: string;
+  guidedCurrent: string;
+  guidedLocked: string;
+  guidedCompleteSeal: string;
+  guidedFocusLabel: string;
+  guidedStepCounter: string;
+  guidedStartJourney: string;
+  guidedContinueJourney: string;
+  guidedLockedHint: string;
+  guidedUnlockHint: string;
+  guidedAllRequiredDone: string;
+  guidedOptionalReady: string;
   open: string;
   close: string;
   previewLoading: string;
@@ -63,6 +87,20 @@ type TrainingCopy = {
   myRecords: string;
   recordsEmpty: string;
   completedOn: string;
+  hubOverallProgress: string;
+  hubRequiredJourney: string;
+  hubRequiredJourneyBody: string;
+  hubOptionalLibrary: string;
+  hubOptionalLibraryBody: string;
+  hubAchievements: string;
+  hubAchievementsBody: string;
+  hubBack: string;
+  hubEnter: string;
+  hubActionContinue: string;
+  hubActionStart: string;
+  hubActionDone: string;
+  hubMaterialCount: string;
+  hubBadgeCount: string;
   materialTypes: Record<string, string>;
   statuses: Record<string, string>;
   positionLabels: Record<string, string>;
@@ -83,6 +121,34 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     progress: "完成率",
     positions: "匹配岗位",
     requiredDone: "必修完成",
+    guidedStageIntro: "启程",
+    guidedStageLearning: "研习中",
+    guidedStageCompleted: "已钤印",
+    guidedIntroTitle: "先走完这条必修之路",
+    guidedIntroBody:
+      "从第一份资料开始，按顺序学习并完成测验。每完成一步，下一步才会开启。",
+    guidedLearningTitle: "沿着朱印路径继续",
+    guidedLearningBody:
+      "聚焦当前必修资料，完成后自动解锁下一步。选修资料仍可随时查阅。",
+    guidedCompletedTitle: "必修旅程已完成",
+    guidedCompletedBody:
+      "全部必修已完成，称号与记录会继续同步。现在可回看资料或继续选修内容。",
+    guidedLibraryTitle: "岗位资料库",
+    guidedLibraryBody:
+      "当前没有必修顺序要求，可直接进入资料库学习与回看。",
+    guidedJourney: "朱印路径",
+    guidedLibrary: "选修资料库",
+    guidedCurrent: "进行中",
+    guidedLocked: "未解锁",
+    guidedCompleteSeal: "已钤印",
+    guidedFocusLabel: "本次先看这一步",
+    guidedStepCounter: "第 {current} / {total} 步",
+    guidedStartJourney: "开始第一步",
+    guidedContinueJourney: "继续当前步骤",
+    guidedLockedHint: "完成前一步后解锁",
+    guidedUnlockHint: "完成本步后自动解锁下一步。",
+    guidedAllRequiredDone: "必修已全部完成",
+    guidedOptionalReady: "选修资料仍可随时打开",
     open: "打开学习",
     close: "关闭",
     previewLoading: "正在打开学习内容...",
@@ -132,6 +198,20 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     myRecords: "培训记录",
     recordsEmpty: "还没有已完成的培训。",
     completedOn: "完成于",
+    hubOverallProgress: "整体进度",
+    hubRequiredJourney: "朱印必修",
+    hubRequiredJourneyBody: "按顺序完成必修资料，逐步解锁下一步",
+    hubOptionalLibrary: "选修资料库",
+    hubOptionalLibraryBody: "随时查阅岗位补充资料",
+    hubAchievements: "我的成就",
+    hubAchievementsBody: "查看已解锁称号与培训记录",
+    hubBack: "返回",
+    hubEnter: "进入",
+    hubActionContinue: "继续学习",
+    hubActionStart: "开始旅程",
+    hubActionDone: "已完成",
+    hubMaterialCount: "{count} 份资料",
+    hubBadgeCount: "{count} 个称号",
     materialTypes: {
       VIDEO: "视频",
       PDF: "PDF",
@@ -178,6 +258,34 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     progress: "Progress",
     positions: "Matched positions",
     requiredDone: "Required done",
+    guidedStageIntro: "Begins",
+    guidedStageLearning: "In study",
+    guidedStageCompleted: "Sealed",
+    guidedIntroTitle: "Take the required path in order",
+    guidedIntroBody:
+      "Start with the first material and move step by step. Each required item unlocks only after the one before it is finished.",
+    guidedLearningTitle: "Continue along the red-seal path",
+    guidedLearningBody:
+      "Stay with the current required step. When it is completed, the next one opens automatically. Optional materials remain available anytime.",
+    guidedCompletedTitle: "Required journey completed",
+    guidedCompletedBody:
+      "All required training is done. Titles and records will keep syncing while you revisit materials or continue with optional study.",
+    guidedLibraryTitle: "Role library",
+    guidedLibraryBody:
+      "There is no required sequence right now, so you can enter the library directly to study or revisit materials.",
+    guidedJourney: "Red-seal journey",
+    guidedLibrary: "Optional library",
+    guidedCurrent: "Current",
+    guidedLocked: "Locked",
+    guidedCompleteSeal: "Stamped",
+    guidedFocusLabel: "Focus on this step now",
+    guidedStepCounter: "Step {current} / {total}",
+    guidedStartJourney: "Start step one",
+    guidedContinueJourney: "Continue current step",
+    guidedLockedHint: "Unlocks after the step before it",
+    guidedUnlockHint: "Finish this step to unlock the next one automatically.",
+    guidedAllRequiredDone: "All required steps complete",
+    guidedOptionalReady: "Optional materials are always available",
     open: "Open",
     close: "Close",
     previewLoading: "Opening material...",
@@ -227,6 +335,20 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     myRecords: "Training records",
     recordsEmpty: "No completed training yet.",
     completedOn: "Completed",
+    hubOverallProgress: "Overall progress",
+    hubRequiredJourney: "Required journey",
+    hubRequiredJourneyBody: "Complete materials in order to unlock each next step",
+    hubOptionalLibrary: "Optional library",
+    hubOptionalLibraryBody: "Browse supplementary materials anytime",
+    hubAchievements: "My achievements",
+    hubAchievementsBody: "View unlocked titles and training records",
+    hubBack: "Back",
+    hubEnter: "Enter",
+    hubActionContinue: "Continue",
+    hubActionStart: "Start journey",
+    hubActionDone: "Completed",
+    hubMaterialCount: "{count} materials",
+    hubBadgeCount: "{count} titles",
     materialTypes: {
       VIDEO: "Video",
       PDF: "PDF",
@@ -273,6 +395,35 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     progress: "Progression",
     positions: "Postes liés",
     requiredDone: "Obligatoires faits",
+    guidedStageIntro: "Départ",
+    guidedStageLearning: "En étude",
+    guidedStageCompleted: "Scellé",
+    guidedIntroTitle: "Suivez d'abord le parcours obligatoire",
+    guidedIntroBody:
+      "Commencez par le premier support puis avancez étape par étape. Chaque élément obligatoire ne s'ouvre qu'après le précédent.",
+    guidedLearningTitle: "Continuez sur le parcours au sceau rouge",
+    guidedLearningBody:
+      "Restez concentré sur l'étape obligatoire en cours. Une fois terminée, la suivante s'ouvre automatiquement. Les supports optionnels restent accessibles à tout moment.",
+    guidedCompletedTitle: "Parcours obligatoire terminé",
+    guidedCompletedBody:
+      "Toute la formation obligatoire est terminée. Les titres et l'historique continuent à se synchroniser pendant que vous révisez ou poursuivez les supports optionnels.",
+    guidedLibraryTitle: "Bibliothèque du poste",
+    guidedLibraryBody:
+      "Aucune séquence obligatoire n'est requise pour le moment ; vous pouvez donc entrer directement dans la bibliothèque pour apprendre ou réviser.",
+    guidedJourney: "Parcours au sceau rouge",
+    guidedLibrary: "Bibliothèque optionnelle",
+    guidedCurrent: "En cours",
+    guidedLocked: "Verrouillé",
+    guidedCompleteSeal: "Scellé",
+    guidedFocusLabel: "Commencez par cette étape",
+    guidedStepCounter: "Étape {current} / {total}",
+    guidedStartJourney: "Commencer la première étape",
+    guidedContinueJourney: "Continuer l'étape en cours",
+    guidedLockedHint: "Se débloque après l'étape précédente",
+    guidedUnlockHint:
+      "Terminez cette étape pour débloquer automatiquement la suivante.",
+    guidedAllRequiredDone: "Toutes les étapes obligatoires sont terminées",
+    guidedOptionalReady: "Les supports optionnels restent disponibles",
     open: "Ouvrir",
     close: "Fermer",
     previewLoading: "Ouverture du support...",
@@ -322,6 +473,20 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     myRecords: "Historique de formation",
     recordsEmpty: "Aucune formation terminée pour l'instant.",
     completedOn: "Terminé le",
+    hubOverallProgress: "Progression globale",
+    hubRequiredJourney: "Parcours obligatoire",
+    hubRequiredJourneyBody: "Complétez les supports dans l'ordre pour débloquer chaque étape",
+    hubOptionalLibrary: "Bibliothèque optionnelle",
+    hubOptionalLibraryBody: "Consultez les supports complémentaires à tout moment",
+    hubAchievements: "Mes réussites",
+    hubAchievementsBody: "Consultez vos titres débloqués et votre historique",
+    hubBack: "Retour",
+    hubEnter: "Entrer",
+    hubActionContinue: "Continuer",
+    hubActionStart: "Commencer",
+    hubActionDone: "Terminé",
+    hubMaterialCount: "{count} supports",
+    hubBadgeCount: "{count} titres",
     materialTypes: {
       VIDEO: "Vidéo",
       PDF: "PDF",

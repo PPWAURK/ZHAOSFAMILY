@@ -5,6 +5,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { TrainingController } from './training.controller';
 import { TrainingQuizAdminController } from './training-quiz-admin.controller';
+import { ScreenSecurityEventService } from './screenshot-event.service';
 import { TrainingService } from './training.service';
 import { TrainingQuizService } from './training-quiz.service';
 import { TrainingQuizAdminService } from './training-quiz-admin.service';
@@ -22,6 +23,7 @@ import { TrainingTitleService } from './training-title.service';
     TrainingQuizGeneratorService,
     TrainingAiConfigService,
     TrainingTitleService,
+    ScreenSecurityEventService,
   ],
 })
 export class TrainingModule {}

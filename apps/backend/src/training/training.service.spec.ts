@@ -45,6 +45,9 @@ describe('TrainingService', () => {
         findUnique: jest.fn(),
         findMany: jest.fn(),
       },
+      trainingQuizAttempt: {
+        findMany: jest.fn(),
+      },
       user: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -80,6 +83,7 @@ describe('TrainingService', () => {
     // training-quiz.service.spec.ts; these plan/progress tests predate quizzes.
     prismaService.trainingQuiz.findUnique.mockResolvedValue(null);
     prismaService.trainingQuiz.findMany.mockResolvedValue([]);
+    prismaService.trainingQuizAttempt.findMany.mockResolvedValue([]);
     const mediaService = {
       deleteFile: jest.fn(),
     };
@@ -765,6 +769,66 @@ describe('TrainingService', () => {
     );
   });
 
+  it('does not count quiz-gated materials as completed until the quiz is passed', async () => {
+    const { service, prismaService } = createService();
+
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      {
+        code: 'ALL',
+        nameZh: '全岗通用',
+        nameEn: 'All',
+        nameFr: 'Tous',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 0,
+      },
+      {
+        code: 'FOH',
+        nameZh: '前厅',
+        nameEn: 'Front of House',
+        nameFr: 'Salle',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 10,
+      },
+    ]);
+    prismaService.trainingMaterial.findMany.mockResolvedValue([
+      buildMaterialRow({ id: 1, positionId: 'FOH', isRequired: true }),
+    ]);
+    prismaService.trainingMaterialProgress.findMany.mockResolvedValue([
+      {
+        materialId: 1,
+        status: 'completed',
+        progressPct: 100,
+        lastOpenedAt: new Date('2026-05-05T08:00:00.000Z'),
+        completedAt: new Date('2026-05-05T08:00:00.000Z'),
+      },
+    ]);
+    prismaService.trainingQuiz.findMany.mockResolvedValue([{ materialId: 1 }]);
+    prismaService.trainingQuizAttempt.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.getMyPlan({ id: 7, jobRole: 'front-host' }),
+    ).resolves.toMatchObject({
+      summary: {
+        requiredTotal: 1,
+        requiredCompleted: 0,
+        completionPercent: 0,
+      },
+      required: [
+        {
+          id: 1,
+          hasQuiz: true,
+          progress: {
+            status: 'in_progress',
+            progressPct: 99,
+            completedAt: null,
+          },
+        },
+      ],
+    });
+  });
+
   it('builds holding training plans without falling back to a store position', async () => {
     const { service, prismaService } = createService();
 
@@ -1086,6 +1150,88 @@ describe('TrainingService', () => {
         where: { restaurantId: 3 },
       }),
     );
+  });
+
+  it('excludes quiz-gated materials without a passed attempt from store completion', async () => {
+    const { service, prismaService } = createService();
+
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      {
+        code: 'ALL',
+        nameZh: '全岗通用',
+        nameEn: 'All',
+        nameFr: 'Tous',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 0,
+      },
+      {
+        code: 'FOH',
+        nameZh: '前厅',
+        nameEn: 'Front of House',
+        nameFr: 'Salle',
+        parentCode: null,
+        isActive: true,
+        sortOrder: 10,
+      },
+    ]);
+    prismaService.trainingMaterial.findMany.mockResolvedValue([
+      buildMaterialRow({ id: 1, positionId: 'FOH', isRequired: true }),
+      buildMaterialRow({ id: 2, positionId: 'ALL', isRequired: true }),
+    ]);
+    prismaService.user.findMany.mockResolvedValue([
+      {
+        id: 10,
+        name: 'Mei',
+        email: 'mei@example.com',
+        jobRole: 'front-of-house',
+        restaurant: { id: 3, name: 'Paris Opera' },
+      },
+    ]);
+    prismaService.trainingMaterialProgress.findMany.mockResolvedValue([
+      {
+        userId: 10,
+        materialId: 1,
+        status: 'completed',
+        progressPct: 100,
+        lastOpenedAt: new Date('2026-05-05T08:00:00.000Z'),
+        completedAt: new Date('2026-05-05T08:00:00.000Z'),
+      },
+      {
+        userId: 10,
+        materialId: 2,
+        status: 'completed',
+        progressPct: 100,
+        lastOpenedAt: new Date('2026-05-05T09:00:00.000Z'),
+        completedAt: new Date('2026-05-05T09:00:00.000Z'),
+      },
+    ]);
+    prismaService.trainingQuiz.findMany.mockResolvedValue([{ materialId: 1 }]);
+    prismaService.trainingQuizAttempt.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.getStoreProgress({
+        id: 7,
+        jobRole: 'store-manager',
+        restaurantId: 3,
+        store: { id: 3, name: 'Paris Opera' },
+        permissions: [],
+      }),
+    ).resolves.toMatchObject({
+      users: [
+        {
+          userId: 10,
+          requiredTotal: 2,
+          requiredCompleted: 1,
+          completionPercent: 50,
+        },
+      ],
+      summary: {
+        employeeCount: 1,
+        completedEmployeeCount: 0,
+        averageCompletionPercent: 50,
+      },
+    });
   });
 
   it('rejects store progress access without an organization role', async () => {

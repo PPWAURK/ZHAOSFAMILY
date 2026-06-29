@@ -28,7 +28,8 @@
         "backgroundColor": "#FFFFFF"
       },
       "permissions": [
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_MEDIA_IMAGES"
       ],
       "versionCode": 6
     },

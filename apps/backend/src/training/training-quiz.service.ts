@@ -239,33 +239,104 @@ export class TrainingQuizService {
               positionId: true,
               type: true,
               isRequired: true,
+              description: true,
+              originalName: true,
+              mimeType: true,
+              objectKey: true,
+              sizeBytes: true,
+              bucket: true,
+              createdAt: true,
+              updatedAt: true,
+              quiz: {
+                select: {
+                  id: true,
+                },
+              },
             },
           },
         },
         orderBy: [{ completedAt: 'desc' }],
       });
     const attempts = await this.prismaService.trainingQuizAttempt.findMany({
-      where: { userId, passed: true },
-      select: { score: true, quiz: { select: { materialId: true } } },
+      where: { userId },
+      select: {
+        score: true,
+        passed: true,
+        quiz: { select: { materialId: true } },
+      },
     });
-    const bestScoreByMaterial = new Map<number, number>();
+    const quizStatsByMaterial = new Map<
+      number,
+      {
+        bestQuizScore: number | null;
+        bestPassedQuizScore: number | null;
+        attemptsUsed: number;
+        quizPassed: boolean;
+      }
+    >();
 
     for (const attempt of attempts) {
       const materialId = attempt.quiz.materialId;
-      const current = bestScoreByMaterial.get(materialId) ?? 0;
-      if (attempt.score > current)
-        bestScoreByMaterial.set(materialId, attempt.score);
+      const current = quizStatsByMaterial.get(materialId);
+
+      if (!current) {
+        quizStatsByMaterial.set(materialId, {
+          bestQuizScore: attempt.score,
+          bestPassedQuizScore: attempt.passed ? attempt.score : null,
+          attemptsUsed: 1,
+          quizPassed: attempt.passed,
+        });
+        continue;
+      }
+
+      quizStatsByMaterial.set(materialId, {
+        bestQuizScore:
+          current.bestQuizScore === null
+            ? attempt.score
+            : Math.max(current.bestQuizScore, attempt.score),
+        bestPassedQuizScore:
+          attempt.passed === false
+            ? current.bestPassedQuizScore
+            : current.bestPassedQuizScore === null
+              ? attempt.score
+              : Math.max(current.bestPassedQuizScore, attempt.score),
+        attemptsUsed: current.attemptsUsed + 1,
+        quizPassed: current.quizPassed || attempt.passed,
+      });
     }
 
-    const records: TrainingRecordItem[] = completedRows.map((row) => ({
-      materialId: row.materialId,
-      title: row.material.title,
-      positionId: row.material.positionId,
-      type: row.material.type,
-      isRequired: row.material.isRequired,
-      completedAt: row.completedAt ? row.completedAt.toISOString() : null,
-      quizScore: bestScoreByMaterial.get(row.materialId) ?? null,
-    }));
+    const records: TrainingRecordItem[] = completedRows.flatMap((row) => {
+      const quizStats = quizStatsByMaterial.get(row.materialId);
+      const hasQuiz = Boolean(row.material.quiz) || Boolean(quizStats);
+
+      if (hasQuiz && !quizStats?.quizPassed) {
+        return [];
+      }
+
+      return [
+        {
+          materialId: row.materialId,
+          title: row.material.title,
+          positionId: row.material.positionId,
+          type: row.material.type,
+          isRequired: row.material.isRequired,
+          description: row.material.description,
+          originalName: row.material.originalName,
+          mimeType: row.material.mimeType,
+          objectKey: row.material.objectKey,
+          sizeBytes: row.material.sizeBytes.toString(),
+          bucket: row.material.bucket,
+          createdAt: row.material.createdAt.toISOString(),
+          updatedAt: row.material.updatedAt.toISOString(),
+          completedAt: row.completedAt ? row.completedAt.toISOString() : null,
+          hasQuiz,
+          quizPassed: quizStats?.quizPassed ?? false,
+          bestQuizScore: quizStats?.bestQuizScore ?? null,
+          quizAttemptsUsed: quizStats?.attemptsUsed ?? 0,
+          quizScore: quizStats?.bestPassedQuizScore ?? null,
+        },
+      ];
+    });
     const titles = await this.titleService.listEarnedTitles(userId);
 
     return { records, titles, completedCount: records.length };

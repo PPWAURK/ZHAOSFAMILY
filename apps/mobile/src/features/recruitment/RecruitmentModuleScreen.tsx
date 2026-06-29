@@ -11,6 +11,7 @@ import type {
   RecruitmentPosition,
   RecruitmentRequestItem,
 } from "@zhao/types";
+import { useScreenName } from "@/lib/useScreenName";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
@@ -62,6 +63,7 @@ function isActivePosition(
 export function RecruitmentModuleScreen({
   language,
 }: RecruitmentModuleScreenProps) {
+  useScreenName("recruitment");
   const copy = RECRUITMENT_COPY[language];
   const contractLabels = RECRUITMENT_CONTRACT_LABELS[language];
   const positionLabels = RECRUITMENT_POSITION_LABELS[language];

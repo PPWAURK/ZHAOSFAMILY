@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TitleBadge } from "@/features/training/TitleBadge";
@@ -245,48 +245,42 @@ export function TrainingQuizModal({
   }
 
   return (
-    <Modal
-      animationType="slide"
-      presentationStyle="overFullScreen"
-      transparent
-      visible={materialId !== null}
-      onRequestClose={onClose}
-    >
-      <View style={styles.previewModalRoot}>
-        <SafeAreaView edges={["bottom"]} style={styles.previewPanel}>
-          <View style={styles.previewHeader}>
-            <View style={styles.previewTitleGroup}>
-              <Text style={styles.cardMeta}>{copy.quizKicker}</Text>
-              <Text style={styles.previewTitle} numberOfLines={2}>
-                {quiz?.materialTitle || copy.quiz}
-              </Text>
-            </View>
-            <Pressable style={styles.previewCloseButton} onPress={onClose}>
-              <Text style={styles.refreshButtonText}>{copy.close}</Text>
+    <View style={styles.viewerRoot}>
+      <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1 }}>
+        <View style={styles.viewerHeader}>
+          <View style={styles.viewerHeaderTitleGroup}>
+            <Text style={styles.cardMeta}>{copy.quizKicker}</Text>
+            <Text style={styles.viewerHeaderTitle} numberOfLines={2}>
+              {quiz?.materialTitle || copy.quiz}
+            </Text>
+          </View>
+          <Pressable style={styles.previewCloseButton} onPress={onClose}>
+            <Text style={styles.refreshButtonText}>{copy.close}</Text>
+          </Pressable>
+        </View>
+
+        {phase === "loading" ? (
+          <View style={styles.viewerBody}>
+            <ZhaoLoadingIndicator label={copy.quizLoading} variant="overlay" />
+          </View>
+        ) : null}
+
+        {phase === "error" ? (
+          <View style={styles.quizCenter}>
+            <Text style={styles.message}>{errorMessage}</Text>
+            <Pressable style={styles.refreshButton} onPress={() => void loadQuiz()}>
+              <Text style={styles.refreshButtonText}>{copy.retry}</Text>
             </Pressable>
           </View>
+        ) : null}
 
-          {phase === "loading" ? (
-            <View style={styles.previewBody}>
-              <ZhaoLoadingIndicator label={copy.quizLoading} variant="overlay" />
-            </View>
-          ) : null}
-
-          {phase === "error" ? (
-            <View style={styles.quizCenter}>
-              <Text style={styles.message}>{errorMessage}</Text>
-              <Pressable style={styles.refreshButton} onPress={() => void loadQuiz()}>
-                <Text style={styles.refreshButtonText}>{copy.retry}</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          {quiz && (phase === "taking" || phase === "result") ? (
-            <>
-              <ScrollView
-                contentContainerStyle={styles.quizScroll}
-                showsVerticalScrollIndicator={false}
-              >
+        {quiz && (phase === "taking" || phase === "result") ? (
+          <>
+            <ScrollView
+              contentContainerStyle={styles.quizScroll}
+              showsVerticalScrollIndicator={false}
+              style={{ flex: 1 }}
+            >
                 {quizLanguages.length > 1 ? (
                   <View style={styles.quizLangRow}>
                     {quizLanguages.map((lang) => (
@@ -367,62 +361,61 @@ export function TrainingQuizModal({
                     }
                   />
                 ))}
-              </ScrollView>
+            </ScrollView>
 
-              <View style={styles.previewFooter}>
-                {!result ? (
-                  <>
-                    <Pressable
-                      disabled={!allAnswered || isSubmitting}
-                      style={[
-                        styles.markCompleteButton,
-                        !allAnswered || isSubmitting
-                          ? styles.markCompleteButtonDisabled
-                          : null,
-                      ]}
-                      onPress={() => void handleSubmit()}
-                    >
-                      <Text style={styles.markCompleteButtonText}>
-                        {isSubmitting ? copy.quizSubmitting : copy.quizSubmit}
-                      </Text>
-                    </Pressable>
-                    {!allAnswered ? (
-                      <Text style={styles.markCompleteHint}>
-                        {copy.quizAnswerAllHint}
-                      </Text>
-                    ) : null}
-                    {errorMessage ? (
-                      <Text style={styles.syncFailedText}>{errorMessage}</Text>
-                    ) : null}
-                  </>
-                ) : result.passed ? (
-                  <Pressable style={styles.markCompleteButton} onPress={onClose}>
-                    <Text style={styles.markCompleteButtonText}>{copy.quizDone}</Text>
-                  </Pressable>
-                ) : canRetake ? (
+            <View style={styles.viewerFooter}>
+              {!result ? (
+                <>
                   <Pressable
-                    style={styles.markCompleteButton}
-                    onPress={() => void loadQuiz()}
+                    disabled={!allAnswered || isSubmitting}
+                    style={[
+                      styles.markCompleteButton,
+                      !allAnswered || isSubmitting
+                        ? styles.markCompleteButtonDisabled
+                        : null,
+                    ]}
+                    onPress={() => void handleSubmit()}
                   >
                     <Text style={styles.markCompleteButtonText}>
-                      {copy.quizRetake}
+                      {isSubmitting ? copy.quizSubmitting : copy.quizSubmit}
                     </Text>
                   </Pressable>
-                ) : (
-                  <>
-                    <Text style={styles.markCompleteHint}>
-                      {copy.quizNoAttemptsLeft}
+                  {!allAnswered ? (
+                    <Text style={styles.viewerFooterHint}>
+                      {copy.quizAnswerAllHint}
                     </Text>
-                    <Pressable style={styles.previewCloseButton} onPress={onClose}>
-                      <Text style={styles.refreshButtonText}>{copy.close}</Text>
-                    </Pressable>
-                  </>
-                )}
-              </View>
-            </>
-          ) : null}
-        </SafeAreaView>
-      </View>
-    </Modal>
+                  ) : null}
+                  {errorMessage ? (
+                    <Text style={styles.syncFailedText}>{errorMessage}</Text>
+                  ) : null}
+                </>
+              ) : result.passed ? (
+                <Pressable style={styles.markCompleteButton} onPress={onClose}>
+                  <Text style={styles.markCompleteButtonText}>{copy.quizDone}</Text>
+                </Pressable>
+              ) : canRetake ? (
+                <Pressable
+                  style={styles.markCompleteButton}
+                  onPress={() => void loadQuiz()}
+                >
+                  <Text style={styles.markCompleteButtonText}>
+                    {copy.quizRetake}
+                  </Text>
+                </Pressable>
+              ) : (
+                <>
+                  <Text style={styles.viewerFooterHint}>
+                    {copy.quizNoAttemptsLeft}
+                  </Text>
+                  <Pressable style={styles.previewCloseButton} onPress={onClose}>
+                    <Text style={styles.refreshButtonText}>{copy.close}</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </>
+        ) : null}
+      </SafeAreaView>
+    </View>
   );
 }
