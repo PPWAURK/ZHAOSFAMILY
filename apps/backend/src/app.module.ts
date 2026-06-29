@@ -53,8 +53,6 @@ import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
     NotificationsModule,
     WaitingQueueModule,
   ],
-  providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-  ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

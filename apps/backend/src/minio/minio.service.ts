@@ -142,9 +142,7 @@ export class MinioService implements OnModuleInit {
     }
 
     const storageError = error as StorageError;
-    return (
-      storageError.code === 'NotFound' || storageError.statusCode === 404
-    );
+    return storageError.code === 'NotFound' || storageError.statusCode === 404;
   }
 
   async removeObject(objectKey: string): Promise<void> {

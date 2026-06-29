@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { ListInventoryQueryDto } from './dto/list-inventory-query.dto';
