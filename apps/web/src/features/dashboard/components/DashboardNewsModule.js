@@ -122,6 +122,17 @@ function parseMarkdownImageLine(line) {
   };
 }
 
+function resolveDashboardMediaUrl(src) {
+  try {
+    const url = new URL(src);
+    const objectKey = url.searchParams.get("objectKey");
+
+    return objectKey ? getDashboardNewsAttachmentUrl(objectKey) : src;
+  } catch {
+    return src;
+  }
+}
+
 function renderRichBody(body, styles) {
   return body.split("\n").map((line, index) => {
     const image = parseMarkdownImageLine(line.trim());
@@ -130,7 +141,11 @@ function renderRichBody(body, styles) {
     if (image) {
       return (
         <figure key={key} className={styles.readerBodyImage}>
-          <img src={image.src} alt={image.alt} loading="lazy" />
+          <img
+            src={resolveDashboardMediaUrl(image.src)}
+            alt={image.alt}
+            loading="lazy"
+          />
         </figure>
       );
     }
@@ -316,6 +331,20 @@ export default function DashboardNewsModule({ lang, copy }) {
         [columnKey]: nextIndex,
       };
     });
+  }
+
+  function resolveAttachmentHref(attachment) {
+    return attachment?.objectKey
+      ? getDashboardNewsAttachmentUrl(attachment.objectKey)
+      : attachment?.href || "#";
+  }
+
+  function handleAttachmentClick(event, attachment) {
+    if (!attachment?.objectKey) {
+      return;
+    }
+
+    event.currentTarget.href = getDashboardNewsAttachmentUrl(attachment.objectKey);
   }
 
   function updateForm(field, value) {
@@ -894,10 +923,13 @@ export default function DashboardNewsModule({ lang, copy }) {
 
                         {activePost.attachment ? (
                           <a
-                            href={activePost.attachment.href}
+                            href={resolveAttachmentHref(activePost.attachment)}
                             className={styles.attachmentCard}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={(event) =>
+                              handleAttachmentClick(event, activePost.attachment)
+                            }
                           >
                             <div>
                               <strong>{activePost.attachment.name}</strong>
@@ -972,10 +1004,13 @@ export default function DashboardNewsModule({ lang, copy }) {
             </div>
             {selectedPost.attachment ? (
               <a
-                href={selectedPost.attachment.href}
+                href={resolveAttachmentHref(selectedPost.attachment)}
                 className={styles.attachmentCard}
                 target="_blank"
                 rel="noreferrer"
+                onClick={(event) =>
+                  handleAttachmentClick(event, selectedPost.attachment)
+                }
               >
                 <div>
                   <strong>{selectedPost.attachment.name}</strong>
