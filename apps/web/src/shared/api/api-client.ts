@@ -40,6 +40,14 @@ function writeStoredToken(key: string, token: string | null): void {
   otherStorage.removeItem(key);
 }
 
+function readStoredToken(key: string): string | null {
+  if (!hasBrowserStorage()) {
+    return null;
+  }
+
+  return sessionStorage.getItem(key) ?? localStorage.getItem(key);
+}
+
 function syncAccessToken(token: string | null): void {
   setAccessToken(token);
   writeStoredToken(ACCESS_TOKEN_STORAGE_KEY, token);
@@ -69,8 +77,11 @@ export {
 // Browsers render <img>/<video>/<a> src URLs without an Authorization
 // header, so media URLs carry the access token as a query param instead.
 // The backend's /media/file route validates it the same way as the header.
+// Fall back to storage when the in-memory token hasn't been hydrated yet
+// (AuthContext sets it on mount) — otherwise the URL would ship without a
+// token and the backend rejects it with ACCESS_TOKEN_REQUIRED.
 export function buildMediaFileUrl(objectKey: string): string {
   const url = `${API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
-  const token = getAccessToken();
+  const token = getAccessToken() ?? readStoredToken(ACCESS_TOKEN_STORAGE_KEY);
   return token ? `${url}&token=${encodeURIComponent(token)}` : url;
 }

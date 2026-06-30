@@ -125,11 +125,9 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedStageLearning: "研习中",
     guidedStageCompleted: "已钤印",
     guidedIntroTitle: "先走完这条必修之路",
-    guidedIntroBody:
-      "从第一份资料开始，按顺序学习并完成测验。每完成一步，下一步才会开启。",
+    guidedIntroBody: "浏览岗位必修资料，按自己的节奏学习。完成测验即可获得认证。",
     guidedLearningTitle: "沿着朱印路径继续",
-    guidedLearningBody:
-      "聚焦当前必修资料，完成后自动解锁下一步。选修资料仍可随时查阅。",
+    guidedLearningBody: "随时查阅必修资料，按自己的节奏学习。选修资料也可随时打开。",
     guidedCompletedTitle: "必修旅程已完成",
     guidedCompletedBody:
       "全部必修已完成，称号与记录会继续同步。现在可回看资料或继续选修内容。",
@@ -146,7 +144,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedStartJourney: "开始第一步",
     guidedContinueJourney: "继续当前步骤",
     guidedLockedHint: "完成前一步后解锁",
-    guidedUnlockHint: "完成本步后自动解锁下一步。",
+    guidedUnlockHint: "随时可以打开任何资料学习。",
     guidedAllRequiredDone: "必修已全部完成",
     guidedOptionalReady: "选修资料仍可随时打开",
     open: "打开学习",
@@ -200,7 +198,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     completedOn: "完成于",
     hubOverallProgress: "整体进度",
     hubRequiredJourney: "朱印必修",
-    hubRequiredJourneyBody: "按顺序完成必修资料，逐步解锁下一步",
+    hubRequiredJourneyBody: "完成岗位必修资料，随时可按自己节奏学习",
     hubOptionalLibrary: "选修资料库",
     hubOptionalLibraryBody: "随时查阅岗位补充资料",
     hubAchievements: "我的成就",
@@ -263,10 +261,10 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedStageCompleted: "Sealed",
     guidedIntroTitle: "Take the required path in order",
     guidedIntroBody:
-      "Start with the first material and move step by step. Each required item unlocks only after the one before it is finished.",
+      "Browse the required materials for your role and learn at your own pace. Pass the quiz to get certified.",
     guidedLearningTitle: "Continue along the red-seal path",
     guidedLearningBody:
-      "Stay with the current required step. When it is completed, the next one opens automatically. Optional materials remain available anytime.",
+      "Browse required materials anytime and learn at your own pace. Optional materials are also always available.",
     guidedCompletedTitle: "Required journey completed",
     guidedCompletedBody:
       "All required training is done. Titles and records will keep syncing while you revisit materials or continue with optional study.",
@@ -283,7 +281,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedStartJourney: "Start step one",
     guidedContinueJourney: "Continue current step",
     guidedLockedHint: "Unlocks after the step before it",
-    guidedUnlockHint: "Finish this step to unlock the next one automatically.",
+    guidedUnlockHint: "You can open any material to learn at any time.",
     guidedAllRequiredDone: "All required steps complete",
     guidedOptionalReady: "Optional materials are always available",
     open: "Open",
@@ -337,7 +335,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     completedOn: "Completed",
     hubOverallProgress: "Overall progress",
     hubRequiredJourney: "Required journey",
-    hubRequiredJourneyBody: "Complete materials in order to unlock each next step",
+    hubRequiredJourneyBody: "Complete required materials for your role at your own pace",
     hubOptionalLibrary: "Optional library",
     hubOptionalLibraryBody: "Browse supplementary materials anytime",
     hubAchievements: "My achievements",
@@ -400,10 +398,10 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedStageCompleted: "Scellé",
     guidedIntroTitle: "Suivez d'abord le parcours obligatoire",
     guidedIntroBody:
-      "Commencez par le premier support puis avancez étape par étape. Chaque élément obligatoire ne s'ouvre qu'après le précédent.",
+      "Parcourez les supports obligatoires de votre poste et apprenez à votre rythme. Réussissez le quiz pour être certifié.",
     guidedLearningTitle: "Continuez sur le parcours au sceau rouge",
     guidedLearningBody:
-      "Restez concentré sur l'étape obligatoire en cours. Une fois terminée, la suivante s'ouvre automatiquement. Les supports optionnels restent accessibles à tout moment.",
+      "Consultez les supports obligatoires à tout moment et apprenez à votre rythme. Les supports optionnels sont également toujours disponibles.",
     guidedCompletedTitle: "Parcours obligatoire terminé",
     guidedCompletedBody:
       "Toute la formation obligatoire est terminée. Les titres et l'historique continuent à se synchroniser pendant que vous révisez ou poursuivez les supports optionnels.",
@@ -421,7 +419,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedContinueJourney: "Continuer l'étape en cours",
     guidedLockedHint: "Se débloque après l'étape précédente",
     guidedUnlockHint:
-      "Terminez cette étape pour débloquer automatiquement la suivante.",
+      "Vous pouvez ouvrir n'importe quel support pour apprendre à tout moment.",
     guidedAllRequiredDone: "Toutes les étapes obligatoires sont terminées",
     guidedOptionalReady: "Les supports optionnels restent disponibles",
     open: "Ouvrir",
@@ -475,7 +473,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     completedOn: "Terminé le",
     hubOverallProgress: "Progression globale",
     hubRequiredJourney: "Parcours obligatoire",
-    hubRequiredJourneyBody: "Complétez les supports dans l'ordre pour débloquer chaque étape",
+    hubRequiredJourneyBody: "Complétez les supports obligatoires de votre poste à votre rythme",
     hubOptionalLibrary: "Bibliothèque optionnelle",
     hubOptionalLibraryBody: "Consultez les supports complémentaires à tout moment",
     hubAchievements: "Mes réussites",
