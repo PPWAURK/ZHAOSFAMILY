@@ -1,138 +1,416 @@
 .page {
-  --paper: #f7f4ef;
-  --card: #ffffff;
-  --ink: #171717;
-  --muted: rgba(23, 23, 23, 0.68);
-  --line: rgba(23, 23, 23, 0.12);
-  --accent: #b51616;
-  --accent-dark: #861111;
+  --red: #c11616;
+  --red-deep: #8c1414;
+  --red-soft: rgba(193, 22, 22, 0.08);
+  --red-soft-2: rgba(193, 22, 22, 0.16);
+  --ink: #0a0a0a;
+  --ink-60: rgba(10, 10, 10, 0.6);
+  --ink-40: rgba(10, 10, 10, 0.4);
+  --ink-20: rgba(10, 10, 10, 0.2);
+  --ink-10: rgba(10, 10, 10, 0.1);
+  --ink-05: rgba(10, 10, 10, 0.05);
+  --paper: #ffffff;
   --serif: "Noto Serif", "Noto Serif SC", "Songti SC", serif;
+  --zh-serif: "Noto Serif SC", "Songti SC", "STSong", serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
 
   min-height: 100vh;
-  padding: 48px 20px;
+  padding: 40px 56px;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--serif);
 }
 
-.card {
-  width: min(100%, 800px);
+.shell {
+  width: min(100%, 1040px);
   margin: 0 auto;
-  padding: 48px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  box-shadow: 0 24px 70px rgba(23, 23, 23, 0.08);
+}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--red);
+  background: var(--paper);
+}
+
+.nav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 72px;
+  height: 3px;
+  background: var(--red);
+}
+
+.navBrand {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.18s ease;
+}
+
+.navBrand:hover,
+.navBrand:focus-visible {
+  color: var(--red);
+}
+
+.navLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px 24px;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 0 8px;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.navLink:hover,
+.navLink:focus-visible,
+.navLinkActive,
+.navLinkActive:hover,
+.navLinkActive:focus-visible {
+  color: var(--red);
+}
+
+.navLinkActive,
+.navLinkActive:hover,
+.navLinkActive:focus-visible {
+  border-bottom-color: var(--red);
+}
+
+.card {
+  width: min(100%, 960px);
+  margin: 0 auto;
+  padding: 56px 0 48px;
+  display: grid;
+  gap: 24px;
+}
+
+.headerBlock {
+  display: grid;
+  gap: 22px;
 }
 
 .kicker {
-  margin: 0 0 18px;
-  color: var(--accent);
+  margin: 0;
+  color: var(--red);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .header {
-  padding-bottom: 28px;
-  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 18px;
 }
 
 .header h1 {
   margin: 0;
-  max-width: 720px;
-  font-size: clamp(34px, 6vw, 52px);
-  line-height: 1.08;
-  font-weight: 700;
+  padding-left: 18px;
+  border-left: 4px solid var(--red);
+  font-family: var(--zh-serif);
+  font-size: clamp(42px, 4.8vw, 64px);
+  line-height: 0.98;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 
+.lede,
 .header p,
-.section p {
-  margin: 16px 0 0;
-  color: var(--muted);
-  font-size: 16px;
+.section p,
+.list,
+.faqAnswer,
+.contactDescription {
+  font-family: var(--zh-serif);
+  font-size: 15px;
   line-height: 1.75;
+  color: var(--ink-60);
+}
+
+.lede,
+.header p {
+  margin: 0;
+  max-width: 680px;
 }
 
 .section {
-  padding: 28px 0;
-  border-bottom: 1px solid var(--line);
+  position: relative;
+  padding: 24px 24px 26px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  box-shadow: 0 8px 20px rgba(112, 67, 52, 0.05);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
+.section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--red);
+}
+
+.section:hover {
+  background: var(--red-soft);
+  border-color: var(--red);
+  box-shadow: 0 20px 40px rgba(193, 22, 22, 0.18);
+  transform: translateY(-2px);
+}
+
+.sectionBody {
+  display: grid;
+  gap: 16px;
+}
+
+.sectionBody > * {
+  margin: 0;
+}
+
+.sectionTitle,
 .section h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 22px;
-  line-height: 1.25;
-  font-weight: 700;
+  font-family: var(--zh-serif);
+  font-size: clamp(22px, 2.6vw, 26px);
+  line-height: 1.18;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.section strong {
+  color: var(--ink);
 }
 
 .mailButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
-  margin-top: 20px;
-  padding: 12px 18px;
-  background: var(--accent);
-  color: #ffffff;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--red);
+  background: var(--red);
+  color: var(--paper);
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.16em;
   overflow-wrap: anywhere;
+  text-decoration: none;
+  text-transform: uppercase;
   transition:
-    background 0.18s ease,
-    transform 0.18s ease;
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .mailButton:hover,
 .mailButton:focus-visible {
-  background: var(--accent-dark);
+  background: var(--red-deep);
+  border-color: var(--red-deep);
   transform: translateY(-1px);
 }
 
 .list {
-  margin: 18px 0 0;
+  margin: 0;
   padding-left: 22px;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1.75;
 }
 
 .list li + li {
-  margin-top: 8px;
+  margin-top: 10px;
+}
+
+.list li::marker {
+  color: var(--red);
+}
+
+.contactList {
+  display: grid;
+  gap: 18px;
+}
+
+.contactItem {
+  display: grid;
+  gap: 10px;
+}
+
+.contactLabel {
+  margin: 0;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.contactDescription {
+  margin: 0;
+}
+
+.faqList {
+  display: grid;
+  border-top: 1px solid var(--ink-10);
+}
+
+.faqItem {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.faqQuestion {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.faqAnswer {
+  margin: 10px 0 0;
+}
+
+.inlineLink {
+  color: var(--red);
+  text-decoration: none;
+  border-bottom: 1px solid var(--red-soft-2);
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.inlineLink:hover,
+.inlineLink:focus-visible {
+  color: var(--red-deep);
+  border-bottom-color: var(--red-deep);
 }
 
 .footer {
-  padding-top: 28px;
-  color: rgba(23, 23, 23, 0.54);
-  font-size: 14px;
-  line-height: 1.6;
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ink-10);
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  line-height: 1.7;
+  text-transform: uppercase;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 860px) {
   .page {
-    padding: 20px 12px;
+    padding: 28px 24px;
+  }
+
+  .nav,
+  .navLinks {
+    flex-wrap: wrap;
   }
 
   .card {
-    padding: 28px 20px;
-  }
-
-  .header {
-    padding-bottom: 24px;
+    padding: 48px 0 36px;
   }
 
   .section {
-    padding: 24px 0;
+    padding: 22px 20px 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: 22px 16px 28px;
   }
 
-  .section h2 {
-    font-size: 20px;
+  .nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .navLinks {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .navLink {
+    min-height: 28px;
+    padding-bottom: 6px;
+  }
+
+  .card {
+    padding: 40px 0 24px;
+    gap: 18px;
+  }
+
+  .headerBlock {
+    gap: 18px;
+  }
+
+  .header h1 {
+    font-size: clamp(38px, 10vw, 52px);
+  }
+
+  .lede,
+  .header p,
+  .section p,
+  .list,
+  .faqAnswer,
+  .contactDescription {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .section {
+    padding: 20px 18px 22px;
   }
 
   .mailButton {
     width: 100%;
+    padding: 0 16px;
+  }
+
+  .faqQuestion {
+    font-size: 18px;
+  }
+
+  .footer {
+    font-size: 10px;
   }
 }

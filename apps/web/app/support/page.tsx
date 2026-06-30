@@ -49,78 +49,113 @@ export const metadata: Metadata = {
 export default function SupportPage(): JSX.Element {
   return (
     <main className={styles.page} lang="fr">
-      <article className={styles.card} aria-labelledby="support-title">
-        <p className={styles.kicker}>ZHAO&apos;s Family</p>
+      <div className={styles.shell}>
+        <nav className={styles.nav} aria-label="Navigation pages publiques">
+          <a href="/" className={styles.navBrand}>
+            ZHAO&apos;s Family
+          </a>
+          <div className={styles.navLinks}>
+            <a href="/privacy" className={styles.navLink}>
+              Politique de confidentialité
+            </a>
+            <a
+              href="/support"
+              className={`${styles.navLink} ${styles.navLinkActive}`}
+              aria-current="page"
+            >
+              Support
+            </a>
+            <a href="/delete-account" className={styles.navLink}>
+              Suppression de compte
+            </a>
+          </div>
+        </nav>
 
-        <header className={styles.header}>
-          <h1 id="support-title">Support</h1>
-          <p>
-            Besoin d'aide ? Retrouvez ici les informations de contact et les réponses aux
-            questions les plus fréquentes concernant l'application interne ZHAO's Family.
-          </p>
-        </header>
+        <article className={styles.card} aria-labelledby="support-title">
+          <div className={styles.headerBlock}>
+            <p className={styles.kicker}>ZHAO&apos;s Family</p>
 
-        <section className={styles.section} aria-labelledby="contact-title">
-          <h2 id="contact-title">Nous contacter</h2>
-          {supportChannels.map((channel) => (
-            <div key={channel.label}>
-              <p>
-                <strong>{channel.label}</strong> — {channel.description}
+            <header className={styles.header}>
+              <h1 id="support-title">Support</h1>
+              <p className={styles.lede}>
+                Besoin d&apos;aide ? Retrouvez ici les informations de contact et les réponses aux
+                questions les plus fréquentes concernant l&apos;application interne ZHAO&apos;s
+                Family.
               </p>
-              <a className={styles.mailButton} href={channel.href}>
-                {channel.value}
-              </a>
+            </header>
+          </div>
+
+          <section className={styles.section} aria-labelledby="contact-title">
+            <div className={styles.sectionBody}>
+              <h2 className={styles.sectionTitle} id="contact-title">
+                Nous contacter
+              </h2>
+              <div className={styles.contactList}>
+                {supportChannels.map((channel) => (
+                  <div key={channel.label} className={styles.contactItem}>
+                    <p className={styles.contactLabel}>{channel.label}</p>
+                    <p className={styles.contactDescription}>{channel.description}</p>
+                    <a className={styles.mailButton} href={channel.href}>
+                      {channel.value}
+                    </a>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </section>
+          </section>
 
-        <section className={styles.section} aria-labelledby="faq-title">
-          <h2 id="faq-title">Questions fréquentes</h2>
-          {commonQuestions.map((item) => (
-            <div key={item.question} style={{ marginTop: "20px" }}>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: "17px",
-                  fontWeight: 600,
-                  color: "var(--ink)",
-                  lineHeight: 1.4,
-                }}
-              >
-                {item.question}
-              </h3>
-              <p style={{ margin: "8px 0 0" }}>{item.answer}</p>
+          <section className={styles.section} aria-labelledby="faq-title">
+            <div className={styles.sectionBody}>
+              <h2 className={styles.sectionTitle} id="faq-title">
+                Questions fréquentes
+              </h2>
+              <div className={styles.faqList}>
+                {commonQuestions.map((item) => (
+                  <div key={item.question} className={styles.faqItem}>
+                    <h3 className={styles.faqQuestion}>{item.question}</h3>
+                    <p className={styles.faqAnswer}>{item.answer}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </section>
+          </section>
 
-        <section className={styles.section} aria-labelledby="response-title">
-          <h2 id="response-title">Délai de réponse</h2>
-          <p>
-            Notre équipe s'efforce de répondre à toutes les demandes dans un délai de{" "}
-            <strong>48 heures ouvrées</strong>. Les demandes urgentes liées à la sécurité des
-            comptes sont traitées en priorité.
-          </p>
-        </section>
+          <section className={styles.section} aria-labelledby="response-title">
+            <div className={styles.sectionBody}>
+              <h2 className={styles.sectionTitle} id="response-title">
+                Délai de réponse
+              </h2>
+              <p>
+                Notre équipe s&apos;efforce de répondre à toutes les demandes dans un délai de{" "}
+                <strong>48 heures ouvrées</strong>. Les demandes urgentes liées à la sécurité des
+                comptes sont traitées en priorité.
+              </p>
+            </div>
+          </section>
 
-        <section className={styles.section} aria-labelledby="links-title">
-          <h2 id="links-title">Pages utiles</h2>
-          <ul className={styles.list}>
-            <li>
-              <a href="/privacy" style={{ color: "var(--accent)" }}>
-                Politique de confidentialité
-              </a>
-            </li>
-            <li>
-              <a href="/delete-account" style={{ color: "var(--accent)" }}>
-                Suppression de compte
-              </a>
-            </li>
-          </ul>
-        </section>
+          <section className={styles.section} aria-labelledby="links-title">
+            <div className={styles.sectionBody}>
+              <h2 className={styles.sectionTitle} id="links-title">
+                Pages utiles
+              </h2>
+              <ul className={styles.list}>
+                <li>
+                  <a href="/privacy" className={styles.inlineLink}>
+                    Politique de confidentialité
+                  </a>
+                </li>
+                <li>
+                  <a href="/delete-account" className={styles.inlineLink}>
+                    Suppression de compte
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </section>
 
-        <footer className={styles.footer}>Dernière mise à jour : 30 juin 2026</footer>
-      </article>
+          <footer className={styles.footer}>Dernière mise à jour : 30 juin 2026</footer>
+        </article>
+      </div>
     </main>
   );
 }

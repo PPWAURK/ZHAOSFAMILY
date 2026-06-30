@@ -537,7 +537,7 @@ export default function GlassAuthPanel() {
           </span>
         </div>
         <div className={`${styles.bottomBlock} ${styles.bottomBlockRight}`}>
-          <a href="#" className={styles.bottomLink}>
+          <a href="/support" className={styles.bottomLink}>
             {t.help}
           </a>
         </div>
