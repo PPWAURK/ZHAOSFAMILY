@@ -50,8 +50,8 @@ export default function PrivacyPolicyPage(): JSX.Element {
             Pour toute demande concernant les données personnelles traitées par l'application,
             contactez le support ZHAO Family :
           </p>
-          <a className={styles.mailButton} href="mailto:support@shihongwang.fr.eu.org">
-            support@shihongwang.fr.eu.org
+          <a className={styles.mailButton} href="mailto:zhaogroupe12@gmail.com">
+            zhaogroupe12@gmail.com
           </a>
         </section>
 

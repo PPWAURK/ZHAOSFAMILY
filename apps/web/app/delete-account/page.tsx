@@ -42,8 +42,8 @@ export default function DeleteAccountPage(): JSX.Element {
             Si vous souhaitez supprimer votre compte utilisateur ainsi que les données associées,
             vous pouvez envoyer une demande par e-mail à l'adresse suivante :
           </p>
-          <a className={styles.mailButton} href="mailto:support@shihongwang.fr.eu.org">
-            support@shihongwang.fr.eu.org
+          <a className={styles.mailButton} href="mailto:zhaogroupe12@gmail.com">
+            zhaogroupe12@gmail.com
           </a>
         </section>
 
