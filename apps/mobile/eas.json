@@ -7,7 +7,7 @@
     "preview": {
       "node": "22.22.3",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaoplatforme.com/backend3"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaosfamily.com/api"
       },
       "android": {
         "buildType": "apk"
@@ -17,7 +17,7 @@
       "node": "22.22.3",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaoplatforme.com/backend3"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaosfamily.com/api"
       },
       "android": {
         "buildType": "app-bundle"

@@ -76,8 +76,7 @@ export function buildTrainingGuidedFlow(
       progressPct: material.progress.progressPct,
       isCompleted,
       isCurrent: currentRequiredIndex !== -1 && currentRequiredIndex === index,
-      isLocked:
-        !isCompleted && currentRequiredIndex !== -1 && index > currentRequiredIndex,
+      isLocked: false,
     };
   });
 

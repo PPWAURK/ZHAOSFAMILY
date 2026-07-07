@@ -68,12 +68,12 @@ describe("buildTrainingGuidedFlow", () => {
     expect(flow.currentMaterial?.id).toBe(1);
     expect(flow.requiredStates.map((state) => state.isLocked)).toEqual([
       false,
-      true,
-      true,
+      false,
+      false,
     ]);
   });
 
-  it("returns learning and only unlocks the next required step after completed ones", () => {
+  it("returns learning with every required step unlocked for self-paced study", () => {
     const flow = buildTrainingGuidedFlow(
       buildPlan({
         required: [
@@ -107,9 +107,9 @@ describe("buildTrainingGuidedFlow", () => {
     }))).toEqual([
       { id: 1, current: false, locked: false },
       { id: 2, current: true, locked: false },
-      { id: 3, current: false, locked: true },
+      { id: 3, current: false, locked: false },
     ]);
-    expect(isRequiredMaterialLocked(flow, 3)).toBe(true);
+    expect(isRequiredMaterialLocked(flow, 3)).toBe(false);
   });
 
   it("returns completed when every required material is completed", () => {
@@ -160,7 +160,7 @@ describe("buildTrainingGuidedFlow", () => {
 });
 
 describe("groupRequiredMaterialsByPosition", () => {
-  it("buckets materials by position in first-appearance order while keeping global lock state", () => {
+  it("buckets materials by position in first-appearance order while keeping global flow state", () => {
     const plan = buildPlan({
       required: [
         buildMaterial(1, { positionId: "FOH" }),
@@ -190,9 +190,9 @@ describe("groupRequiredMaterialsByPosition", () => {
     ).toEqual([
       [
         { id: 1, order: 1, current: true, locked: false },
-        { id: 3, order: 3, current: false, locked: true },
+        { id: 3, order: 3, current: false, locked: false },
       ],
-      [{ id: 2, order: 2, current: false, locked: true }],
+      [{ id: 2, order: 2, current: false, locked: false }],
     ]);
   });
 
