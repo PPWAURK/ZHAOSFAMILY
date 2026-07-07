@@ -29,7 +29,10 @@ export class PermissionGuard implements CanActivate {
         context.getClass(),
       ]) ?? [];
 
-    if (requiredPermissions.length === 0 && anyRequiredPermissions.length === 0) {
+    if (
+      requiredPermissions.length === 0 &&
+      anyRequiredPermissions.length === 0
+    ) {
       return true;
     }
 
@@ -43,7 +46,9 @@ export class PermissionGuard implements CanActivate {
     );
     const hasAnyPermission =
       anyRequiredPermissions.length === 0 ||
-      anyRequiredPermissions.some((permission) => grantedPermissions.has(permission));
+      anyRequiredPermissions.some((permission) =>
+        grantedPermissions.has(permission),
+      );
 
     if (!hasAllPermissions || !hasAnyPermission) {
       throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
