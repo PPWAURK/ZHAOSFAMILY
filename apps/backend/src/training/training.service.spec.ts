@@ -90,6 +90,9 @@ describe('TrainingService', () => {
     const titleService = {
       evaluateForPosition: jest.fn().mockResolvedValue(undefined),
     };
+    const badgeService = {
+      evaluateForMaterial: jest.fn().mockResolvedValue([]),
+    };
     const notificationsService = {
       sendToUsers: jest.fn().mockResolvedValue(undefined),
       registerToken: jest.fn(),
@@ -100,11 +103,13 @@ describe('TrainingService', () => {
       prismaService,
       mediaService,
       titleService,
+      badgeService,
       notificationsService,
       service: new TrainingService(
         prismaService as never,
         mediaService as never,
         titleService as never,
+        badgeService as never,
         notificationsService as never,
       ),
     };

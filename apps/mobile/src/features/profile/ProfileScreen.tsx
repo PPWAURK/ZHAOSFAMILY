@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import {
   Image,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -11,14 +10,17 @@ import {
 } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
 import { useScreenName } from "@/lib/useScreenName";
-import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
+import type {
+  AuthUser,
+  ChangePasswordRequest,
+  DeleteAccountRequest,
+  UpdateMeRequest,
+} from "@zhao/types";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
 import { PROFILE_COPY } from "@/features/profile/profileCopy";
-
-const ACCOUNT_DELETION_URL = "https://zhaoplatforme.com/delete-account";
 
 type ProfileScreenProps = {
   language: AuthLanguage;
@@ -27,6 +29,7 @@ type ProfileScreenProps = {
   onLogout: () => Promise<void>;
   onChangePassword: (input: ChangePasswordRequest) => Promise<void>;
   onUpdateProfile: (input: UpdateMeRequest) => Promise<void>;
+  onDeleteAccount: (input: DeleteAccountRequest) => Promise<void>;
 };
 
 type ProfileField = {
@@ -100,6 +103,7 @@ export function ProfileScreen({
   onLogout,
   onChangePassword,
   onUpdateProfile,
+  onDeleteAccount,
 }: ProfileScreenProps) {
   useScreenName("profile");
   const copy = PROFILE_COPY[language];
@@ -116,8 +120,11 @@ export function ProfileScreen({
   const [isEditing, setIsEditing] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [avatarMessage, setAvatarMessage] = useState("");
-  const [dataRequestError, setDataRequestError] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [showSaved, setShowSaved] = useState(false);
@@ -256,13 +263,34 @@ export function ProfileScreen({
     }
   }
 
-  async function openAccountDeletionPage(): Promise<void> {
-    setDataRequestError("");
+  function startAccountDeletion(): void {
+    setDeletePassword("");
+    setDeleteError("");
+    setIsConfirmingDelete(true);
+  }
+
+  function cancelAccountDeletion(): void {
+    setIsConfirmingDelete(false);
+    setDeletePassword("");
+    setDeleteError("");
+  }
+
+  async function confirmAccountDeletion(): Promise<void> {
+    setDeleteError("");
+
+    if (!deletePassword) {
+      setDeleteError(copy.deletePasswordRequired);
+      return;
+    }
+
+    setIsDeleting(true);
 
     try {
-      await Linking.openURL(ACCOUNT_DELETION_URL);
+      // On success the session is cleared and the app returns to the login screen.
+      await onDeleteAccount({ password: deletePassword });
     } catch {
-      setDataRequestError(copy.dataRequestError);
+      setDeleteError(copy.deleteError);
+      setIsDeleting(false);
     }
   }
 
@@ -468,14 +496,52 @@ export function ProfileScreen({
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleGroup}>
-            <Text style={styles.sectionTitle}>{copy.dataRequestHeading}</Text>
-            <Text style={styles.sectionHint}>{copy.dataRequestHint}</Text>
+            <Text style={styles.sectionTitle}>{copy.deleteHeading}</Text>
+            <Text style={styles.sectionHint}>{copy.deleteHint}</Text>
           </View>
         </View>
-        <Pressable style={styles.linkButton} onPress={() => void openAccountDeletionPage()}>
-          <Text style={styles.linkButtonText}>{copy.dataRequestAction}</Text>
-        </Pressable>
-        {dataRequestError ? <Text style={styles.inlineMessage}>{dataRequestError}</Text> : null}
+
+        {isConfirmingDelete ? (
+          <>
+            <Text style={styles.sectionHint}>{copy.deleteWarning}</Text>
+            <View style={styles.editField}>
+              <TrackingText size={10}>{copy.deletePasswordLabel}</TrackingText>
+              <TextInput
+                placeholder="••••••••"
+                placeholderTextColor={authControlStyles.colors.ink20}
+                secureTextEntry
+                style={styles.input}
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+              />
+            </View>
+            {deleteError ? <Text style={styles.inlineMessage}>{deleteError}</Text> : null}
+            <View style={styles.buttonRow}>
+              <Pressable
+                disabled={isDeleting}
+                style={[styles.dangerButton, isDeleting ? styles.disabledButton : null]}
+                onPress={() => void confirmAccountDeletion()}
+              >
+                {isDeleting ? (
+                  <ZhaoLoadingIndicator variant="button" />
+                ) : (
+                  <Text style={styles.dangerButtonText}>{copy.deleteConfirm}</Text>
+                )}
+              </Pressable>
+              <Pressable
+                disabled={isDeleting}
+                style={styles.secondaryButton}
+                onPress={cancelAccountDeletion}
+              >
+                <Text style={styles.secondaryButtonText}>{copy.cancel}</Text>
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <Pressable style={styles.linkButton} onPress={startAccountDeletion}>
+            <Text style={styles.linkButtonText}>{copy.deleteAction}</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -545,6 +611,20 @@ const styles = StyleSheet.create(scaleStyles({
   container: {
     gap: 18,
     paddingTop: 22,
+  },
+  dangerButton: {
+    alignItems: "center",
+    backgroundColor: authControlStyles.colors.red,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 46,
+  },
+  dangerButtonText: {
+    color: "#ffffff",
+    fontFamily: "monospace",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.2,
   },
   disabledButton: {
     opacity: 0.58,

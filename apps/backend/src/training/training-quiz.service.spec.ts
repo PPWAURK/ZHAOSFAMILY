@@ -13,13 +13,18 @@ describe('TrainingQuizService.getMyRecords', () => {
     const titleService = {
       listEarnedTitles: jest.fn().mockResolvedValue([]),
     };
+    const badgeService = {
+      evaluateForMaterial: jest.fn().mockResolvedValue([]),
+    };
 
     return {
       prismaService,
       titleService,
+      badgeService,
       service: new TrainingQuizService(
         prismaService as never,
         titleService as never,
+        badgeService as never,
       ),
     };
   }
@@ -201,5 +206,117 @@ describe('TrainingQuizService.getMyRecords', () => {
       },
     });
     expect(titleService.listEarnedTitles).toHaveBeenCalledWith(42);
+  });
+});
+
+describe('TrainingQuizService.submitAttempt', () => {
+  function createSubmitService() {
+    const prismaService = {
+      trainingQuiz: {
+        findUnique: jest.fn(),
+      },
+      trainingQuizAttempt: {
+        count: jest.fn(),
+        create: jest.fn(),
+      },
+      trainingMaterialProgress: {
+        upsert: jest.fn(),
+      },
+    };
+    const titleService = {
+      evaluateForPosition: jest.fn().mockResolvedValue([]),
+      listEarnedTitles: jest.fn(),
+    };
+    const badgeService = {
+      evaluateForMaterial: jest.fn().mockResolvedValue([
+        {
+          code: 'general_onboarding_certification',
+          status: 'certified',
+          earnedAt: '2026-07-03T00:00:00.000Z',
+        },
+      ]),
+    };
+
+    prismaService.trainingQuiz.findUnique.mockResolvedValue({
+      id: 3,
+      materialId: 11,
+      passingScore: 80,
+      maxAttempts: null,
+      questionCount: 0,
+      material: { positionId: 'ALL' },
+      questions: [
+        {
+          id: 101,
+          type: 'single',
+          prompt: 'Q1',
+          options: [{ key: 'a', label: 'A' }],
+          correctKeys: ['a'],
+          explanation: null,
+          translations: null,
+          sortOrder: 1,
+        },
+      ],
+    });
+    prismaService.trainingQuizAttempt.count.mockResolvedValue(0);
+    prismaService.trainingQuizAttempt.create.mockResolvedValue({});
+    prismaService.trainingMaterialProgress.upsert.mockResolvedValue({});
+
+    return {
+      prismaService,
+      titleService,
+      badgeService,
+      service: new TrainingQuizService(
+        prismaService as never,
+        titleService as never,
+        badgeService as never,
+      ),
+    };
+  }
+
+  it('rejects duplicate question answers before scoring', async () => {
+    const { service } = createSubmitService();
+
+    await expect(
+      service.submitAttempt(7, 11, {
+        answers: [
+          { questionId: 101, selectedKeys: ['a'] },
+          { questionId: 101, selectedKeys: ['a'] },
+        ],
+      }),
+    ).rejects.toThrow('TRAINING_QUIZ_DUPLICATE_ANSWERS');
+  });
+
+  it('records a passed attempt and returns newly earned badges', async () => {
+    const { service, prismaService, badgeService } = createSubmitService();
+
+    await expect(
+      service.submitAttempt(7, 11, {
+        answers: [{ questionId: 101, selectedKeys: ['a'] }],
+      }),
+    ).resolves.toMatchObject({
+      score: 100,
+      passed: true,
+      materialCompleted: true,
+      newBadges: [{ code: 'general_onboarding_certification' }],
+    });
+    type CreateAttempt = (input: {
+      data: {
+        userId: number;
+        quizId: number;
+        score: number;
+        passed: boolean;
+      };
+    }) => Promise<unknown>;
+    const createAttemptMock = prismaService.trainingQuizAttempt
+      .create as jest.MockedFunction<CreateAttempt>;
+    const createCall = createAttemptMock.mock.calls[0]?.[0];
+
+    expect(createCall.data).toMatchObject({
+      userId: 7,
+      quizId: 3,
+      score: 100,
+      passed: true,
+    });
+    expect(badgeService.evaluateForMaterial).toHaveBeenCalledWith(7, 11);
   });
 });

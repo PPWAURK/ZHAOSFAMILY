@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -18,6 +19,7 @@ import { PermissionGuard } from '../auth/guards/permission.guard';
 import {
   RequirePermissions,
   SCREEN_SECURITY_PERMISSIONS,
+  TRAINING_BADGE_PERMISSIONS,
   TRAINING_MATERIAL_PERMISSIONS,
   TRAINING_POSITION_PERMISSIONS,
 } from '../auth/permissions';
@@ -29,6 +31,7 @@ import { CreateScreenSecurityEventDto } from './dto/create-screenshot-event.dto'
 import { DeleteScreenSecurityEventsDto } from './dto/delete-screen-security-events.dto';
 import { ListScreenSecurityEventsQueryDto } from './dto/list-screen-security-events-query.dto';
 import { SubmitQuizAttemptDto } from './dto/submit-quiz-attempt.dto';
+import { UpdateTrainingBadgeRequirementsDto } from './dto/update-training-badge-requirements.dto';
 import { UpdateTrainingMaterialDto } from './dto/update-training-material.dto';
 import { UpdateTrainingPositionDto } from './dto/update-training-position.dto';
 import { UpdateTrainingProgressDto } from './dto/update-training-progress.dto';
@@ -36,10 +39,15 @@ import { UpsertJobRolePositionDto } from './dto/upsert-job-role-position.dto';
 import { ScreenSecurityEventService } from './screenshot-event.service';
 import { TrainingService } from './training.service';
 import { TrainingQuizService } from './training-quiz.service';
+import { TrainingBadgeService } from './training-badge.service';
+import { TrainingMonthlyReportService } from './training-monthly-report.service';
 import { TrainingTitleService } from './training-title.service';
 import type {
   TrainingDiagnostics,
+  TrainingBadgeItem,
   TrainingCourseItem,
+  TrainingMonthlyReport,
+  TrainingMyBadges,
   TrainingJobRolePositionItem,
   TrainingMaterialItem,
   TrainingMaterialProgressItem,
@@ -53,11 +61,27 @@ import type {
   TrainingStoreProgress,
 } from './training.types';
 
+function parseOptionalInteger(value: string | undefined): number | undefined {
+  if (value === undefined || value.trim() === '') {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed)) {
+    throw new BadRequestException('INVALID_RESTAURANT_ID');
+  }
+
+  return parsed;
+}
+
 @Controller('training')
 export class TrainingController {
   constructor(
     private readonly trainingService: TrainingService,
     private readonly quizService: TrainingQuizService,
+    private readonly badgeService: TrainingBadgeService,
+    private readonly monthlyReportService: TrainingMonthlyReportService,
     private readonly titleService: TrainingTitleService,
     private readonly screenSecurityEventService: ScreenSecurityEventService,
     private readonly authService: AuthService,
@@ -155,6 +179,56 @@ export class TrainingController {
     @Query('jobRole') jobRole?: string,
   ): Promise<TrainingResolvePreview> {
     return this.trainingService.getResolvePreview(jobRole ?? null);
+  }
+
+  @Get('badges/my')
+  async getMyBadges(
+    @Headers('authorization') authorization: string | undefined,
+  ): Promise<TrainingMyBadges> {
+    const user = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    return this.badgeService.getMyBadges(user.id);
+  }
+
+  @Get('badges')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_BADGE_PERMISSIONS.manage)
+  listBadges(): Promise<TrainingBadgeItem[]> {
+    return this.badgeService.listBadges();
+  }
+
+  @Put('badges/:code/requirements')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_BADGE_PERMISSIONS.manage)
+  updateBadgeRequirements(
+    @Param('code') code: string,
+    @Body() dto: UpdateTrainingBadgeRequirementsDto,
+  ): Promise<TrainingBadgeItem> {
+    return this.badgeService.updateRequirements(code, dto.materialIds);
+  }
+
+  @Get('reports/monthly')
+  async getMonthlyReport(
+    @Headers('authorization') authorization: string | undefined,
+    @Query('month') month?: string,
+    @Query('restaurantId') restaurantId?: string,
+  ): Promise<TrainingMonthlyReport> {
+    const user = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    return this.monthlyReportService.getMonthlyReport(
+      {
+        id: user.id,
+        jobRole: user.jobRole,
+        restaurantId: user.restaurantId,
+        store: user.store,
+      },
+      month,
+      parseOptionalInteger(restaurantId),
+    );
   }
 
   @Get('materials')

@@ -520,6 +520,80 @@
   opacity: 0.6;
 }
 
+.sendCardSelected {
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+
+.sendCardCheck {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.sendCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
+.sendToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sendToolbarCount {
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.sendDeleteBatch {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--red);
+  background: var(--red);
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: opacity 0.15s ease;
+}
+
+.sendDeleteBatch:hover {
+  opacity: 0.85;
+}
+
+.sendDeleteBatch:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.sendDeleteBatchCancel {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--ink-10);
+  background: var(--paper);
+  color: var(--ink-60);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: border-color 0.15s ease;
+}
+
+.sendDeleteBatchCancel:hover {
+  border-color: var(--ink-20);
+}
+
 .footer {
   padding-top: 28px;
   border-top: 1px solid var(--red-soft-2);

@@ -1327,6 +1327,30 @@
   background: rgba(255, 255, 255, 0.72);
 }
 
+.readerBodyHeading {
+  margin: 20px 0 10px;
+  color: var(--red);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.readerDivider {
+  margin: 20px 0;
+  border: none;
+  border-top: 1px solid var(--red-soft-2);
+}
+
+.readerList {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.readerList li {
+  margin-bottom: 4px;
+  line-height: 1.7;
+}
+
 .newsEmpty {
   padding: 26px 18px;
   border: 1px dashed var(--red-soft-2);
@@ -1679,6 +1703,169 @@
   text-transform: uppercase;
   font-weight: 600;
   text-align: center;
+}
+
+.editorWrapper {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--red-soft-2);
+  background: rgba(255, 255, 255, 0.9);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.editorWrapper:focus-within {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--red-soft);
+}
+
+.editorToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--red-soft-2);
+  background: rgba(193, 22, 22, 0.02);
+}
+
+.editorToolbarGroup {
+  display: inline-flex;
+  gap: 0;
+  align-items: center;
+}
+
+.editorToolbarGroup + .editorToolbarGroup::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--red-soft-2);
+}
+
+.editorToolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background 0.14s ease;
+}
+
+.editorToolBtn:hover {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.editorToolBtn:active {
+  background: var(--red-soft-2);
+}
+
+.editorToolBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.editorToolBtnActive {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.editorTextarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 14px 13px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  line-height: 1.7;
+  outline: none;
+  resize: vertical;
+}
+
+.editorFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 12px;
+  border-top: 1px solid var(--red-soft-2);
+  background: rgba(193, 22, 22, 0.02);
+}
+
+.editorCharCount {
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.editorUploadControl {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editorUploadControl input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: default;
+  pointer-events: none;
+}
+
+.editorUploadHint {
+  color: var(--ink-40);
+  font-family: var(--zh-serif);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.editorPreview {
+  min-height: 200px;
+  padding: 14px 13px;
+}
+
+.editorPreview p {
+  margin: 0 0 0.6em;
+  color: var(--ink);
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.editorPreview p:last-child {
+  margin-bottom: 0;
+}
+
+.editorPreview figure {
+  margin: 12px 0;
+}
+
+.editorPreview figure img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--red-soft-2);
+}
+
+.editorPreviewFallback {
+  color: var(--ink-40);
+  font-style: italic;
 }
 
 @media (max-width: 860px) {

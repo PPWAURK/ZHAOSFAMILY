@@ -107,6 +107,43 @@ export class RecruitmentRequestsService {
     return this.mapRequest(request);
   }
 
+  async batchDeleteRequests(
+    actor: RecruitmentRequestActor,
+    ids: number[],
+  ): Promise<{ deletedCount: number }> {
+    const requests = await this.prismaService.recruitmentRequest.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, createdByUserId: true },
+    });
+
+    const canManage = this.canManageRequests(actor);
+    const foundIds = new Set(requests.map((r) => r.id));
+    const validIds = requests
+      .filter((r) => canManage || r.createdByUserId === actor.id)
+      .map((r) => r.id);
+
+    const notFound = ids.filter((id) => !foundIds.has(id));
+    const forbidden = ids.filter(
+      (id) => foundIds.has(id) && !validIds.includes(id),
+    );
+
+    if (notFound.length > 0) {
+      throw new NotFoundException(
+        `RECRUITMENT_REQUESTS_NOT_FOUND: ${notFound.join(',')}`,
+      );
+    }
+
+    if (forbidden.length > 0) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+    }
+
+    await this.prismaService.recruitmentRequest.deleteMany({
+      where: { id: { in: validIds } },
+    });
+
+    return { deletedCount: validIds.length };
+  }
+
   async deleteRequest(
     actor: RecruitmentRequestActor,
     id: number,

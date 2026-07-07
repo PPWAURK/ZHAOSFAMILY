@@ -35,3 +35,9 @@ export function deleteRecruitmentRequest(
 ): Promise<{ id: number }> {
   return recruitmentRequestsApi.delete(id);
 }
+
+export function batchDeleteRecruitmentRequests(
+  ids: number[],
+): Promise<{ deletedCount: number }> {
+  return recruitmentRequestsApi.batchDelete(ids);
+}

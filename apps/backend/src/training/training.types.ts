@@ -144,6 +144,57 @@ export type TrainingTitleItem = {
   earnedAt: string | null;
 };
 
+export type TrainingBadgeMaterialRequirement = {
+  materialId: number;
+  title: string;
+  positionId: string;
+  type: string;
+};
+
+export type TrainingBadgeItem = {
+  code: string;
+  name: {
+    zh: string;
+    en: string;
+    fr: string;
+  };
+  description: {
+    zh: string | null;
+    en: string | null;
+    fr: string | null;
+  };
+  track: string;
+  rarity: string;
+  level: number | null;
+  iconType: string;
+  requiredScore: number;
+  requiredCompletionRate: number;
+  isActive: boolean;
+  sortOrder: number;
+  requirements: TrainingBadgeMaterialRequirement[];
+};
+
+export type TrainingEmployeeBadgeStatus =
+  | 'locked'
+  | 'in_progress'
+  | 'certified'
+  | 'failed';
+
+export type TrainingEmployeeBadgeItem = TrainingBadgeItem & {
+  status: TrainingEmployeeBadgeStatus;
+  progress: number;
+  maxProgress: number;
+  completionRate: number;
+  score: number | null;
+  earnedAt: string | null;
+};
+
+export type TrainingMyBadges = {
+  badges: TrainingEmployeeBadgeItem[];
+  earnedCount: number;
+  totalCount: number;
+};
+
 export type TrainingQuizAttemptResult = {
   score: number;
   passed: boolean;
@@ -151,6 +202,7 @@ export type TrainingQuizAttemptResult = {
   materialCompleted: boolean;
   results: TrainingQuizQuestionResult[];
   newTitles: TrainingTitleItem[];
+  newBadges: TrainingEmployeeBadgeItem[];
 };
 
 export type TrainingMyTitles = {
@@ -271,6 +323,76 @@ export type TrainingStoreProgress = {
     completedEmployeeCount: number;
     averageCompletionPercent: number;
   };
+};
+
+export type TrainingMonthlyReportBadgeItem = {
+  code: string;
+  name: {
+    zh: string;
+    en: string;
+    fr: string;
+  };
+  earnedAt: string;
+};
+
+export type TrainingMonthlyReportUserItem = {
+  userId: number;
+  name: string;
+  email: string;
+  jobRole: string | null;
+  restaurant: {
+    id: number;
+    name: string;
+  };
+  requiredTotal: number;
+  requiredCompleted: number;
+  completionPercent: number;
+  completedThisMonth: number;
+  quizAttemptCount: number;
+  quizPassedCount: number;
+  quizPassRate: number;
+  averageBestScore: number | null;
+  newBadgeCount: number;
+  badges: TrainingMonthlyReportBadgeItem[];
+};
+
+export type TrainingMonthlyReportStoreItem = {
+  restaurantId: number;
+  restaurantName: string;
+  employeeCount: number;
+  averageCompletionPercent: number;
+  completedEmployeeCount: number;
+  completedThisMonth: number;
+  quizAttemptCount: number;
+  quizPassedCount: number;
+  quizPassRate: number;
+  averageBestScore: number | null;
+  newBadgeCount: number;
+};
+
+export type TrainingMonthlyReport = {
+  month: string;
+  range: {
+    from: string;
+    to: string;
+  };
+  scope: {
+    restaurantId: number;
+    restaurantName: string;
+  };
+  summary: {
+    employeeCount: number;
+    averageCompletionPercent: number;
+    completedEmployeeCount: number;
+    completedThisMonth: number;
+    quizAttemptCount: number;
+    quizPassedCount: number;
+    quizPassRate: number;
+    averageBestScore: number | null;
+    newBadgeCount: number;
+  };
+  stores: TrainingMonthlyReportStoreItem[];
+  users: TrainingMonthlyReportUserItem[];
 };
 
 export type TrainingDiagnostics = {

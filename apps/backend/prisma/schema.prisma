@@ -8,48 +8,49 @@ datasource db {
 }
 
 model User {
-  id                Int                        @id @default(autoincrement())
-  familyName        String                     @map("family_name")
-  givenName         String                     @map("given_name")
-  name              String
-  email             String                     @unique
-  emailVerified     Boolean                    @default(false) @map("email_verified")
-  accountStatus     String                     @default("approved") @map("account_status") @db.VarChar(20)
-  accountReviewedAt DateTime?                  @map("account_reviewed_at")
-  accountReviewedByUserId Int?                 @map("account_reviewed_by_user_id")
-  passwordHash      String                     @map("password_hash")
-  restaurantId      Int                        @map("restaurant_id")
-  restaurant        Restaurant                 @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  birthday          DateTime?                  @db.Date
-  jobRole           String?                    @map("job_role")
-  phone             String?                    @db.VarChar(50)
-  address           String?                    @db.VarChar(255)
-  profilePhoto      String?                    @map("profile_photo") @db.LongText
-  userLevel         Int                        @default(0) @map("user_level") @db.UnsignedTinyInt
-  acceptedTerms     Boolean                    @default(false) @map("accepted_terms")
-  preferredLanguage String                     @default("fr") @map("preferred_language")
-  invitationTokenHash String?                  @map("invitation_token_hash") @db.VarChar(64)
-  invitationExpiresAt DateTime?                @map("invitation_expires_at")
-  passwordResetTokenHash String?               @map("password_reset_token_hash") @db.VarChar(64)
-  passwordResetExpiresAt DateTime?             @map("password_reset_expires_at")
-  createdAt         DateTime                   @default(now()) @map("created_at")
-  updatedAt         DateTime                   @updatedAt @map("updated_at")
-  userRoles         UserRole[]
-  purchaseOrders    PurchaseOrder[]            @relation("CreatedByUser")
-  purchaseReturns   PurchaseReturn[]           @relation("CreatedByUserReturns")
-  trainingProgress  TrainingMaterialProgress[]
-  trainingQuizAttempts  TrainingQuizAttempt[]
-  screenSecurityEvents  ScreenSecurityEvent[]
-  trainingTitles    UserTrainingTitle[]
-  dashboardPosts    DashboardPost[]            @relation("DashboardPostAuthor")
-  refreshSessions   RefreshSession[]
-  pushTokens        PushToken[]
-  createdRecruitmentRequests RecruitmentRequest[] @relation("RecruitmentRequestCreatedBy")
-  handledRecruitmentRequests RecruitmentRequest[] @relation("RecruitmentRequestHandledBy")
-  caseShares                 CaseShare[]          @relation("CaseShareAuthor")
-  reviewedCaseShares         CaseShare[]          @relation("CaseShareReviewedBy")
-  caseShareComments          CaseShareComment[]   @relation("CaseShareCommentAuthor")
-  caseShareLikes             CaseShareLike[]      @relation("CaseShareLikeUser")
+  id                         Int                        @id @default(autoincrement())
+  familyName                 String                     @map("family_name")
+  givenName                  String                     @map("given_name")
+  name                       String
+  email                      String                     @unique
+  emailVerified              Boolean                    @default(false) @map("email_verified")
+  accountStatus              String                     @default("approved") @map("account_status") @db.VarChar(20)
+  accountReviewedAt          DateTime?                  @map("account_reviewed_at")
+  accountReviewedByUserId    Int?                       @map("account_reviewed_by_user_id")
+  passwordHash               String                     @map("password_hash")
+  restaurantId               Int                        @map("restaurant_id")
+  restaurant                 Restaurant                 @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  birthday                   DateTime?                  @db.Date
+  jobRole                    String?                    @map("job_role")
+  phone                      String?                    @db.VarChar(50)
+  address                    String?                    @db.VarChar(255)
+  profilePhoto               String?                    @map("profile_photo") @db.LongText
+  userLevel                  Int                        @default(0) @map("user_level") @db.UnsignedTinyInt
+  acceptedTerms              Boolean                    @default(false) @map("accepted_terms")
+  preferredLanguage          String                     @default("fr") @map("preferred_language")
+  invitationTokenHash        String?                    @map("invitation_token_hash") @db.VarChar(64)
+  invitationExpiresAt        DateTime?                  @map("invitation_expires_at")
+  passwordResetTokenHash     String?                    @map("password_reset_token_hash") @db.VarChar(64)
+  passwordResetExpiresAt     DateTime?                  @map("password_reset_expires_at")
+  createdAt                  DateTime                   @default(now()) @map("created_at")
+  updatedAt                  DateTime                   @updatedAt @map("updated_at")
+  userRoles                  UserRole[]
+  purchaseOrders             PurchaseOrder[]            @relation("CreatedByUser")
+  purchaseReturns            PurchaseReturn[]           @relation("CreatedByUserReturns")
+  trainingProgress           TrainingMaterialProgress[]
+  trainingQuizAttempts       TrainingQuizAttempt[]
+  screenSecurityEvents       ScreenSecurityEvent[]
+  trainingTitles             UserTrainingTitle[]
+  trainingBadges             UserTrainingBadge[]
+  dashboardPosts             DashboardPost[]            @relation("DashboardPostAuthor")
+  refreshSessions            RefreshSession[]
+  pushTokens                 PushToken[]
+  createdRecruitmentRequests RecruitmentRequest[]       @relation("RecruitmentRequestCreatedBy")
+  handledRecruitmentRequests RecruitmentRequest[]       @relation("RecruitmentRequestHandledBy")
+  caseShares                 CaseShare[]                @relation("CaseShareAuthor")
+  reviewedCaseShares         CaseShare[]                @relation("CaseShareReviewedBy")
+  caseShareComments          CaseShareComment[]         @relation("CaseShareCommentAuthor")
+  caseShareLikes             CaseShareLike[]            @relation("CaseShareLikeUser")
 
   @@index([restaurantId])
   @@index([accountStatus])
@@ -59,14 +60,14 @@ model User {
 }
 
 model RefreshSession {
-  id          Int       @id @default(autoincrement())
-  userId      Int       @map("user_id")
-  tokenHash   String    @unique @map("token_hash") @db.VarChar(64)
-  expiresAt   DateTime  @map("expires_at")
-  revokedAt   DateTime? @map("revoked_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -139,19 +140,19 @@ model RolePermission {
 }
 
 model Restaurant {
-  id              Int              @id @default(autoincrement())
-  name            String           @unique
-  address         String
-  photoUrl        String?          @map("photo_url")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @map("updated_at")
-  users           User[]
-  purchaseOrders  PurchaseOrder[]
-  purchaseReturns PurchaseReturn[]
-  dashboardPosts  DashboardPost[]
+  id                  Int                  @id @default(autoincrement())
+  name                String               @unique
+  address             String
+  photoUrl            String?              @map("photo_url")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @map("updated_at")
+  users               User[]
+  purchaseOrders      PurchaseOrder[]
+  purchaseReturns     PurchaseReturn[]
+  dashboardPosts      DashboardPost[]
   recruitmentRequests RecruitmentRequest[]
-  abcStoreScores  AbcStoreScore[]
-  caseShares      CaseShare[]
+  abcStoreScores      AbcStoreScore[]
+  caseShares          CaseShare[]
   waitingQueueEntries WaitingQueueEntry[]
 
   @@map("restaurants")
@@ -171,23 +172,23 @@ model AbcScoreCycle {
 }
 
 model AbcStoreScore {
-  id                      Int              @id @default(autoincrement())
-  cycleId                 Int              @map("cycle_id")
-  restaurantId            Int              @map("restaurant_id")
-  marketingScore          Int?             @map("marketing_score")
-  marketingNotes          String?          @map("marketing_notes") @db.Text
-  marketingFilledByUserId Int?             @map("marketing_filled_by_user_id")
-  marketingFilledAt       DateTime?        @map("marketing_filled_at")
-  operationsScore         Int?             @map("operations_score")
-  operationsNotes         String?          @map("operations_notes") @db.Text
+  id                       Int             @id @default(autoincrement())
+  cycleId                  Int             @map("cycle_id")
+  restaurantId             Int             @map("restaurant_id")
+  marketingScore           Int?            @map("marketing_score")
+  marketingNotes           String?         @map("marketing_notes") @db.Text
+  marketingFilledByUserId  Int?            @map("marketing_filled_by_user_id")
+  marketingFilledAt        DateTime?       @map("marketing_filled_at")
+  operationsScore          Int?            @map("operations_score")
+  operationsNotes          String?         @map("operations_notes") @db.Text
   operationsFilledByUserId Int?            @map("operations_filled_by_user_id")
-  operationsFilledAt      DateTime?        @map("operations_filled_at")
-  grade                   String?          @db.VarChar(1)
-  createdAt               DateTime         @default(now()) @map("created_at")
-  updatedAt               DateTime         @updatedAt @map("updated_at")
-  cycle                   AbcScoreCycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  restaurant              Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  media                   AbcScoreMedia[]
+  operationsFilledAt       DateTime?       @map("operations_filled_at")
+  grade                    String?         @db.VarChar(1)
+  createdAt                DateTime        @default(now()) @map("created_at")
+  updatedAt                DateTime        @updatedAt @map("updated_at")
+  cycle                    AbcScoreCycle   @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  restaurant               Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  media                    AbcScoreMedia[]
 
   @@unique([cycleId, restaurantId])
   @@index([restaurantId])
@@ -195,40 +196,40 @@ model AbcStoreScore {
 }
 
 model AbcScoreMedia {
-  id             Int           @id @default(autoincrement())
-  storeScoreId   Int           @map("store_score_id")
-  objectKey      String        @map("object_key") @db.VarChar(512)
-  fileName       String?       @map("file_name") @db.VarChar(255)
-  department     String        @default("operations") @db.VarChar(20)
-  uploadedByUserId Int?        @map("uploaded_by_user_id")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  storeScore     AbcStoreScore @relation(fields: [storeScoreId], references: [id], onDelete: Cascade)
+  id               Int           @id @default(autoincrement())
+  storeScoreId     Int           @map("store_score_id")
+  objectKey        String        @map("object_key") @db.VarChar(512)
+  fileName         String?       @map("file_name") @db.VarChar(255)
+  department       String        @default("operations") @db.VarChar(20)
+  uploadedByUserId Int?          @map("uploaded_by_user_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  storeScore       AbcStoreScore @relation(fields: [storeScoreId], references: [id], onDelete: Cascade)
 
   @@index([storeScoreId])
   @@map("abc_score_media")
 }
 
 model Product {
-  id             BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  supplierId     Int      @map("supplier_id")
-  reference      String?  @db.VarChar(100)
-  category       String   @map("categorie") @db.VarChar(20)
-  nameCn         String   @map("nom_cn") @db.VarChar(255)
-  designationFr  String?  @map("designation_fr") @db.VarChar(255)
-  unit           String?  @map("unite") @db.VarChar(100)
-  unitPriceHt    Decimal? @map("prix_u_ht") @db.Decimal(10, 2)
-  image          String?  @db.Text
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(0)
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-  specification  String?  @db.VarChar(100)
-  specification2 String?  @map("specification_2") @db.VarChar(100)
-  specification3 String?  @map("specification_3") @db.VarChar(100)
-  unit2          String?  @map("unit_2") @db.VarChar(100)
-  unit3          String?  @map("unit_3") @db.VarChar(100)
-  unitPriceHt2   Decimal? @map("prix_u_ht_2") @db.Decimal(10, 2)
-  unitPriceHt3   Decimal? @map("prix_u_ht_3") @db.Decimal(10, 2)
-  isActive       Boolean  @default(true) @map("is_active")
-  productCategoryId Int?  @map("product_category_id")
+  id                BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  supplierId        Int      @map("supplier_id")
+  reference         String?  @db.VarChar(100)
+  category          String   @map("categorie") @db.VarChar(20)
+  nameCn            String   @map("nom_cn") @db.VarChar(255)
+  designationFr     String?  @map("designation_fr") @db.VarChar(255)
+  unit              String?  @map("unite") @db.VarChar(100)
+  unitPriceHt       Decimal? @map("prix_u_ht") @db.Decimal(10, 2)
+  image             String?  @db.Text
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  specification     String?  @db.VarChar(100)
+  specification2    String?  @map("specification_2") @db.VarChar(100)
+  specification3    String?  @map("specification_3") @db.VarChar(100)
+  unit2             String?  @map("unit_2") @db.VarChar(100)
+  unit3             String?  @map("unit_3") @db.VarChar(100)
+  unitPriceHt2      Decimal? @map("prix_u_ht_2") @db.Decimal(10, 2)
+  unitPriceHt3      Decimal? @map("prix_u_ht_3") @db.Decimal(10, 2)
+  isActive          Boolean  @default(true) @map("is_active")
+  productCategoryId Int?     @map("product_category_id")
 
   supplier            Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   inventoryMovements  InventoryMovement[]
@@ -362,21 +363,22 @@ model PurchaseReturnItem {
 }
 
 model TrainingMaterial {
-  id           Int                        @id @default(autoincrement())
-  positionId   String                     @map("position_id") @db.VarChar(40)
-  type         String                     @db.VarChar(20)
-  isRequired   Boolean                    @default(false) @map("is_required")
-  title        String                     @db.VarChar(255)
-  description  String?                    @db.VarChar(500)
-  originalName String                     @map("original_name") @db.VarChar(255)
-  mimeType     String                     @map("mime_type") @db.VarChar(100)
-  sizeBytes    BigInt                     @map("size_bytes")
-  bucket       String                     @db.VarChar(100)
-  objectKey    String                     @unique @map("object_key") @db.VarChar(500)
-  createdAt    DateTime                   @default(now()) @map("created_at")
-  updatedAt    DateTime                   @updatedAt @map("updated_at")
-  progress     TrainingMaterialProgress[]
-  quiz         TrainingQuiz?
+  id                Int                        @id @default(autoincrement())
+  positionId        String                     @map("position_id") @db.VarChar(40)
+  type              String                     @db.VarChar(20)
+  isRequired        Boolean                    @default(false) @map("is_required")
+  title             String                     @db.VarChar(255)
+  description       String?                    @db.VarChar(500)
+  originalName      String                     @map("original_name") @db.VarChar(255)
+  mimeType          String                     @map("mime_type") @db.VarChar(100)
+  sizeBytes         BigInt                     @map("size_bytes")
+  bucket            String                     @db.VarChar(100)
+  objectKey         String                     @unique @map("object_key") @db.VarChar(500)
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+  progress          TrainingMaterialProgress[]
+  quiz              TrainingQuiz?
+  badgeRequirements TrainingBadgeRequirement[]
 
   @@index([positionId])
   @@index([type])
@@ -397,13 +399,13 @@ model AiQuizConfig {
 }
 
 model TrainingQuiz {
-  id            Int                    @id @default(autoincrement())
-  materialId    Int                    @unique @map("material_id")
-  passingScore  Int                    @default(80) @map("passing_score")
-  maxAttempts   Int?                   @map("max_attempts")
-  questionCount Int                    @default(0) @map("question_count")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
+  id            Int      @id @default(autoincrement())
+  materialId    Int      @unique @map("material_id")
+  passingScore  Int      @default(80) @map("passing_score")
+  maxAttempts   Int?     @map("max_attempts")
+  questionCount Int      @default(0) @map("question_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   material  TrainingMaterial       @relation(fields: [materialId], references: [id], onDelete: Cascade)
   questions TrainingQuizQuestion[]
@@ -493,6 +495,62 @@ model UserTrainingTitle {
   @@unique([userId, titleCode])
   @@index([userId])
   @@map("user_training_titles")
+}
+
+model TrainingBadge {
+  id                     Int                        @id @default(autoincrement())
+  code                   String                     @unique @db.VarChar(80)
+  nameZh                 String                     @map("name_zh") @db.VarChar(120)
+  nameEn                 String                     @map("name_en") @db.VarChar(120)
+  nameFr                 String                     @map("name_fr") @db.VarChar(120)
+  descriptionZh          String?                    @map("description_zh") @db.VarChar(500)
+  descriptionEn          String?                    @map("description_en") @db.VarChar(500)
+  descriptionFr          String?                    @map("description_fr") @db.VarChar(500)
+  track                  String                     @db.VarChar(40)
+  rarity                 String                     @db.VarChar(20)
+  level                  Int?
+  iconType               String                     @map("icon_type") @db.VarChar(40)
+  requiredScore          Int                        @default(80) @map("required_score")
+  requiredCompletionRate Int                        @default(100) @map("required_completion_rate")
+  isActive               Boolean                    @default(true) @map("is_active")
+  sortOrder              Int                        @default(0) @map("sort_order")
+  createdAt              DateTime                   @default(now()) @map("created_at")
+  updatedAt              DateTime                   @updatedAt @map("updated_at")
+  requirements           TrainingBadgeRequirement[]
+  earned                 UserTrainingBadge[]
+
+  @@index([isActive, sortOrder])
+  @@index([track])
+  @@map("training_badges")
+}
+
+model TrainingBadgeRequirement {
+  id         Int              @id @default(autoincrement())
+  badgeCode  String           @map("badge_code") @db.VarChar(80)
+  materialId Int              @map("material_id")
+  sortOrder  Int              @default(0) @map("sort_order")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  badge      TrainingBadge    @relation(fields: [badgeCode], references: [code], onDelete: Cascade)
+  material   TrainingMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([badgeCode, materialId])
+  @@index([materialId])
+  @@map("training_badge_requirements")
+}
+
+model UserTrainingBadge {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @map("user_id")
+  badgeCode String        @map("badge_code") @db.VarChar(80)
+  earnedAt  DateTime      @default(now()) @map("earned_at")
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     TrainingBadge @relation(fields: [badgeCode], references: [code], onDelete: Cascade)
+
+  @@unique([userId, badgeCode])
+  @@index([userId])
+  @@index([badgeCode])
+  @@index([earnedAt])
+  @@map("user_training_badges")
 }
 
 model TrainingMaterialProgress {
@@ -598,25 +656,25 @@ model RecruitmentRequest {
 }
 
 model CaseShare {
-  id               Int        @id @default(autoincrement())
-  authorId         Int        @map("author_id")
-  author           User       @relation("CaseShareAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  restaurantId     Int        @map("restaurant_id")
-  restaurant       Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  type             String     @db.VarChar(20)
-  content          String     @db.Text
-  imageBucket      String?    @map("image_bucket") @db.VarChar(100)
-  imageObjectKey   String?    @map("image_object_key") @db.VarChar(500)
-  imageName        String?    @map("image_name") @db.VarChar(255)
-  imageMimeType    String?    @map("image_mime_type") @db.VarChar(100)
-  imageSizeBytes   BigInt?    @map("image_size_bytes")
-  status           String     @default("pending") @db.VarChar(20)
-  reviewNote       String?    @map("review_note") @db.Text
-  reviewedByUserId Int?       @map("reviewed_by_user_id")
-  reviewedBy       User?      @relation("CaseShareReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  reviewedAt       DateTime?  @map("reviewed_at")
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
+  id               Int                @id @default(autoincrement())
+  authorId         Int                @map("author_id")
+  author           User               @relation("CaseShareAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  restaurantId     Int                @map("restaurant_id")
+  restaurant       Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  type             String             @db.VarChar(20)
+  content          String             @db.Text
+  imageBucket      String?            @map("image_bucket") @db.VarChar(100)
+  imageObjectKey   String?            @map("image_object_key") @db.VarChar(500)
+  imageName        String?            @map("image_name") @db.VarChar(255)
+  imageMimeType    String?            @map("image_mime_type") @db.VarChar(100)
+  imageSizeBytes   BigInt?            @map("image_size_bytes")
+  status           String             @default("pending") @db.VarChar(20)
+  reviewNote       String?            @map("review_note") @db.Text
+  reviewedByUserId Int?               @map("reviewed_by_user_id")
+  reviewedBy       User?              @relation("CaseShareReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt       DateTime?          @map("reviewed_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
   comments         CaseShareComment[]
   likes            CaseShareLike[]
 

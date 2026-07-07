@@ -20,10 +20,15 @@ export const PROFILE_COPY: Record<
     logout: string;
     logoutHeading: string;
     logoutHint: string;
-    dataRequestHeading: string;
-    dataRequestHint: string;
-    dataRequestAction: string;
-    dataRequestError: string;
+    deleteHeading: string;
+    deleteHint: string;
+    deleteAction: string;
+    deleteWarning: string;
+    deletePasswordLabel: string;
+    deletePasswordRequired: string;
+    deleteConfirm: string;
+    deleting: string;
+    deleteError: string;
     name: string;
     noValue: string;
     phone: string;
@@ -65,10 +70,15 @@ export const PROFILE_COPY: Record<
     logout: "退出登录",
     logoutHeading: "登录状态",
     logoutHint: "结束当前会话并返回登录页。",
-    dataRequestHeading: "账号与数据",
-    dataRequestHint: "如需删除账号或相关数据，请通过网页表单提交请求。",
-    dataRequestAction: "打开删除请求页面",
-    dataRequestError: "无法打开网页，请稍后重试。",
+    deleteHeading: "删除账号",
+    deleteHint: "永久删除后无法恢复，你的个人信息将被匿名化。",
+    deleteAction: "删除我的账号",
+    deleteWarning: "此操作不可撤销。确认后你的账号将被停用、个人信息将被匿名化，且你会立即退出登录。请输入当前密码以确认。",
+    deletePasswordLabel: "当前密码",
+    deletePasswordRequired: "请输入当前密码。",
+    deleteConfirm: "永久删除账号",
+    deleting: "正在删除…",
+    deleteError: "删除失败，请检查密码后重试。",
     name: "姓名",
     noValue: "未填写",
     phone: "电话",
@@ -109,10 +119,16 @@ export const PROFILE_COPY: Record<
     logout: "Sign out",
     logoutHeading: "Session",
     logoutHint: "End this session and return to login.",
-    dataRequestHeading: "Account and data",
-    dataRequestHint: "To delete your account or related data, submit a request on the web page.",
-    dataRequestAction: "Open deletion request page",
-    dataRequestError: "The web page could not be opened. Please try again later.",
+    deleteHeading: "Delete account",
+    deleteHint: "Deletion is permanent and your personal data will be anonymized.",
+    deleteAction: "Delete my account",
+    deleteWarning:
+      "This action cannot be undone. Once confirmed, your account is deactivated, your personal data is anonymized, and you are signed out immediately. Enter your current password to confirm.",
+    deletePasswordLabel: "Current password",
+    deletePasswordRequired: "Please enter your current password.",
+    deleteConfirm: "Permanently delete account",
+    deleting: "Deleting…",
+    deleteError: "Deletion failed. Check your password and try again.",
     name: "Name",
     noValue: "Not set",
     phone: "Phone",
@@ -153,11 +169,16 @@ export const PROFILE_COPY: Record<
     logout: "Se déconnecter",
     logoutHeading: "Session",
     logoutHint: "Terminez cette session et retournez à la connexion.",
-    dataRequestHeading: "Compte et données",
-    dataRequestHint:
-      "Pour supprimer votre compte ou les données associées, envoyez une demande depuis la page web.",
-    dataRequestAction: "Ouvrir la page de demande",
-    dataRequestError: "La page web n'a pas pu être ouverte. Réessayez plus tard.",
+    deleteHeading: "Supprimer le compte",
+    deleteHint: "La suppression est définitive et vos données personnelles seront anonymisées.",
+    deleteAction: "Supprimer mon compte",
+    deleteWarning:
+      "Cette action est irréversible. Une fois confirmée, votre compte est désactivé, vos données personnelles sont anonymisées et vous êtes déconnecté immédiatement. Saisissez votre mot de passe actuel pour confirmer.",
+    deletePasswordLabel: "Mot de passe actuel",
+    deletePasswordRequired: "Veuillez saisir votre mot de passe actuel.",
+    deleteConfirm: "Supprimer définitivement le compte",
+    deleting: "Suppression…",
+    deleteError: "Échec de la suppression. Vérifiez votre mot de passe et réessayez.",
     name: "Nom",
     noValue: "Non renseigné",
     phone: "Téléphone",

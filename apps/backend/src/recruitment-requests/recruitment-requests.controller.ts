@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
+import { BatchDeleteRecruitmentRequestDto } from './dto/batch-delete-recruitment-request.dto';
 import { CreateRecruitmentRequestDto } from './dto/create-recruitment-request.dto';
 import { ListRecruitmentRequestsQueryDto } from './dto/list-recruitment-requests-query.dto';
 import { UpdateRecruitmentRequestDto } from './dto/update-recruitment-request.dto';
@@ -60,6 +61,17 @@ export class RecruitmentRequestsController {
       await this.getActor(authorization),
       id,
       dto,
+    );
+  }
+
+  @Post('batch-delete')
+  async batchDeleteRequests(
+    @Headers('authorization') authorization: string | undefined,
+    @Body() dto: BatchDeleteRecruitmentRequestDto,
+  ): Promise<{ deletedCount: number }> {
+    return this.recruitmentRequestsService.batchDeleteRequests(
+      await this.getActor(authorization),
+      dto.ids,
     );
   }
 

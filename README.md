@@ -2,7 +2,7 @@
   <img src="apps/web/public/logo2024/logo2024.jpg" alt="Logo ZHAO" width="320" />
 </p>
 
-<h1 align="center">ZHAO's Family</h1>
+<h1 align="center">ZHAO's Family — 赵</h1>
 
 <p align="center">
   <strong>Plateforme de gestion et d'exploitation numérique pour la restauration</strong>

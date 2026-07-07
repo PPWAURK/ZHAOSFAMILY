@@ -11,7 +11,12 @@ import {
 import { scaleStyles } from "@/lib/responsive";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from "zustand";
-import type { ChangePasswordRequest, RestaurantSummary, UpdateMeRequest } from "@zhao/types";
+import type {
+  ChangePasswordRequest,
+  DeleteAccountRequest,
+  RestaurantSummary,
+  UpdateMeRequest,
+} from "@zhao/types";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import {
   AuthHeading,
@@ -214,6 +219,13 @@ export function LoginScreen() {
     await mobileAuthActions.changePassword(input);
   }
 
+  async function submitDeleteAccount(input: DeleteAccountRequest): Promise<void> {
+    // Revoke the push token while still authenticated; ignore failures so a
+    // network hiccup never blocks the deletion.
+    await unregisterPushToken().catch(() => undefined);
+    await mobileAuthActions.deleteAccount(input);
+  }
+
   async function submitRegister(): Promise<void> {
     clearFeedback();
 
@@ -291,6 +303,7 @@ export function LoginScreen() {
         onLogout={submitLogout}
         onChangePassword={submitPasswordChange}
         onUpdateProfile={submitProfileUpdate}
+        onDeleteAccount={submitDeleteAccount}
       />
     );
   }

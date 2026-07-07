@@ -18,6 +18,10 @@ export const TRAINING_PROGRESS_PERMISSIONS = {
   viewStore: 'training.progress.view_store',
 } as const;
 
+export const TRAINING_BADGE_PERMISSIONS = {
+  manage: 'training.badge.manage',
+} as const;
+
 export const SCREEN_SECURITY_PERMISSIONS = {
   audit: 'screen_security.audit',
   delete: 'screen_security.delete',

@@ -101,6 +101,24 @@ type TrainingCopy = {
   hubActionDone: string;
   hubMaterialCount: string;
   hubBadgeCount: string;
+
+  // Map-themed strings (three-layer gamified map)
+  mapLayerShared: string;
+  mapLayerRequired: string;
+  mapLayerAdvanced: string;
+  mapLayerSharedBody: string;
+  mapLayerRequiredBody: string;
+  mapLayerAdvancedBody: string;
+  mapLocked: string;
+  mapUnlockNext: string;
+  mapUnlockCondition: string;
+  mapNodeStudy: string;
+  mapNodeQuiz: string;
+  mapNodeComplete: string;
+  mapPositionGate: string;
+  mapAchievementEntry: string;
+  backToMap: string;
+
   materialTypes: Record<string, string>;
   statuses: Record<string, string>;
   positionLabels: Record<string, string>;
@@ -210,6 +228,21 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     hubActionDone: "已完成",
     hubMaterialCount: "{count} 份资料",
     hubBadgeCount: "{count} 个称号",
+    mapLayerShared: "全员共享",
+    mapLayerRequired: "岗位必修",
+    mapLayerAdvanced: "高阶课程",
+    mapLayerSharedBody: "所有员工必须学习的全员材料",
+    mapLayerRequiredBody: "你所在岗位的必修培训内容",
+    mapLayerAdvancedBody: "完成岗位必修后可探索的高阶内容",
+    mapLocked: "未解锁",
+    mapUnlockNext: "完成本层全部内容后解锁",
+    mapUnlockCondition: "完成全部必修即可解锁高阶课程",
+    mapNodeStudy: "学习",
+    mapNodeQuiz: "测验",
+    mapNodeComplete: "已完成",
+    mapPositionGate: "按岗位展开",
+    mapAchievementEntry: "成就 & 称号",
+    backToMap: "返回闯关地图",
     materialTypes: {
       VIDEO: "视频",
       PDF: "PDF",
@@ -347,6 +380,21 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     hubActionDone: "Completed",
     hubMaterialCount: "{count} materials",
     hubBadgeCount: "{count} titles",
+    mapLayerShared: "Shared",
+    mapLayerRequired: "Required",
+    mapLayerAdvanced: "Advanced",
+    mapLayerSharedBody: "Mandatory materials for all employees",
+    mapLayerRequiredBody: "Position-specific required training",
+    mapLayerAdvancedBody: "Advanced courses after completing required training",
+    mapLocked: "Locked",
+    mapUnlockNext: "Complete all items in this layer to unlock the next",
+    mapUnlockCondition: "Complete all required courses to unlock advanced",
+    mapNodeStudy: "Study",
+    mapNodeQuiz: "Quiz",
+    mapNodeComplete: "Done",
+    mapPositionGate: "Expand by position",
+    mapAchievementEntry: "Achievements & Titles",
+    backToMap: "Back to Training Map",
     materialTypes: {
       VIDEO: "Video",
       PDF: "PDF",
@@ -485,6 +533,21 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     hubActionDone: "Terminé",
     hubMaterialCount: "{count} supports",
     hubBadgeCount: "{count} titres",
+    mapLayerShared: "Partagé",
+    mapLayerRequired: "Obligatoire",
+    mapLayerAdvanced: "Avancé",
+    mapLayerSharedBody: "Supports obligatoires pour tous les employés",
+    mapLayerRequiredBody: "Formation obligatoire spécifique au poste",
+    mapLayerAdvancedBody: "Cours avancés après avoir terminé la formation obligatoire",
+    mapLocked: "Verrouillé",
+    mapUnlockNext: "Terminez tous les éléments de ce niveau pour débloquer le suivant",
+    mapUnlockCondition: "Terminez tous les cours obligatoires pour débloquer le niveau avancé",
+    mapNodeStudy: "Étudier",
+    mapNodeQuiz: "Quiz",
+    mapNodeComplete: "Terminé",
+    mapPositionGate: "Déplier par poste",
+    mapAchievementEntry: "Réussites & Titres",
+    backToMap: "Retour à la carte",
     materialTypes: {
       VIDEO: "Vidéo",
       PDF: "PDF",

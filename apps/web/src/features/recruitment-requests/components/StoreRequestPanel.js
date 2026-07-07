@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { RECRUITMENT_REQUEST_COPY } from "@/features/recruitment-requests/constants/recruitment-requests-copy";
 import {
+  batchDeleteRecruitmentRequests,
   createRecruitmentRequest,
   deleteRecruitmentRequest,
   fetchRecruitmentRequests,
@@ -49,6 +50,9 @@ export default function StoreRequestPanel({ lang }) {
   const [loadError, setLoadError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const selectAllRef = useRef(null);
   const sortedRequests = useMemo(
     () =>
       [...requests].sort((a, b) =>
@@ -88,6 +92,13 @@ export default function StoreRequestPanel({ lang }) {
     };
   }, [t.loadError]);
 
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        selectedIds.length > 0 && selectedIds.length < sortedRequests.length;
+    }
+  }, [selectedIds, sortedRequests.length]);
+
   function patchForm(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
   }
@@ -118,6 +129,48 @@ export default function StoreRequestPanel({ lang }) {
       toast.error(resolveErrorMessage(error, send.submitError));
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  function toggleSelect(requestId) {
+    setSelectedIds((current) =>
+      current.includes(requestId)
+        ? current.filter((id) => id !== requestId)
+        : [...current, requestId],
+    );
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((current) =>
+      current.length === sortedRequests.length
+        ? []
+        : sortedRequests.map((r) => r.id),
+    );
+  }
+
+  async function handleBatchDelete() {
+    if (selectedIds.length === 0) return;
+
+    const confirmed = window.confirm(
+      send.deleteSelectedConfirm.replace("{count}", selectedIds.length),
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsBatchDeleting(true);
+      const { deletedCount } = await batchDeleteRecruitmentRequests(selectedIds);
+      setRequests((current) =>
+        current.filter((item) => !selectedIds.includes(item.id)),
+      );
+      setSelectedIds([]);
+      toast.success(
+        send.deleteSelectedSuccess.replace("{count}", String(deletedCount)),
+      );
+    } catch (error) {
+      toast.error(resolveErrorMessage(error, send.deleteSelectedError));
+    } finally {
+      setIsBatchDeleting(false);
     }
   }
 
@@ -239,45 +292,105 @@ export default function StoreRequestPanel({ lang }) {
       ) : null}
 
       {!isLoading && !loadError && sortedRequests.length > 0 ? (
-        <div className={styles.sendList}>
-          {sortedRequests.map((request) => {
-            const isDeleting = deletingId === String(request.id);
+        <>
+          <div className={styles.sendToolbar}>
+            <label className={styles.sendCardCheck}>
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                className={styles.sendCheckbox}
+                checked={
+                  selectedIds.length > 0 &&
+                  selectedIds.length === sortedRequests.length
+                }
+                onChange={toggleSelectAll}
+              />
+            </label>
 
-            return (
-              <article key={request.id} className={styles.sendCard}>
-                <div className={styles.sendCardBody}>
-                  <span className={styles.sendCardTitle}>
-                    {t.positions[request.position]} ·{" "}
-                    {t.contracts[request.contractType]}
-                  </span>
-                  <span className={styles.sendCardMeta}>
-                    {request.headcount} {t.peopleUnit} ·{" "}
-                    {formatDate(request.createdAt)} · #{request.id}
-                  </span>
-                  <span className={styles.sendCardMeta}>
-                    {t.columns.status}: {t.statuses[request.status]}
-                  </span>
-                  {request.notes ? (
-                    <p className={styles.sendCardNotes}>{request.notes}</p>
-                  ) : null}
-                  {request.handledNotes ? (
-                    <p className={styles.sendCardNotes}>
-                      {send.handledNotesLabel}: {request.handledNotes}
-                    </p>
-                  ) : null}
-                </div>
+            {selectedIds.length > 0 ? (
+              <span className={styles.sendToolbarCount}>
+                {send.selectAll}: {selectedIds.length}/{sortedRequests.length}
+              </span>
+            ) : null}
+
+            {selectedIds.length > 0 ? (
+              <>
                 <button
                   type="button"
-                  className={styles.sendDelete}
-                  disabled={isDeleting}
-                  onClick={() => void handleDelete(request)}
+                  className={styles.sendDeleteBatch}
+                  disabled={isBatchDeleting}
+                  onClick={() => void handleBatchDelete()}
                 >
-                  {isDeleting ? send.deleting : send.delete}
+                  {isBatchDeleting
+                    ? send.deleting
+                    : `${send.deleteSelected} (${selectedIds.length})`}
                 </button>
-              </article>
-            );
-          })}
-        </div>
+                <button
+                  type="button"
+                  className={styles.sendDeleteBatchCancel}
+                  onClick={() => setSelectedIds([])}
+                >
+                  {t.filters.reset}
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          <div className={styles.sendList}>
+            {sortedRequests.map((request) => {
+              const isDeleting = deletingId === String(request.id);
+              const isSelected = selectedIds.includes(request.id);
+
+              return (
+                <article
+                  key={request.id}
+                  className={`${styles.sendCard} ${
+                    isSelected ? styles.sendCardSelected : ""
+                  }`}
+                >
+                  <label className={styles.sendCardCheck}>
+                    <input
+                      type="checkbox"
+                      className={styles.sendCheckbox}
+                      checked={isSelected}
+                      onChange={() => toggleSelect(request.id)}
+                    />
+                  </label>
+
+                  <div className={styles.sendCardBody}>
+                    <span className={styles.sendCardTitle}>
+                      {t.positions[request.position]} ·{" "}
+                      {t.contracts[request.contractType]}
+                    </span>
+                    <span className={styles.sendCardMeta}>
+                      {request.headcount} {t.peopleUnit} ·{" "}
+                      {formatDate(request.createdAt)} · #{request.id}
+                    </span>
+                    <span className={styles.sendCardMeta}>
+                      {t.columns.status}: {t.statuses[request.status]}
+                    </span>
+                    {request.notes ? (
+                      <p className={styles.sendCardNotes}>{request.notes}</p>
+                    ) : null}
+                    {request.handledNotes ? (
+                      <p className={styles.sendCardNotes}>
+                        {send.handledNotesLabel}: {request.handledNotes}
+                      </p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.sendDelete}
+                    disabled={isDeleting || isBatchDeleting}
+                    onClick={() => void handleDelete(request)}
+                  >
+                    {isDeleting ? send.deleting : send.delete}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </>
       ) : null}
     </section>
   );

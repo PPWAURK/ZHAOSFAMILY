@@ -53,6 +53,16 @@ export const PROFILE_COPY = {
     logoutHint: "结束当前会话并返回登录页。",
     logout: "退出登录",
     loggingOut: "正在退出…",
+
+    dangerHeading: "删除账号",
+    dangerHint: "永久删除后无法恢复，你的个人信息将被匿名化。",
+    deleteAccount: "删除我的账号",
+    deleteWarning: "此操作不可撤销。确认后你的账号将被停用、个人信息将被匿名化，且你会立即退出登录。请输入当前密码以确认。",
+    fieldDeletePassword: "当前密码",
+    deleteConfirm: "永久删除账号",
+    deleteSubmitting: "正在删除…",
+    deleteErrCurrentWrong: "密码不正确。",
+    deleteErrGeneric: "删除失败，请稍后重试。",
   },
   en: {
     topFamily: "FAMILY",
@@ -108,6 +118,17 @@ export const PROFILE_COPY = {
     logoutHint: "End this session and return to login.",
     logout: "Sign out",
     loggingOut: "Signing out…",
+
+    dangerHeading: "Delete account",
+    dangerHint: "Deletion is permanent and your personal data will be anonymized.",
+    deleteAccount: "Delete my account",
+    deleteWarning:
+      "This action cannot be undone. Once confirmed, your account is deactivated, your personal data is anonymized, and you are signed out immediately. Enter your current password to confirm.",
+    fieldDeletePassword: "Current password",
+    deleteConfirm: "Permanently delete account",
+    deleteSubmitting: "Deleting…",
+    deleteErrCurrentWrong: "Password is incorrect.",
+    deleteErrGeneric: "Deletion failed, please try again later.",
   },
   fr: {
     topFamily: "FAMILY",
@@ -163,5 +184,16 @@ export const PROFILE_COPY = {
     logoutHint: "Terminez cette session et retournez à la page de connexion.",
     logout: "Se déconnecter",
     loggingOut: "Déconnexion…",
+
+    dangerHeading: "Supprimer le compte",
+    dangerHint: "La suppression est définitive et vos données personnelles seront anonymisées.",
+    deleteAccount: "Supprimer mon compte",
+    deleteWarning:
+      "Cette action est irréversible. Une fois confirmée, votre compte est désactivé, vos données personnelles sont anonymisées et vous êtes déconnecté immédiatement. Saisissez votre mot de passe actuel pour confirmer.",
+    fieldDeletePassword: "Mot de passe actuel",
+    deleteConfirm: "Supprimer définitivement le compte",
+    deleteSubmitting: "Suppression…",
+    deleteErrCurrentWrong: "Le mot de passe est incorrect.",
+    deleteErrGeneric: "Échec de la suppression, réessayez plus tard.",
   },
 };

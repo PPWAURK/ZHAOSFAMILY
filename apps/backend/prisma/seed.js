@@ -47,6 +47,10 @@ const PERMISSIONS = [
     description: 'View store training progress',
   },
   {
+    key: 'training.badge.manage',
+    description: 'Manage training badge definitions and requirements',
+  },
+  {
     key: 'recruitment.request.manage',
     description: 'Manage recruitment requests from stores',
   },
@@ -352,6 +356,123 @@ const TRAINING_JOB_ROLE_POSITIONS = [
   },
 ];
 
+const TRAINING_BADGES = [
+  {
+    code: 'general_onboarding_certification',
+    nameZh: '入职培训完成认证',
+    nameEn: 'Onboarding Certification',
+    nameFr: 'Certification integration',
+    descriptionZh: '完成入职必修资料并通过对应测验后自动获得。',
+    descriptionEn:
+      'Earned after completing required onboarding materials and passing the related quiz.',
+    descriptionFr:
+      'Obtenue apres les formations obligatoires et le quiz associe.',
+    track: 'general',
+    rarity: 'common',
+    level: null,
+    iconType: 'training',
+    requiredScore: 80,
+    requiredCompletionRate: 100,
+    isActive: true,
+    sortOrder: 10,
+  },
+  {
+    code: 'general_food_safety_basic',
+    nameZh: '食品安全基础认证',
+    nameEn: 'Food Safety Basic',
+    nameFr: 'Securite alimentaire base',
+    descriptionZh: '验证食品安全基础知识和日常执行标准。',
+    descriptionEn:
+      'Validates basic food-safety knowledge and daily standards.',
+    descriptionFr:
+      'Valide les bases de securite alimentaire et les standards quotidiens.',
+    track: 'safety',
+    rarity: 'rare',
+    level: null,
+    iconType: 'safety',
+    requiredScore: 80,
+    requiredCompletionRate: 100,
+    isActive: true,
+    sortOrder: 20,
+  },
+  {
+    code: 'general_hygiene_standard',
+    nameZh: '卫生规范认证',
+    nameEn: 'Hygiene Standard',
+    nameFr: 'Standard hygiene',
+    descriptionZh: '验证个人卫生、清洁和交叉污染预防标准。',
+    descriptionEn:
+      'Validates hygiene, cleaning, and contamination-prevention standards.',
+    descriptionFr:
+      'Valide hygiene, nettoyage et prevention des contaminations.',
+    track: 'hygiene',
+    rarity: 'common',
+    level: null,
+    iconType: 'hygiene',
+    requiredScore: 80,
+    requiredCompletionRate: 100,
+    isActive: true,
+    sortOrder: 30,
+  },
+  {
+    code: 'front_level_1_service_certification',
+    nameZh: '前厅 Level 1 基础服务认证',
+    nameEn: 'FOH Level 1 Service',
+    nameFr: 'Salle niveau 1',
+    descriptionZh: '完成前厅基础服务资料并通过考核后获得。',
+    descriptionEn:
+      'Earned after completing basic front-of-house training and assessment.',
+    descriptionFr:
+      'Obtenue apres la formation salle de base et son evaluation.',
+    track: 'front',
+    rarity: 'common',
+    level: 1,
+    iconType: 'service',
+    requiredScore: 80,
+    requiredCompletionRate: 100,
+    isActive: true,
+    sortOrder: 100,
+  },
+  {
+    code: 'kitchen_level_1_output_certification',
+    nameZh: '厨房 Level 1 基础出品认证',
+    nameEn: 'Kitchen Level 1 Output',
+    nameFr: 'Cuisine niveau 1',
+    descriptionZh: '完成厨房基础出品资料并通过考核后获得。',
+    descriptionEn:
+      'Earned after completing basic kitchen output training and assessment.',
+    descriptionFr:
+      'Obtenue apres la formation cuisine de base et son evaluation.',
+    track: 'kitchen',
+    rarity: 'common',
+    level: 1,
+    iconType: 'bowl',
+    requiredScore: 80,
+    requiredCompletionRate: 100,
+    isActive: true,
+    sortOrder: 200,
+  },
+  {
+    code: 'management_store_operations_basic',
+    nameZh: '门店运营基础认证',
+    nameEn: 'Store Operations Basic',
+    nameFr: 'Operations magasin base',
+    descriptionZh: '验证门店运营、协作和执行基础能力。',
+    descriptionEn:
+      'Validates basic store operations, teamwork, and execution.',
+    descriptionFr:
+      'Valide les bases des operations, de la coordination et de execution.',
+    track: 'management',
+    rarity: 'epic',
+    level: null,
+    iconType: 'target',
+    requiredScore: 80,
+    requiredCompletionRate: 100,
+    isActive: true,
+    sortOrder: 300,
+  },
+];
+
 const ROLES = [
   {
     name: 'super-admin',
@@ -382,6 +503,7 @@ const ROLES = [
       'training.material.delete',
       'training.position.manage',
       'training.progress.view_store',
+      'training.badge.manage',
     ],
   },
   {
@@ -575,6 +697,31 @@ async function upsertTrainingTitles() {
         sortOrder: title.sortOrder,
       },
       create: title,
+    });
+  }
+}
+
+async function upsertTrainingBadges() {
+  for (const badge of TRAINING_BADGES) {
+    await prisma.trainingBadge.upsert({
+      where: { code: badge.code },
+      update: {
+        nameZh: badge.nameZh,
+        nameEn: badge.nameEn,
+        nameFr: badge.nameFr,
+        descriptionZh: badge.descriptionZh,
+        descriptionEn: badge.descriptionEn,
+        descriptionFr: badge.descriptionFr,
+        track: badge.track,
+        rarity: badge.rarity,
+        level: badge.level,
+        iconType: badge.iconType,
+        requiredScore: badge.requiredScore,
+        requiredCompletionRate: badge.requiredCompletionRate,
+        isActive: badge.isActive,
+        sortOrder: badge.sortOrder,
+      },
+      create: badge,
     });
   }
 }
@@ -789,6 +936,7 @@ async function main() {
   await upsertTrainingPositions();
   await upsertJobRolePositions();
   await upsertTrainingTitles();
+  await upsertTrainingBadges();
   await seedSampleQuiz();
   await assignSuperAdminRole();
   await removeSuperAdminRoleFromStoreUsers();

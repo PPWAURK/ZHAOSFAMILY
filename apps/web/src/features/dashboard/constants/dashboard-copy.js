@@ -42,11 +42,26 @@ export const DASHBOARD_NAV = [
         fr: "Certifications",
       },
       {
+        id: "training-badges",
+        href: "/dashboard/training-badges",
+        zh: "培训徽章",
+        en: "Training badges",
+        fr: "Badges formation",
+      },
+      {
         id: "training-progress",
         href: "/dashboard/training/progress",
         zh: "培训进度",
         en: "Training progress",
         fr: "Progression formation",
+        visibleForJobRoles: STORE_MANAGEMENT_JOB_ROLES,
+      },
+      {
+        id: "training-monthly-report",
+        href: "/dashboard/training/reports/monthly",
+        zh: "培训月报",
+        en: "Training report",
+        fr: "Rapport formation",
         visibleForJobRoles: STORE_MANAGEMENT_JOB_ROLES,
       },
       {

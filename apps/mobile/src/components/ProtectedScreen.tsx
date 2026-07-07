@@ -6,15 +6,15 @@ import { reportScreenSecurityEvent } from "@/features/training/trainingApi";
 // ---------------------------------------------------------------------------
 // iOS recording detection via UIScreen.isCaptured
 //
-// On iOS/iPadOS, Expo ScreenCapture support can vary by OS version, device
-// mode, and runtime. We still listen for screenshots as a fallback when a
-// device does not block the capture.
+// expo-screen-capture only prevents screenshots (not recordings) on iOS.
+// To detect screen recording we need a native Expo Module that subscribes to
+// UIScreen.capturedDidChangeNotification.
 //
 // The module lives at apps/mobile/modules/screen-recording-detector/ and
 // requires EAS Build or Dev Client to link – it will NOT work in Expo Go.
 //
 // When the module is absent this file degrades gracefully: recording detection
-// is skipped and only expo-screen-capture protection remains active.
+// is skipped and only expo-screen-capture screenshot prevention is active.
 // ---------------------------------------------------------------------------
 
 type IOSRecordingDetectorModule = {
@@ -28,7 +28,7 @@ let IOSRecordingDetector: IOSRecordingDetectorModule | null = null;
 
 try {
   // Dynamic require – throws at runtime if the native module isn't linked.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const rawModule = require("expo-screen-recording-detector");
   if (rawModule?.ScreenRecordingDetector) {
     IOSRecordingDetector = rawModule.ScreenRecordingDetector;
@@ -56,7 +56,7 @@ type ProtectedScreenProps = {
  * screenshots and system screen recording at the OS level. Fully functional
  * in Expo Go.
  *
- * **iOS/iPadOS** – `expo-screen-capture` handles supported capture blocking.
+ * **iOS** – Screenshot prevention is applied via `expo-screen-capture`.
  * Screen *recording* detection requires a native Expo Module (see above).
  * When a recording is detected a full-screen black overlay is rendered on top
  * of the children. In Expo Go the detection degrades silently.
@@ -81,10 +81,7 @@ export function ProtectedScreen({
     async function protect(): Promise<void> {
       try {
         await ScreenCapture.preventScreenCaptureAsync(PROTECTION_KEY);
-
-        if (Platform.OS === "ios") {
-          await ScreenCapture.enableAppSwitcherProtectionAsync(0.5);
-        }
+        await ScreenCapture.enableAppSwitcherProtectionAsync(0.5);
       } catch (error: unknown) {
         if (__DEV__) {
           console.warn(
@@ -100,9 +97,7 @@ export function ProtectedScreen({
     return () => {
       isMountedRef.current = false;
       ScreenCapture.allowScreenCaptureAsync(PROTECTION_KEY).catch(() => {});
-      if (Platform.OS === "ios") {
-        ScreenCapture.disableAppSwitcherProtectionAsync().catch(() => {});
-      }
+      ScreenCapture.disableAppSwitcherProtectionAsync().catch(() => {});
     };
   }, [enabled]);
 

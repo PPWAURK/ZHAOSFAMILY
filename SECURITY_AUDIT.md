@@ -129,27 +129,35 @@ Provides: `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Securit
 
 ### Definite Breakage
 
-#### 1. `GET /restaurants` — Fixed (Phase 6.3)
+#### 1. `GET /restaurants` — Registration flow broken
 
-Both Web and Mobile call this endpoint before login to populate the restaurant picker during registration. Marked `@Public()` on the list route only (`apps/backend/src/restaurants/restaurants.controller.ts`) — `:id`/`POST`/`PATCH`/`DELETE` remain authenticated. `RestaurantListItem` already only exposes `id/name/address/photoUrl`, so no separate minimal endpoint was needed.
+Both Web and Mobile call this endpoint before login to populate the restaurant picker during registration. Without `@Public()`, it returns 401.
 
 - Web: `apps/web/src/features/auth/hooks/useRegisterStores.ts`
 - Mobile: `apps/mobile/src/features/auth/LoginScreen.tsx`
 
-#### 2. `GET /media/file` — Fixed (Phase 6.1)
+**Recommended fix:** Create a new minimal public endpoint `GET /auth/register-options` returning only `[{ id, name }]`, rather than exposing the full `/restaurants` endpoint.
 
-Browsers render `<img src>`/`<video src>`/`<a href>` without an `Authorization` header, so the global `AuthGuard` 401'd every media load even for authenticated users. Fixed without a full presigned-URL migration:
+#### 2. `GET /media/file` — All file/image/video loading broken
 
-- `apps/backend/src/media/media.controller.ts` — `getFile` is `@Public()` at the route level but authenticates manually inside the handler: accepts either the `Authorization: Bearer` header or a `?token=` query param, both validated via `AuthService.getCurrentUser`.
-- All URL-builder helpers (web: `buildMediaFileUrl` in `apps/web/src/shared/api/api-client.ts`, mobile: inline in `trainingApi.ts` / `caseSharesApi.ts` / `dashboardNewsApi.ts`) now append the current access token as `&token=...`.
+Frontend and mobile generate bare URLs (used in `<img src>`, `<a href>`, `<video src>`) that do not carry Bearer tokens. This affects all users including authenticated ones.
 
-**Known trade-off:** this puts the live 8h access token in the URL (server logs, browser history, `Referer` header on cross-origin embeds). Acceptable short-term since all consumption is same-origin/first-party, but the MinIO/R2 presigned-URL flow described above (short-lived, scoped, no full session token) remains the recommended long-term fix — track as a follow-up.
+Affected areas: restaurant photos, dashboard news attachments, training videos/PDFs, case share images, ABC score attachments, supplier product images.
+
+**Recommended fix:** Implement MinIO presigned URL flow:
+
+1. New authenticated endpoint `POST /media/presign` — accepts `objectKey`, returns time-limited presigned URL (e.g. 15 min)
+2. Frontend calls presign endpoint, then uses the returned URL in `<img>` / `<video>` tags
+3. URLs expire automatically, preventing unauthorized sharing
+4. Large files bypass the backend entirely (direct MinIO access)
 
 ### Edge Case
 
-#### 3. `POST /auth/logout` — Fixed (Phase 6.2)
+#### 3. `POST /auth/logout` — Cannot logout when tokens expire
 
-Marked `@Public()` in `apps/backend/src/auth/auth.controller.ts`. The service (`AuthService.logout`) already validated the refresh token itself (revokes by `tokenHash` match, no-ops if absent/unmatched), so no further change was needed there.
+Logout requires authentication. If the access token is expired, the client attempts refresh first. If the refresh token is also expired, the user is stuck.
+
+**Recommended fix:** Mark `@Public()` and validate the refresh token at the service layer (same pattern as `/auth/refresh`).
 
 ### No Impact
 
@@ -166,7 +174,6 @@ All other API calls are made after login through the shared `apiClient` (Web) / 
 | 10 | MEDIUM | No frontend XSS sanitization | Add DOMPurify for user-generated content |
 | 11 | LOW | CORS overly permissive | Tighten to specific domains |
 | 12 | LOW | Dependency vulnerabilities | Run `pnpm audit fix` |
-| — | MEDIUM | `/media/file` uses access token in query string | Interim fix (Phase 6.1); migrate to short-lived MinIO/R2 presigned URLs (`POST /media/presign`) to avoid the full session token appearing in URLs/logs |
 
 ---
 

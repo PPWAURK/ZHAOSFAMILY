@@ -18,7 +18,12 @@ import { scaleStyles } from "@/lib/responsive";
 import { useScreenName } from "@/lib/useScreenName";
 import { useNotificationNavigation } from "@/lib/useNotificationNavigation";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import type { AuthUser, ChangePasswordRequest, UpdateMeRequest } from "@zhao/types";
+import type {
+  AuthUser,
+  ChangePasswordRequest,
+  DeleteAccountRequest,
+  UpdateMeRequest,
+} from "@zhao/types";
 import { canSeeNavEntry } from "@zhao/utils";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -59,6 +64,7 @@ type DashboardHomeScreenProps = {
   onLogout: () => Promise<void>;
   onChangePassword: (input: ChangePasswordRequest) => Promise<void>;
   onUpdateProfile: (input: UpdateMeRequest) => Promise<void>;
+  onDeleteAccount: (input: DeleteAccountRequest) => Promise<void>;
 };
 
 type NewsDeskCategory = "news" | "congrats" | "issues";
@@ -196,6 +202,7 @@ export function DashboardHomeScreen({
   onLogout,
   onChangePassword,
   onUpdateProfile,
+  onDeleteAccount,
 }: DashboardHomeScreenProps) {
   useScreenName("dashboard");
   const copy = DASHBOARD_COPY[language];
@@ -548,6 +555,7 @@ export function DashboardHomeScreen({
               onLogout={onLogout}
               onChangePassword={onChangePassword}
               onUpdateProfile={onUpdateProfile}
+              onDeleteAccount={onDeleteAccount}
             />
           ) : activeEntry === "recruitment-requests" ? (
             <RecruitmentModuleScreen language={language} />

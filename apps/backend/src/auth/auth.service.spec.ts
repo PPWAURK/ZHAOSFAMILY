@@ -1,6 +1,38 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
-import { createHash } from 'node:crypto';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  scrypt as scryptCallback,
+} from 'node:crypto';
+import { promisify } from 'node:util';
 import { AuthService } from './auth.service';
+
+const scrypt = promisify(scryptCallback);
+const TEST_AUTH_TOKEN_SECRET = 'test-auth-token-secret';
+
+function signTestAccessToken(sub: number): string {
+  const payload = { sub, exp: Math.floor(Date.now() / 1000) + 3600 };
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString(
+    'base64url',
+  );
+  const signature = createHmac('sha256', TEST_AUTH_TOKEN_SECRET)
+    .update(encodedPayload)
+    .digest('base64url');
+
+  return `${encodedPayload}.${signature}`;
+}
+
+async function makeTestPasswordHash(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
+
+  return `scrypt$${salt}$${derivedKey.toString('hex')}`;
+}
 
 type FindUniqueUserArgs = {
   where: {
@@ -77,6 +109,11 @@ describe('AuthService', () => {
     const findUniqueRefreshSession = jest.fn();
     const updateRefreshSession = jest.fn();
     const findManyUserRoles = jest.fn();
+    const deleteManyUserRoles = jest.fn();
+    const deleteManyPushTokens = jest.fn();
+    const runTransaction = jest.fn((operations: unknown[]) =>
+      Promise.resolve(operations),
+    );
     const ensureRestaurantExists = jest.fn<Promise<void>, [number]>();
     const sendResetPasswordEmail = jest.fn<
       Promise<void>,
@@ -124,7 +161,12 @@ describe('AuthService', () => {
       },
       userRole: {
         findMany: findManyUserRoles,
+        deleteMany: deleteManyUserRoles,
       },
+      pushToken: {
+        deleteMany: deleteManyPushTokens,
+      },
+      $transaction: runTransaction,
     };
     const restaurantsService = {
       ensureRestaurantExists,
@@ -489,5 +531,93 @@ describe('AuthService', () => {
       invitationExpiresAt: null,
     });
     expect(updateCall.data.passwordHash).toMatch(/^scrypt\$/);
+  });
+
+  it('anonymizes the account and revokes sessions when the password matches', async () => {
+    const { authService, prismaService } = createService();
+    const passwordHash = await makeTestPasswordHash('current-password');
+
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 42,
+      passwordHash,
+      accountStatus: 'approved',
+    } as never);
+
+    const result = await authService.deleteCurrentAccount(
+      signTestAccessToken(42),
+      { password: 'current-password' },
+    );
+
+    expect(result).toEqual({ message: 'ACCOUNT_DELETED' });
+    expect(prismaService.userRole.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 42 },
+    });
+    expect(prismaService.pushToken.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 42 },
+    });
+    const [revokeCall] = prismaService.refreshSession.updateMany.mock
+      .calls[0] as [
+      { where: Record<string, unknown>; data: { revokedAt: Date } },
+    ];
+    expect(revokeCall.where).toEqual({ userId: 42, revokedAt: null });
+    expect(revokeCall.data.revokedAt).toBeInstanceOf(Date);
+    expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
+
+    const [updateCall] = prismaService.user.update.mock.calls[0] as [
+      UpdateUserCall,
+    ];
+    expect(updateCall.where).toEqual({ id: 42 });
+    expect(updateCall.data).toMatchObject({
+      familyName: 'Compte supprimé',
+      givenName: '',
+      name: 'Compte supprimé',
+      email: 'deleted-user-42@deleted.invalid',
+      emailVerified: false,
+      accountStatus: 'deleted',
+      phone: null,
+      address: null,
+      profilePhoto: null,
+      birthday: null,
+      jobRole: null,
+    });
+    // The password is scrambled so the old credentials can never sign in again.
+    expect(updateCall.data.passwordHash).toMatch(/^scrypt\$/);
+    expect(updateCall.data.passwordHash).not.toBe(passwordHash);
+  });
+
+  it('rejects account deletion when the password is wrong', async () => {
+    const { authService, prismaService } = createService();
+    const passwordHash = await makeTestPasswordHash('current-password');
+
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 42,
+      passwordHash,
+      accountStatus: 'approved',
+    } as never);
+
+    await expect(
+      authService.deleteCurrentAccount(signTestAccessToken(42), {
+        password: 'wrong-password',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
+    expect(prismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects account deletion when the account is already deleted', async () => {
+    const { authService, prismaService } = createService();
+
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 42,
+      passwordHash: await makeTestPasswordHash('current-password'),
+      accountStatus: 'deleted',
+    } as never);
+
+    await expect(
+      authService.deleteCurrentAccount(signTestAccessToken(42), {
+        password: 'current-password',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
 });

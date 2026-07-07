@@ -12,6 +12,8 @@ import { TrainingQuizAdminService } from './training-quiz-admin.service';
 import { TrainingQuizGeneratorService } from './training-quiz-generator.service';
 import { TrainingAiConfigService } from './training-ai-config.service';
 import { TrainingTitleService } from './training-title.service';
+import { TrainingBadgeService } from './training-badge.service';
+import { TrainingMonthlyReportService } from './training-monthly-report.service';
 
 @Module({
   imports: [AuthModule, MediaModule, NotificationsModule, PrismaModule],
@@ -23,6 +25,8 @@ import { TrainingTitleService } from './training-title.service';
     TrainingQuizGeneratorService,
     TrainingAiConfigService,
     TrainingTitleService,
+    TrainingBadgeService,
+    TrainingMonthlyReportService,
     ScreenSecurityEventService,
   ],
 })

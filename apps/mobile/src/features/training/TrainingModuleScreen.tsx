@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Directory, File } from "expo-file-system";
-import { useScreenName } from "@/lib/useScreenName";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
-import { TrackingText } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
   downloadTrainingMaterialToCache,
@@ -11,14 +9,12 @@ import {
   updateTrainingMaterialProgress,
 } from "@/features/training/trainingApi";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
+import { buildTrainingMapData } from "@/features/training/trainingMapState";
 import { TrainingAchievements } from "@/features/training/TrainingAchievements";
-import { TrainingGuidedPlan } from "@/features/training/TrainingGuidedPlan";
-import { TrainingOptionalLibrary } from "@/features/training/TrainingOptionalLibrary";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
 import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
 import { applyMaterialProgress } from "@/features/training/trainingProgressRules";
-import { buildTrainingGuidedFlow } from "@/features/training/trainingFlowState";
-import { trainingStyles as styles } from "@/features/training/trainingStyles";
+import { trainingStyles } from "@/features/training/trainingStyles";
 import {
   buildPdfViewerHtml,
   buildVideoPlayerHtml,
@@ -26,10 +22,10 @@ import {
   isVideoMaterial,
 } from "@/features/training/trainingViewer";
 import type {
+  TrainingMapData,
   TrainingMaterialProgress,
   TrainingPlan,
   TrainingPlanMaterial,
-  TrainingRecord,
   UpdateTrainingProgressInput,
 } from "@/features/training/trainingTypes";
 
@@ -37,404 +33,726 @@ type TrainingModuleScreenProps = {
   language: AuthLanguage;
 };
 
-type TrainingView = "hub" | "required" | "optional" | "achievements";
+type ViewMode = "hub" | "achievements";
 
-function formatTemplate(
-  template: string,
-  values: Record<string, string | number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [key, value]) => text.replace(`{${key}}`, String(value)),
-    template,
-  );
-}
+type NextTrainingFocus = {
+  layerLabel: string;
+  material: TrainingPlanMaterial;
+};
 
-function buildCompletedMaterialFromRecord(
-  record: TrainingRecord,
-): TrainingPlanMaterial {
-  return {
-    id: record.materialId,
-    positionId: record.positionId,
-    type: record.type,
-    isRequired: record.isRequired,
-    title: record.title,
-    description: record.description,
-    originalName: record.originalName,
-    mimeType: record.mimeType,
-    sizeBytes: record.sizeBytes,
-    bucket: record.bucket,
-    objectKey: record.objectKey,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-    hasQuiz: record.hasQuiz,
-    progress: {
-      materialId: record.materialId,
-      status: "completed",
-      progressPct: 100,
-      lastOpenedAt: record.completedAt,
-      completedAt: record.completedAt,
-    },
-  };
-}
+type LayerProgressItem = {
+  completed: number;
+  label: string;
+  total: number;
+  unlocked: boolean;
+};
 
-export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
-  useScreenName("training");
-  const copy = TRAINING_COPY[language];
-  const [plan, setPlan] = useState<TrainingPlan | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [previewMaterial, setPreviewMaterial] =
-    useState<TrainingPlanMaterial | null>(null);
-  const [previewError, setPreviewError] = useState("");
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [previewFileUri, setPreviewFileUri] = useState("");
-  const [previewBaseUri, setPreviewBaseUri] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeView, setActiveView] = useState<TrainingView>("hub");
-  const [quizMaterialId, setQuizMaterialId] = useState<number | null>(null);
-  const [achievementsRefresh, setAchievementsRefresh] = useState(0);
+function findNextTrainingFocus(
+  mapData: TrainingMapData,
+  copy: (typeof TRAINING_COPY)["zh"],
+): NextTrainingFocus | null {
+  const sharedNode = mapData.sharedMaterials.find((node) => !node.isCompleted);
+  if (sharedNode) {
+    return {
+      layerLabel: copy.mapLayerShared,
+      material: sharedNode.material,
+    };
+  }
 
-  async function loadPlan(): Promise<void> {
-    try {
-      setIsLoading(true);
-      setErrorMessage("");
-      const nextPlan = await fetchTrainingMyPlan();
-      setPlan(nextPlan);
-    } catch {
-      setPlan(null);
-      setErrorMessage(copy.error);
-    } finally {
-      setIsLoading(false);
+  for (const gate of mapData.positionGates) {
+    const requiredNode = gate.materials.find((node) => !node.isCompleted);
+    if (requiredNode) {
+      return {
+        layerLabel: copy.positionLabels[gate.positionId] || gate.positionId,
+        material: requiredNode.material,
+      };
     }
   }
+
+  const advancedNode = mapData.advancedMaterials.find((node) => !node.isCompleted);
+  if (advancedNode) {
+    return {
+      layerLabel: copy.mapLayerAdvanced,
+      material: advancedNode.material,
+    };
+  }
+
+  return null;
+}
+
+function buildLayerProgressItems(
+  mapData: TrainingMapData,
+  copy: (typeof TRAINING_COPY)["zh"],
+): LayerProgressItem[] {
+  return [
+    {
+      label: copy.mapLayerShared,
+      completed: mapData.summary.sharedCompleted,
+      total: mapData.summary.sharedTotal,
+      unlocked: mapData.layer1Unlocked,
+    },
+    {
+      label: copy.mapLayerRequired,
+      completed: mapData.summary.requiredCompleted,
+      total: mapData.summary.requiredTotal,
+      unlocked: mapData.layer2Unlocked,
+    },
+    {
+      label: copy.mapLayerAdvanced,
+      completed: mapData.summary.advancedCompleted,
+      total: mapData.summary.advancedTotal,
+      unlocked: mapData.layer3Unlocked,
+    },
+  ];
+}
+
+function formatLayerProgress(item: LayerProgressItem): string {
+  if (!item.unlocked) return "-";
+
+  return `${item.completed}/${item.total}`;
+}
+
+function getMaterialTypeLabel(
+  material: TrainingPlanMaterial,
+  copy: (typeof TRAINING_COPY)["zh"],
+): string {
+  return copy.materialTypes[material.type] || material.type;
+}
+
+/**
+ * 闯关地图主组件
+ *
+ * Hub = 顶部进度卡片 + 三层闯关地图
+ * - Layer 1: 全员共享材料
+ * - Layer 2: 岗位必修（按岗位入口进入内部关卡）
+ * - Layer 3: 高阶课程
+ *
+ * 成就/称号由底部入口进入单独页面
+ */
+export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
+  const copy = TRAINING_COPY[language];
+
+  const [localLoading, setLocalLoading] = useState(false);
+  const [plan, setPlan] = useState<TrainingPlan | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [previewMaterial, setPreviewMaterial] = useState<TrainingPlanMaterial | null>(null);
+  const [quizMaterial, setQuizMaterial] = useState<TrainingPlanMaterial | null>(null);
+  const [previewFileUri, setPreviewFileUri] = useState<string | null>(null);
+  const [previewBaseUri, setPreviewBaseUri] = useState<string | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [expandedPositions, setExpandedPositions] = useState<Record<string, boolean>>({});
+  const [viewMode, setViewMode] = useState<ViewMode>("hub");
+  const [achievementsRefresh, setAchievementsRefresh] = useState(0);
+
+  const loadPlan = useCallback(async () => {
+    setLocalLoading(true);
+    setPlanError(null);
+    try {
+      const data = await fetchTrainingMyPlan();
+      setPlan(data);
+    } catch {
+      setPlanError(copy.error);
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [copy.error]);
 
   useEffect(() => {
     void loadPlan();
-  }, [copy.error]);
+  }, [loadPlan]);
 
-  async function syncMaterialProgress(
-    materialId: number,
-    input: UpdateTrainingProgressInput,
-  ): Promise<TrainingMaterialProgress | null> {
-    try {
-      const progress = await updateTrainingMaterialProgress(materialId, input);
-      setPlan((previous) =>
-        previous ? applyMaterialProgress(previous, materialId, progress) : previous,
-      );
+  const mapData: TrainingMapData | null = useMemo(() => {
+    if (!plan) return null;
+    return buildTrainingMapData(plan);
+  }, [plan]);
 
-      if (progress.status === "completed") {
-        setAchievementsRefresh((value) => value + 1);
+  const handleOpenMaterial = useCallback(
+    async (material: TrainingPlanMaterial) => {
+      setPreviewMaterial(material);
+      setPreviewFileUri(null);
+      setPreviewBaseUri(null);
+      setIsLoadingPreview(true);
+      setPreviewError(null);
+
+      try {
+        const { fileUri, directoryUri } = await downloadTrainingMaterialToCache(material);
+
+        if (isVideoMaterial(material)) {
+          const videoDirectory = new Directory(directoryUri);
+          const playerFile = new File(videoDirectory, "player.html");
+          const resumePct =
+            material.progress.status === "in_progress" ? material.progress.progressPct : 0;
+
+          await playerFile.write(buildVideoPlayerHtml(fileUri, resumePct));
+          setPreviewFileUri(playerFile.uri);
+          setPreviewBaseUri(videoDirectory.uri);
+          return;
+        }
+
+        if (isPdfMaterial(material)) {
+          const pdfDirectory = new Directory(directoryUri);
+          const viewerFile = new File(pdfDirectory, "pdf-viewer.html");
+          const downloadedFile = new File(fileUri);
+          const base64Data = await downloadedFile.base64();
+
+          await viewerFile.write(buildPdfViewerHtml(base64Data));
+          setPreviewFileUri(viewerFile.uri);
+          setPreviewBaseUri(pdfDirectory.uri);
+          return;
+        }
+
+        setPreviewFileUri(fileUri);
+        setPreviewBaseUri(directoryUri);
+      } catch {
+        setPreviewError(copy.openError);
+      } finally {
+        setIsLoadingPreview(false);
       }
+    },
+    [copy.openError],
+  );
 
-      return progress;
-    } catch (progressError) {
-      if (__DEV__) {
-        console.warn("Training progress sync failed", progressError);
-      }
-
-      return null;
-    }
-  }
-
-  async function handleOpenMaterial(material: TrainingPlanMaterial): Promise<void> {
-    if (!material.objectKey) {
-      setErrorMessage(copy.openError);
-      return;
-    }
-
-    setPreviewError("");
-    setIsLoadingPreview(true);
-    setPreviewFileUri("");
-    setPreviewBaseUri("");
-    setPreviewMaterial(material);
-
-    if (material.progress.status !== "completed") {
-      void syncMaterialProgress(material.id, {
-        status: "in_progress",
-        progressPct: Math.max(material.progress.progressPct, 5),
-      });
-    }
-
-    try {
-      const { fileUri: localFileUri, directoryUri: localDirUri } =
-        await downloadTrainingMaterialToCache(material);
-
-      if (isVideoMaterial(material)) {
-        const videoDir = new Directory(localDirUri);
-        const playerFile = new File(videoDir, "player.html");
-        const resumePct =
-          material.progress.status === "in_progress"
-            ? material.progress.progressPct
-            : 0;
-        await playerFile.write(buildVideoPlayerHtml(localFileUri, resumePct));
-        setPreviewFileUri(playerFile.uri);
-        setPreviewBaseUri(videoDir.uri);
-      } else if (isPdfMaterial(material)) {
-        const pdfDir = new Directory(localDirUri);
-        const viewerFile = new File(pdfDir, "pdf-viewer.html");
-        const downloadedFile = new File(localFileUri);
-        const base64 = await downloadedFile.base64();
-        await viewerFile.write(buildPdfViewerHtml(base64));
-        setPreviewFileUri(viewerFile.uri);
-        setPreviewBaseUri(pdfDir.uri);
-      } else {
-        setPreviewFileUri(localFileUri);
-      }
-    } catch (error) {
-      console.error("Training material load failed:", error);
-      setPreviewError(copy.previewError);
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  }
-
-  function handleClosePreview(): void {
+  const handleClosePreview = useCallback(() => {
     setPreviewMaterial(null);
-    setPreviewError("");
-    setIsLoadingPreview(false);
-    setPreviewFileUri("");
-    setPreviewBaseUri("");
-  }
+    setPreviewFileUri(null);
+    setPreviewBaseUri(null);
+    setPreviewError(null);
+  }, []);
 
-  function handleStartQuiz(material: TrainingPlanMaterial): void {
-    handleClosePreview();
-    setQuizMaterialId(material.id);
-  }
+  const syncMaterialProgress = useCallback(
+    async (
+      materialId: number,
+      input: UpdateTrainingProgressInput,
+    ): Promise<TrainingMaterialProgress | null> => {
+      try {
+        const progress = await updateTrainingMaterialProgress(materialId, input);
+        setPlan((previous) =>
+          previous ? applyMaterialProgress(previous, materialId, progress) : previous,
+        );
 
-  function handleQuizPassed(): void {
+        if (progress.status === "completed") {
+          setAchievementsRefresh((r) => r + 1);
+        }
+
+        return progress;
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
+  const handleStartQuiz = useCallback((material: TrainingPlanMaterial) => {
+    setPreviewMaterial(null);
+    setQuizMaterial(material);
+  }, []);
+
+  const handleQuizClose = useCallback(() => {
+    setQuizMaterial(null);
     void loadPlan();
-    setAchievementsRefresh((value) => value + 1);
-  }
+    setAchievementsRefresh((r) => r + 1);
+  }, [loadPlan]);
 
-  function handleBackToHub(): void {
-    setActiveView("hub");
-  }
+  const handleAchievementOpen = useCallback(() => {
+    setViewMode("achievements");
+  }, []);
 
-  function renderSubViewHeader(title: string): React.ReactNode {
+  const togglePosition = useCallback((positionId: string) => {
+    setExpandedPositions((prev) => ({
+      ...prev,
+      [positionId]: !prev[positionId],
+    }));
+  }, []);
+
+  const handleStudy = useCallback(
+    (material: TrainingPlanMaterial) => {
+      void handleOpenMaterial(material);
+    },
+    [handleOpenMaterial],
+  );
+
+  const handleQuiz = useCallback((material: TrainingPlanMaterial) => {
+    setQuizMaterial(material);
+  }, []);
+
+  const handleAchievementBack = useCallback(() => {
+    setViewMode("hub");
+    setAchievementsRefresh((r) => r + 1);
+  }, []);
+
+  if (quizMaterial) {
     return (
-      <View style={styles.subViewHeader}>
-        <Pressable style={styles.subViewBack} onPress={handleBackToHub}>
-          <Text style={styles.subViewBackText}>← {copy.hubBack}</Text>
-        </Pressable>
-        <Text style={styles.sectionSubTitle}>{title}</Text>
-        <View style={{ width: 60 }} />
+      <TrainingQuizModal
+        copy={copy}
+        language={language}
+        materialId={quizMaterial.id}
+        onClose={handleQuizClose}
+        onPassed={handleQuizClose}
+      />
+    );
+  }
+
+  if (localLoading && !plan) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ZhaoLoadingIndicator />
       </View>
     );
   }
 
-  function renderHub(): React.ReactNode {
-    if (!plan) return null;
-
-    const flow = buildTrainingGuidedFlow(plan);
-    const completionPercent = plan.summary.completionPercent;
-
-    const requiredAction = flow.completedAllRequired
-      ? copy.hubActionDone
-      : flow.hasStartedRequiredMaterials
-        ? copy.hubActionContinue
-        : copy.hubActionStart;
-
-    const requiredMeta = flow.hasRequiredMaterials
-      ? `${flow.requiredCompleted}/${flow.requiredTotal} ${copy.requiredDone.toLowerCase()}`
-      : copy.guidedOptionalReady;
-
-    const optionalMeta = formatTemplate(copy.hubMaterialCount, {
-      count: plan.optional.length,
-    });
-
-    const achievementMeta = copy.tabAchievements;
-
+  if (planError) {
     return (
-      <View style={styles.section}>
-        <View style={styles.hubProgressCard}>
-          <View style={styles.hubProgressHeader}>
-            <Text style={styles.hubProgressLabel}>{copy.hubOverallProgress}</Text>
-            <Text style={styles.hubProgressValue}>{completionPercent}%</Text>
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+          padding: 24,
+        }}
+      >
+        <Text style={trainingStyles.message}>{planError}</Text>
+        <Pressable style={trainingStyles.refreshButton} onPress={() => void loadPlan()}>
+          <Text style={trainingStyles.refreshButtonText}>{copy.refresh}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (
+    !mapData ||
+    mapData.summary.sharedTotal + mapData.summary.requiredTotal + mapData.summary.advancedTotal ===
+      0
+  ) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+          padding: 24,
+        }}
+      >
+        <Text style={trainingStyles.emptyText}>{copy.empty}</Text>
+      </View>
+    );
+  }
+
+  const { summary, layer1Unlocked, layer2Unlocked, layer3Unlocked } = mapData;
+  const nextFocus = findNextTrainingFocus(mapData, copy);
+  const layerProgressItems = buildLayerProgressItems(mapData, copy);
+  const totalMaterials = summary.sharedTotal + summary.requiredTotal + summary.advancedTotal;
+  const completedMaterials =
+    summary.sharedCompleted + summary.requiredCompleted + summary.advancedCompleted;
+
+  const hubContent = (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={trainingStyles.container}>
+      <View style={trainingStyles.mapHeroPanel}>
+        <View style={trainingStyles.mapHeroHeader}>
+          <View style={trainingStyles.mapHeroTitleGroup}>
+            <Text style={trainingStyles.mapHeroKicker}>{copy.kicker}</Text>
+            <Text style={trainingStyles.mapHeroTitle}>{copy.title}</Text>
           </View>
-          <View style={styles.hubProgressTrack}>
+          <Pressable style={trainingStyles.mapHeroRefreshButton} onPress={() => void loadPlan()}>
+            <Text style={trainingStyles.mapHeroRefreshText}>{copy.refresh}</Text>
+          </Pressable>
+        </View>
+        <Text style={trainingStyles.mapHeroIntro}>{copy.intro}</Text>
+
+        <View style={trainingStyles.mapHeroProgressRow}>
+          <View style={trainingStyles.mapHeroProgressCopy}>
+            <Text style={trainingStyles.mapHeroProgressLabel}>{copy.hubOverallProgress}</Text>
+            <Text style={trainingStyles.mapHeroProgressValue}>{summary.overallPercent}%</Text>
+          </View>
+          <View style={trainingStyles.mapHeroProgressTrack}>
             <View
-              style={[
-                styles.hubProgressFill,
-                { width: `${Math.min(100, Math.max(0, completionPercent))}%` },
-              ]}
+              style={[trainingStyles.mapHeroProgressFill, { width: `${summary.overallPercent}%` }]}
             />
-          </View>
-          <View style={styles.hubProgressStats}>
-            <Text style={styles.hubProgressStat}>
-              {copy.requiredDone}: {flow.requiredCompleted}/{flow.requiredTotal}
-            </Text>
-            <Text style={styles.hubProgressStat}>
-              {copy.completed}: {flow.totalCompleted}
-            </Text>
           </View>
         </View>
 
-        <View style={styles.hubEntryList}>
+        {nextFocus ? (
           <Pressable
-            style={[styles.hubEntryCard, styles.hubEntryCardRequired]}
-            onPress={() => setActiveView("required")}
+            style={trainingStyles.mapFocusCard}
+            onPress={() => handleStudy(nextFocus.material)}
           >
-            <View style={[styles.hubEntryIcon, styles.hubEntryIconRequired]}>
-              <Text style={[styles.hubEntryIconText, styles.hubEntryIconTextRequired]}>
-                印
-              </Text>
+            <View style={trainingStyles.mapFocusTopRow}>
+              <Text style={trainingStyles.mapFocusLabel}>{copy.guidedFocusLabel}</Text>
+              <Text style={trainingStyles.mapFocusLayer}>{nextFocus.layerLabel}</Text>
             </View>
-            <View style={styles.hubEntryBody}>
-              <Text style={styles.hubEntryTitle}>{copy.hubRequiredJourney}</Text>
-              <Text style={styles.hubEntrySubtitle}>{copy.hubRequiredJourneyBody}</Text>
-              <Text style={styles.hubEntryMeta}>{requiredMeta}</Text>
-            </View>
+            <Text style={trainingStyles.mapFocusTitle}>{nextFocus.material.title}</Text>
+            <Text style={trainingStyles.mapFocusMeta}>
+              {getMaterialTypeLabel(nextFocus.material, copy)}
+              {nextFocus.material.hasQuiz ? ` · ${copy.quizTag}` : ""}
+            </Text>
+            <Text style={trainingStyles.mapFocusAction}>{copy.hubActionContinue}</Text>
+          </Pressable>
+        ) : (
+          <View style={trainingStyles.mapFocusCardCompleted}>
+            <Text style={trainingStyles.mapFocusLabel}>{copy.guidedStageCompleted}</Text>
+            <Text style={trainingStyles.mapFocusTitle}>{copy.guidedCompletedTitle}</Text>
+            <Text style={trainingStyles.mapFocusMeta}>
+              {copy.completed} {completedMaterials}/{totalMaterials}
+            </Text>
+          </View>
+        )}
+
+        <View style={trainingStyles.mapLayerSummaryRow}>
+          {layerProgressItems.map((item) => (
             <View
+              key={item.label}
               style={[
-                styles.hubEntryAction,
-                flow.completedAllRequired ? styles.hubEntryActionDone : null,
+                trainingStyles.mapLayerSummaryItem,
+                !item.unlocked && trainingStyles.mapLayerSummaryItemLocked,
               ]}
             >
               <Text
                 style={[
-                  styles.hubEntryActionText,
-                  flow.completedAllRequired ? styles.hubEntryActionTextDone : null,
+                  trainingStyles.mapLayerSummaryLabel,
+                  !item.unlocked && trainingStyles.mapLayerSummaryLabelLocked,
                 ]}
               >
-                {requiredAction}
+                {item.label}
               </Text>
-            </View>
-          </Pressable>
-
-          <Pressable
-            style={styles.hubEntryCard}
-            onPress={() => setActiveView("optional")}
-          >
-            <View style={[styles.hubEntryIcon, styles.hubEntryIconOptional]}>
-              <Text style={[styles.hubEntryIconText, styles.hubEntryIconTextOptional]}>
-                库
-              </Text>
-            </View>
-            <View style={styles.hubEntryBody}>
-              <Text style={styles.hubEntryTitle}>{copy.hubOptionalLibrary}</Text>
-              <Text style={styles.hubEntrySubtitle}>{copy.hubOptionalLibraryBody}</Text>
-              <Text style={styles.hubEntryMeta}>{optionalMeta}</Text>
-            </View>
-            <View style={styles.hubEntryAction}>
-              <Text style={styles.hubEntryActionText}>{copy.hubEnter}</Text>
-            </View>
-          </Pressable>
-
-          <Pressable
-            style={styles.hubEntryCard}
-            onPress={() => setActiveView("achievements")}
-          >
-            <View style={[styles.hubEntryIcon, styles.hubEntryIconAchievement]}>
               <Text
-                style={[styles.hubEntryIconText, styles.hubEntryIconTextAchievement]}
+                style={[
+                  trainingStyles.mapLayerSummaryValue,
+                  !item.unlocked && trainingStyles.mapLayerSummaryValueLocked,
+                ]}
               >
-                誉
+                {formatLayerProgress(item)}
               </Text>
             </View>
-            <View style={styles.hubEntryBody}>
-              <Text style={styles.hubEntryTitle}>{copy.hubAchievements}</Text>
-              <Text style={styles.hubEntrySubtitle}>{copy.hubAchievementsBody}</Text>
-              <Text style={styles.hubEntryMeta}>{achievementMeta}</Text>
-            </View>
-            <View style={styles.hubEntryAction}>
-              <Text style={styles.hubEntryActionText}>{copy.hubEnter}</Text>
-            </View>
-          </Pressable>
+          ))}
         </View>
       </View>
-    );
-  }
+
+      <View style={trainingStyles.mapContainer}>
+        <MapLayerSection
+          title={copy.mapLayerShared}
+          body={copy.mapLayerSharedBody}
+          completed={summary.sharedCompleted}
+          total={summary.sharedTotal}
+          unlocked={layer1Unlocked}
+          unlockHint={copy.mapUnlockNext}
+        >
+          {mapData.sharedMaterials.map((node, index) => (
+            <MapNodeCard
+              key={node.material.id}
+              node={node}
+              index={index}
+              onStudy={handleStudy}
+              onQuiz={handleQuiz}
+              copy={copy}
+            />
+          ))}
+        </MapLayerSection>
+
+        <View style={trainingStyles.mapLayerDivider} />
+
+        <MapLayerSection
+          title={copy.mapLayerRequired}
+          body={copy.mapLayerRequiredBody}
+          completed={summary.requiredCompleted}
+          total={summary.requiredTotal}
+          unlocked={layer2Unlocked}
+          unlockHint={layer1Unlocked ? undefined : copy.mapUnlockNext}
+        >
+          {mapData.positionGates.map((gate) => {
+            const isExpanded = expandedPositions[gate.positionId] ?? false;
+            return (
+              <View key={gate.positionId}>
+                <Pressable
+                  style={[
+                    trainingStyles.mapPositionGateHeader,
+                    isExpanded && { borderColor: "#c11616" },
+                  ]}
+                  onPress={() => togglePosition(gate.positionId)}
+                >
+                  <Text style={trainingStyles.mapPositionGateTitle}>{gate.positionLabel}</Text>
+                  <Text style={trainingStyles.mapPositionGateProgress}>
+                    {gate.completedCount}/{gate.totalCount}
+                  </Text>
+                </Pressable>
+                {isExpanded && (
+                  <View style={trainingStyles.mapNodeList}>
+                    {gate.materials.map((node, index) => (
+                      <MapNodeCard
+                        key={node.material.id}
+                        node={node}
+                        index={index}
+                        onStudy={handleStudy}
+                        onQuiz={handleQuiz}
+                        copy={copy}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </MapLayerSection>
+
+        <View style={trainingStyles.mapLayerDivider} />
+
+        <MapLayerSection
+          title={copy.mapLayerAdvanced}
+          body={copy.mapLayerAdvancedBody}
+          completed={summary.advancedCompleted}
+          total={summary.advancedTotal}
+          unlocked={layer3Unlocked}
+          unlockHint={copy.mapUnlockCondition}
+        >
+          {mapData.advancedMaterials.map((node, index) => (
+            <MapNodeCard
+              key={node.material.id}
+              node={node}
+              index={index}
+              onStudy={handleStudy}
+              onQuiz={handleQuiz}
+              copy={copy}
+            />
+          ))}
+        </MapLayerSection>
+      </View>
+
+      {/* 成就 & 称号入口 */}
+      <Pressable style={trainingStyles.mapAchievementEntryCard} onPress={handleAchievementOpen}>
+        <View style={trainingStyles.mapAchievementEntryIcon}>
+          <Text style={trainingStyles.mapAchievementEntryIconText}>{"\u{1F3C6}"}</Text>
+        </View>
+        <View style={trainingStyles.mapAchievementEntryBody}>
+          <Text style={trainingStyles.mapAchievementEntryTitle}>{copy.mapAchievementEntry}</Text>
+          <Text style={trainingStyles.mapAchievementEntrySubtitle}>{copy.hubAchievementsBody}</Text>
+        </View>
+      </Pressable>
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
+
+  const achievementsContent = (
+    <View style={{ flex: 1 }}>
+      <Pressable onPress={handleAchievementBack} style={trainingStyles.backButton}>
+        <Text style={trainingStyles.backButtonText}>
+          {"< "}
+          {copy.backToMap}
+        </Text>
+      </Pressable>
+      <TrainingAchievements
+        copy={copy}
+        language={language}
+        onOpenRecord={(record) =>
+          void handleOpenMaterial({
+            id: record.materialId,
+            positionId: record.positionId,
+            type: record.type,
+            isRequired: record.isRequired,
+            title: record.title,
+            description: record.description,
+            originalName: record.originalName,
+            mimeType: record.mimeType,
+            sizeBytes: record.sizeBytes,
+            bucket: record.bucket,
+            objectKey: record.objectKey,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt,
+            hasQuiz: record.hasQuiz,
+            progress: {
+              materialId: record.materialId,
+              status: "completed",
+              progressPct: 100,
+              lastOpenedAt: record.completedAt,
+              completedAt: record.completedAt,
+            },
+          })
+        }
+        refreshToken={achievementsRefresh}
+      />
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      {quizMaterialId !== null ? (
-        <TrainingQuizModal
-          copy={copy}
-          language={language}
-          materialId={quizMaterialId}
-          onClose={() => setQuizMaterialId(null)}
-          onPassed={handleQuizPassed}
-        />
-      ) : (
-        <>
-          <View style={styles.header}>
-            <TrackingText size={10.5}>{copy.kicker}</TrackingText>
-            <Text style={styles.title}>{copy.title}</Text>
-            <Text style={styles.intro}>{copy.intro}</Text>
+    <View style={{ flex: 1 }}>
+      {viewMode === "hub" ? hubContent : achievementsContent}
+
+      {/* 预览 modal — 浮在顶部 */}
+      <TrainingPreviewModal
+        copy={copy}
+        material={previewMaterial}
+        fileUri={previewFileUri ?? ""}
+        baseUri={previewBaseUri ?? ""}
+        isLoading={isLoadingPreview}
+        errorMessage={previewError ?? ""}
+        onClose={handleClosePreview}
+        onRetry={() => {
+          if (previewMaterial) void handleOpenMaterial(previewMaterial);
+        }}
+        onWebViewLoadEnd={() => setIsLoadingPreview(false)}
+        onWebViewError={() => {
+          setPreviewError(copy.previewError);
+          setIsLoadingPreview(false);
+        }}
+        onStartQuiz={handleStartQuiz}
+        syncProgress={syncMaterialProgress}
+      />
+    </View>
+  );
+}
+
+/**
+ * 单层地图区域
+ */
+function MapLayerSection({
+  title,
+  body,
+  completed,
+  total,
+  unlocked,
+  unlockHint,
+  children,
+}: {
+  title: string;
+  body: string;
+  completed: number;
+  total: number;
+  unlocked: boolean;
+  unlockHint?: string;
+  children: ReactNode;
+}) {
+  const percent = total === 0 ? 100 : Math.round((completed / total) * 100);
+
+  return (
+    <View style={[trainingStyles.mapLayerCard, !unlocked && trainingStyles.mapLayerCardLocked]}>
+      <View style={trainingStyles.mapLayerHeader}>
+        <Text
+          style={[trainingStyles.mapLayerTitle, !unlocked && trainingStyles.mapLayerTitleLocked]}
+        >
+          {title}
+        </Text>
+        <View
+          style={[
+            trainingStyles.mapLayerBadge,
+            total > 0 && completed === total && trainingStyles.mapLayerBadgeDone,
+            !unlocked && trainingStyles.mapLayerBadgeLocked,
+          ]}
+        >
+          <Text
+            style={[
+              trainingStyles.mapLayerBadgeText,
+              total > 0 && completed === total && trainingStyles.mapLayerBadgeTextDone,
+              !unlocked && trainingStyles.mapLayerBadgeTextLocked,
+            ]}
+          >
+            {completed}/{total}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={[trainingStyles.mapLayerBody, !unlocked && trainingStyles.mapLayerBodyLocked]}>
+        {body}
+      </Text>
+
+      {!unlocked && unlockHint ? (
+        <Text style={trainingStyles.mapLayerUnlockHint}>{unlockHint}</Text>
+      ) : null}
+
+      {total > 0 ? (
+        <View>
+          <View style={trainingStyles.mapLayerProgressTrack}>
+            <View style={[trainingStyles.mapLayerProgressFill, { width: `${percent}%` }]} />
+          </View>
+          <Text style={trainingStyles.mapLayerProgressLabel}>{percent}%</Text>
+        </View>
+      ) : null}
+
+      {unlocked ? <View style={trainingStyles.mapNodeList}>{children}</View> : null}
+    </View>
+  );
+}
+
+/**
+ * 单个节点卡片
+ */
+function MapNodeCard({
+  node,
+  index,
+  onStudy,
+  onQuiz,
+  copy: c,
+}: {
+  node: import("@/features/training/trainingTypes").TrainingMapMaterialNode;
+  index: number;
+  onStudy: (material: TrainingPlanMaterial) => void;
+  onQuiz: (material: TrainingPlanMaterial) => void;
+  copy: (typeof TRAINING_COPY)["zh"];
+}) {
+  const material = node.material;
+  const isDone = node.isCompleted;
+  const isRight = index % 2 === 1;
+  const checkpointLabel = isDone ? "✓" : String(index + 1).padStart(2, "0");
+  const typeLabel = getMaterialTypeLabel(material, c);
+  const description = material.description || material.originalName;
+
+  return (
+    <View style={[trainingStyles.mapNodeRow, isRight && trainingStyles.mapNodeRowRight]}>
+      <View
+        style={[trainingStyles.mapNodeCheckpoint, isRight && trainingStyles.mapNodeCheckpointRight]}
+      >
+        <View style={[trainingStyles.mapNodeSeal, isDone && trainingStyles.mapNodeSealCompleted]}>
+          <Text
+            style={[
+              trainingStyles.mapNodeSealText,
+              isDone && trainingStyles.mapNodeSealTextCompleted,
+            ]}
+          >
+            {checkpointLabel}
+          </Text>
+        </View>
+
+        <View style={[trainingStyles.mapNodePanel, isDone && trainingStyles.mapNodePanelCompleted]}>
+          <View style={trainingStyles.mapNodeTitleRow}>
+            <View style={trainingStyles.mapNodeTitleGroup}>
+              <Text style={trainingStyles.mapNodeTitle}>{material.title}</Text>
+              <Text style={trainingStyles.mapNodeDescription} numberOfLines={2}>
+                {description}
+              </Text>
+            </View>
+            {isDone ? (
+              <View style={trainingStyles.mapNodeDoneTag}>
+                <Text style={trainingStyles.mapNodeDoneText}>{c.mapNodeComplete}</Text>
+              </View>
+            ) : null}
           </View>
 
-          {activeView === "hub" ? null : renderSubViewHeader(
-            activeView === "required"
-              ? copy.hubRequiredJourney
-              : activeView === "optional"
-                ? copy.hubOptionalLibrary
-                : copy.hubAchievements,
-          )}
+          <View style={trainingStyles.mapNodePillRow}>
+            <View style={trainingStyles.mapNodeTypePill}>
+              <Text style={trainingStyles.mapNodeTypeText}>{typeLabel}</Text>
+            </View>
+            {node.hasQuiz ? (
+              <View style={trainingStyles.mapNodeQuizTag}>
+                <Text style={trainingStyles.mapNodeQuizText}>{c.quizTag}</Text>
+              </View>
+            ) : null}
+          </View>
 
-          {isLoading ? <ZhaoLoadingIndicator label={copy.loading} /> : null}
-
-          {!isLoading && errorMessage ? (
-            <>
-              <Text style={styles.message}>{errorMessage}</Text>
-              <Pressable style={styles.refreshButton} onPress={() => void loadPlan()}>
-                <Text style={styles.refreshButtonText}>{copy.refresh}</Text>
+          <View style={trainingStyles.mapNodeActionRow}>
+            <Pressable style={trainingStyles.mapNodeActionButton} onPress={() => onStudy(material)}>
+              <Text style={trainingStyles.mapNodeActionText}>{c.mapNodeStudy}</Text>
+            </Pressable>
+            {node.hasQuiz && !node.isQuizPassed ? (
+              <Pressable
+                style={trainingStyles.mapNodeActionButton}
+                onPress={() => onQuiz(material)}
+              >
+                <Text style={trainingStyles.mapNodeActionText}>{c.mapNodeQuiz}</Text>
               </Pressable>
-            </>
-          ) : null}
-
-          {!isLoading && !errorMessage && plan ? (
-            <>
-              {activeView === "hub" ? renderHub() : null}
-
-              {activeView === "required" ? (
-                <TrainingGuidedPlan
-                  copy={copy}
-                  plan={plan}
-                  onOpenMaterial={(material) => void handleOpenMaterial(material)}
-                  onRefresh={() => void loadPlan()}
-                />
-              ) : null}
-
-              {activeView === "optional" ? (
-                <TrainingOptionalLibrary
-                  copy={copy}
-                  plan={plan}
-                  onOpenMaterial={(material) => void handleOpenMaterial(material)}
-                />
-              ) : null}
-
-              {activeView === "achievements" ? (
-                <TrainingAchievements
-                  copy={copy}
-                  language={language}
-                  onOpenRecord={(record) =>
-                    void handleOpenMaterial(buildCompletedMaterialFromRecord(record))}
-                  refreshToken={achievementsRefresh}
-                />
-              ) : null}
-            </>
-          ) : null}
-
-          <TrainingPreviewModal
-            copy={copy}
-            material={previewMaterial}
-            fileUri={previewFileUri}
-            baseUri={previewBaseUri}
-            isLoading={isLoadingPreview}
-            errorMessage={previewError}
-            onClose={handleClosePreview}
-            onRetry={() => {
-              if (previewMaterial) void handleOpenMaterial(previewMaterial);
-            }}
-            onWebViewLoadEnd={() => setIsLoadingPreview(false)}
-            onWebViewError={() => {
-              setPreviewError(copy.previewError);
-              setIsLoadingPreview(false);
-            }}
-            onStartQuiz={handleStartQuiz}
-            syncProgress={syncMaterialProgress}
-          />
-        </>
-      )}
+            ) : null}
+          </View>
+        </View>
+      </View>
     </View>
   );
 }

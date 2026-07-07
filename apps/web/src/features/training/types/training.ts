@@ -97,3 +97,108 @@ export type TrainingDiagnostics = {
   orphanMaterials: string[];
   rolesResolvingToEmpty: string[];
 };
+
+export type TrainingBadgeRequirement = {
+  materialId: number;
+  title: string;
+  positionId: string;
+  type: string;
+};
+
+export type TrainingBadge = {
+  code: string;
+  name: {
+    zh: string;
+    en: string;
+    fr: string;
+  };
+  description: {
+    zh: string | null;
+    en: string | null;
+    fr: string | null;
+  };
+  track: string;
+  rarity: string;
+  level: number | null;
+  iconType: string;
+  requiredScore: number;
+  requiredCompletionRate: number;
+  isActive: boolean;
+  sortOrder: number;
+  requirements: TrainingBadgeRequirement[];
+};
+
+export type TrainingEmployeeBadge = TrainingBadge & {
+  status: "locked" | "in_progress" | "certified" | "failed";
+  progress: number;
+  maxProgress: number;
+  completionRate: number;
+  score: number | null;
+  earnedAt: string | null;
+};
+
+export type TrainingMyBadges = {
+  badges: TrainingEmployeeBadge[];
+  earnedCount: number;
+  totalCount: number;
+};
+
+export type TrainingMonthlyReportBadge = {
+  code: string;
+  name: {
+    zh: string;
+    en: string;
+    fr: string;
+  };
+  earnedAt: string;
+};
+
+export type TrainingMonthlyReportUser = {
+  userId: number;
+  name: string;
+  email: string;
+  jobRole: string | null;
+  restaurant: {
+    id: number;
+    name: string;
+  };
+  requiredTotal: number;
+  requiredCompleted: number;
+  completionPercent: number;
+  completedThisMonth: number;
+  quizAttemptCount: number;
+  quizPassedCount: number;
+  quizPassRate: number;
+  averageBestScore: number | null;
+  newBadgeCount: number;
+  badges: TrainingMonthlyReportBadge[];
+};
+
+export type TrainingMonthlyReportStore = {
+  restaurantId: number;
+  restaurantName: string;
+  employeeCount: number;
+  averageCompletionPercent: number;
+  completedEmployeeCount: number;
+  completedThisMonth: number;
+  quizAttemptCount: number;
+  quizPassedCount: number;
+  quizPassRate: number;
+  averageBestScore: number | null;
+  newBadgeCount: number;
+};
+
+export type TrainingMonthlyReport = {
+  month: string;
+  range: {
+    from: string;
+    to: string;
+  };
+  scope: {
+    restaurantId: number;
+    restaurantName: string;
+  };
+  summary: Omit<TrainingMonthlyReportStore, "restaurantId" | "restaurantName">;
+  stores: TrainingMonthlyReportStore[];
+  users: TrainingMonthlyReportUser[];
+};

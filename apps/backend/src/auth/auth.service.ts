@@ -21,6 +21,7 @@ import { ACCOUNT_STATUS } from './account-status';
 import type { AccountStatus } from './account-status';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { ChangeCurrentPasswordDto } from './dto/change-current-password.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -30,6 +31,7 @@ import { UpdateCurrentUserDto } from './dto/update-current-user.dto';
 const scrypt = promisify(scryptCallback);
 const SUPPORTED_PROFILE_PHOTO_PATTERN = /^data:image\/[a-zA-Z0-9.+-]+;base64,/;
 const DEFAULT_USER_LEVEL = 0;
+const DELETED_ACCOUNT_NAME = 'Compte supprimé';
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 8;
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
@@ -478,6 +480,10 @@ export class AuthService {
     const payload = this.verifyAccessToken(accessToken);
     const user = await this.findAuthUserById(payload.sub);
 
+    if (user.accountStatus === ACCOUNT_STATUS.deleted) {
+      throw new UnauthorizedException('ACCOUNT_DELETED');
+    }
+
     return this.toAuthUser(user, await this.listUserPermissions(user.id));
   }
 
@@ -562,6 +568,72 @@ export class AuthService {
     });
 
     return { message: 'PASSWORD_CHANGED' };
+  }
+
+  async deleteCurrentAccount(
+    accessToken: string | undefined,
+    dto: DeleteAccountDto,
+  ): Promise<{ message: 'ACCOUNT_DELETED' }> {
+    const payload = this.verifyAccessToken(accessToken);
+    const user = await this.prismaService.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        passwordHash: true,
+        accountStatus: true,
+      },
+    });
+
+    if (!user || user.accountStatus === ACCOUNT_STATUS.deleted) {
+      throw new UnauthorizedException('INVALID_SESSION');
+    }
+
+    const passwordMatches = await verifyPassword(
+      dto.password,
+      user.passwordHash,
+    );
+
+    if (!passwordMatches) {
+      throw new UnauthorizedException('INVALID_CURRENT_PASSWORD');
+    }
+
+    // Hard deletion is blocked by many `onDelete: Restrict` foreign keys
+    // (purchase orders, dashboard posts, recruitment requests, case shares…),
+    // so we anonymize the account instead and sever every active session.
+    const anonymizedPasswordHash = await hashPassword(createOpaqueToken());
+
+    await this.prismaService.$transaction([
+      this.prismaService.userRole.deleteMany({ where: { userId: user.id } }),
+      this.prismaService.pushToken.deleteMany({ where: { userId: user.id } }),
+      this.prismaService.refreshSession.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      this.prismaService.user.update({
+        where: { id: user.id },
+        data: {
+          familyName: DELETED_ACCOUNT_NAME,
+          givenName: '',
+          name: DELETED_ACCOUNT_NAME,
+          email: `deleted-user-${user.id}@deleted.invalid`,
+          emailVerified: false,
+          accountStatus: ACCOUNT_STATUS.deleted,
+          accountReviewedAt: new Date(),
+          passwordHash: anonymizedPasswordHash,
+          birthday: null,
+          jobRole: null,
+          phone: null,
+          address: null,
+          profilePhoto: null,
+          invitationTokenHash: null,
+          invitationExpiresAt: null,
+          passwordResetTokenHash: null,
+          passwordResetExpiresAt: null,
+        },
+      }),
+    ]);
+
+    return { message: 'ACCOUNT_DELETED' };
   }
 
   async getPermissionsForToken(

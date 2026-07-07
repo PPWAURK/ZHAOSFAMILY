@@ -18,6 +18,7 @@ export type RecruitmentRequestsApi = {
     input: UpdateRecruitmentRequestRequest,
   ) => Promise<RecruitmentRequestItem>;
   delete: (id: number | string) => Promise<{ id: number }>;
+  batchDelete: (ids: number[]) => Promise<{ deletedCount: number }>;
 };
 
 function buildRecruitmentRequestsPath(
@@ -48,6 +49,11 @@ export function createRecruitmentRequestsApi(
     delete: (id) =>
       apiClient.delete<{ id: number }>(
         `/recruitment-requests/${encodeURIComponent(id)}`,
+      ),
+    batchDelete: (ids) =>
+      apiClient.post<{ deletedCount: number }>(
+        '/recruitment-requests/batch-delete',
+        { ids },
       ),
   };
 }

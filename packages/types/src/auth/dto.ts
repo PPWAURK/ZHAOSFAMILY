@@ -81,3 +81,13 @@ export type ChangePasswordDto = {
 };
 
 export type ChangePasswordRequest = ChangePasswordDto;
+
+export type DeleteAccountDto = {
+  password: string;
+};
+
+export type DeleteAccountRequest = DeleteAccountDto;
+
+export type DeleteAccountResponse = {
+  message: "ACCOUNT_DELETED";
+};

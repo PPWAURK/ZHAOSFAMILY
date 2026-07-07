@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Headers, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   AuthService,
@@ -9,6 +17,7 @@ import {
 } from './auth.service';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { ChangeCurrentPasswordDto } from './dto/change-current-password.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
@@ -96,6 +105,17 @@ export class AuthController {
     @Body() dto: ChangeCurrentPasswordDto,
   ): Promise<{ message: 'PASSWORD_CHANGED' }> {
     return this.authService.changeCurrentPassword(
+      parseBearerToken(authorization),
+      dto,
+    );
+  }
+
+  @Delete('me')
+  deleteMe(
+    @Headers('authorization') authorization: string | undefined,
+    @Body() dto: DeleteAccountDto,
+  ): Promise<{ message: 'ACCOUNT_DELETED' }> {
+    return this.authService.deleteCurrentAccount(
       parseBearerToken(authorization),
       dto,
     );

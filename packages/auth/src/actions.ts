@@ -2,6 +2,7 @@ import type { AuthApi } from "@zhao/api";
 import type {
   AcceptInvitationDto,
   ChangePasswordDto,
+  DeleteAccountDto,
   LoginDto,
   RegisterDto,
   RegisterResponse,
@@ -214,9 +215,24 @@ export function createAuthActions({
     await authApi.changePassword(input);
   }
 
+  async function deleteAccount(input: DeleteAccountDto): Promise<void> {
+    const authStore = store.getState();
+
+    // Only tear the session down once the account is actually deleted — a wrong
+    // password must leave the user signed in so they can retry.
+    await authApi.deleteAccount(input);
+
+    await tokenStorage.removeAccessToken();
+    await tokenStorage.removeRefreshToken();
+    syncAccessToken(null);
+    syncRefreshToken(null);
+    authStore.clearSession();
+  }
+
   return {
     acceptInvitation,
     changePassword,
+    deleteAccount,
     login,
     logout,
     register,

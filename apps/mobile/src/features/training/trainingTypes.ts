@@ -104,6 +104,25 @@ export type TrainingTitle = {
   earnedAt: string | null;
 };
 
+export type TrainingBadge = {
+  code: string;
+  name: {
+    zh: string;
+    en: string;
+    fr: string;
+  };
+  track: string;
+  rarity: string;
+  level: number | null;
+  iconType: string;
+  status: "locked" | "in_progress" | "certified" | "failed";
+  progress: number;
+  maxProgress: number;
+  completionRate: number;
+  score: number | null;
+  earnedAt: string | null;
+};
+
 export type TrainingQuizAttemptResult = {
   score: number;
   passed: boolean;
@@ -111,6 +130,7 @@ export type TrainingQuizAttemptResult = {
   materialCompleted: boolean;
   results: TrainingQuizQuestionResult[];
   newTitles: TrainingTitle[];
+  newBadges: TrainingBadge[];
 };
 
 export type TrainingMyTitles = {
@@ -144,4 +164,44 @@ export type TrainingMyRecords = {
   records: TrainingRecord[];
   titles: TrainingTitle[];
   completedCount: number;
+};
+
+// ── Three-layer map types ──
+
+export type TrainingMapLayer = "shared" | "required" | "advanced";
+
+export type TrainingMapProgressSummary = {
+  sharedTotal: number;
+  sharedCompleted: number;
+  requiredTotal: number;
+  requiredCompleted: number;
+  advancedTotal: number;
+  advancedCompleted: number;
+  overallPercent: number;
+};
+
+export type TrainingMapMaterialNode = {
+  material: TrainingPlanMaterial;
+  isCompleted: boolean;
+  isQuizPassed: boolean;
+  hasQuiz: boolean;
+};
+
+export type TrainingPositionGate = {
+  positionId: string;
+  positionLabel: string;
+  materials: TrainingMapMaterialNode[];
+  completedCount: number;
+  totalCount: number;
+  layer: TrainingMapLayer;
+};
+
+export type TrainingMapData = {
+  sharedMaterials: TrainingMapMaterialNode[];
+  positionGates: TrainingPositionGate[];
+  advancedMaterials: TrainingMapMaterialNode[];
+  summary: TrainingMapProgressSummary;
+  layer1Unlocked: boolean;
+  layer2Unlocked: boolean;
+  layer3Unlocked: boolean;
 };

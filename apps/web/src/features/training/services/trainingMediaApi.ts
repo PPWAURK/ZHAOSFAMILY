@@ -2,11 +2,14 @@ import { apiClient, buildMediaFileUrl } from "@/shared/api/api-client";
 import type {
   CreateTrainingMaterialInput,
   CreateTrainingPositionInput,
+  TrainingBadge,
   TrainingCourse,
   TrainingMaterial,
   TrainingMaterialFilters,
   TrainingMediaUploadOptions,
   TrainingMediaUploadResult,
+  TrainingMonthlyReport,
+  TrainingMyBadges,
   TrainingPlan,
   TrainingPosition,
   TrainingDiagnostics,
@@ -90,8 +93,46 @@ export async function fetchTrainingMyPlan(): Promise<TrainingPlan> {
   return apiClient.get<TrainingPlan>("/training/my-plan");
 }
 
+export async function fetchTrainingMyBadges(): Promise<TrainingMyBadges> {
+  return apiClient.get<TrainingMyBadges>("/training/badges/my");
+}
+
+export async function fetchTrainingBadges(): Promise<TrainingBadge[]> {
+  const badges = await apiClient.get<TrainingBadge[]>("/training/badges");
+
+  return Array.isArray(badges) ? badges : [];
+}
+
+export async function updateTrainingBadgeRequirements(
+  code: string,
+  materialIds: number[],
+): Promise<TrainingBadge> {
+  return apiClient.put<TrainingBadge>(
+    `/training/badges/${encodeURIComponent(code)}/requirements`,
+    { materialIds },
+  );
+}
+
 export async function fetchTrainingStoreProgress(): Promise<TrainingStoreProgress> {
   return apiClient.get<TrainingStoreProgress>("/training/store-progress");
+}
+
+export async function fetchTrainingMonthlyReport(options: {
+  month?: string;
+  restaurantId?: number | string;
+} = {}): Promise<TrainingMonthlyReport> {
+  const params = new URLSearchParams();
+
+  if (options.month) params.set("month", options.month);
+  if (options.restaurantId !== undefined && options.restaurantId !== "") {
+    params.set("restaurantId", String(options.restaurantId));
+  }
+
+  const query = params.toString();
+
+  return apiClient.get<TrainingMonthlyReport>(
+    query ? `/training/reports/monthly?${query}` : "/training/reports/monthly",
+  );
 }
 
 export async function updateTrainingProgress(

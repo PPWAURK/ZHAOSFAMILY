@@ -3,6 +3,8 @@ import type {
   AuthSessionResponse,
   AuthUser,
   ChangePasswordRequest,
+  DeleteAccountRequest,
+  DeleteAccountResponse,
   ForgotPasswordRequest,
   ForgotPasswordResponse,
   LoginRequest,
@@ -23,6 +25,7 @@ export type AuthApi = {
   getMe: () => Promise<AuthUser>;
   updateMe: (input: UpdateMeRequest) => Promise<AuthUser>;
   changePassword: (input: ChangePasswordRequest) => Promise<void>;
+  deleteAccount: (input: DeleteAccountRequest) => Promise<DeleteAccountResponse>;
   acceptInvitation: (input: AcceptInvitationRequest) => Promise<AuthSessionResponse>;
   forgotPassword: (input: ForgotPasswordRequest) => Promise<ForgotPasswordResponse>;
   resetPassword: (input: ResetPasswordRequest) => Promise<void>;
@@ -37,6 +40,8 @@ export function createAuthApi(apiClient: ApiClient): AuthApi {
     getMe: () => apiClient.get<AuthUser>("/auth/me"),
     updateMe: (input) => apiClient.patch<AuthUser>("/auth/me", input),
     changePassword: (input) => apiClient.patch<void>("/auth/me/password", input),
+    deleteAccount: (input) =>
+      apiClient.delete<DeleteAccountResponse>("/auth/me", { data: input }),
     acceptInvitation: (input) =>
       apiClient.post<AuthSessionResponse>("/auth/accept-invitation", input),
     forgotPassword: (input) =>

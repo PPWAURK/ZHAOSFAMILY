@@ -1,6 +1,7 @@
-import { Text, View } from "react-native";
-import { trainingStyles as styles } from "@/features/training/trainingStyles";
+import { View } from "react-native";
+import { TitleCard } from "@/components/titles";
 import type { TrainingTitle } from "@/features/training/trainingTypes";
+import type { TitleCategory, TitleIconType, TitleRarity } from "@/types/title";
 
 type FramePalette = {
   ring: string;
@@ -19,6 +20,32 @@ export function getFramePalette(frameStyle: string): FramePalette {
   return TITLE_FRAME_PALETTES[frameStyle] ?? TITLE_FRAME_PALETTES.red;
 }
 
+type TrainingTitleFrameMeta = {
+  category: TitleCategory;
+  rarity: TitleRarity;
+  iconType: TitleIconType;
+};
+
+function resolveTrainingTitleFrame(title: TrainingTitle): TrainingTitleFrameMeta {
+  if (title.frameStyle === "gold") {
+    return { category: "premium", rarity: "legendary", iconType: "prestige" };
+  }
+
+  if (title.frameStyle === "jade") {
+    return { category: "kitchen", rarity: "rare", iconType: "cooking" };
+  }
+
+  if (title.unlockPositionCode === "FOH") {
+    return { category: "front", rarity: "rare", iconType: "smile" };
+  }
+
+  if (title.unlockPositionCode === "BOH") {
+    return { category: "kitchen", rarity: "rare", iconType: "cooking" };
+  }
+
+  return { category: "growth", rarity: "rare", iconType: "plant" };
+}
+
 export function TitleBadge({
   title,
   language,
@@ -26,48 +53,26 @@ export function TitleBadge({
   title: TrainingTitle;
   language: "zh" | "en" | "fr";
 }) {
-  const palette = getFramePalette(title.frameStyle);
   const locked = !title.earned;
+  const frame = resolveTrainingTitleFrame(title);
 
   return (
-    <View
-      style={[
-        styles.titleBadge,
-        {
-          borderColor: locked ? "rgba(10,10,10,0.18)" : palette.ring,
-          backgroundColor: locked ? "transparent" : palette.fill,
-        },
-      ]}
-    >
-      <View
-        style={[
-          styles.titleBadgeMedal,
-          { borderColor: locked ? "rgba(10,10,10,0.25)" : palette.ring },
-        ]}
-      >
-        <Text
-          style={[
-            styles.titleBadgeMedalText,
-            { color: locked ? "rgba(10,10,10,0.35)" : palette.ink },
-          ]}
-        >
-          {locked ? "🔒" : "★"}
-        </Text>
-      </View>
-      <Text
-        style={[
-          styles.titleBadgeName,
-          { color: locked ? "rgba(10,10,10,0.4)" : palette.ink },
-        ]}
-        numberOfLines={2}
-      >
-        {title.name[language]}
-      </Text>
-    </View>
+    <TitleCard
+      id={title.code}
+      title={title.name[language]}
+      subtitle={title.earnedAt ? title.earnedAt.slice(0, 10) : undefined}
+      category={frame.category}
+      rarity={frame.rarity}
+      iconType={frame.iconType}
+      locked={locked}
+      size="sm"
+      progress={locked ? 35 : 100}
+      unlockHint={title.unlockPositionCode}
+    />
   );
 }
 
-// A circular avatar wrapper that draws the earned title's frame around it.
+// A square seal-style avatar frame that draws the earned title's border around it.
 export function AvatarFrame({
   frameStyle,
   size,
@@ -84,12 +89,12 @@ export function AvatarFrame({
       style={{
         width: size,
         height: size,
-        borderRadius: size / 2,
         borderWidth: palette ? 3 : 0,
         borderColor: palette?.ring ?? "transparent",
         padding: palette ? 2 : 0,
         alignItems: "center",
         justifyContent: "center",
+        transform: palette ? [{ rotate: "-2deg" }] : [],
       }}
     >
       {children}

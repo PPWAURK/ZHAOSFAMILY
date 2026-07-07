@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
+import DashboardNewsMarkdownEditor from "@/features/dashboard/components/DashboardNewsMarkdownEditor";
 import {
   createDashboardNewsPost,
   deleteDashboardNewsPost,
@@ -133,49 +134,152 @@ function resolveDashboardMediaUrl(src) {
   }
 }
 
-function renderRichBody(body, styles) {
-  return body.split("\n").map((line, index) => {
-    const image = parseMarkdownImageLine(line.trim());
-    const key = `${index}-${line.slice(0, 16)}`;
+function renderInlineMarkdown(text) {
+  const tokens = [];
+  let remaining = text;
 
-    if (image) {
-      return (
-        <figure key={key} className={styles.readerBodyImage}>
-          <img
-            src={resolveDashboardMediaUrl(image.src)}
-            alt={image.alt}
-            loading="lazy"
-          />
-        </figure>
+  // Match **bold**, *italic*, [link](url), and plain text segments
+  const pattern =
+    /(\*\*(.+?)\*\*|\*(.+?)\*|\[(.+?)\]\((.+?)\)|(?:\\.|[^*[\]()])+)/g;
+  let match;
+
+  while ((match = pattern.exec(remaining)) !== null) {
+    const full = match[1];
+
+    if (full.startsWith("**") && full.endsWith("**")) {
+      tokens.push(<strong key={tokens.length}>{match[2]}</strong>);
+    } else if (full.startsWith("*") && full.endsWith("*")) {
+      tokens.push(<em key={tokens.length}>{match[3]}</em>);
+    } else if (full.startsWith("[")) {
+      tokens.push(
+        <a key={tokens.length} href={match[5]} target="_blank" rel="noreferrer">
+          {match[4]}
+        </a>,
       );
+    } else {
+      tokens.push(full);
     }
+  }
 
-    return (
-      <p key={key} className={styles.readerBodyText}>
-        {line || "\u00a0"}
-      </p>
-    );
-  });
+  return tokens.length > 0 ? tokens : text;
 }
 
-function buildMarkdownImage(attachment) {
-  const alt = attachment.name.replace(/[[\]()]/g, "").trim() || "image";
-  const href = getDashboardNewsAttachmentUrl(attachment.objectKey);
+function renderRichBody(body, styles) {
+  const lines = body.split("\n");
+  const elements = [];
+  let listItems = null;
+  let listType = null;
 
-  return `![${alt}](${href})`;
+  function flushList(listIndex) {
+    if (!listItems) {
+      return;
+    }
+
+    const ListTag = listType === "ol" ? "ol" : "ul";
+    const key = `list-${listIndex}`;
+
+    elements.push(
+      <ListTag key={key} className={styles.readerList}>
+        {listItems}
+      </ListTag>,
+    );
+    listItems = null;
+    listType = null;
+  }
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    const key = `${index}-${line.slice(0, 16)}`;
+
+    if (trimmed === "---") {
+      flushList(index);
+      elements.push(<hr key={key} className={styles.readerDivider} />);
+      continue;
+    }
+
+    const imageMatch = parseMarkdownImageLine(trimmed);
+
+    if (imageMatch) {
+      flushList(index);
+      elements.push(
+        <figure key={key} className={styles.readerBodyImage}>
+          <img
+            src={resolveDashboardMediaUrl(imageMatch.src)}
+            alt={imageMatch.alt}
+            loading="lazy"
+          />
+        </figure>,
+      );
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^##\s+(.+)$/);
+
+    if (headingMatch) {
+      flushList(index);
+      elements.push(
+        <h3 key={key} className={styles.readerBodyHeading}>
+          {renderInlineMarkdown(headingMatch[1])}
+        </h3>,
+      );
+      continue;
+    }
+
+    const olMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+
+    if (olMatch) {
+      if (listType !== "ol") {
+        flushList(index);
+        listType = "ol";
+        listItems = [];
+      }
+
+      listItems.push(
+        <li key={listItems.length}>{renderInlineMarkdown(olMatch[1])}</li>,
+      );
+      continue;
+    }
+
+    const ulMatch = trimmed.match(/^[-*]\s+(.+)$/);
+
+    if (ulMatch) {
+      if (listType !== "ul") {
+        flushList(index);
+        listType = "ul";
+        listItems = [];
+      }
+
+      listItems.push(
+        <li key={listItems.length}>{renderInlineMarkdown(ulMatch[1])}</li>,
+      );
+      continue;
+    }
+
+    flushList(index);
+    elements.push(
+      <p key={key} className={styles.readerBodyText}>
+        {line
+          ? renderInlineMarkdown(line)
+          : "\u00a0"}
+      </p>
+    );
+  }
+
+  flushList(lines.length);
+
+  return elements;
 }
 
 export default function DashboardNewsModule({ lang, copy }) {
   const { user } = useAuth();
   const confirm = useConfirm();
-  const bodyTextareaRef = useRef(null);
   const [posts, setPosts] = useState([]);
   const [loadError, setLoadError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState(INITIAL_FORM);
   const [attachmentFile, setAttachmentFile] = useState(null);
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
-  const [bodyImageInputKey, setBodyImageInputKey] = useState(0);
   const [isUploadingBodyImage, setIsUploadingBodyImage] = useState(false);
   const [submitState, setSubmitState] = useState({ isSubmitting: false, message: "" });
   const [searchTerm, setSearchTerm] = useState("");
@@ -352,57 +456,51 @@ export default function DashboardNewsModule({ lang, copy }) {
     setSubmitState((prev) => ({ ...prev, message: "" }));
   }
 
-  function insertBodyText(text) {
-    const input = bodyTextareaRef.current;
-    const start = input?.selectionStart ?? form.body.length;
-    const end = input?.selectionEnd ?? form.body.length;
-    const prefix = form.body.slice(0, start);
-    const suffix = form.body.slice(end);
-    const before = prefix && !prefix.endsWith("\n") ? "\n" : "";
-    const after = suffix && !suffix.startsWith("\n") ? "\n" : "";
-    const nextBody = `${prefix}${before}${text}${after}${suffix}`;
-    const nextCursor = `${prefix}${before}${text}`.length;
-
-    updateForm("body", nextBody);
-
-    window.requestAnimationFrame(() => {
-      bodyTextareaRef.current?.focus();
-      bodyTextareaRef.current?.setSelectionRange(nextCursor, nextCursor);
-    });
-  }
-
-  async function handleBodyImageChange(event) {
-    const file = event.target.files?.[0];
-    setBodyImageInputKey((prev) => prev + 1);
-
-    if (!file) {
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      setSubmitState({ isSubmitting: false, message: copy.publish.bodyImageError });
-      return;
-    }
-
-    try {
-      setIsUploadingBodyImage(true);
-      setSubmitState({ isSubmitting: false, message: copy.publish.bodyImageUploading });
-      const attachment = await uploadDashboardNewsAttachment(file);
-      if (!attachment.objectKey) {
-        throw new Error(copy.publish.bodyImageError);
+  const handleEditorImageUpload = useCallback(
+    async (file) => {
+      if (!file.type.startsWith("image/")) {
+        setSubmitState({
+          isSubmitting: false,
+          message: copy.publish.bodyImageError,
+        });
+        return null;
       }
-      insertBodyText(buildMarkdownImage(attachment));
-      setSubmitState({ isSubmitting: false, message: "" });
-    } catch (error) {
-      setSubmitState({
-        isSubmitting: false,
-        message:
-          error instanceof Error ? error.message : copy.publish.bodyImageError,
-      });
-    } finally {
-      setIsUploadingBodyImage(false);
-    }
-  }
+
+      try {
+        setIsUploadingBodyImage(true);
+        setSubmitState({
+          isSubmitting: false,
+          message: copy.publish.bodyImageUploading,
+        });
+        const attachment = await uploadDashboardNewsAttachment(file);
+
+        if (!attachment.objectKey) {
+          throw new Error(copy.publish.bodyImageError);
+        }
+
+        const alt = attachment.name.replace(/[[\]()]/g, "").trim() || "image";
+        const href = getDashboardNewsAttachmentUrl(attachment.objectKey);
+        const markdown = `![${alt}](${href})`;
+
+        setSubmitState({ isSubmitting: false, message: "" });
+
+        return markdown;
+      } catch (error) {
+        setSubmitState({
+          isSubmitting: false,
+          message:
+            error instanceof Error
+              ? error.message
+              : copy.publish.bodyImageError,
+        });
+
+        return null;
+      } finally {
+        setIsUploadingBodyImage(false);
+      }
+    },
+    [copy.publish.bodyImageError, copy.publish.bodyImageUploading],
+  );
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -649,33 +747,19 @@ export default function DashboardNewsModule({ lang, copy }) {
 
             <label className={`${styles.publishField} ${styles.publishFieldWide}`}>
               <span>{copy.publish.bodyLabel}</span>
-              <textarea
-                ref={bodyTextareaRef}
+              <DashboardNewsMarkdownEditor
                 value={form.body}
-                onChange={(event) => updateForm("body", event.target.value)}
+                onChange={(nextBody) => updateForm("body", nextBody)}
                 placeholder={copy.publish.bodyPlaceholder}
                 maxLength={5000}
-                rows={6}
+                onImageUpload={handleEditorImageUpload}
+                isUploadingImage={isUploadingBodyImage}
+                imageLabels={{
+                  hint: copy.publish.bodyImageHint,
+                  uploading: copy.publish.bodyImageUploading,
+                }}
+                previewRenderer={(value) => renderRichBody(value, styles)}
               />
-              <span className={styles.bodyImageControl}>
-                <span className={styles.uploadControl}>
-                  <input
-                    key={bodyImageInputKey}
-                    type="file"
-                    accept="image/*"
-                    disabled={isUploadingBodyImage}
-                    onChange={handleBodyImageChange}
-                  />
-                  <span className={styles.uploadButton}>
-                    {isUploadingBodyImage
-                      ? copy.publish.bodyImageUploading
-                      : copy.publish.bodyImageLabel}
-                  </span>
-                  <small className={styles.uploadHint}>
-                    {copy.publish.bodyImageHint}
-                  </small>
-                </span>
-              </span>
             </label>
           </div>
 

@@ -7,10 +7,12 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { SubmitQuizAttemptDto } from './dto/submit-quiz-attempt.dto';
+import { TrainingBadgeService } from './training-badge.service';
 import { TrainingTitleService } from './training-title.service';
 import { parseTranslations } from './training-quiz-i18n';
 import type {
   TrainingMyRecords,
+  TrainingEmployeeBadgeItem,
   TrainingQuizAttemptResult,
   TrainingQuizForTaking,
   TrainingQuizOption,
@@ -100,6 +102,7 @@ export class TrainingQuizService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly titleService: TrainingTitleService,
+    private readonly badgeService: TrainingBadgeService,
   ) {}
 
   async getQuizForMaterial(
@@ -180,6 +183,9 @@ export class TrainingQuizService {
       quiz.questions.length,
       quiz.questionCount,
     );
+
+    this.ensureUniqueQuestionIds(dto);
+
     const { results, score, answeredCount } = this.grade(quiz.questions, dto);
 
     // The client must answer exactly the number of questions served, so a
@@ -206,6 +212,7 @@ export class TrainingQuizService {
 
     let materialCompleted = false;
     let newTitles: TrainingTitleItem[] = [];
+    let newBadges: TrainingEmployeeBadgeItem[] = [];
 
     if (passed) {
       await this.markMaterialCompleted(userId, materialId);
@@ -213,6 +220,10 @@ export class TrainingQuizService {
       newTitles = await this.titleService.evaluateForPosition(
         userId,
         quiz.material.positionId,
+      );
+      newBadges = await this.badgeService.evaluateForMaterial(
+        userId,
+        materialId,
       );
     }
 
@@ -223,6 +234,7 @@ export class TrainingQuizService {
       materialCompleted,
       results,
       newTitles,
+      newBadges,
     };
   }
 
@@ -381,6 +393,15 @@ export class TrainingQuizService {
         : Math.round((correctCount / answeredCount) * 100);
 
     return { results, score, answeredCount };
+  }
+
+  private ensureUniqueQuestionIds(dto: SubmitQuizAttemptDto): void {
+    const questionIds = dto.answers.map((answer) => answer.questionId);
+    const uniqueQuestionIds = new Set(questionIds);
+
+    if (uniqueQuestionIds.size !== questionIds.length) {
+      throw new BadRequestException('TRAINING_QUIZ_DUPLICATE_ANSWERS');
+    }
   }
 
   private async markMaterialCompleted(

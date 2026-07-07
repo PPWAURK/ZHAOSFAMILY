@@ -26,7 +26,8 @@ function initialsOf(name) {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, logout, updateMe, changePassword } = useAuth();
+  const { user, isLoading, logout, updateMe, changePassword, deleteAccount } =
+    useAuth();
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -44,6 +45,10 @@ export default function ProfilePage() {
   const [pwdError, setPwdError] = useState(null);
   const emptyPwd = { current: "", next: "", confirm: "" };
   const [pwd, setPwd] = useState(emptyPwd);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletingSubmit, setDeletingSubmit] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   const t = PROFILE_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -154,6 +159,42 @@ export default function ProfilePage() {
       }
     } finally {
       setSavingPwd(false);
+    }
+  }
+
+  function startDelete() {
+    setDeletePassword("");
+    setDeleteError(null);
+    setDeletingAccount(true);
+  }
+
+  function cancelDelete() {
+    setDeletingAccount(false);
+    setDeletePassword("");
+    setDeleteError(null);
+  }
+
+  async function submitDelete() {
+    if (!deletePassword) {
+      setDeleteError(t.deleteErrCurrentWrong);
+      return;
+    }
+
+    setDeleteError(null);
+    setDeletingSubmit(true);
+
+    try {
+      await deleteAccount(deletePassword);
+      // Session is cleared inside deleteAccount; the route guard redirects to login.
+    } catch (error) {
+      const code = error?.message;
+
+      if (code === "INVALID_CURRENT_PASSWORD" || code === "INVALID_SESSION") {
+        setDeleteError(t.deleteErrCurrentWrong);
+      } else {
+        setDeleteError(t.deleteErrGeneric);
+      }
+      setDeletingSubmit(false);
     }
   }
 
@@ -508,6 +549,68 @@ export default function ProfilePage() {
               </button>
             </div>
           </header>
+        </section>
+
+        {/* Suppression du compte */}
+        <section className={styles.section}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionHeadingGroup}>
+              <h3 className={styles.sectionHeading}>{t.dangerHeading}</h3>
+              <p className={styles.sectionHint}>{t.dangerHint}</p>
+            </div>
+            {!deletingAccount ? (
+              <div className={styles.btnRow}>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnDanger}`}
+                  onClick={startDelete}
+                >
+                  {t.deleteAccount}
+                </button>
+              </div>
+            ) : null}
+          </header>
+
+          {deletingAccount ? (
+            <>
+              <p className={styles.sectionHint}>{t.deleteWarning}</p>
+              <dl className={styles.fieldList}>
+                <div className={styles.fieldItem}>
+                  <dt>{t.fieldDeletePassword}</dt>
+                  <dd>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      className={styles.input}
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                    />
+                  </dd>
+                </div>
+              </dl>
+              {deleteError ? (
+                <p className={styles.sectionStatus}>{deleteError}</p>
+              ) : null}
+              <div className={styles.btnRow}>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnDanger}`}
+                  onClick={submitDelete}
+                  disabled={deletingSubmit}
+                >
+                  {deletingSubmit ? t.deleteSubmitting : t.deleteConfirm}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  onClick={cancelDelete}
+                  disabled={deletingSubmit}
+                >
+                  {t.cancel}
+                </button>
+              </div>
+            </>
+          ) : null}
         </section>
 
         <div className={styles.backRow}>

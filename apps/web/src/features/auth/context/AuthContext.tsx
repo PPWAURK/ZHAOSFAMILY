@@ -125,6 +125,7 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   updateMe: (input: UpdateMeInput) => Promise<AuthUser>;
   changePassword: (currentPassword: string, nextPassword: string) => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
   acceptInvitation: (
     token: string,
     name: string,
@@ -231,6 +232,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const deleteAccount = useCallback(async (password: string) => {
+    await apiClient.delete<{ message: "ACCOUNT_DELETED" }>("/auth/me", {
+      data: { password },
+    });
+    setAccessToken(null);
+    setRefreshToken(null);
+    clearStoredSessionTokens();
+    setUser(null);
+  }, []);
+
   const acceptInvitation = useCallback(async (
     token: string,
     name: string,
@@ -270,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         updateMe,
         changePassword,
+        deleteAccount,
         acceptInvitation,
         forgotPassword,
         resetPassword,
