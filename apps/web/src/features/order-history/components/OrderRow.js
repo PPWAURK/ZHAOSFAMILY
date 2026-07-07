@@ -84,7 +84,7 @@ export default function OrderRow({
           onClick={() => onOpenPdf(order)}
           disabled={downloadingPdf}
         >
-          {downloadingPdf ? copy.openingPdf : copy.downloadPdf}
+          {downloadingPdf ? copy.openingPdf : copy.previewPdf}
         </button>
         <button
           type="button"

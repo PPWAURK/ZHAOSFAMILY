@@ -81,6 +81,7 @@ export default function OrderHistoryPage() {
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   const [isLoadingReturnDraft, setIsLoadingReturnDraft] = useState(false);
   const [downloadingPdfOrderId, setDownloadingPdfOrderId] = useState("");
+  const [pdfPreview, setPdfPreview] = useState(null);
   const [pdfError, setPdfError] = useState("");
   const [deletingOrderId, setDeletingOrderId] = useState("");
 
@@ -145,6 +146,14 @@ export default function OrderHistoryPage() {
     };
   }, [t.loadError]);
 
+  useEffect(() => {
+    return () => {
+      if (pdfPreview?.url) {
+        URL.revokeObjectURL(pdfPreview.url);
+      }
+    };
+  }, [pdfPreview?.url]);
+
   function resetFilters() {
     setStoreFilter("all");
     setStatusFilter("all");
@@ -186,10 +195,6 @@ export default function OrderHistoryPage() {
     if (!order?.id) return;
     const orderId = String(order.id);
 
-    const previewWindow = window.open("about:blank", "_blank");
-    if (previewWindow) {
-      previewWindow.opener = null;
-    }
     setDownloadingPdfOrderId(orderId);
     setPdfError("");
 
@@ -201,21 +206,19 @@ export default function OrderHistoryPage() {
           : new Blob([pdfBlob], { type: "application/pdf" }),
       );
 
-      if (previewWindow) {
-        previewWindow.location.href = pdfUrl;
-      } else {
-        window.location.href = pdfUrl;
-      }
-
-      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+      setPdfPreview({
+        url: pdfUrl,
+        title: order.number || order.id,
+      });
     } catch (nextError) {
-      if (previewWindow) {
-        previewWindow.close();
-      }
       setPdfError(resolveErrorMessage(nextError, t.pdfOpenError));
     } finally {
       setDownloadingPdfOrderId("");
     }
+  }
+
+  function handleClosePdfPreview() {
+    setPdfPreview(null);
   }
 
   async function handleDeleteOrder(order) {
@@ -602,6 +605,48 @@ export default function OrderHistoryPage() {
             ) : (
               <div className={styles.empty}>{t.returnEmpty}</div>
             )}
+          </section>
+        </div>
+      ) : null}
+
+      {pdfPreview ? (
+        <div className={styles.modalBackdrop} role="presentation">
+          <section
+            className={styles.pdfPreviewModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-pdf-preview-title"
+          >
+            <header className={styles.pdfPreviewHeader}>
+              <div>
+                <p>{t.pdfPreviewTitle}</p>
+                <h2 id="order-pdf-preview-title">{pdfPreview.title}</h2>
+              </div>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={handleClosePdfPreview}
+              >
+                {t.closePdfPreview}
+              </button>
+            </header>
+            <object
+              className={styles.pdfPreviewFrame}
+              data={pdfPreview.url}
+              type="application/pdf"
+              aria-label={t.pdfPreviewTitle}
+            >
+              <div className={styles.empty}>
+                <p>{t.pdfPreviewFallback}</p>
+                <a
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  href={pdfPreview.url}
+                  download={`${pdfPreview.title}.pdf`}
+                >
+                  {t.downloadPdf}
+                </a>
+              </div>
+            </object>
           </section>
         </div>
       ) : null}
