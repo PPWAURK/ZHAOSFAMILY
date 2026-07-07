@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 type AddListenerFn = (
   callback: (isCaptured: boolean) => void,

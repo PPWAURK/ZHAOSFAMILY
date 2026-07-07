@@ -1,0 +1,2 @@
+-- Migration already applied via another branch
+-- No local SQL available — generated from the resolved state

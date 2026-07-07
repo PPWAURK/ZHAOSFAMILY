@@ -1,0 +1,6 @@
+android/
+ios/
+node_modules/
+.expo/
+__tests__/
+vendor/

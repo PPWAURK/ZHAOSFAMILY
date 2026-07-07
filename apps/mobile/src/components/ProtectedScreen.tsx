@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import * as ScreenCapture from "expo-screen-capture";
 import { reportScreenSecurityEvent } from "@/features/training/trainingApi";
+import { ScreenRecordingDetector } from "../../modules/screen-recording-detector/src";
 
 // ---------------------------------------------------------------------------
 // iOS recording detection via UIScreen.isCaptured
@@ -16,26 +17,6 @@ import { reportScreenSecurityEvent } from "@/features/training/trainingApi";
 // When the module is absent this file degrades gracefully: recording detection
 // is skipped and only expo-screen-capture screenshot prevention is active.
 // ---------------------------------------------------------------------------
-
-type IOSRecordingDetectorModule = {
-  isCaptured: boolean;
-  addListener: (
-    callback: (isCaptured: boolean) => void,
-  ) => { remove: () => void };
-};
-
-let IOSRecordingDetector: IOSRecordingDetectorModule | null = null;
-
-try {
-  // Dynamic require – throws at runtime if the native module isn't linked.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const rawModule = require("expo-screen-recording-detector");
-  if (rawModule?.ScreenRecordingDetector) {
-    IOSRecordingDetector = rawModule.ScreenRecordingDetector;
-  }
-} catch {
-  // Native module not linked – running in Expo Go or pre-build.
-}
 
 const PROTECTION_KEY = "zhao-protected-screen-content";
 
@@ -103,12 +84,12 @@ export function ProtectedScreen({
 
   // ── iOS recording detection (native module, EAS Build only) ─────────────
   useEffect(() => {
-    if (!enabled || Platform.OS !== "ios" || !IOSRecordingDetector) return;
+    if (!enabled || Platform.OS !== "ios") return;
 
     // Check initial state
-    setIsRecording(IOSRecordingDetector.isCaptured);
+    setIsRecording(ScreenRecordingDetector.isCaptured);
 
-    const subscription = IOSRecordingDetector.addListener(
+    const subscription = ScreenRecordingDetector.addListener(
       (captured: boolean) => {
         if (isMountedRef.current) {
           setIsRecording(captured);

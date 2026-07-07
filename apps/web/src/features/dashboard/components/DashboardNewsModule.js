@@ -136,7 +136,7 @@ function resolveDashboardMediaUrl(src) {
 
 function renderInlineMarkdown(text) {
   const tokens = [];
-  let remaining = text;
+  const remaining = text;
 
   // Match **bold**, *italic*, [link](url), and plain text segments
   const pattern =
