@@ -90,6 +90,30 @@ type ExistingOrderItemQuantity = {
   quantity: number;
 };
 
+type OrderFileItemSnapshot = {
+  nameZh: string;
+  nameFr: string | null;
+  specification: string | null;
+  unit: string | null;
+  quantity: number;
+  unitPriceHt: Prisma.Decimal | number;
+  lineTotal: Prisma.Decimal | number;
+};
+
+type OrderFileSnapshot = {
+  id: number;
+  number: string;
+  restaurantId: number;
+  bonFileName: string;
+  deliveryDate: Date;
+  deliveryAddress: string;
+  totalItems: number;
+  totalAmount: Prisma.Decimal | number;
+  supplier: { name: string };
+  restaurant: { name: string };
+  items: OrderFileItemSnapshot[];
+};
+
 const STOCK_ENFORCED_SUPPLIER_IDS = new Set([8]);
 
 @Injectable()
@@ -153,6 +177,7 @@ export class OrdersService {
         const orderFileName = this.buildOrderFileName(
           restaurant.name,
           dto.deliveryDate,
+          orderNumber,
         );
 
         await tx.purchaseOrder.update({
@@ -554,6 +579,7 @@ export class OrdersService {
     const orderFileName = this.buildOrderFileName(
       order.restaurant.name,
       dto.deliveryDate,
+      order.number,
     );
     const newOrderFilePath =
       this.ordersDocumentService.buildOrderFilePath(orderFileName);
@@ -621,7 +647,7 @@ export class OrdersService {
       });
 
       if (oldOrderFilePath !== newOrderFilePath) {
-        this.ordersDocumentService.deleteFileIfExists(oldOrderFilePath);
+        await this.deleteOrderFileIfUnreferenced(order.bonFileName);
       }
 
       const commandeUrl = this.ordersDocumentService.buildOrderUrl(
@@ -930,9 +956,7 @@ export class OrdersService {
       });
     });
 
-    this.ordersDocumentService.deleteFileIfExists(
-      this.ordersDocumentService.buildOrderFilePath(order.bonFileName),
-    );
+    await this.deleteOrderFileIfUnreferenced(order.bonFileName);
 
     return { success: true, id: orderId };
   }
@@ -943,9 +967,21 @@ export class OrdersService {
   ): Promise<string> {
     const order = await this.prismaService.purchaseOrder.findUnique({
       where: { id: orderId },
-      select: {
-        restaurantId: true,
-        bonFileName: true,
+      include: {
+        supplier: { select: { name: true } },
+        restaurant: { select: { name: true } },
+        items: {
+          orderBy: { id: 'asc' },
+          select: {
+            nameZh: true,
+            nameFr: true,
+            specification: true,
+            unit: true,
+            quantity: true,
+            unitPriceHt: true,
+            lineTotal: true,
+          },
+        },
       },
     });
 
@@ -955,9 +991,27 @@ export class OrdersService {
 
     this.assertRestaurantReadScope(actor, order.restaurantId);
 
-    return this.ordersDocumentService.resolveExistingOrderFile(
-      order.bonFileName,
+    const expectedFileName = this.buildOrderFileName(
+      order.restaurant.name,
+      order.deliveryDate.toISOString().slice(0, 10),
+      order.number,
     );
+
+    if (order.bonFileName !== expectedFileName) {
+      return this.regenerateOrderFile(order, expectedFileName);
+    }
+
+    try {
+      return this.ordersDocumentService.resolveExistingOrderFile(
+        order.bonFileName,
+      );
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return this.regenerateOrderFile(order, expectedFileName);
+      }
+
+      throw error;
+    }
   }
 
   private async prepareSelectedItems(
@@ -1404,11 +1458,72 @@ export class OrdersService {
   private buildOrderFileName(
     restaurantName: string,
     deliveryDate: string,
+    orderNumber: string,
   ): string {
     const safeRestaurantName =
       restaurantName.replace(/[/\\?%*:|"<>]/g, '').trim() || 'restaurant';
+    const fileNamePrefix = safeRestaurantName.slice(0, 140).trim();
 
-    return `${safeRestaurantName} ${deliveryDate}.pdf`;
+    return `${fileNamePrefix} ${deliveryDate} ${orderNumber}.pdf`;
+  }
+
+  private async regenerateOrderFile(
+    order: OrderFileSnapshot,
+    fileName: string,
+  ): Promise<string> {
+    const filePath = this.ordersDocumentService.buildOrderFilePath(fileName);
+
+    try {
+      await this.ordersDocumentService.generateCommandePdf({
+        filePath,
+        orderNumber: order.number,
+        supplierName: order.supplier.name,
+        restaurantName: order.restaurant.name,
+        deliveryDate: order.deliveryDate.toISOString().slice(0, 10),
+        deliveryAddress: order.deliveryAddress,
+        items: order.items.map((item) => ({
+          nameZh: this.ordersDocumentService.sanitizeLabel(item.nameZh),
+          nameFr: this.ordersDocumentService.sanitizeLabel(item.nameFr),
+          specification: this.ordersDocumentService.sanitizeLabel(
+            item.specification,
+          ),
+          unit: this.ordersDocumentService.sanitizeLabel(item.unit),
+          quantity: item.quantity,
+          unitPrice: this.toNumber(item.unitPriceHt),
+          lineTotal: this.toNumber(item.lineTotal),
+        })),
+        totalItems: order.totalItems,
+        totalAmount: this.toNumber(order.totalAmount),
+      });
+
+      await this.prismaService.purchaseOrder.update({
+        where: { id: order.id },
+        data: { bonFileName: fileName },
+      });
+    } catch (error) {
+      this.ordersDocumentService.deleteFileIfExists(filePath);
+      throw error;
+    }
+
+    if (order.bonFileName !== fileName) {
+      await this.deleteOrderFileIfUnreferenced(order.bonFileName);
+    }
+
+    return filePath;
+  }
+
+  private async deleteOrderFileIfUnreferenced(fileName: string): Promise<void> {
+    const referenceCount = await this.prismaService.purchaseOrder.count({
+      where: { bonFileName: fileName },
+    });
+
+    if (referenceCount > 0) {
+      return;
+    }
+
+    this.ordersDocumentService.deleteFileIfExists(
+      this.ordersDocumentService.buildOrderFilePath(fileName),
+    );
   }
 
   private buildOrderItemKey(

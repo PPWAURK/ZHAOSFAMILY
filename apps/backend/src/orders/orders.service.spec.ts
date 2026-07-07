@@ -29,6 +29,7 @@ type TransactionClientMock = {
   };
   purchaseOrderItem: {
     createMany: AsyncMock;
+    deleteMany: AsyncMock;
   };
   inventoryMovement: {
     createMany: AsyncMock;
@@ -51,8 +52,10 @@ type OrdersPrismaServiceMock = {
     groupBy: AsyncMock;
   };
   purchaseOrder: {
+    count: AsyncMock;
     findMany: AsyncMock;
     findUnique: AsyncMock;
+    update: AsyncMock;
   };
   purchaseOrderItem: {
     groupBy: AsyncMock;
@@ -133,8 +136,10 @@ describe('OrdersService', () => {
         groupBy: createAsyncMock(),
       },
       purchaseOrder: {
+        count: createAsyncMock(),
         findMany: createAsyncMock(),
         findUnique: createAsyncMock(),
+        update: createAsyncMock(),
       },
       purchaseOrderItem: {
         groupBy: createAsyncMock(),
@@ -161,6 +166,7 @@ describe('OrdersService', () => {
           },
           purchaseOrderItem: {
             createMany: createAsyncMock(),
+            deleteMany: createAsyncMock(),
           },
           inventoryMovement: {
             createMany: createAsyncMock(),
@@ -223,6 +229,81 @@ describe('OrdersService', () => {
         totalAmount: 5,
       }),
     );
+  });
+
+  it('creates a unique PDF file name for each order', async () => {
+    const products = [
+      createProduct({ id: BigInt(11), supplierId: 1 }),
+      createProduct({ id: BigInt(22), supplierId: 2 }),
+    ];
+    let nextOrderId = 42;
+
+    prismaService.product.findMany.mockImplementation(({ where }) => {
+      const ids = (where as { id: { in: bigint[] } }).id.in;
+
+      return Promise.resolve(
+        products.filter((product) => ids.includes(product.id)),
+      );
+    });
+    prismaService.supplier.findUnique.mockImplementation(({ where }) =>
+      Promise.resolve({
+        id: (where as { id: number }).id,
+        name: (where as { id: number }).id === 1 ? 'Metro' : 'Boucherie',
+        includeAllProductsInOrder: false,
+      }),
+    );
+    prismaService.restaurant.findUnique.mockResolvedValue({
+      id: 3,
+      name: 'ZHAO Opera',
+      address: '1 rue test',
+    });
+    prismaService.$transaction.mockImplementation(async (callback) => {
+      const draftId = nextOrderId++;
+
+      return callback({
+        purchaseOrder: {
+          create: createAsyncMock().mockResolvedValue({
+            id: draftId,
+            createdAt: new Date('2026-04-29T10:00:00.000Z'),
+          }),
+          delete: createAsyncMock(),
+          update: createAsyncMock(),
+        },
+        purchaseOrderItem: {
+          createMany: createAsyncMock(),
+          deleteMany: createAsyncMock(),
+        },
+        inventoryMovement: {
+          createMany: createAsyncMock(),
+        },
+      });
+    });
+
+    await service.createOrder(
+      { id: 7, restaurantId: 3 },
+      {
+        deliveryDate: '2026-04-30',
+        items: [{ productId: 11, quantity: 2, specificationSlot: 1 }],
+      },
+      { protocol: 'http', get: () => 'localhost:3002' },
+    );
+    await service.createOrder(
+      { id: 7, restaurantId: 3 },
+      {
+        deliveryDate: '2026-04-30',
+        items: [{ productId: 22, quantity: 1, specificationSlot: 1 }],
+      },
+      { protocol: 'http', get: () => 'localhost:3002' },
+    );
+
+    const generatedFilePaths =
+      ordersDocumentService.generateCommandePdf.mock.calls.map(
+        ([input]) => (input as { filePath: string }).filePath,
+      );
+
+    expect(generatedFilePaths[0]).toContain('PO-20260429-0042');
+    expect(generatedFilePaths[1]).toContain('PO-20260429-0043');
+    expect(new Set(generatedFilePaths).size).toBe(2);
   });
 
   it('rejects stock-enforced orders when stock is insufficient', async () => {
@@ -378,8 +459,17 @@ describe('OrdersService', () => {
 
   it('allows holding viewers to resolve cross-store order files', async () => {
     prismaService.purchaseOrder.findUnique.mockResolvedValue({
+      id: 42,
+      number: 'PO-20260429-0042',
       restaurantId: 5,
-      bonFileName: 'order.pdf',
+      bonFileName: 'ZHAO Bastille 2026-04-30 PO-20260429-0042.pdf',
+      deliveryDate: new Date('2026-04-30T00:00:00.000Z'),
+      deliveryAddress: '2 rue test',
+      totalItems: 1,
+      totalAmount: 2.5,
+      supplier: { name: 'Metro' },
+      restaurant: { name: 'ZHAO Bastille' },
+      items: [],
     });
 
     await expect(
@@ -389,7 +479,57 @@ describe('OrdersService', () => {
         jobRole: 'holding',
         permissions: [],
       }),
-    ).resolves.toBe('/tmp/order.pdf');
+    ).resolves.toBe('/tmp/ZHAO Bastille 2026-04-30 PO-20260429-0042.pdf');
+  });
+
+  it('regenerates legacy shared PDF files before resolving an order file', async () => {
+    prismaService.purchaseOrder.findUnique.mockResolvedValue({
+      id: 42,
+      number: 'PO-20260429-0042',
+      supplierId: 1,
+      restaurantId: 5,
+      bonFileName: 'ZHAO Opera 2026-04-30.pdf',
+      deliveryDate: new Date('2026-04-30T00:00:00.000Z'),
+      deliveryAddress: '1 rue test',
+      totalItems: 2,
+      totalAmount: 5,
+      supplier: { id: 1, name: 'Metro' },
+      restaurant: { id: 5, name: 'ZHAO Opera' },
+      items: [
+        {
+          nameZh: '面条',
+          nameFr: 'Nouilles',
+          specification: '1kg',
+          unit: 'sac',
+          quantity: 2,
+          unitPriceHt: 2.5,
+          lineTotal: 5,
+        },
+      ],
+    });
+    prismaService.purchaseOrder.update.mockResolvedValue({});
+    prismaService.purchaseOrder.count.mockResolvedValue(1);
+
+    await expect(
+      service.resolveOrderFilePath(42, {
+        id: 1,
+        restaurantId: 3,
+        jobRole: 'holding',
+        permissions: [],
+      }),
+    ).resolves.toBe('/tmp/ZHAO Opera 2026-04-30 PO-20260429-0042.pdf');
+
+    expect(ordersDocumentService.generateCommandePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filePath: '/tmp/ZHAO Opera 2026-04-30 PO-20260429-0042.pdf',
+        orderNumber: 'PO-20260429-0042',
+        supplierName: 'Metro',
+      }),
+    );
+    expect(prismaService.purchaseOrder.update).toHaveBeenCalledWith({
+      where: { id: 42 },
+      data: { bonFileName: 'ZHAO Opera 2026-04-30 PO-20260429-0042.pdf' },
+    });
   });
 
   it('builds a return draft with remaining quantities', async () => {
