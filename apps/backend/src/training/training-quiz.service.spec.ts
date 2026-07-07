@@ -224,7 +224,6 @@ describe('TrainingQuizService.submitAttempt', () => {
       },
     };
     const titleService = {
-      evaluateForPosition: jest.fn().mockResolvedValue([]),
       listEarnedTitles: jest.fn(),
     };
     const badgeService = {

@@ -210,6 +210,19 @@ export type TrainingMyTitles = {
   available: TrainingTitleItem[];
 };
 
+export type TrainingTitleRecipient = {
+  userId: number;
+  name: string;
+  email: string;
+  accountStatus: string;
+  jobRole: string | null;
+  restaurant: {
+    id: number;
+    name: string;
+  };
+  titles: TrainingTitleItem[];
+};
+
 // HQ-facing view of the AI quiz-generation config — the key is always masked.
 export type AiQuizConfigView = {
   hasApiKey: boolean;

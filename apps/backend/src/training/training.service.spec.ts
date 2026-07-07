@@ -87,9 +87,6 @@ describe('TrainingService', () => {
     const mediaService = {
       deleteFile: jest.fn(),
     };
-    const titleService = {
-      evaluateForPosition: jest.fn().mockResolvedValue(undefined),
-    };
     const badgeService = {
       evaluateForMaterial: jest.fn().mockResolvedValue([]),
     };
@@ -102,13 +99,11 @@ describe('TrainingService', () => {
     return {
       prismaService,
       mediaService,
-      titleService,
       badgeService,
       notificationsService,
       service: new TrainingService(
         prismaService as never,
         mediaService as never,
-        titleService as never,
         badgeService as never,
         notificationsService as never,
       ),

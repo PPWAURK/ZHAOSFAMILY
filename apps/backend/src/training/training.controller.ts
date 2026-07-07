@@ -17,11 +17,14 @@ import { AuthService } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import {
+  RequireAnyPermissions,
   RequirePermissions,
   SCREEN_SECURITY_PERMISSIONS,
   TRAINING_BADGE_PERMISSIONS,
   TRAINING_MATERIAL_PERMISSIONS,
   TRAINING_POSITION_PERMISSIONS,
+  TRAINING_TITLE_PERMISSIONS,
+  SYSTEM_PERMISSIONS,
 } from '../auth/permissions';
 import { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
 import { CreateTrainingPositionDto } from './dto/create-training-position.dto';
@@ -59,6 +62,8 @@ import type {
   TrainingQuizForTaking,
   TrainingResolvePreview,
   TrainingStoreProgress,
+  TrainingTitleItem,
+  TrainingTitleRecipient,
 } from './training.types';
 
 function parseOptionalInteger(value: string | undefined): number | undefined {
@@ -334,6 +339,56 @@ export class TrainingController {
     );
 
     return this.titleService.getMyTitles(user.id);
+  }
+
+  @Get('titles')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermissions(
+    TRAINING_TITLE_PERMISSIONS.manage,
+    SYSTEM_PERMISSIONS.managePermissions,
+    TRAINING_BADGE_PERMISSIONS.manage,
+  )
+  listTitles(): Promise<TrainingTitleItem[]> {
+    return this.titleService.listTitles();
+  }
+
+  @Get('titles/recipients')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermissions(
+    TRAINING_TITLE_PERMISSIONS.manage,
+    SYSTEM_PERMISSIONS.managePermissions,
+    TRAINING_BADGE_PERMISSIONS.manage,
+  )
+  listTitleRecipients(): Promise<TrainingTitleRecipient[]> {
+    return this.titleService.listRecipients();
+  }
+
+  @Post('titles/:code/users/:userId')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermissions(
+    TRAINING_TITLE_PERMISSIONS.manage,
+    SYSTEM_PERMISSIONS.managePermissions,
+    TRAINING_BADGE_PERMISSIONS.manage,
+  )
+  assignTitleToUser(
+    @Param('code') code: string,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<TrainingTitleItem> {
+    return this.titleService.assignTitleToUser(userId, code);
+  }
+
+  @Delete('titles/:code/users/:userId')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermissions(
+    TRAINING_TITLE_PERMISSIONS.manage,
+    SYSTEM_PERMISSIONS.managePermissions,
+    TRAINING_BADGE_PERMISSIONS.manage,
+  )
+  revokeTitleFromUser(
+    @Param('code') code: string,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<{ message: 'TRAINING_TITLE_REVOKED' }> {
+    return this.titleService.revokeTitleFromUser(userId, code);
   }
 
   @Get('my-records')

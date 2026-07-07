@@ -1,6 +1,7 @@
 import { SetMetadata } from '@nestjs/common';
 
 export const PERMISSIONS_KEY = 'permissions';
+export const ANY_PERMISSIONS_KEY = 'any_permissions';
 
 export const TRAINING_MATERIAL_PERMISSIONS = {
   read: 'training.material.read',
@@ -20,6 +21,10 @@ export const TRAINING_PROGRESS_PERMISSIONS = {
 
 export const TRAINING_BADGE_PERMISSIONS = {
   manage: 'training.badge.manage',
+} as const;
+
+export const TRAINING_TITLE_PERMISSIONS = {
+  manage: 'training.title.manage',
 } as const;
 
 export const SCREEN_SECURITY_PERMISSIONS = {
@@ -62,4 +67,8 @@ export const ABC_SCORE_PERMISSIONS = {
 
 export function RequirePermissions(...permissions: string[]) {
   return SetMetadata(PERMISSIONS_KEY, permissions);
+}
+
+export function RequireAnyPermissions(...permissions: string[]) {
+  return SetMetadata(ANY_PERMISSIONS_KEY, permissions);
 }

@@ -51,6 +51,10 @@ const PERMISSIONS = [
     description: 'Manage training badge definitions and requirements',
   },
   {
+    key: 'training.title.manage',
+    description: 'Assign and revoke employee training titles',
+  },
+  {
     key: 'recruitment.request.manage',
     description: 'Manage recruitment requests from stores',
   },
@@ -175,7 +179,7 @@ const TRAINING_POSITIONS = [
   },
   {
     code: 'BACK_NOODLE',
-    nameZh: '打面',
+    nameZh: '面区',
     nameEn: 'Noodle station',
     nameFr: 'Nouilles',
     parentCode: 'BOH',
@@ -199,7 +203,7 @@ const TRAINING_POSITIONS = [
   },
   {
     code: 'BACK_RICE',
-    nameZh: '饭',
+    nameZh: '饭区',
     nameEn: 'Rice station',
     nameFr: 'Riz',
     parentCode: 'BOH',
@@ -504,6 +508,7 @@ const ROLES = [
       'training.position.manage',
       'training.progress.view_store',
       'training.badge.manage',
+      'training.title.manage',
     ],
   },
   {

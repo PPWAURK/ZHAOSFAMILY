@@ -154,7 +154,6 @@ export class TrainingQuizService {
       where: { materialId },
       include: {
         questions: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
-        material: { select: { positionId: true } },
       },
     });
 
@@ -211,16 +210,12 @@ export class TrainingQuizService {
     });
 
     let materialCompleted = false;
-    let newTitles: TrainingTitleItem[] = [];
+    const newTitles: TrainingTitleItem[] = [];
     let newBadges: TrainingEmployeeBadgeItem[] = [];
 
     if (passed) {
       await this.markMaterialCompleted(userId, materialId);
       materialCompleted = true;
-      newTitles = await this.titleService.evaluateForPosition(
-        userId,
-        quiz.material.positionId,
-      );
       newBadges = await this.badgeService.evaluateForMaterial(
         userId,
         materialId,

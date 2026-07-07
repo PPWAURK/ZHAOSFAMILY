@@ -1,6 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ACCOUNT_STATUS } from '../auth/account-status';
 import { PrismaService } from '../prisma/prisma.service';
-import type { TrainingMyTitles, TrainingTitleItem } from './training.types';
+import type {
+  TrainingMyTitles,
+  TrainingTitleItem,
+  TrainingTitleRecipient,
+} from './training.types';
 
 type TrainingTitleRow = {
   code: string;
@@ -53,73 +58,131 @@ export class TrainingTitleService {
     };
   }
 
+  async listTitles(): Promise<TrainingTitleItem[]> {
+    const titles = await this.prismaService.trainingTitle.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+    });
+
+    return titles.map((title) => toTitleItem(title, null));
+  }
+
+  async listRecipients(): Promise<TrainingTitleRecipient[]> {
+    const users = await this.prismaService.user.findMany({
+      where: {
+        accountStatus: {
+          notIn: [ACCOUNT_STATUS.removed, ACCOUNT_STATUS.deleted],
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        accountStatus: true,
+        jobRole: true,
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        trainingTitles: {
+          select: {
+            earnedAt: true,
+            title: true,
+          },
+          orderBy: [{ earnedAt: 'desc' }],
+        },
+      },
+      orderBy: [{ restaurantId: 'asc' }, { id: 'asc' }],
+    });
+
+    return users.map((user) => ({
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      accountStatus: user.accountStatus,
+      jobRole: user.jobRole,
+      restaurant: user.restaurant,
+      titles: user.trainingTitles.map((assignment) =>
+        toTitleItem(assignment.title, assignment.earnedAt),
+      ),
+    }));
+  }
+
   async listEarnedTitles(userId: number): Promise<TrainingTitleItem[]> {
     return (await this.getMyTitles(userId)).earned;
   }
 
-  // Grants any title for `positionCode` whose required materials are now all
-  // completed by the user. Returns only the titles newly earned in this call.
-  async evaluateForPosition(
+  async assignTitleToUser(
     userId: number,
-    positionCode: string,
-  ): Promise<TrainingTitleItem[]> {
-    const titles = await this.prismaService.trainingTitle.findMany({
-      where: { unlockPositionCode: positionCode },
+    titleCode: string,
+  ): Promise<TrainingTitleItem> {
+    const [title, user] = await Promise.all([
+      this.prismaService.trainingTitle.findUnique({
+        where: { code: titleCode },
+      }),
+      this.prismaService.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!title) {
+      throw new NotFoundException('TRAINING_TITLE_NOT_FOUND');
+    }
+
+    if (!user) {
+      throw new NotFoundException('USER_NOT_FOUND');
+    }
+
+    const assignment = await this.prismaService.userTrainingTitle.upsert({
+      where: {
+        userId_titleCode: {
+          userId,
+          titleCode,
+        },
+      },
+      create: {
+        userId,
+        titleCode,
+      },
+      update: {},
+      select: { earnedAt: true },
     });
 
-    if (titles.length === 0) {
-      return [];
-    }
+    return toTitleItem(title, assignment.earnedAt);
+  }
 
-    const requiredMaterials =
-      await this.prismaService.trainingMaterial.findMany({
-        where: { positionId: positionCode, isRequired: true },
+  async revokeTitleFromUser(
+    userId: number,
+    titleCode: string,
+  ): Promise<{ message: 'TRAINING_TITLE_REVOKED' }> {
+    const [title, user] = await Promise.all([
+      this.prismaService.trainingTitle.findUnique({
+        where: { code: titleCode },
+        select: { code: true },
+      }),
+      this.prismaService.user.findUnique({
+        where: { id: userId },
         select: { id: true },
-      });
+      }),
+    ]);
 
-    // A position with no required materials cannot be "earned" — that would
-    // hand out titles for free.
-    if (requiredMaterials.length === 0) {
-      return [];
+    if (!title) {
+      throw new NotFoundException('TRAINING_TITLE_NOT_FOUND');
     }
 
-    const completedCount =
-      await this.prismaService.trainingMaterialProgress.count({
-        where: {
-          userId,
-          status: 'completed',
-          materialId: { in: requiredMaterials.map((material) => material.id) },
-        },
-      });
-
-    if (completedCount < requiredMaterials.length) {
-      return [];
+    if (!user) {
+      throw new NotFoundException('USER_NOT_FOUND');
     }
 
-    const alreadyEarned = await this.prismaService.userTrainingTitle.findMany({
+    await this.prismaService.userTrainingTitle.deleteMany({
       where: {
         userId,
-        titleCode: { in: titles.map((title) => title.code) },
+        titleCode,
       },
-      select: { titleCode: true },
-    });
-    const earnedCodes = new Set(alreadyEarned.map((row) => row.titleCode));
-    const newTitleRows = titles.filter((title) => !earnedCodes.has(title.code));
-
-    if (newTitleRows.length === 0) {
-      return [];
-    }
-
-    const earnedAt = new Date();
-    await this.prismaService.userTrainingTitle.createMany({
-      data: newTitleRows.map((title) => ({
-        userId,
-        titleCode: title.code,
-        earnedAt,
-      })),
-      skipDuplicates: true,
     });
 
-    return newTitleRows.map((title) => toTitleItem(title, earnedAt));
+    return { message: 'TRAINING_TITLE_REVOKED' };
   }
 }

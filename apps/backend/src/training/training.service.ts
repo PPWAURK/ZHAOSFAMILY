@@ -18,7 +18,6 @@ import type { NotificationLanguage } from '../notifications/notification-content
 import { normalizeLanguage } from '../notifications/notification-content';
 import { TrainingBadgeService } from './training-badge.service';
 import { TRAINING_COURSE_CATALOG } from './training-catalog';
-import { TrainingTitleService } from './training-title.service';
 import type { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
 import type { CreateTrainingPositionDto } from './dto/create-training-position.dto';
 import type { ListTrainingCoursesQueryDto } from './dto/list-training-courses-query.dto';
@@ -339,7 +338,6 @@ export class TrainingService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly mediaService: MediaService,
-    private readonly titleService: TrainingTitleService,
     private readonly badgeService: TrainingBadgeService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -794,19 +792,8 @@ export class TrainingService {
       });
     });
 
-    // Completing the last required material of a position may unlock a title.
     if (row.status === 'completed') {
-      const material = await this.prismaService.trainingMaterial.findUnique({
-        where: { id: materialId },
-        select: { positionId: true },
-      });
-      if (material) {
-        await this.titleService.evaluateForPosition(
-          userId,
-          material.positionId,
-        );
-        await this.badgeService.evaluateForMaterial(userId, materialId);
-      }
+      await this.badgeService.evaluateForMaterial(userId, materialId);
     }
 
     return toProgressItem(row);

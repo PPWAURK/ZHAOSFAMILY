@@ -45,6 +45,27 @@ type ParsedRange = {
   end: number;
 };
 
+type MediaFileResponseHeaders = {
+  contentLength: number;
+  contentRange?: string;
+  contentType: string;
+};
+
+function setMediaFileResponseHeaders(
+  response: Response,
+  headers: MediaFileResponseHeaders,
+): void {
+  response.setHeader('Content-Type', headers.contentType);
+  response.setHeader('Accept-Ranges', 'bytes');
+  response.setHeader('Content-Length', headers.contentLength.toString());
+  response.setHeader('Content-Disposition', 'inline');
+  response.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+  if (headers.contentRange) {
+    response.setHeader('Content-Range', headers.contentRange);
+  }
+}
+
 function parseRangeHeader(
   rangeHeader: string | undefined,
   fileSize: number,
@@ -157,14 +178,11 @@ export class MediaController {
       const chunkSize = range.end - range.start + 1;
 
       response.status(206);
-      response.setHeader('Content-Type', file.mimeType);
-      response.setHeader('Accept-Ranges', 'bytes');
-      response.setHeader('Content-Length', chunkSize.toString());
-      response.setHeader(
-        'Content-Range',
-        `bytes ${range.start}-${range.end}/${file.size}`,
-      );
-      response.setHeader('Content-Disposition', 'inline');
+      setMediaFileResponseHeaders(response, {
+        contentType: file.mimeType,
+        contentLength: chunkSize,
+        contentRange: `bytes ${range.start}-${range.end}/${file.size}`,
+      });
 
       file.stream.pipe(response);
       return;
@@ -172,10 +190,10 @@ export class MediaController {
 
     const file = await this.mediaService.getFile(objectKey);
 
-    response.setHeader('Content-Type', file.mimeType);
-    response.setHeader('Accept-Ranges', 'bytes');
-    response.setHeader('Content-Length', file.size.toString());
-    response.setHeader('Content-Disposition', 'inline');
+    setMediaFileResponseHeaders(response, {
+      contentType: file.mimeType,
+      contentLength: file.size,
+    });
 
     file.stream.pipe(response);
   }

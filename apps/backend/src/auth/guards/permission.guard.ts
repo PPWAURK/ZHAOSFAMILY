@@ -8,7 +8,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AuthService } from '../auth.service';
 import { parseBearerToken } from '../auth-token.utils';
-import { PERMISSIONS_KEY } from '../permissions';
+import { ANY_PERMISSIONS_KEY, PERMISSIONS_KEY } from '../permissions';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -23,8 +23,13 @@ export class PermissionGuard implements CanActivate {
         context.getHandler(),
         context.getClass(),
       ]) ?? [];
+    const anyRequiredPermissions =
+      this.reflector.getAllAndOverride<string[]>(ANY_PERMISSIONS_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
 
-    if (requiredPermissions.length === 0) {
+    if (requiredPermissions.length === 0 && anyRequiredPermissions.length === 0) {
       return true;
     }
 
@@ -36,8 +41,11 @@ export class PermissionGuard implements CanActivate {
     const hasAllPermissions = requiredPermissions.every((permission) =>
       grantedPermissions.has(permission),
     );
+    const hasAnyPermission =
+      anyRequiredPermissions.length === 0 ||
+      anyRequiredPermissions.some((permission) => grantedPermissions.has(permission));
 
-    if (!hasAllPermissions) {
+    if (!hasAllPermissions || !hasAnyPermission) {
       throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
     }
 
