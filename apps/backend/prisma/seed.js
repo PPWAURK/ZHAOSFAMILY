@@ -620,36 +620,6 @@ async function upsertJobRolePositions() {
   }
 }
 
-const TRAINING_TITLES = [
-  {
-    code: 'TITLE_ALL_ONBOARDED',
-    nameZh: 'ZHAO 入门',
-    nameEn: 'ZHAO Onboarded',
-    nameFr: 'ZHAO Initié',
-    frameStyle: 'red',
-    unlockPositionCode: 'ALL',
-    sortOrder: 1,
-  },
-  {
-    code: 'TITLE_FOH_CERTIFIED',
-    nameZh: '前厅认证',
-    nameEn: 'Front Certified',
-    nameFr: 'Salle Certifié',
-    frameStyle: 'gold',
-    unlockPositionCode: 'FOH',
-    sortOrder: 2,
-  },
-  {
-    code: 'TITLE_BOH_CERTIFIED',
-    nameZh: '后厨认证',
-    nameEn: 'Kitchen Certified',
-    nameFr: 'Cuisine Certifié',
-    frameStyle: 'jade',
-    unlockPositionCode: 'BOH',
-    sortOrder: 3,
-  },
-];
-
 const SAMPLE_QUIZ_QUESTIONS = [
   {
     type: 'single',
@@ -688,23 +658,6 @@ const SAMPLE_QUIZ_QUESTIONS = [
     sortOrder: 3,
   },
 ];
-
-async function upsertTrainingTitles() {
-  for (const title of TRAINING_TITLES) {
-    await prisma.trainingTitle.upsert({
-      where: { code: title.code },
-      update: {
-        nameZh: title.nameZh,
-        nameEn: title.nameEn,
-        nameFr: title.nameFr,
-        frameStyle: title.frameStyle,
-        unlockPositionCode: title.unlockPositionCode,
-        sortOrder: title.sortOrder,
-      },
-      create: title,
-    });
-  }
-}
 
 async function upsertTrainingBadges() {
   for (const badge of TRAINING_BADGES) {
@@ -940,7 +893,6 @@ async function main() {
   await replaceRolePermissions();
   await upsertTrainingPositions();
   await upsertJobRolePositions();
-  await upsertTrainingTitles();
   await upsertTrainingBadges();
   await seedSampleQuiz();
   await assignSuperAdminRole();

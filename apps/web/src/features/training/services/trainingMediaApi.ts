@@ -4,11 +4,13 @@ import type {
   CreateTrainingPositionInput,
   TrainingBadge,
   TrainingCourse,
+  CreateTrainingTitleInput,
   TrainingMaterial,
   TrainingMaterialFilters,
   TrainingMediaUploadOptions,
   TrainingMediaUploadResult,
   TrainingMonthlyReport,
+  TrainingMyTitles,
   TrainingMyBadges,
   TrainingPlan,
   TrainingPosition,
@@ -17,6 +19,8 @@ import type {
   TrainingProgress,
   TrainingResolvePreview,
   TrainingStoreProgress,
+  TrainingTitle,
+  TrainingTitleRecipient,
   UpdateTrainingMaterialInput,
   UpdateTrainingPositionInput,
   UpdateTrainingProgressInput,
@@ -97,10 +101,67 @@ export async function fetchTrainingMyBadges(): Promise<TrainingMyBadges> {
   return apiClient.get<TrainingMyBadges>("/training/badges/my");
 }
 
+export async function fetchTrainingMyTitles(): Promise<TrainingMyTitles> {
+  return apiClient.get<TrainingMyTitles>("/training/my-titles");
+}
+
+export async function equipTrainingTitle(
+  code: string | null,
+): Promise<TrainingMyTitles> {
+  return apiClient.put<TrainingMyTitles>("/training/my-titles/equipped", {
+    code,
+  });
+}
+
 export async function fetchTrainingBadges(): Promise<TrainingBadge[]> {
   const badges = await apiClient.get<TrainingBadge[]>("/training/badges");
 
   return Array.isArray(badges) ? badges : [];
+}
+
+export async function fetchTrainingTitles(): Promise<TrainingTitle[]> {
+  const titles = await apiClient.get<TrainingTitle[]>("/training/titles");
+
+  return Array.isArray(titles) ? titles : [];
+}
+
+export async function createTrainingTitle(
+  input: CreateTrainingTitleInput,
+): Promise<TrainingTitle> {
+  return apiClient.post<TrainingTitle>("/training/titles", input);
+}
+
+export async function fetchTrainingTitleRecipients(): Promise<
+  TrainingTitleRecipient[]
+> {
+  const recipients = await apiClient.get<TrainingTitleRecipient[]>(
+    "/training/titles/recipients",
+  );
+
+  return Array.isArray(recipients) ? recipients : [];
+}
+
+export async function assignTrainingTitle(
+  code: string,
+  userId: number | string,
+): Promise<TrainingTitle> {
+  return apiClient.post<TrainingTitle>(
+    `/training/titles/${encodeURIComponent(code)}/users/${encodeURIComponent(
+      String(userId),
+    )}`,
+    {},
+  );
+}
+
+export async function revokeTrainingTitle(
+  code: string,
+  userId: number | string,
+): Promise<{ message: string }> {
+  return apiClient.delete<{ message: string }>(
+    `/training/titles/${encodeURIComponent(code)}/users/${encodeURIComponent(
+      String(userId),
+    )}`,
+  );
 }
 
 export async function updateTrainingBadgeRequirements(

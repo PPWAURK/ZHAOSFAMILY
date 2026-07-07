@@ -1520,6 +1520,87 @@
   word-break: break-word;
 }
 
+.sidebarTitleFrame {
+  --title-frame-accent: var(--red);
+  --title-frame-soft: rgba(193, 22, 22, 0.06);
+  --title-frame-inner: rgba(193, 22, 22, 0.16);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: 118px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 5px 30px;
+  border: 1px solid var(--title-frame-accent);
+  background: var(--title-frame-soft);
+  color: var(--title-frame-accent);
+  font-family: var(--zh-serif);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  box-shadow:
+    inset 0 0 0 2px var(--paper),
+    inset 0 0 0 3px var(--title-frame-inner);
+}
+
+.sidebarTitleFrame::before,
+.sidebarTitleFrame::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: url("/images/title-frames/zhao-seal.png") center / contain no-repeat;
+  transform: translateY(-50%);
+}
+
+.sidebarTitleFrame::before {
+  left: 8px;
+}
+
+.sidebarTitleFrame::after {
+  right: 8px;
+}
+
+.sidebarTitleFrameRed {
+  --title-frame-accent: var(--red);
+  --title-frame-soft: rgba(193, 22, 22, 0.06);
+  --title-frame-inner: rgba(193, 22, 22, 0.16);
+}
+
+.sidebarTitleFrameGold {
+  --title-frame-accent: #8b6200;
+  --title-frame-soft: #fff8dc;
+  --title-frame-inner: rgba(139, 98, 0, 0.18);
+}
+
+.sidebarTitleFrameInk {
+  --title-frame-accent: var(--ink);
+  --title-frame-soft: #f6f6f6;
+  --title-frame-inner: rgba(10, 10, 10, 0.14);
+}
+
+.sidebarTitleFrameJade {
+  --title-frame-accent: #16715e;
+  --title-frame-soft: #eefaf5;
+  --title-frame-inner: rgba(22, 113, 94, 0.18);
+}
+
+.sidebarTitleFrameBlue {
+  --title-frame-accent: #245a9a;
+  --title-frame-soft: #eef5ff;
+  --title-frame-inner: rgba(36, 90, 154, 0.18);
+}
+
+.sidebarTitleFramePurple {
+  --title-frame-accent: #7040a0;
+  --title-frame-soft: #f8f1ff;
+  --title-frame-inner: rgba(112, 64, 160, 0.18);
+}
+
 .userCardMetaHint {
   margin: 0;
   font-family: var(--zh-serif);

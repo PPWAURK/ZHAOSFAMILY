@@ -28,6 +28,8 @@ import {
 } from '../auth/permissions';
 import { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
 import { CreateTrainingPositionDto } from './dto/create-training-position.dto';
+import { CreateTrainingTitleDto } from './dto/create-training-title.dto';
+import { EquipTrainingTitleDto } from './dto/equip-training-title.dto';
 import { ListTrainingCoursesQueryDto } from './dto/list-training-courses-query.dto';
 import { ListTrainingMaterialsQueryDto } from './dto/list-training-materials-query.dto';
 import { CreateScreenSecurityEventDto } from './dto/create-screenshot-event.dto';
@@ -341,6 +343,18 @@ export class TrainingController {
     return this.titleService.getMyTitles(user.id);
   }
 
+  @Put('my-titles/equipped')
+  async equipMyTitle(
+    @Headers('authorization') authorization: string | undefined,
+    @Body() dto: EquipTrainingTitleDto,
+  ): Promise<TrainingMyTitles> {
+    const user = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    return this.titleService.equipTitleForUser(user.id, dto.code);
+  }
+
   @Get('titles')
   @UseGuards(PermissionGuard)
   @RequireAnyPermissions(
@@ -350,6 +364,17 @@ export class TrainingController {
   )
   listTitles(): Promise<TrainingTitleItem[]> {
     return this.titleService.listTitles();
+  }
+
+  @Post('titles')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermissions(
+    TRAINING_TITLE_PERMISSIONS.manage,
+    SYSTEM_PERMISSIONS.managePermissions,
+    TRAINING_BADGE_PERMISSIONS.manage,
+  )
+  createTitle(@Body() dto: CreateTrainingTitleDto): Promise<TrainingTitleItem> {
+    return this.titleService.createTitle(dto);
   }
 
   @Get('titles/recipients')

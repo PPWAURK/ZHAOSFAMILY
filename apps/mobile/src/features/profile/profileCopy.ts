@@ -50,6 +50,9 @@ export const PROFILE_COPY: Record<
     titleAccent: string;
     titleSuffix: string;
     updateError: string;
+    trainingRecords: string;
+    trainingRecordsHint: string;
+    trainingRecordsEmpty: string;
   }
 > = {
   zh: {
@@ -73,7 +76,8 @@ export const PROFILE_COPY: Record<
     deleteHeading: "删除账号",
     deleteHint: "永久删除后无法恢复，你的个人信息将被匿名化。",
     deleteAction: "删除我的账号",
-    deleteWarning: "此操作不可撤销。确认后你的账号将被停用、个人信息将被匿名化，且你会立即退出登录。请输入当前密码以确认。",
+    deleteWarning:
+      "此操作不可撤销。确认后你的账号将被停用、个人信息将被匿名化，且你会立即退出登录。请输入当前密码以确认。",
     deletePasswordLabel: "当前密码",
     deletePasswordRequired: "请输入当前密码。",
     deleteConfirm: "永久删除账号",
@@ -100,6 +104,9 @@ export const PROFILE_COPY: Record<
     titleAccent: "资料",
     titleSuffix: "。",
     updateError: "资料保存失败，请稍后重试。",
+    trainingRecords: "培训记录",
+    trainingRecordsHint: "已完成的培训资料与测验成绩。",
+    trainingRecordsEmpty: "还没有已完成的培训。",
   },
   en: {
     accountHeading: "Account security",
@@ -150,6 +157,9 @@ export const PROFILE_COPY: Record<
     titleAccent: "profile",
     titleSuffix: ".",
     updateError: "Profile could not be saved. Please try again.",
+    trainingRecords: "Training records",
+    trainingRecordsHint: "Completed training materials and quiz scores.",
+    trainingRecordsEmpty: "No completed training yet.",
   },
   fr: {
     accountHeading: "Sécurité du compte",
@@ -200,5 +210,8 @@ export const PROFILE_COPY: Record<
     titleAccent: "profil",
     titleSuffix: ".",
     updateError: "Le profil n'a pas pu être enregistré. Réessayez plus tard.",
+    trainingRecords: "Historique de formation",
+    trainingRecordsHint: "Supports terminés et scores quiz.",
+    trainingRecordsEmpty: "Aucune formation terminée pour l'instant.",
   },
 };

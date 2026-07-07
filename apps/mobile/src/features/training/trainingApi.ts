@@ -53,6 +53,14 @@ export async function fetchTrainingMyTitles(): Promise<TrainingMyTitles> {
   return mobileApiClient.get<TrainingMyTitles>("/training/my-titles");
 }
 
+export async function equipTrainingTitle(
+  code: string | null,
+): Promise<TrainingMyTitles> {
+  return mobileApiClient.put<TrainingMyTitles>("/training/my-titles/equipped", {
+    code,
+  });
+}
+
 export async function fetchTrainingMyRecords(): Promise<TrainingMyRecords> {
   return mobileApiClient.get<TrainingMyRecords>("/training/my-records");
 }

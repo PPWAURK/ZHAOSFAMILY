@@ -143,6 +143,49 @@ export type TrainingMyBadges = {
   totalCount: number;
 };
 
+export type TrainingTitle = {
+  code: string;
+  name: {
+    zh: string;
+    en: string;
+    fr: string;
+  };
+  frameStyle: string;
+  unlockPositionCode: string;
+  earned: boolean;
+  earnedAt: string | null;
+};
+
+export type TrainingMyTitles = {
+  earned: TrainingTitle[];
+  available: TrainingTitle[];
+  equippedTitleCode: string | null;
+  equippedTitle: TrainingTitle | null;
+};
+
+export type CreateTrainingTitleInput = {
+  code?: string;
+  nameZh: string;
+  nameEn: string;
+  nameFr: string;
+  frameStyle: string;
+  unlockPositionCode: string;
+  sortOrder?: number;
+};
+
+export type TrainingTitleRecipient = {
+  userId: number;
+  name: string;
+  email: string;
+  accountStatus: string;
+  jobRole: string | null;
+  restaurant: {
+    id: number;
+    name: string;
+  };
+  titles: TrainingTitle[];
+};
+
 export type TrainingMonthlyReportBadge = {
   code: string;
   name: {

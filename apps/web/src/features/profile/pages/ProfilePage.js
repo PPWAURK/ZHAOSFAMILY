@@ -7,12 +7,25 @@ import Link from "next/link";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import Sidebar from "@/features/dashboard/components/Sidebar";
 import {
+  equipTrainingTitle,
+  fetchTrainingMyTitles,
+} from "@/features/training/services/trainingMediaApi";
+import {
   DASHBOARD_LANGUAGES,
   DASHBOARD_MENU_LABELS,
 } from "@/features/dashboard/constants/dashboard-copy";
 import { PROFILE_COPY } from "@/features/profile/constants/profile-copy";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/profile/profile-page.module.css";
+
+const TITLE_FRAME_CLASS_BY_STYLE = {
+  red: "profileTitleFrameRed",
+  gold: "profileTitleFrameGold",
+  ink: "profileTitleFrameInk",
+  jade: "profileTitleFrameJade",
+  blue: "profileTitleFrameBlue",
+  purple: "profileTitleFramePurple",
+};
 
 function initialsOf(name) {
   if (!name) return "Z";
@@ -23,6 +36,17 @@ function initialsOf(name) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function getTrainingTitleName(title, lang) {
+  return title?.name?.[lang] || title?.name?.zh || title?.code || "-";
+}
+
+function getTitleFrameClass(title) {
+  const frameClass =
+    TITLE_FRAME_CLASS_BY_STYLE[title?.frameStyle] || TITLE_FRAME_CLASS_BY_STYLE.red;
+
+  return `${styles.profileTitleFrame} ${styles[frameClass]}`;
 }
 
 export default function ProfilePage() {
@@ -49,6 +73,15 @@ export default function ProfilePage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deletingSubmit, setDeletingSubmit] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [myTitles, setMyTitles] = useState({
+    earned: [],
+    available: [],
+    equippedTitleCode: null,
+    equippedTitle: null,
+  });
+  const [isLoadingTitles, setIsLoadingTitles] = useState(false);
+  const [titleError, setTitleError] = useState("");
+  const [savingTitleCode, setSavingTitleCode] = useState("");
 
   const t = PROFILE_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
@@ -72,6 +105,32 @@ export default function ProfilePage() {
     setContact(nextContact);
     setDraft(nextContact);
   }, [user]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadMyTitles() {
+      if (!user?.id) return;
+
+      setIsLoadingTitles(true);
+      setTitleError("");
+
+      try {
+        const nextTitles = await fetchTrainingMyTitles();
+        if (isActive) setMyTitles(nextTitles);
+      } catch {
+        if (isActive) setTitleError("LOAD_ERROR");
+      } finally {
+        if (isActive) setIsLoadingTitles(false);
+      }
+    }
+
+    void loadMyTitles();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id]);
 
   function startEdit() {
     setDraft(contact);
@@ -198,6 +257,19 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleEquipTitle(code) {
+    setSavingTitleCode(code);
+    setTitleError("");
+
+    try {
+      setMyTitles(await equipTrainingTitle(code));
+    } catch {
+      setTitleError("SAVE_ERROR");
+    } finally {
+      setSavingTitleCode("");
+    }
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.top}>
@@ -280,6 +352,11 @@ export default function ProfilePage() {
           </div>
           <div className={styles.heroIdentity}>
             <h2 className={styles.heroName}>{displayName}</h2>
+            {myTitles.equippedTitle ? (
+              <span className={getTitleFrameClass(myTitles.equippedTitle)}>
+                {getTrainingTitleName(myTitles.equippedTitle, lang)}
+              </span>
+            ) : null}
             <div className={styles.heroMeta}>
               <span>{email}</span>
               <span>{role}</span>
@@ -287,6 +364,89 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        <section className={styles.section}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionHeadingGroup}>
+              <h3 className={styles.sectionHeading}>
+                {lang === "zh"
+                  ? "我的称号"
+                  : lang === "fr"
+                    ? "Mes titres"
+                    : "My titles"}
+              </h3>
+              <p className={styles.sectionHint}>
+                {lang === "zh"
+                  ? "管理员分发后，你可以选择一个称号佩戴在个人档案中。"
+                  : lang === "fr"
+                    ? "Choisis un titre attribué à afficher sur ton profil."
+                    : "Choose one assigned title to wear on your profile."}
+              </p>
+            </div>
+          </header>
+
+          {isLoadingTitles ? (
+            <p className={styles.placeholder}>
+              {lang === "zh"
+                ? "正在加载称号..."
+                : lang === "fr"
+                  ? "Chargement des titres..."
+                  : "Loading titles..."}
+            </p>
+          ) : myTitles.earned.length > 0 ? (
+            <div className={styles.profileTitleGrid}>
+              {myTitles.earned.map((title) => {
+                const isEquipped = title.code === myTitles.equippedTitleCode;
+
+                return (
+                  <article key={title.code} className={styles.profileTitleCard}>
+                    <span className={getTitleFrameClass(title)}>
+                      {getTrainingTitleName(title, lang)}
+                    </span>
+                    <button
+                      type="button"
+                      className={`${styles.btn} ${
+                        isEquipped ? styles.btnPrimary : styles.btnGhost
+                      }`}
+                      disabled={isEquipped || savingTitleCode === title.code}
+                      onClick={() => handleEquipTitle(title.code)}
+                    >
+                      {isEquipped
+                        ? lang === "zh"
+                          ? "已佩戴"
+                          : lang === "fr"
+                            ? "Porté"
+                            : "Wearing"
+                        : lang === "zh"
+                          ? "佩戴"
+                          : lang === "fr"
+                            ? "Porter"
+                            : "Wear"}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className={styles.placeholder}>
+              {lang === "zh"
+                ? "你还没有可佩戴称号。"
+                : lang === "fr"
+                  ? "Aucun titre attribué pour le moment."
+                  : "No assigned titles yet."}
+            </p>
+          )}
+
+          {titleError ? (
+            <p className={styles.sectionHint}>
+              {lang === "zh"
+                ? "称号操作失败，请稍后再试。"
+                : lang === "fr"
+                  ? "Impossible de mettre à jour le titre."
+                  : "Title update failed."}
+            </p>
+          ) : null}
+        </section>
 
         {/* Identité */}
         <section className={styles.section}>

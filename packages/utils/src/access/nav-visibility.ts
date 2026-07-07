@@ -3,6 +3,7 @@
 
 export type NavVisibilityRule = {
   requiredPermission?: string;
+  visibleForPermissions?: readonly string[];
   visibleForJobRoles?: readonly string[];
 };
 
@@ -74,27 +75,31 @@ export function resolveJobRoles(viewer: NavViewer): string[] {
 // - 否则只要满足任一条已声明的限制即可见（岗位命中 OR 持有权限）。
 //   未声明的限制不参与判断（不会让条目对所有人开放）。
 export function canSeeNavEntry(
-  viewer: NavViewer,
+  viewer: NavViewer | null | undefined,
   rule: NavVisibilityRule | undefined,
 ): boolean {
   if (!rule) return true;
 
   const hasJobRoleRule = (rule.visibleForJobRoles?.length ?? 0) > 0;
-  const hasPermissionRule = Boolean(rule.requiredPermission);
+  const visibleForPermissions = [
+    ...(rule.requiredPermission ? [rule.requiredPermission] : []),
+    ...(rule.visibleForPermissions ?? []),
+  ];
+  const hasPermissionRule = visibleForPermissions.length > 0;
   if (!hasJobRoleRule && !hasPermissionRule) {
     return true;
   }
 
   if (hasJobRoleRule) {
-    const jobRoles = resolveJobRoles(viewer);
+    const jobRoles = viewer ? resolveJobRoles(viewer) : [];
     if (rule.visibleForJobRoles!.some((role) => jobRoles.includes(role))) {
       return true;
     }
   }
 
   if (hasPermissionRule) {
-    const permissions = viewer.permissions ?? [];
-    if (permissions.includes(rule.requiredPermission!)) {
+    const permissions = viewer?.permissions ?? [];
+    if (visibleForPermissions.some((permission) => permissions.includes(permission))) {
       return true;
     }
   }

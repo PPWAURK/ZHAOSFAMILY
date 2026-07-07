@@ -55,6 +55,9 @@ import { ProfileScreen } from "@/features/profile/ProfileScreen";
 import { RecruitmentModuleScreen } from "@/features/recruitment/RecruitmentModuleScreen";
 import { StoresModuleScreen } from "@/features/stores/StoresModuleScreen";
 import { TrainingModuleScreen } from "@/features/training/TrainingModuleScreen";
+import { TrainingTitleFrame } from "@/features/training/TrainingTitleFrame";
+import { fetchTrainingMyTitles } from "@/features/training/trainingApi";
+import type { TrainingTitle } from "@/features/training/trainingTypes";
 import { WaitingQueueModuleScreen } from "@/features/waiting-queue/WaitingQueueModuleScreen";
 
 type DashboardHomeScreenProps = {
@@ -230,6 +233,7 @@ export function DashboardHomeScreen({
   const [isLoadingSelectedNews, setIsLoadingSelectedNews] = useState(false);
   const [readerError, setReaderError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [equippedTitle, setEquippedTitle] = useState<TrainingTitle | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const newsCarouselRef = useRef<ScrollView>(null);
   const pdfLoadingStartedAtRef = useRef(0);
@@ -278,6 +282,27 @@ export function DashboardHomeScreen({
     () => resolveDashboardUserCard(user, copy.greetingFallback),
     [copy.greetingFallback, user],
   );
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadEquippedTitle(): Promise<void> {
+      if (!isMoreOpen) return;
+
+      try {
+        const myTitles = await fetchTrainingMyTitles();
+        if (isActive) setEquippedTitle(myTitles.equippedTitle ?? null);
+      } catch {
+        if (isActive) setEquippedTitle(null);
+      }
+    }
+
+    void loadEquippedTitle();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isMoreOpen, user.id]);
   const moreNavLabel = DASHBOARD_PRIMARY_NAV.find((item) => item.id === "more")?.label[language];
   const newsCarouselCardWidth = Math.max(280, Math.min(screenWidth - 80, 360));
   const newsCarouselSnapInterval = newsCarouselCardWidth + 12;
@@ -1039,6 +1064,13 @@ export function DashboardHomeScreen({
                     </View>
                     <View style={styles.sheetUserIdentity}>
                       <Text style={styles.sheetUserName}>{userCard.displayName}</Text>
+                      {equippedTitle ? (
+                        <TrainingTitleFrame
+                          compact
+                          title={equippedTitle}
+                          language={language}
+                        />
+                      ) : null}
                       <Text style={styles.sheetUserHint}>{copy.moreTitle}</Text>
                     </View>
                   </View>

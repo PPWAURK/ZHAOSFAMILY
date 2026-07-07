@@ -20,8 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         "sshPort": "22",
         "sshKeyPath": "~/.ssh/zhao_deploy",
         "envPath": "/opt/zhao-family/apps/backend/.env",
-        "repoPath": "/Users/shihongwang/Documents/03-Developpement/GitHub/zhao-family",
-        "mobileAppPath": "/Users/shihongwang/Documents/03-Developpement/GitHub/zhao-family/apps/mobile",
+        "repoPath": "/Users/shihongwang/Documents/GitHub/zhao-family",
+        "mobileAppPath": "/Users/shihongwang/Documents/GitHub/zhao-family/apps/mobile",
         "easCommand": "eas",
         "expoToken": ""
     ]

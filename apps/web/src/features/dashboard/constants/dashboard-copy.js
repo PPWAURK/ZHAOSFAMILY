@@ -42,11 +42,16 @@ export const DASHBOARD_NAV = [
         fr: "Certifications",
       },
       {
-        id: "training-badges",
-        href: "/dashboard/training-badges",
-        zh: "培训徽章",
-        en: "Training badges",
-        fr: "Badges formation",
+        id: "training-titles",
+        href: "/dashboard/training/titles",
+        zh: "称号分发",
+        en: "Title assignment",
+        fr: "Attribution titres",
+        visibleForPermissions: [
+          "training.title.manage",
+          "system.permission.manage",
+          "training.badge.manage",
+        ],
       },
       {
         id: "training-progress",

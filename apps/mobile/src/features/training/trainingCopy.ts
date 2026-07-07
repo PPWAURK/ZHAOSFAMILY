@@ -88,20 +88,9 @@ type TrainingCopy = {
   recordsEmpty: string;
   completedOn: string;
   hubOverallProgress: string;
-  hubRequiredJourney: string;
-  hubRequiredJourneyBody: string;
-  hubOptionalLibrary: string;
-  hubOptionalLibraryBody: string;
-  hubAchievements: string;
-  hubAchievementsBody: string;
-  hubBack: string;
-  hubEnter: string;
   hubActionContinue: string;
   hubActionStart: string;
   hubActionDone: string;
-  hubMaterialCount: string;
-  hubBadgeCount: string;
-
   // Map-themed strings (three-layer gamified map)
   mapLayerShared: string;
   mapLayerRequired: string;
@@ -115,9 +104,6 @@ type TrainingCopy = {
   mapNodeStudy: string;
   mapNodeQuiz: string;
   mapNodeComplete: string;
-  mapPositionGate: string;
-  mapAchievementEntry: string;
-  backToMap: string;
 
   materialTypes: Record<string, string>;
   statuses: Record<string, string>;
@@ -147,11 +133,9 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedLearningTitle: "沿着朱印路径继续",
     guidedLearningBody: "随时查阅必修资料，按自己的节奏学习。选修资料也可随时打开。",
     guidedCompletedTitle: "必修旅程已完成",
-    guidedCompletedBody:
-      "全部必修已完成，称号与记录会继续同步。现在可回看资料或继续选修内容。",
+    guidedCompletedBody: "全部必修已完成，称号与记录会继续同步。现在可回看资料或继续选修内容。",
     guidedLibraryTitle: "岗位资料库",
-    guidedLibraryBody:
-      "当前没有必修顺序要求，可直接进入资料库学习与回看。",
+    guidedLibraryBody: "当前没有必修顺序要求，可直接进入资料库学习与回看。",
     guidedJourney: "朱印路径",
     guidedLibrary: "选修资料库",
     guidedCurrent: "进行中",
@@ -215,19 +199,9 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     recordsEmpty: "还没有已完成的培训。",
     completedOn: "完成于",
     hubOverallProgress: "整体进度",
-    hubRequiredJourney: "朱印必修",
-    hubRequiredJourneyBody: "完成岗位必修资料，随时可按自己节奏学习",
-    hubOptionalLibrary: "选修资料库",
-    hubOptionalLibraryBody: "随时查阅岗位补充资料",
-    hubAchievements: "我的成就",
-    hubAchievementsBody: "查看已解锁称号与培训记录",
-    hubBack: "返回",
-    hubEnter: "进入",
     hubActionContinue: "继续学习",
     hubActionStart: "开始旅程",
     hubActionDone: "已完成",
-    hubMaterialCount: "{count} 份资料",
-    hubBadgeCount: "{count} 个称号",
     mapLayerShared: "全员共享",
     mapLayerRequired: "岗位必修",
     mapLayerAdvanced: "高阶课程",
@@ -240,9 +214,6 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     mapNodeStudy: "学习",
     mapNodeQuiz: "测验",
     mapNodeComplete: "已完成",
-    mapPositionGate: "按岗位展开",
-    mapAchievementEntry: "成就 & 称号",
-    backToMap: "返回闯关地图",
     materialTypes: {
       VIDEO: "视频",
       PDF: "PDF",
@@ -367,19 +338,9 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     recordsEmpty: "No completed training yet.",
     completedOn: "Completed",
     hubOverallProgress: "Overall progress",
-    hubRequiredJourney: "Required journey",
-    hubRequiredJourneyBody: "Complete required materials for your role at your own pace",
-    hubOptionalLibrary: "Optional library",
-    hubOptionalLibraryBody: "Browse supplementary materials anytime",
-    hubAchievements: "My achievements",
-    hubAchievementsBody: "View unlocked titles and training records",
-    hubBack: "Back",
-    hubEnter: "Enter",
     hubActionContinue: "Continue",
     hubActionStart: "Start journey",
     hubActionDone: "Completed",
-    hubMaterialCount: "{count} materials",
-    hubBadgeCount: "{count} titles",
     mapLayerShared: "Shared",
     mapLayerRequired: "Required",
     mapLayerAdvanced: "Advanced",
@@ -392,9 +353,6 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     mapNodeStudy: "Study",
     mapNodeQuiz: "Quiz",
     mapNodeComplete: "Done",
-    mapPositionGate: "Expand by position",
-    mapAchievementEntry: "Achievements & Titles",
-    backToMap: "Back to Training Map",
     materialTypes: {
       VIDEO: "Video",
       PDF: "PDF",
@@ -466,8 +424,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedStartJourney: "Commencer la première étape",
     guidedContinueJourney: "Continuer l'étape en cours",
     guidedLockedHint: "Se débloque après l'étape précédente",
-    guidedUnlockHint:
-      "Vous pouvez ouvrir n'importe quel support pour apprendre à tout moment.",
+    guidedUnlockHint: "Vous pouvez ouvrir n'importe quel support pour apprendre à tout moment.",
     guidedAllRequiredDone: "Toutes les étapes obligatoires sont terminées",
     guidedOptionalReady: "Les supports optionnels restent disponibles",
     open: "Ouvrir",
@@ -520,19 +477,9 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     recordsEmpty: "Aucune formation terminée pour l'instant.",
     completedOn: "Terminé le",
     hubOverallProgress: "Progression globale",
-    hubRequiredJourney: "Parcours obligatoire",
-    hubRequiredJourneyBody: "Complétez les supports obligatoires de votre poste à votre rythme",
-    hubOptionalLibrary: "Bibliothèque optionnelle",
-    hubOptionalLibraryBody: "Consultez les supports complémentaires à tout moment",
-    hubAchievements: "Mes réussites",
-    hubAchievementsBody: "Consultez vos titres débloqués et votre historique",
-    hubBack: "Retour",
-    hubEnter: "Entrer",
     hubActionContinue: "Continuer",
     hubActionStart: "Commencer",
     hubActionDone: "Terminé",
-    hubMaterialCount: "{count} supports",
-    hubBadgeCount: "{count} titres",
     mapLayerShared: "Partagé",
     mapLayerRequired: "Obligatoire",
     mapLayerAdvanced: "Avancé",
@@ -545,9 +492,6 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     mapNodeStudy: "Étudier",
     mapNodeQuiz: "Quiz",
     mapNodeComplete: "Terminé",
-    mapPositionGate: "Déplier par poste",
-    mapAchievementEntry: "Réussites & Titres",
-    backToMap: "Retour à la carte",
     materialTypes: {
       VIDEO: "Vidéo",
       PDF: "PDF",

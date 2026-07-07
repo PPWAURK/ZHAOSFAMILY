@@ -20,11 +20,10 @@
 
 .card {
   align-items: stretch;
-  background: #fffdfa;
-  border: 1px solid rgba(54, 38, 35, 0.11);
-  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
   box-shadow: none;
-  color: #171717;
+  color: #0a0a0a;
   cursor: pointer;
   display: grid;
   gap: 16px;
@@ -39,8 +38,7 @@
 }
 
 .card:hover {
-  background: #fffaf5;
-  border-color: rgba(169, 17, 24, 0.28);
+  border-color: #bd2828;
   transform: translateY(-1px);
 }
 
@@ -59,9 +57,8 @@
 }
 
 .statusPill {
-  border: 1px solid rgba(54, 38, 35, 0.14);
-  border-radius: 6px;
-  color: rgba(54, 38, 35, 0.66);
+  border: 1px solid #d4d4d4;
+  color: #6b6b6b;
   flex: 0 0 auto;
   font-family: "DIN Alternate", "Avenir Next Condensed", "Noto Sans SC", sans-serif;
   font-size: 11px;
@@ -70,7 +67,7 @@
 }
 
 .label {
-  color: #17120f;
+  color: #0a0a0a;
   font-family: "Avenir Next", "Noto Sans SC", sans-serif;
   font-size: 18px;
   font-weight: 750;
@@ -80,7 +77,7 @@
 
 .description,
 .meta {
-  color: rgba(54, 38, 35, 0.6);
+  color: #6b6b6b;
   font-size: 13px;
   line-height: 1.55;
   margin: 0;
@@ -94,16 +91,14 @@
 }
 
 .progressTrack {
-  background: rgba(54, 38, 35, 0.08);
-  border-radius: 0;
+  background: #e8e8e8;
   height: 5px;
   margin-top: auto;
   overflow: hidden;
 }
 
 .progressFill {
-  background: #a91118;
-  border-radius: inherit;
+  background: #bd2828;
   height: 100%;
 }
 
@@ -119,10 +114,9 @@
 }
 
 .filterButton {
-  background: #fffdfa;
-  border: 1px solid rgba(54, 38, 35, 0.12);
-  border-radius: 7px;
-  color: rgba(54, 38, 35, 0.68);
+  background: transparent;
+  border: 1px solid #e8e8e8;
+  color: #6b6b6b;
   cursor: pointer;
   font-size: 13px;
   line-height: 1;
@@ -130,9 +124,9 @@
 }
 
 .filterButtonActive {
-  background: #f6e8e7;
-  border-color: rgba(169, 17, 24, 0.32);
-  color: #a91118;
+  background: #0a0a0a;
+  border-color: #0a0a0a;
+  color: #fff;
 }
 
 .group {
@@ -142,7 +136,7 @@
 
 .groupHeader {
   align-items: baseline;
-  border-bottom: 1px solid rgba(54, 38, 35, 0.11);
+  border-bottom: 1px solid #e8e8e8;
   display: flex;
   justify-content: space-between;
   padding-bottom: 10px;
@@ -160,10 +154,7 @@
 }
 
 .summary {
-  background: #fffdfa;
-  border: 1px solid rgba(54, 38, 35, 0.12);
-  border-radius: 12px;
-  box-shadow: none;
+  border: 1px solid #e8e8e8;
   display: grid;
   gap: 20px;
   padding: 18px;
@@ -176,14 +167,12 @@
 }
 
 .stat {
-  background: #fbf7f3;
-  border: 1px solid rgba(54, 38, 35, 0.08);
-  border-radius: 8px;
+  border: 1px solid #e8e8e8;
   padding: 12px;
 }
 
 .statValue {
-  color: #17120f;
+  color: #0a0a0a;
   display: block;
   font-size: 26px;
   font-weight: 750;
@@ -191,7 +180,7 @@
 }
 
 .statLabel {
-  color: rgba(54, 38, 35, 0.56);
+  color: #6b6b6b;
   display: block;
   font-size: 12px;
   margin-top: 4px;
@@ -209,7 +198,7 @@
 }
 
 .miniTitle {
-  color: rgba(54, 38, 35, 0.66);
+  color: #6b6b6b;
   font-size: 13px;
   font-weight: 700;
   margin: 0;
@@ -223,7 +212,7 @@
 
 .miniDot {
   background: transparent;
-  border: 1px solid #a91118;
+  border: 1px solid #bd2828;
   height: 9px;
   transform: rotate(45deg);
   width: 9px;
@@ -235,9 +224,7 @@
 }
 
 .bindingPanel {
-  background: #fffdfa;
-  border: 1px solid rgba(54, 38, 35, 0.12);
-  border-radius: 12px;
+  border: 1px solid #e8e8e8;
   display: grid;
   gap: 18px;
   padding: 18px;
@@ -251,7 +238,7 @@
 }
 
 .bindingTitle {
-  color: #17120f;
+  color: #0a0a0a;
   font-size: 18px;
   font-weight: 750;
   line-height: 1.25;
@@ -259,10 +246,9 @@
 }
 
 .bindingSaveButton {
-  background: #fffdfa;
-  border: 1px solid rgba(54, 38, 35, 0.16);
-  border-radius: 7px;
-  color: #17120f;
+  background: transparent;
+  border: 1px solid #d4d4d4;
+  color: #0a0a0a;
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -275,9 +261,8 @@
 }
 
 .bindingSaveButton:hover {
-  background: #f6e8e7;
-  border-color: rgba(169, 17, 24, 0.32);
-  color: #a91118;
+  border-color: #bd2828;
+  color: #bd2828;
 }
 
 .bindingSaveButton:disabled {
@@ -297,7 +282,7 @@
 }
 
 .bindingField {
-  color: rgba(54, 38, 35, 0.66);
+  color: #6b6b6b;
   display: grid;
   font-size: 13px;
   font-weight: 700;
@@ -307,22 +292,19 @@
 .bindingField select {
   appearance: none;
   background:
-    linear-gradient(45deg, transparent 50%, rgba(54, 38, 35, 0.58) 50%)
+    linear-gradient(45deg, transparent 50%, #6b6b6b 50%)
       calc(100% - 18px) 17px / 6px 6px no-repeat,
-    linear-gradient(135deg, rgba(54, 38, 35, 0.58) 50%, transparent 50%)
+    linear-gradient(135deg, #6b6b6b 50%, transparent 50%)
       calc(100% - 13px) 17px / 6px 6px no-repeat,
-    #fbf7f3;
-  border: 1px solid rgba(54, 38, 35, 0.12);
-  border-radius: 7px;
-  color: #17120f;
+    #fff;
+  border: 1px solid #e8e8e8;
+  color: #0a0a0a;
   min-height: 40px;
   padding: 0 34px 0 10px;
 }
 
 .bindingBadgePreview {
-  background: #fbf7f3;
-  border: 1px solid rgba(54, 38, 35, 0.08);
-  border-radius: 8px;
+  border: 1px solid #e8e8e8;
   display: grid;
   gap: 10px;
   min-height: 180px;
@@ -330,13 +312,13 @@
 }
 
 .bindingBadgePreview strong {
-  color: #17120f;
+  color: #0a0a0a;
   font-size: 19px;
   line-height: 1.25;
 }
 
 .bindingBadgePreview small {
-  color: rgba(54, 38, 35, 0.56);
+  color: #6b6b6b;
   font-family: "DIN Alternate", "Avenir Next Condensed", "Noto Sans SC", sans-serif;
   font-size: 11px;
   overflow-wrap: anywhere;
@@ -351,10 +333,8 @@
 }
 
 .bindingStats span {
-  background: #fffdfa;
-  border: 1px solid rgba(54, 38, 35, 0.08);
-  border-radius: 7px;
-  color: rgba(54, 38, 35, 0.58);
+  border: 1px solid #e8e8e8;
+  color: #6b6b6b;
   display: grid;
   font-size: 11px;
   gap: 3px;
@@ -363,7 +343,7 @@
 }
 
 .bindingStats b {
-  color: #17120f;
+  color: #0a0a0a;
   font-size: 19px;
   line-height: 1;
 }
@@ -375,15 +355,13 @@
 }
 
 .bindingFieldLabel {
-  color: rgba(54, 38, 35, 0.66);
+  color: #6b6b6b;
   font-size: 13px;
   font-weight: 700;
 }
 
 .bindingMaterialList {
-  background: #fbf7f3;
-  border: 1px solid rgba(54, 38, 35, 0.08);
-  border-radius: 8px;
+  border: 1px solid #e8e8e8;
   display: grid;
   gap: 0;
   max-height: 324px;
@@ -392,8 +370,8 @@
 
 .bindingMaterialItem {
   align-items: flex-start;
-  border-bottom: 1px solid rgba(54, 38, 35, 0.08);
-  color: #17120f;
+  border-bottom: 1px solid #e8e8e8;
+  color: #0a0a0a;
   cursor: pointer;
   display: grid;
   gap: 10px;
@@ -405,12 +383,12 @@
 }
 
 .bindingMaterialItem:hover {
-  background: #fffaf5;
+  background: #f4f4f4;
 }
 
 .bindingMaterialItemActive {
-  background: #fffaf5;
-  color: #a91118;
+  background: #fdf0f0;
+  color: #bd2828;
 }
 
 .bindingMaterialItem:last-child {
@@ -418,7 +396,7 @@
 }
 
 .bindingMaterialItem input {
-  accent-color: #a91118;
+  accent-color: #bd2828;
   margin-top: 4px;
 }
 
@@ -434,12 +412,12 @@
 }
 
 .bindingMaterialItem small {
-  color: rgba(54, 38, 35, 0.58);
+  color: #6b6b6b;
   font-size: 12px;
 }
 
 .bindingHint {
-  color: rgba(54, 38, 35, 0.62);
+  color: #6b6b6b;
   font-size: 13px;
   line-height: 1.55;
   margin: 0;
@@ -447,7 +425,7 @@
 
 .modalBackdrop {
   align-items: center;
-  background: rgba(15, 15, 15, 0.38);
+  background: rgba(10, 10, 10, 0.38);
   display: flex;
   inset: 0;
   justify-content: center;
@@ -457,10 +435,9 @@
 }
 
 .modal {
-  background: #fffdfa;
-  border: 1px solid rgba(54, 38, 35, 0.14);
-  border-radius: 14px;
-  box-shadow: 0 24px 70px rgba(20, 15, 15, 0.22);
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 24px 70px rgba(10, 10, 10, 0.22);
   max-height: min(760px, calc(100vh - 48px));
   max-width: 760px;
   overflow: auto;
@@ -487,48 +464,18 @@
 }
 
 .detailItem {
-  background: #fbf7f3;
-  border: 1px solid rgba(54, 38, 35, 0.08);
-  border-radius: 8px;
+  border: 1px solid #e8e8e8;
   padding: 12px;
 }
 
 .closeButton {
-  background: #fffdfa;
-  border: 1px solid rgba(54, 38, 35, 0.16);
-  border-radius: 8px;
-  color: #17120f;
+  background: transparent;
+  border: 1px solid #e8e8e8;
+  color: #0a0a0a;
   cursor: pointer;
   height: 36px;
   margin-left: auto;
   width: 36px;
-}
-
-.demoPage {
-  background: #f4f1ed;
-  color: #17120f;
-  font-family: "Avenir Next", "Noto Sans SC", sans-serif;
-  min-height: 100vh;
-  padding: 44px min(5vw, 64px) 64px;
-}
-
-.demoShell {
-  display: grid;
-  gap: 28px;
-  margin: 0 auto;
-  max-width: 1220px;
-}
-
-.demoTitle {
-  font-size: clamp(34px, 5vw, 54px);
-  line-height: 1.06;
-  margin: 0;
-}
-
-.demoLead {
-  color: rgba(54, 38, 35, 0.64);
-  line-height: 1.7;
-  max-width: 720px;
 }
 
 @media (max-width: 680px) {

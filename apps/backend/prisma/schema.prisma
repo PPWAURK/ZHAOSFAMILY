@@ -25,6 +25,7 @@ model User {
   phone                      String?                    @db.VarChar(50)
   address                    String?                    @db.VarChar(255)
   profilePhoto               String?                    @map("profile_photo") @db.LongText
+  equippedTrainingTitleCode  String?                    @map("equipped_training_title_code") @db.VarChar(40)
   userLevel                  Int                        @default(0) @map("user_level") @db.UnsignedTinyInt
   acceptedTerms              Boolean                    @default(false) @map("accepted_terms")
   preferredLanguage          String                     @default("fr") @map("preferred_language")
@@ -41,6 +42,7 @@ model User {
   trainingQuizAttempts       TrainingQuizAttempt[]
   screenSecurityEvents       ScreenSecurityEvent[]
   trainingTitles             UserTrainingTitle[]
+  equippedTrainingTitle      TrainingTitle?             @relation("EquippedTrainingTitle", fields: [equippedTrainingTitleCode], references: [code], onDelete: SetNull)
   trainingBadges             UserTrainingBadge[]
   dashboardPosts             DashboardPost[]            @relation("DashboardPostAuthor")
   refreshSessions            RefreshSession[]
@@ -54,6 +56,7 @@ model User {
 
   @@index([restaurantId])
   @@index([accountStatus])
+  @@index([equippedTrainingTitleCode])
   @@index([invitationTokenHash])
   @@index([passwordResetTokenHash])
   @@map("users")
@@ -478,6 +481,7 @@ model TrainingTitle {
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
   earned             UserTrainingTitle[]
+  equippedByUsers    User[]              @relation("EquippedTrainingTitle")
 
   @@index([unlockPositionCode])
   @@map("training_titles")

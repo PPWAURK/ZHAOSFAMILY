@@ -1,13 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
 import { useScreenName } from "@/lib/useScreenName";
 import type {
@@ -21,6 +14,11 @@ import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControl
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
 import { PROFILE_COPY } from "@/features/profile/profileCopy";
+import { TRAINING_COPY } from "@/features/training/trainingCopy";
+import { TrainingHistoryView } from "@/features/training/TrainingHistoryView";
+import { TrainingTitleFrame } from "@/features/training/TrainingTitleFrame";
+import { equipTrainingTitle, fetchTrainingMyTitles } from "@/features/training/trainingApi";
+import type { TrainingMyTitles } from "@/features/training/trainingTypes";
 
 type ProfileScreenProps = {
   language: AuthLanguage;
@@ -46,6 +44,61 @@ type PasswordDraft = {
   currentPassword: string;
   nextPassword: string;
 };
+
+const EMPTY_MY_TITLES: TrainingMyTitles = {
+  earned: [],
+  available: [],
+  equippedTitleCode: null,
+  equippedTitle: null,
+};
+
+function resolveTitleCopy(language: AuthLanguage): {
+  empty: string;
+  heading: string;
+  hint: string;
+  loadError: string;
+  loading: string;
+  saveError: string;
+  wear: string;
+  wearing: string;
+} {
+  if (language === "en") {
+    return {
+      empty: "No assigned titles yet.",
+      heading: "My titles",
+      hint: "Choose one assigned title to show below your avatar.",
+      loadError: "Titles could not be loaded.",
+      loading: "Loading titles...",
+      saveError: "Title could not be updated.",
+      wear: "Wear",
+      wearing: "Wearing",
+    };
+  }
+
+  if (language === "fr") {
+    return {
+      empty: "Aucun titre attribué pour le moment.",
+      heading: "Mes titres",
+      hint: "Choisis un titre attribué à afficher sous ton avatar.",
+      loadError: "Impossible de charger les titres.",
+      loading: "Chargement des titres...",
+      saveError: "Impossible de mettre à jour le titre.",
+      wear: "Porter",
+      wearing: "Porté",
+    };
+  }
+
+  return {
+    empty: "你还没有可佩戴称号。",
+    heading: "我的称号",
+    hint: "选择一个已获得称号，显示在菜单头像下方。",
+    loadError: "称号加载失败。",
+    loading: "正在加载称号...",
+    saveError: "称号更新失败。",
+    wear: "佩戴",
+    wearing: "已佩戴",
+  };
+}
 
 function resolveDisplayName(user: AuthUser, fallback: string): string {
   const composedName = [user.familyName || user.lastName, user.givenName || user.firstName]
@@ -128,6 +181,10 @@ export function ProfileScreen({
   const [passwordMessage, setPasswordMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [showSaved, setShowSaved] = useState(false);
+  const [myTitles, setMyTitles] = useState<TrainingMyTitles>(EMPTY_MY_TITLES);
+  const [isLoadingTitles, setIsLoadingTitles] = useState(false);
+  const [savingTitleCode, setSavingTitleCode] = useState("");
+  const [titleMessage, setTitleMessage] = useState("");
 
   const identityFields = useMemo(
     () => [
@@ -147,6 +204,30 @@ export function ProfileScreen({
     setContact(nextContact);
     setDraft(nextContact);
   }, [user]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadMyTitles(): Promise<void> {
+      setIsLoadingTitles(true);
+      setTitleMessage("");
+
+      try {
+        const nextTitles = await fetchTrainingMyTitles();
+        if (isActive) setMyTitles(nextTitles);
+      } catch {
+        if (isActive) setTitleMessage(resolveTitleCopy(language).loadError);
+      } finally {
+        if (isActive) setIsLoadingTitles(false);
+      }
+    }
+
+    void loadMyTitles();
+
+    return () => {
+      isActive = false;
+    };
+  }, [language, user.id]);
 
   function startEditing(): void {
     setDraft(contact);
@@ -263,6 +344,19 @@ export function ProfileScreen({
     }
   }
 
+  async function wearTitle(code: string): Promise<void> {
+    setSavingTitleCode(code);
+    setTitleMessage("");
+
+    try {
+      setMyTitles(await equipTrainingTitle(code));
+    } catch {
+      setTitleMessage(resolveTitleCopy(language).saveError);
+    } finally {
+      setSavingTitleCode("");
+    }
+  }
+
   function startAccountDeletion(): void {
     setDeletePassword("");
     setDeleteError("");
@@ -314,6 +408,9 @@ export function ProfileScreen({
             {copy.titleSuffix}
           </Text>
           <Text style={styles.heroName}>{displayName}</Text>
+          {myTitles.equippedTitle ? (
+            <TrainingTitleFrame compact title={myTitles.equippedTitle} language={language} />
+          ) : null}
           <Pressable
             disabled={isChangingAvatar}
             style={styles.avatarButton}
@@ -327,6 +424,63 @@ export function ProfileScreen({
           </Pressable>
           {avatarMessage ? <Text style={styles.inlineMessage}>{avatarMessage}</Text> : null}
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleGroup}>
+            <Text style={styles.sectionTitle}>{resolveTitleCopy(language).heading}</Text>
+            <Text style={styles.sectionHint}>{resolveTitleCopy(language).hint}</Text>
+          </View>
+        </View>
+        {isLoadingTitles ? (
+          <Text style={styles.sectionHint}>{resolveTitleCopy(language).loading}</Text>
+        ) : myTitles.earned.length > 0 ? (
+          <View style={styles.titleList}>
+            {myTitles.earned.map((title) => {
+              const isEquipped = title.code === myTitles.equippedTitleCode;
+
+              return (
+                <View key={title.code} style={styles.titleCard}>
+                  <TrainingTitleFrame title={title} language={language} />
+                  <Pressable
+                    disabled={isEquipped || savingTitleCode === title.code}
+                    style={[
+                      styles.titleWearButton,
+                      isEquipped ? styles.titleWearButtonActive : null,
+                      savingTitleCode === title.code ? styles.disabledButton : null,
+                    ]}
+                    onPress={() => void wearTitle(title.code)}
+                  >
+                    <Text
+                      style={[
+                        styles.titleWearButtonText,
+                        isEquipped ? styles.titleWearButtonTextActive : null,
+                      ]}
+                    >
+                      {isEquipped
+                        ? resolveTitleCopy(language).wearing
+                        : resolveTitleCopy(language).wear}
+                    </Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={styles.sectionHint}>{resolveTitleCopy(language).empty}</Text>
+        )}
+        {titleMessage ? <Text style={styles.inlineMessage}>{titleMessage}</Text> : null}
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleGroup}>
+            <Text style={styles.sectionTitle}>{copy.trainingRecords}</Text>
+            <Text style={styles.sectionHint}>{copy.trainingRecordsHint}</Text>
+          </View>
+        </View>
+        <TrainingHistoryView copy={TRAINING_COPY[language]} language={language} />
       </View>
 
       <View style={styles.section}>
@@ -471,15 +625,11 @@ export function ProfileScreen({
         {passwordMessage ? <Text style={styles.inlineMessage}>{passwordMessage}</Text> : null}
         <Pressable
           disabled={
-            isChangingPassword ||
-            !passwordDraft.currentPassword ||
-            !passwordDraft.nextPassword
+            isChangingPassword || !passwordDraft.currentPassword || !passwordDraft.nextPassword
           }
           style={[
             styles.primaryButton,
-            isChangingPassword ||
-            !passwordDraft.currentPassword ||
-            !passwordDraft.nextPassword
+            isChangingPassword || !passwordDraft.currentPassword || !passwordDraft.nextPassword
               ? styles.disabledButton
               : null,
           ]}
@@ -567,267 +717,301 @@ export function ProfileScreen({
   );
 }
 
-const styles = StyleSheet.create(scaleStyles({
-  avatar: {
-    alignItems: "center",
-    backgroundColor: "rgba(193, 22, 22, 0.08)",
-    borderColor: "rgba(193, 22, 22, 0.26)",
-    borderWidth: 1,
-    height: 74,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: 74,
-  },
-  avatarImage: {
-    height: "100%",
-    width: "100%",
-  },
-  avatarInitials: {
-    color: authControlStyles.colors.red,
-    fontFamily: "serif",
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  avatarButton: {
-    alignItems: "center",
-    borderColor: "rgba(193, 22, 22, 0.28)",
-    borderWidth: 1,
-    minHeight: 34,
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    alignSelf: "flex-start",
-  },
-  avatarButtonText: {
-    color: authControlStyles.colors.red,
-    fontFamily: "monospace",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  container: {
-    gap: 18,
-    paddingTop: 22,
-  },
-  dangerButton: {
-    alignItems: "center",
-    backgroundColor: authControlStyles.colors.red,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 46,
-  },
-  dangerButtonText: {
-    color: "#ffffff",
-    fontFamily: "monospace",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-  },
-  disabledButton: {
-    opacity: 0.58,
-  },
-  editField: {
-    gap: 8,
-  },
-  errorText: {
-    color: authControlStyles.colors.red,
-    fontFamily: "serif",
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  fieldList: {
-    borderTopColor: authControlStyles.colors.ink10,
-    borderTopWidth: 1,
-  },
-  fieldRow: {
-    borderBottomColor: authControlStyles.colors.ink10,
-    borderBottomWidth: 1,
-    gap: 7,
-    paddingVertical: 14,
-  },
-  fieldValue: {
-    color: authControlStyles.colors.ink,
-    fontFamily: "serif",
-    fontSize: 17,
-    lineHeight: 23,
-  },
-  ghostButton: {
-    borderColor: "rgba(193, 22, 22, 0.28)",
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 36,
-    paddingHorizontal: 14,
-  },
-  ghostButtonText: {
-    color: authControlStyles.colors.red,
-    fontFamily: "monospace",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.1,
-  },
-  hero: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 16,
-  },
-  heroName: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  heroText: {
-    flex: 1,
-    gap: 6,
-  },
-  input: {
-    borderColor: "rgba(193, 22, 22, 0.22)",
-    borderWidth: 1,
-    color: authControlStyles.colors.ink,
-    fontFamily: "serif",
-    fontSize: 17,
-    minHeight: 46,
-    paddingHorizontal: 12,
-  },
-  inlineMessage: {
-    color: authControlStyles.colors.red,
-    fontFamily: "serif",
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  languageButton: {
-    alignItems: "center",
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 42,
-    justifyContent: "center",
-  },
-  languageButtonActive: {
-    backgroundColor: "rgba(193, 22, 22, 0.08)",
-    borderColor: "rgba(193, 22, 22, 0.38)",
-  },
-  languageButtonText: {
-    color: authControlStyles.colors.ink40,
-    fontFamily: "monospace",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-  },
-  languageButtonTextActive: {
-    color: authControlStyles.colors.red,
-  },
-  languageGrid: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  linkButton: {
-    alignItems: "center",
-    borderColor: "rgba(193, 22, 22, 0.28)",
-    borderWidth: 1,
-    minHeight: 46,
-    justifyContent: "center",
-  },
-  linkButtonText: {
-    color: authControlStyles.colors.red,
-    fontFamily: "monospace",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-  },
-  logoutButton: {
-    alignItems: "center",
-    borderColor: "rgba(193, 22, 22, 0.42)",
-    borderWidth: 1,
-    minHeight: 50,
-    justifyContent: "center",
-  },
-  logoutButtonText: {
-    color: authControlStyles.colors.red,
-    fontFamily: "monospace",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: authControlStyles.colors.red,
-    flex: 1,
-    minHeight: 46,
-    justifyContent: "center",
-  },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontFamily: "monospace",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-  },
-  savedText: {
-    color: authControlStyles.colors.success,
-    fontFamily: "serif",
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 10,
-  },
-  secondaryButton: {
-    alignItems: "center",
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 46,
-    justifyContent: "center",
-  },
-  secondaryButtonText: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "monospace",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-  },
-  section: {
-    backgroundColor: "#ffffff",
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    gap: 14,
-    padding: 16,
-  },
-  sectionHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  sectionHint: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  sectionTitle: {
-    color: authControlStyles.colors.ink,
-    fontFamily: "serif",
-    fontSize: 21,
-    fontWeight: "600",
-    lineHeight: 25,
-  },
-  sectionTitleGroup: {
-    flex: 1,
-    gap: 5,
-  },
-  title: {
-    color: authControlStyles.colors.ink,
-    fontFamily: "serif",
-    fontSize: 34,
-    fontWeight: "500",
-    lineHeight: 39,
-  },
-  titleAccent: {
-    color: authControlStyles.colors.red,
-    fontStyle: "italic",
-    fontWeight: "400",
-  },
-}));
+const styles = StyleSheet.create(
+  scaleStyles({
+    avatar: {
+      alignItems: "center",
+      backgroundColor: "rgba(193, 22, 22, 0.08)",
+      borderColor: "rgba(193, 22, 22, 0.26)",
+      borderWidth: 1,
+      height: 74,
+      justifyContent: "center",
+      overflow: "hidden",
+      width: 74,
+    },
+    avatarImage: {
+      height: "100%",
+      width: "100%",
+    },
+    avatarInitials: {
+      color: authControlStyles.colors.red,
+      fontFamily: "serif",
+      fontSize: 26,
+      fontWeight: "700",
+    },
+    avatarButton: {
+      alignItems: "center",
+      borderColor: "rgba(193, 22, 22, 0.28)",
+      borderWidth: 1,
+      minHeight: 34,
+      justifyContent: "center",
+      paddingHorizontal: 12,
+      alignSelf: "flex-start",
+    },
+    avatarButtonText: {
+      color: authControlStyles.colors.red,
+      fontFamily: "monospace",
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    container: {
+      gap: 18,
+      paddingTop: 22,
+    },
+    dangerButton: {
+      alignItems: "center",
+      backgroundColor: authControlStyles.colors.red,
+      flex: 1,
+      justifyContent: "center",
+      minHeight: 46,
+    },
+    dangerButtonText: {
+      color: "#ffffff",
+      fontFamily: "monospace",
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+    },
+    disabledButton: {
+      opacity: 0.58,
+    },
+    editField: {
+      gap: 8,
+    },
+    errorText: {
+      color: authControlStyles.colors.red,
+      fontFamily: "serif",
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    fieldList: {
+      borderTopColor: authControlStyles.colors.ink10,
+      borderTopWidth: 1,
+    },
+    fieldRow: {
+      borderBottomColor: authControlStyles.colors.ink10,
+      borderBottomWidth: 1,
+      gap: 7,
+      paddingVertical: 14,
+    },
+    fieldValue: {
+      color: authControlStyles.colors.ink,
+      fontFamily: "serif",
+      fontSize: 17,
+      lineHeight: 23,
+    },
+    ghostButton: {
+      borderColor: "rgba(193, 22, 22, 0.28)",
+      borderWidth: 1,
+      justifyContent: "center",
+      minHeight: 36,
+      paddingHorizontal: 14,
+    },
+    ghostButtonText: {
+      color: authControlStyles.colors.red,
+      fontFamily: "monospace",
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 1.1,
+    },
+    hero: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 16,
+    },
+    heroName: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 15,
+      lineHeight: 21,
+    },
+    heroText: {
+      flex: 1,
+      gap: 6,
+    },
+    input: {
+      borderColor: "rgba(193, 22, 22, 0.22)",
+      borderWidth: 1,
+      color: authControlStyles.colors.ink,
+      fontFamily: "serif",
+      fontSize: 17,
+      minHeight: 46,
+      paddingHorizontal: 12,
+    },
+    inlineMessage: {
+      color: authControlStyles.colors.red,
+      fontFamily: "serif",
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    languageButton: {
+      alignItems: "center",
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      flex: 1,
+      minHeight: 42,
+      justifyContent: "center",
+    },
+    languageButtonActive: {
+      backgroundColor: "rgba(193, 22, 22, 0.08)",
+      borderColor: "rgba(193, 22, 22, 0.38)",
+    },
+    languageButtonText: {
+      color: authControlStyles.colors.ink40,
+      fontFamily: "monospace",
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 0.8,
+    },
+    languageButtonTextActive: {
+      color: authControlStyles.colors.red,
+    },
+    languageGrid: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    linkButton: {
+      alignItems: "center",
+      borderColor: "rgba(193, 22, 22, 0.28)",
+      borderWidth: 1,
+      minHeight: 46,
+      justifyContent: "center",
+    },
+    linkButtonText: {
+      color: authControlStyles.colors.red,
+      fontFamily: "monospace",
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+    },
+    logoutButton: {
+      alignItems: "center",
+      borderColor: "rgba(193, 22, 22, 0.42)",
+      borderWidth: 1,
+      minHeight: 50,
+      justifyContent: "center",
+    },
+    logoutButtonText: {
+      color: authControlStyles.colors.red,
+      fontFamily: "monospace",
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+    },
+    primaryButton: {
+      alignItems: "center",
+      backgroundColor: authControlStyles.colors.red,
+      flex: 1,
+      minHeight: 46,
+      justifyContent: "center",
+    },
+    primaryButtonText: {
+      color: "#ffffff",
+      fontFamily: "monospace",
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+    },
+    savedText: {
+      color: authControlStyles.colors.success,
+      fontFamily: "serif",
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: 10,
+    },
+    secondaryButton: {
+      alignItems: "center",
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      flex: 1,
+      minHeight: 46,
+      justifyContent: "center",
+    },
+    secondaryButtonText: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "monospace",
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+    },
+    section: {
+      backgroundColor: "#ffffff",
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      gap: 14,
+      padding: 16,
+    },
+    sectionHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    sectionHint: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    sectionTitle: {
+      color: authControlStyles.colors.ink,
+      fontFamily: "serif",
+      fontSize: 21,
+      fontWeight: "600",
+      lineHeight: 25,
+    },
+    sectionTitleGroup: {
+      flex: 1,
+      gap: 5,
+    },
+    title: {
+      color: authControlStyles.colors.ink,
+      fontFamily: "serif",
+      fontSize: 34,
+      fontWeight: "500",
+      lineHeight: 39,
+    },
+    titleAccent: {
+      color: authControlStyles.colors.red,
+      fontStyle: "italic",
+      fontWeight: "400",
+    },
+    titleCard: {
+      alignItems: "flex-start",
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      gap: 10,
+      padding: 12,
+    },
+    titleList: {
+      gap: 10,
+    },
+    titleWearButton: {
+      alignItems: "center",
+      borderColor: "rgba(193, 22, 22, 0.28)",
+      borderWidth: 1,
+      minHeight: 34,
+      justifyContent: "center",
+      paddingHorizontal: 12,
+    },
+    titleWearButtonActive: {
+      backgroundColor: authControlStyles.colors.red,
+      borderColor: authControlStyles.colors.red,
+    },
+    titleWearButtonText: {
+      color: authControlStyles.colors.red,
+      fontFamily: "monospace",
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1,
+    },
+    titleWearButtonTextActive: {
+      color: "#ffffff",
+    },
+  }),
+);

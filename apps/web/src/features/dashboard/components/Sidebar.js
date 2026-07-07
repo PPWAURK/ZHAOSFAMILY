@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 
 import { canSeeNavEntry } from "@zhao/utils";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { fetchTrainingMyTitles } from "@/features/training/services/trainingMediaApi";
 import {
   DASHBOARD_NAV,
   DASHBOARD_NAV_GROUP_LABELS,
@@ -14,6 +15,15 @@ import {
   USER_CARD_LABELS,
 } from "@/features/dashboard/constants/dashboard-copy";
 import styles from "@/features/dashboard/dashboard-page.module.css";
+
+const TITLE_FRAME_CLASS_BY_STYLE = {
+  red: "sidebarTitleFrameRed",
+  gold: "sidebarTitleFrameGold",
+  ink: "sidebarTitleFrameInk",
+  jade: "sidebarTitleFrameJade",
+  blue: "sidebarTitleFrameBlue",
+  purple: "sidebarTitleFramePurple",
+};
 
 function resolveUserCard(user, labels) {
   const firstName = user?.firstName || user?.givenName || "";
@@ -51,8 +61,20 @@ function resolveUserCard(user, labels) {
   return { fullName, store, role, avatar, initials };
 }
 
+function getTrainingTitleName(title, lang) {
+  return title?.name?.[lang] || title?.name?.zh || title?.code || "";
+}
+
+function getSidebarTitleFrameClass(title) {
+  const frameClass =
+    TITLE_FRAME_CLASS_BY_STYLE[title?.frameStyle] || TITLE_FRAME_CLASS_BY_STYLE.red;
+
+  return `${styles.sidebarTitleFrame} ${styles[frameClass]}`;
+}
+
 export default function Sidebar({ open, onClose, lang }) {
   const { user } = useAuth();
+  const [equippedTitle, setEquippedTitle] = useState(null);
   const groupLabels = DASHBOARD_NAV_GROUP_LABELS[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const userLabels = USER_CARD_LABELS[lang];
@@ -61,6 +83,27 @@ export default function Sidebar({ open, onClose, lang }) {
     ...group,
     items: group.items.filter((item) => canSeeNavEntry(user, item)),
   })).filter((group) => group.items.length > 0);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadEquippedTitle() {
+      if (!open || !user?.id) return;
+
+      try {
+        const myTitles = await fetchTrainingMyTitles();
+        if (isActive) setEquippedTitle(myTitles.equippedTitle ?? null);
+      } catch {
+        if (isActive) setEquippedTitle(null);
+      }
+    }
+
+    void loadEquippedTitle();
+
+    return () => {
+      isActive = false;
+    };
+  }, [open, user?.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -138,6 +181,11 @@ export default function Sidebar({ open, onClose, lang }) {
 
                 <div className={styles.userCardIdentity}>
                   <h2 className={styles.userCardName}>{userCard.fullName}</h2>
+                  {equippedTitle ? (
+                    <span className={getSidebarTitleFrameClass(equippedTitle)}>
+                      {getTrainingTitleName(equippedTitle, lang)}
+                    </span>
+                  ) : null}
                   <p className={styles.userCardMetaHint}>{menuLabels.hint}</p>
                 </div>
               </div>

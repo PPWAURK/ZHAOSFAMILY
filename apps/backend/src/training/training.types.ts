@@ -208,6 +208,8 @@ export type TrainingQuizAttemptResult = {
 export type TrainingMyTitles = {
   earned: TrainingTitleItem[];
   available: TrainingTitleItem[];
+  equippedTitleCode: string | null;
+  equippedTitle: TrainingTitleItem | null;
 };
 
 export type TrainingTitleRecipient = {

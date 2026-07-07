@@ -10,7 +10,6 @@ import {
 } from "@/features/training/trainingApi";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { buildTrainingMapData } from "@/features/training/trainingMapState";
-import { TrainingAchievements } from "@/features/training/TrainingAchievements";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
 import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
 import { applyMaterialProgress } from "@/features/training/trainingProgressRules";
@@ -32,8 +31,6 @@ import type {
 type TrainingModuleScreenProps = {
   language: AuthLanguage;
 };
-
-type ViewMode = "hub" | "achievements";
 
 type NextTrainingFocus = {
   layerLabel: string;
@@ -142,8 +139,6 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [expandedPositions, setExpandedPositions] = useState<Record<string, boolean>>({});
-  const [viewMode, setViewMode] = useState<ViewMode>("hub");
-  const [achievementsRefresh, setAchievementsRefresh] = useState(0);
 
   const loadPlan = useCallback(async () => {
     setLocalLoading(true);
@@ -231,10 +226,6 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
           previous ? applyMaterialProgress(previous, materialId, progress) : previous,
         );
 
-        if (progress.status === "completed") {
-          setAchievementsRefresh((r) => r + 1);
-        }
-
         return progress;
       } catch {
         return null;
@@ -251,12 +242,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
   const handleQuizClose = useCallback(() => {
     setQuizMaterial(null);
     void loadPlan();
-    setAchievementsRefresh((r) => r + 1);
   }, [loadPlan]);
-
-  const handleAchievementOpen = useCallback(() => {
-    setViewMode("achievements");
-  }, []);
 
   const togglePosition = useCallback((positionId: string) => {
     setExpandedPositions((prev) => ({
@@ -274,11 +260,6 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
 
   const handleQuiz = useCallback((material: TrainingPlanMaterial) => {
     setQuizMaterial(material);
-  }, []);
-
-  const handleAchievementBack = useCallback(() => {
-    setViewMode("hub");
-    setAchievementsRefresh((r) => r + 1);
   }, []);
 
   if (quizMaterial) {
@@ -518,67 +499,14 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         </MapLayerSection>
       </View>
 
-      {/* 成就 & 称号入口 */}
-      <Pressable style={trainingStyles.mapAchievementEntryCard} onPress={handleAchievementOpen}>
-        <View style={trainingStyles.mapAchievementEntryIcon}>
-          <Text style={trainingStyles.mapAchievementEntryIconText}>{"\u{1F3C6}"}</Text>
-        </View>
-        <View style={trainingStyles.mapAchievementEntryBody}>
-          <Text style={trainingStyles.mapAchievementEntryTitle}>{copy.mapAchievementEntry}</Text>
-          <Text style={trainingStyles.mapAchievementEntrySubtitle}>{copy.hubAchievementsBody}</Text>
-        </View>
-      </Pressable>
-
       <View style={{ height: 40 }} />
     </ScrollView>
   );
 
-  const achievementsContent = (
-    <View style={{ flex: 1 }}>
-      <Pressable onPress={handleAchievementBack} style={trainingStyles.backButton}>
-        <Text style={trainingStyles.backButtonText}>
-          {"< "}
-          {copy.backToMap}
-        </Text>
-      </Pressable>
-      <TrainingAchievements
-        copy={copy}
-        language={language}
-        onOpenRecord={(record) =>
-          void handleOpenMaterial({
-            id: record.materialId,
-            positionId: record.positionId,
-            type: record.type,
-            isRequired: record.isRequired,
-            title: record.title,
-            description: record.description,
-            originalName: record.originalName,
-            mimeType: record.mimeType,
-            sizeBytes: record.sizeBytes,
-            bucket: record.bucket,
-            objectKey: record.objectKey,
-            createdAt: record.createdAt,
-            updatedAt: record.updatedAt,
-            hasQuiz: record.hasQuiz,
-            progress: {
-              materialId: record.materialId,
-              status: "completed",
-              progressPct: 100,
-              lastOpenedAt: record.completedAt,
-              completedAt: record.completedAt,
-            },
-          })
-        }
-        refreshToken={achievementsRefresh}
-      />
-    </View>
-  );
-
   return (
     <View style={{ flex: 1 }}>
-      {viewMode === "hub" ? hubContent : achievementsContent}
+      {hubContent}
 
-      {/* 预览 modal — 浮在顶部 */}
       <TrainingPreviewModal
         copy={copy}
         material={previewMaterial}
