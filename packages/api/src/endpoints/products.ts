@@ -19,6 +19,9 @@ function buildProductsPath(query: ListProductsQuery): string {
   const params = new URLSearchParams({
     supplierId: String(query.supplierId),
   });
+  if (query.includeInactive) {
+    params.set("includeInactive", "true");
+  }
 
   return `/products?${params.toString()}`;
 }
@@ -33,4 +36,3 @@ export function createProductsApi(apiClient: ApiClient): ProductsApi {
     remove: (id) => apiClient.delete<void>(`/products/${encodeURIComponent(id)}`),
   };
 }
-

@@ -167,6 +167,7 @@ export type TrainingBadgeItem = {
   rarity: string;
   level: number | null;
   iconType: string;
+  imageFileName: string | null;
   requiredScore: number;
   requiredCompletionRate: number;
   isActive: boolean;

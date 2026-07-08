@@ -57,6 +57,7 @@ export interface TrainingBadgeDefinition {
   descriptionKey: string;
   unlockHintKey: string;
   iconType: TrainingBadgeIconType;
+  imageFileName?: string;
 }
 
 export interface EmployeeTrainingBadge {

@@ -42,10 +42,12 @@ export const SUPPLIERS_COPY = {
     cancel: "取消",
     edit: "编辑",
     deleteBtn: "删除",
+    deactivate: "下架",
+    activate: "上架",
+    inactiveBadge: "已下架",
     open: "打开",
 
-    confirmDeleteSupplier:
-      "确认删除供应商「{name}」吗？该供应商下的所有商品也会一并删除。",
+    confirmDeleteSupplier: "确认删除供应商「{name}」吗？该供应商下的所有商品也会一并删除。",
     confirmDeleteProduct: "确认删除商品「{name}」吗？",
     yes: "确认删除",
     no: "取消",
@@ -144,10 +146,12 @@ export const SUPPLIERS_COPY = {
     cancel: "Cancel",
     edit: "Edit",
     deleteBtn: "Delete",
+    deactivate: "Take off shelf",
+    activate: "Put on shelf",
+    inactiveBadge: "Off shelf",
     open: "Open",
 
-    confirmDeleteSupplier:
-      'Delete supplier "{name}"? All its products will also be removed.',
+    confirmDeleteSupplier: 'Delete supplier "{name}"? All its products will also be removed.',
     confirmDeleteProduct: 'Delete product "{name}"?',
     yes: "Confirm delete",
     no: "Cancel",
@@ -158,8 +162,7 @@ export const SUPPLIERS_COPY = {
     editing: "Editing",
 
     productsHeading: "Product catalog",
-    productsHint:
-      "Every field is editable; the trailing buttons save, cancel or delete the row.",
+    productsHint: "Every field is editable; the trailing buttons save, cancel or delete the row.",
     productsCount: "products",
     addProduct: "+ Add product",
     noProducts: "No products yet. Click the button above to add the first one.",
@@ -240,13 +243,15 @@ export const SUPPLIERS_COPY = {
     fieldOrderNotice: "Consignes de commande",
 
     namePlaceholder: "ex. Metro France",
-    orderNoticePlaceholder:
-      "Consignes de commande : heure limite, minimum de commande, livraison…",
+    orderNoticePlaceholder: "Consignes de commande : heure limite, minimum de commande, livraison…",
 
     save: "Enregistrer",
     cancel: "Annuler",
     edit: "Modifier",
     deleteBtn: "Supprimer",
+    deactivate: "Retirer",
+    activate: "Remettre",
+    inactiveBadge: "Retiré",
     open: "Ouvrir",
 
     confirmDeleteSupplier:
@@ -265,8 +270,7 @@ export const SUPPLIERS_COPY = {
       "Tous les champs sont éditables ; les boutons en fin de ligne enregistrent, annulent ou suppriment.",
     productsCount: "produits",
     addProduct: "+ Ajouter un produit",
-    noProducts:
-      "Aucun produit pour l'instant. Cliquez sur le bouton pour en ajouter un.",
+    noProducts: "Aucun produit pour l'instant. Cliquez sur le bouton pour en ajouter un.",
 
     colReference: "Référence",
     colSupplier: "Fournisseur",

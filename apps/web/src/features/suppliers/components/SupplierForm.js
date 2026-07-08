@@ -7,22 +7,13 @@ import styles from "@/features/suppliers/suppliers-page.module.css";
 function toInitial(initial) {
   return {
     name: initial?.name || "",
-    sortOrder:
-      initial && Number.isFinite(initial.sortOrder)
-        ? String(initial.sortOrder)
-        : "",
+    sortOrder: initial && Number.isFinite(initial.sortOrder) ? String(initial.sortOrder) : "",
     includeAllProductsInOrder: !!initial?.includeAllProductsInOrder,
     orderNotice: initial?.orderNotice || "",
   };
 }
 
-export default function SupplierForm({
-  initial,
-  copy,
-  submitting,
-  onCancel,
-  onSubmit,
-}) {
+export default function SupplierForm({ initial, copy, submitting, onCancel, onSubmit }) {
   const [form, setForm] = useState(() => toInitial(initial));
   const [error, setError] = useState("");
 
@@ -53,9 +44,7 @@ export default function SupplierForm({
   return (
     <form className={styles.panel} onSubmit={submit}>
       <div className={styles.panelHeader}>
-        <h3 className={styles.panelTitle}>
-          {initial?.id ? copy.editing : copy.newSupplierTitle}
-        </h3>
+        <h3 className={styles.panelTitle}>{initial?.id ? copy.editing : copy.newSupplierTitle}</h3>
       </div>
 
       <div className={styles.formGrid}>
@@ -88,9 +77,7 @@ export default function SupplierForm({
               type="checkbox"
               className={styles.checkbox}
               checked={!!form.includeAllProductsInOrder}
-              onChange={(e) =>
-                patch("includeAllProductsInOrder", e.target.checked)
-              }
+              onChange={(e) => patch("includeAllProductsInOrder", e.target.checked)}
               disabled={submitting}
             />
             {copy.fieldIncludeAll}

@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsInt,
   IsNumber,
   IsOptional,
@@ -10,6 +11,10 @@ import {
 } from 'class-validator';
 
 export class UpdateProductDto {
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'INVALID_SUPPLIER_ID' })

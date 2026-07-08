@@ -16,7 +16,9 @@ import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/suppliers/suppliers-page.module.css";
 
 function normalizeSearchText(value) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 export default function SuppliersListPage() {
@@ -32,20 +34,11 @@ export default function SuppliersListPage() {
   const t = SUPPLIERS_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
 
-  const {
-    suppliers,
-    productCounts,
-    isLoading,
-    error,
-    addSupplier,
-    removeSupplier,
-  } = useSuppliersList();
+  const { suppliers, productCounts, isLoading, error, addSupplier, removeSupplier } =
+    useSuppliersList();
 
   const sorted = useMemo(
-    () =>
-      [...suppliers].sort(
-        (a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0),
-      ),
+    () => [...suppliers].sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0)),
     [suppliers],
   );
 
@@ -60,11 +53,7 @@ export default function SuppliersListPage() {
   }, [search, sorted]);
 
   const productTotal = useMemo(
-    () =>
-      Object.values(productCounts).reduce(
-        (sum, count) => sum + (Number(count) || 0),
-        0,
-      ),
+    () => Object.values(productCounts).reduce((sum, count) => sum + (Number(count) || 0), 0),
     [productCounts],
   );
 
@@ -174,10 +163,7 @@ export default function SuppliersListPage() {
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>{t.metricDefaultAll}</span>
             <strong className={styles.summaryValue}>
-              {
-                sorted.filter((supplier) => supplier.includeAllProductsInOrder)
-                  .length
-              }
+              {sorted.filter((supplier) => supplier.includeAllProductsInOrder).length}
             </strong>
           </div>
         </div>
@@ -279,9 +265,7 @@ export default function SuppliersListPage() {
                             {String(index + 1).padStart(2, "0")}
                           </span>
                           <strong>{supplier.name}</strong>
-                          <span className={styles.supplierId}>
-                            #{supplier.id}
-                          </span>
+                          <span className={styles.supplierId}>#{supplier.id}</span>
                         </div>
                       </td>
                       <td>{supplier.sortOrder}</td>
@@ -292,9 +276,7 @@ export default function SuppliersListPage() {
                         <span
                           className={`${styles.cardPill} ${supplier.includeAllProductsInOrder ? styles.cardPillOn : ""}`}
                         >
-                          {supplier.includeAllProductsInOrder
-                            ? t.truePill
-                            : t.falsePill}
+                          {supplier.includeAllProductsInOrder ? t.truePill : t.falsePill}
                         </span>
                       </td>
                       <td>
@@ -335,11 +317,7 @@ export default function SuppliersListPage() {
 
       <ConfirmDialog
         open={!!pendingDelete}
-        message={
-          pendingDelete
-            ? t.confirmDeleteSupplier.replace("{name}", pendingDelete.name)
-            : ""
-        }
+        message={pendingDelete ? t.confirmDeleteSupplier.replace("{name}", pendingDelete.name) : ""}
         confirmLabel={deleting ? t.deleting : t.yes}
         cancelLabel={t.no}
         onConfirm={handleConfirmDelete}

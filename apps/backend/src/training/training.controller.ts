@@ -11,8 +11,13 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { Public } from '../auth/decorators/public.decorator';
 import { AuthService } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { PermissionGuard } from '../auth/guards/permission.guard';
@@ -26,6 +31,7 @@ import {
   TRAINING_TITLE_PERMISSIONS,
   SYSTEM_PERMISSIONS,
 } from '../auth/permissions';
+import { SetBadgeImageDto } from './dto/set-badge-image.dto';
 import { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
 import { CreateTrainingPositionDto } from './dto/create-training-position.dto';
 import { CreateTrainingTitleDto } from './dto/create-training-title.dto';
@@ -214,6 +220,45 @@ export class TrainingController {
     @Body() dto: UpdateTrainingBadgeRequirementsDto,
   ): Promise<TrainingBadgeItem> {
     return this.badgeService.updateRequirements(code, dto.materialIds);
+  }
+
+  @Public()
+  @Get('badges/svg/:filename')
+  getBadgeSvg(@Param('filename') filename: string, @Res() res: Response): void {
+    const safeName = path.basename(filename);
+    const filePath = path.join(process.cwd(), 'uploads', 'badges', safeName);
+
+    if (!fs.existsSync(filePath)) {
+      res.status(404).json({ message: 'SVG_NOT_FOUND' });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    fs.createReadStream(filePath).pipe(res);
+  }
+
+  @Public()
+  @Get('badges/svg-files')
+  listBadgeSvgFiles(): string[] {
+    const dir = path.join(process.cwd(), 'uploads', 'badges');
+
+    if (!fs.existsSync(dir)) return [];
+
+    return fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.svg'))
+      .sort();
+  }
+
+  @Patch('badges/:code/image')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_BADGE_PERMISSIONS.manage)
+  updateBadgeImage(
+    @Param('code') code: string,
+    @Body() dto: SetBadgeImageDto,
+  ): Promise<TrainingBadgeItem> {
+    return this.badgeService.updateBadgeImage(code, dto.imageFileName);
   }
 
   @Get('reports/monthly')

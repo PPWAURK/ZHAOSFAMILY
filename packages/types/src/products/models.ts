@@ -1,6 +1,7 @@
 export type ProductSummary = {
   id: string;
   supplierId: number;
+  isActive: boolean;
   reference: string | null;
   category: string;
   nameCn: string;
@@ -20,4 +21,3 @@ export type ProductSummary = {
 export type ProductDetail = ProductSummary;
 
 export type ProductResponse = ProductSummary;
-

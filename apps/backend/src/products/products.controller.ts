@@ -27,7 +27,10 @@ export class ProductsController {
   listProducts(
     @Query() query: ListProductsQueryDto,
   ): Promise<ProductListItem[]> {
-    return this.productsService.listProductsBySupplier(query.supplierId);
+    return this.productsService.listProductsBySupplier(
+      query.supplierId,
+      query.includeInactive,
+    );
   }
 
   @Get(':id')

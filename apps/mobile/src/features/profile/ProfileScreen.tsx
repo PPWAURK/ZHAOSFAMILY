@@ -14,8 +14,7 @@ import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControl
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
 import { PROFILE_COPY } from "@/features/profile/profileCopy";
-import { TRAINING_COPY } from "@/features/training/trainingCopy";
-import { TrainingHistoryView } from "@/features/training/TrainingHistoryView";
+import { CertificationWall } from "@/features/profile/CertificationWall";
 import { TrainingTitleFrame } from "@/features/training/TrainingTitleFrame";
 import { equipTrainingTitle, fetchTrainingMyTitles } from "@/features/training/trainingApi";
 import type { TrainingMyTitles } from "@/features/training/trainingTypes";
@@ -391,14 +390,7 @@ export function ProfileScreen({
   return (
     <View style={styles.container}>
       <View style={styles.hero}>
-        <View style={styles.avatar}>
-          {avatar ? (
-            <Image source={{ uri: avatar }} style={styles.avatarImage} resizeMode="cover" />
-          ) : (
-            <Text style={styles.avatarInitials}>{resolveInitials(displayName)}</Text>
-          )}
-        </View>
-        <View style={styles.heroText}>
+        <View style={styles.heroHeading}>
           <TrackingText color={authControlStyles.colors.red} size={10.5}>
             ZHAO · PROFILE
           </TrackingText>
@@ -407,22 +399,33 @@ export function ProfileScreen({
             <Text style={styles.titleAccent}>{copy.titleAccent}</Text>
             {copy.titleSuffix}
           </Text>
-          <Text style={styles.heroName}>{displayName}</Text>
-          {myTitles.equippedTitle ? (
-            <TrainingTitleFrame compact title={myTitles.equippedTitle} language={language} />
-          ) : null}
-          <Pressable
-            disabled={isChangingAvatar}
-            style={styles.avatarButton}
-            onPress={() => void changeAvatar()}
-          >
-            {isChangingAvatar ? (
-              <ZhaoLoadingIndicator variant="button" />
+        </View>
+        <View style={styles.profileSummary}>
+          <View style={styles.avatar}>
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={styles.avatarImage} resizeMode="cover" />
             ) : (
-              <Text style={styles.avatarButtonText}>{copy.avatarAction}</Text>
+              <Text style={styles.avatarInitials}>{resolveInitials(displayName)}</Text>
             )}
-          </Pressable>
-          {avatarMessage ? <Text style={styles.inlineMessage}>{avatarMessage}</Text> : null}
+          </View>
+          <View style={styles.profileSummaryText}>
+            <Text style={styles.heroName}>{displayName}</Text>
+            {myTitles.equippedTitle ? (
+              <TrainingTitleFrame compact title={myTitles.equippedTitle} language={language} />
+            ) : null}
+            <Pressable
+              disabled={isChangingAvatar}
+              style={styles.avatarButton}
+              onPress={() => void changeAvatar()}
+            >
+              {isChangingAvatar ? (
+                <ZhaoLoadingIndicator variant="button" />
+              ) : (
+                <Text style={styles.avatarButtonText}>{copy.avatarAction}</Text>
+              )}
+            </Pressable>
+            {avatarMessage ? <Text style={styles.inlineMessage}>{avatarMessage}</Text> : null}
+          </View>
         </View>
       </View>
 
@@ -442,7 +445,9 @@ export function ProfileScreen({
 
               return (
                 <View key={title.code} style={styles.titleCard}>
-                  <TrainingTitleFrame title={title} language={language} />
+                  <View style={styles.titleFrameSlot}>
+                    <TrainingTitleFrame title={title} language={language} />
+                  </View>
                   <Pressable
                     disabled={isEquipped || savingTitleCode === title.code}
                     style={[
@@ -474,13 +479,18 @@ export function ProfileScreen({
       </View>
 
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleGroup}>
-            <Text style={styles.sectionTitle}>{copy.trainingRecords}</Text>
-            <Text style={styles.sectionHint}>{copy.trainingRecordsHint}</Text>
-          </View>
-        </View>
-        <TrainingHistoryView copy={TRAINING_COPY[language]} language={language} />
+        <CertificationWall
+          language={language}
+          labels={{
+            heading: copy.certificationHeading,
+            hint: copy.certificationHint,
+            empty: copy.certificationEmpty,
+            inProgress: copy.certificationInProgress,
+            level: copy.certificationLevel,
+            loading: copy.certificationLoading,
+            error: copy.certificationError,
+          }}
+        />
       </View>
 
       <View style={styles.section}>
@@ -820,9 +830,10 @@ const styles = StyleSheet.create(
       letterSpacing: 1.1,
     },
     hero: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 16,
+      gap: 14,
+    },
+    heroHeading: {
+      gap: 5,
     },
     heroName: {
       color: authControlStyles.colors.ink60,
@@ -830,9 +841,15 @@ const styles = StyleSheet.create(
       fontSize: 15,
       lineHeight: 21,
     },
-    heroText: {
+    profileSummary: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 14,
+    },
+    profileSummaryText: {
       flex: 1,
-      gap: 6,
+      gap: 8,
+      minWidth: 0,
     },
     input: {
       borderColor: "rgba(193, 22, 22, 0.22)",
@@ -982,14 +999,20 @@ const styles = StyleSheet.create(
       fontWeight: "400",
     },
     titleCard: {
-      alignItems: "flex-start",
+      alignItems: "center",
       borderColor: authControlStyles.colors.ink10,
       borderWidth: 1,
-      gap: 10,
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
       padding: 12,
     },
+    titleFrameSlot: {
+      flex: 1,
+      minWidth: 0,
+    },
     titleList: {
-      gap: 10,
+      gap: 8,
     },
     titleWearButton: {
       alignItems: "center",
@@ -997,6 +1020,7 @@ const styles = StyleSheet.create(
       borderWidth: 1,
       minHeight: 34,
       justifyContent: "center",
+      minWidth: 68,
       paddingHorizontal: 12,
     },
     titleWearButtonActive: {

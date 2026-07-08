@@ -111,16 +111,40 @@ export type TrainingBadge = {
     en: string;
     fr: string;
   };
+  description: {
+    zh: string | null;
+    en: string | null;
+    fr: string | null;
+  };
   track: string;
   rarity: string;
   level: number | null;
   iconType: string;
+  imageFileName: string | null;
+  requiredScore: number;
+  requiredCompletionRate: number;
+  isActive: boolean;
+  sortOrder: number;
+  requirements: TrainingBadgeRequirement[];
   status: "locked" | "in_progress" | "certified" | "failed";
   progress: number;
   maxProgress: number;
   completionRate: number;
   score: number | null;
   earnedAt: string | null;
+};
+
+export type TrainingBadgeRequirement = {
+  materialId: number;
+  title: string;
+  positionId: string;
+  type: string;
+};
+
+export type TrainingMyBadges = {
+  badges: TrainingBadge[];
+  earnedCount: number;
+  totalCount: number;
 };
 
 export type TrainingQuizAttemptResult = {

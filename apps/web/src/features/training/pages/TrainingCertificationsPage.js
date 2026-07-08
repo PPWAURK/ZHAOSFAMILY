@@ -171,6 +171,7 @@ function toBadgeDefinition(badge) {
         ? `完成：${badge.requirements.map((r) => r.title).join("、")}`
         : "管理员尚未配置徽章要求。",
     iconType: badge.iconType,
+    imageFileName: badge.imageFileName ?? undefined,
   };
 }
 

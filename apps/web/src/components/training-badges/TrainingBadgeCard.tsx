@@ -39,6 +39,7 @@ export function TrainingBadgeCard({
         status={employeeBadge.status}
         progress={employeeBadge.completionRate}
         stableId={badge.id}
+        imageFileName={badge.imageFileName}
       />
 
       <span className={styles.cardBody}>

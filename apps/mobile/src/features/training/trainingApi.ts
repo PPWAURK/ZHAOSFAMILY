@@ -5,6 +5,7 @@ import { MOBILE_API_URL } from "@/lib/env";
 import { secureTokenStorage } from "@/lib/tokenStorage";
 import type {
   TrainingMaterialProgress,
+  TrainingMyBadges,
   TrainingMyRecords,
   TrainingMyTitles,
   TrainingPlanMaterial,
@@ -59,6 +60,10 @@ export async function equipTrainingTitle(
   return mobileApiClient.put<TrainingMyTitles>("/training/my-titles/equipped", {
     code,
   });
+}
+
+export async function fetchTrainingMyBadges(): Promise<TrainingMyBadges> {
+  return mobileApiClient.get<TrainingMyBadges>("/training/badges/my");
 }
 
 export async function fetchTrainingMyRecords(): Promise<TrainingMyRecords> {

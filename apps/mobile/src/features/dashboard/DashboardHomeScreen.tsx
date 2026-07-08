@@ -54,11 +54,14 @@ import { ORDER_COPY } from "@/features/orders/orderCopy";
 import { ProfileScreen } from "@/features/profile/ProfileScreen";
 import { RecruitmentModuleScreen } from "@/features/recruitment/RecruitmentModuleScreen";
 import { StoresModuleScreen } from "@/features/stores/StoresModuleScreen";
+import { TRAINING_COPY } from "@/features/training/trainingCopy";
+import { TrainingHistoryView } from "@/features/training/TrainingHistoryView";
 import { TrainingModuleScreen } from "@/features/training/TrainingModuleScreen";
 import { TrainingTitleFrame } from "@/features/training/TrainingTitleFrame";
 import { fetchTrainingMyTitles } from "@/features/training/trainingApi";
 import type { TrainingTitle } from "@/features/training/trainingTypes";
 import { WaitingQueueModuleScreen } from "@/features/waiting-queue/WaitingQueueModuleScreen";
+import { NotificationCenter } from "@/features/notifications/NotificationCenter";
 
 type DashboardHomeScreenProps = {
   language: AuthLanguage;
@@ -194,7 +197,8 @@ function isConnectedDashboardEntry(entryId: string): boolean {
     entryId === "profile" ||
     entryId === "recruitment-requests" ||
     entryId === "stores" ||
-    entryId === "training"
+    entryId === "training" ||
+    entryId === "training-records"
   );
 }
 
@@ -247,7 +251,7 @@ export function DashboardHomeScreen({
   // Keep the mobile trigger on the right while matching the Web drawer styling.
   const [isMoreRendered, setIsMoreRendered] = useState(false);
   const moreDrawerProgress = useRef(new Animated.Value(0)).current;
-  const moreDrawerWidth = Math.min(360, Math.round(screenWidth * 0.70));
+  const moreDrawerWidth = Math.min(360, Math.round(screenWidth * 0.88));
   const moreDrawerTranslateX = moreDrawerProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [moreDrawerWidth, 0],
@@ -548,20 +552,26 @@ export function DashboardHomeScreen({
               </View>
             </View>
 
-            {!isMoreOpen ? (
-              <Pressable
-                accessibilityLabel={moreNavLabel}
-                accessibilityRole="button"
-                style={styles.topMenuButton}
-                onPress={() => setIsMoreOpen(true)}
-              >
-                <Ionicons
-                  color={authControlStyles.colors.red}
-                  name="menu-outline"
-                  size={24}
-                />
-              </Pressable>
-            ) : null}
+            <View style={styles.topActions}>
+              <NotificationCenter
+                language={language}
+                onOpenEntry={(entry) => setActiveEntry(entry)}
+              />
+              {!isMoreOpen ? (
+                <Pressable
+                  accessibilityLabel={moreNavLabel}
+                  accessibilityRole="button"
+                  style={styles.topMenuButton}
+                  onPress={() => setIsMoreOpen(true)}
+                >
+                  <Ionicons
+                    color={authControlStyles.colors.red}
+                    name="menu-outline"
+                    size={24}
+                  />
+                </Pressable>
+              ) : null}
+            </View>
           </View>
 
           {activeEntry === "orders" ? (
@@ -590,6 +600,8 @@ export function DashboardHomeScreen({
             <WaitingQueueModuleScreen language={language} />
           ) : activeEntry === "training" ? (
             <TrainingModuleScreen language={language} />
+          ) : activeEntry === "training-records" ? (
+            <TrainingHistoryView copy={TRAINING_COPY[language]} language={language} />
           ) : (
             <>
               <View style={styles.intro}>
@@ -1041,13 +1053,6 @@ export function DashboardHomeScreen({
                 </View>
 
                 <View style={styles.sheetUserCard}>
-                  <View style={styles.sheetUserKickerRow}>
-                    <View style={styles.sheetUserKickerDot} />
-                    <TrackingText color={authControlStyles.colors.red} size={10}>
-                      {copy.moreKicker}
-                    </TrackingText>
-                  </View>
-
                   <View style={styles.sheetUserBody}>
                     <View style={styles.sheetUserAvatar}>
                       {userCard.avatar ? (
@@ -1071,7 +1076,6 @@ export function DashboardHomeScreen({
                           language={language}
                         />
                       ) : null}
-                      <Text style={styles.sheetUserHint}>{copy.moreTitle}</Text>
                     </View>
                   </View>
 
@@ -1085,6 +1089,16 @@ export function DashboardHomeScreen({
                       <Text style={styles.sheetUserMetaValue}>{userCard.role}</Text>
                     </View>
                   </View>
+                </View>
+
+                <View style={styles.sheetMenuIntro}>
+                  <View style={styles.sheetUserKickerRow}>
+                    <View style={styles.sheetUserKickerDot} />
+                    <TrackingText color={authControlStyles.colors.red} size={10}>
+                      {copy.moreKicker}
+                    </TrackingText>
+                  </View>
+                  <Text style={styles.sheetMenuTitle}>{copy.moreTitle}</Text>
                 </View>
 
                 <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
@@ -1282,7 +1296,7 @@ const styles = StyleSheet.create(scaleStyles({
   },
   moreGroup: {
     gap: 10,
-    marginTop: 26,
+    marginTop: 16,
   },
   moreGroupLabel: {
     fontWeight: "700",
@@ -1704,7 +1718,7 @@ const styles = StyleSheet.create(scaleStyles({
   sheet: {
     backgroundColor: authControlStyles.colors.paper,
     borderLeftColor: authControlStyles.colors.red,
-    borderLeftWidth: 3,
+    borderLeftWidth: 1,
     flex: 1,
     overflow: "hidden",
     ...crossPlatformShadow({
@@ -1772,13 +1786,13 @@ const styles = StyleSheet.create(scaleStyles({
     borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingBottom: 20,
-    paddingHorizontal: 32,
-    paddingTop: 28,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
   sheetList: {
     flex: 1,
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
   },
   sheetModalRoot: {
     ...StyleSheet.absoluteFillObject,
@@ -1793,7 +1807,7 @@ const styles = StyleSheet.create(scaleStyles({
     justifyContent: "center",
     marginTop: "auto",
     minHeight: 54,
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
   },
   sheetLogoutText: {
     color: authControlStyles.colors.red,
@@ -1829,39 +1843,31 @@ const styles = StyleSheet.create(scaleStyles({
     backgroundColor: "rgba(193, 22, 22, 0.06)",
     borderColor: "rgba(193, 22, 22, 0.18)",
     borderWidth: 1,
-    height: 58,
+    height: 64,
     justifyContent: "center",
     overflow: "hidden",
-    width: 58,
+    width: 64,
   },
   sheetUserAvatarImage: {
     height: "100%",
     width: "100%",
   },
   sheetUserBody: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flexDirection: "row",
-    gap: 16,
-    marginBottom: 20,
+    gap: 14,
   },
   sheetUserCard: {
     borderBottomColor: "rgba(193, 22, 22, 0.18)",
     borderBottomWidth: 1,
-    borderLeftColor: authControlStyles.colors.red,
-    borderLeftWidth: 4,
-    paddingBottom: 26,
-    paddingHorizontal: 32,
-    paddingTop: 24,
-  },
-  sheetUserHint: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 12,
-    lineHeight: 18,
+    gap: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
   sheetUserIdentity: {
     flex: 1,
-    gap: 4,
+    gap: 7,
     minWidth: 0,
   },
   sheetUserInitials: {
@@ -1880,11 +1886,24 @@ const styles = StyleSheet.create(scaleStyles({
     alignItems: "center",
     flexDirection: "row",
     gap: 10,
-    marginBottom: 18,
+  },
+  sheetMenuIntro: {
+    gap: 8,
+    paddingBottom: 2,
+    paddingHorizontal: 24,
+    paddingTop: 18,
+  },
+  sheetMenuTitle: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 20,
+    fontWeight: "700",
+    lineHeight: 25,
   },
   sheetUserMeta: {
     borderTopColor: "rgba(193, 22, 22, 0.08)",
     borderTopWidth: 1,
+    flexDirection: "row",
     gap: 10,
     paddingTop: 14,
   },
@@ -1897,25 +1916,22 @@ const styles = StyleSheet.create(scaleStyles({
     textTransform: "uppercase",
   },
   sheetUserMetaRow: {
-    alignItems: "baseline",
-    flexDirection: "row",
-    gap: 14,
-    justifyContent: "space-between",
+    flex: 1,
+    gap: 5,
+    minWidth: 0,
   },
   sheetUserMetaValue: {
     color: authControlStyles.colors.ink,
-    flex: 1,
     fontFamily: "serif",
     fontSize: 14,
     lineHeight: 19,
-    textAlign: "right",
   },
   sheetUserName: {
     color: authControlStyles.colors.ink,
     fontFamily: "serif",
-    fontSize: 22,
+    fontSize: 23,
     fontWeight: "500",
-    lineHeight: 25,
+    lineHeight: 27,
   },
   shell: {
     flex: 1,
@@ -1964,5 +1980,10 @@ const styles = StyleSheet.create(scaleStyles({
     height: 34,
     justifyContent: "center",
     width: 34,
+  },
+  topActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
   },
 }));

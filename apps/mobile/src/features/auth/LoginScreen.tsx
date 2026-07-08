@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -90,6 +90,12 @@ function validateRegisterForm(form: RegisterFormState, copy: AuthCopy): string |
   return null;
 }
 
+const AUTH_LANGUAGES: AuthLanguage[] = ["zh", "en", "fr"];
+
+function toAuthLanguage(value: string | null | undefined): AuthLanguage | null {
+  return AUTH_LANGUAGES.includes(value as AuthLanguage) ? (value as AuthLanguage) : null;
+}
+
 export function LoginScreen() {
   const authStatus = useStore(mobileAuthStore, (state) => state.status);
   const authUser = useStore(mobileAuthStore, (state) => state.user);
@@ -97,6 +103,9 @@ export function LoginScreen() {
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [language, setLanguage] = useState<AuthLanguage>("zh");
+  // Which user id we've already adopted the server language for, so a manual
+  // in-app switch is never overwritten by a later store update for the same user.
+  const syncedLanguageForUserRef = useRef<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [registerForm, setRegisterForm] = useState(initialRegisterForm);
@@ -109,6 +118,25 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // On login, adopt the language saved on the account. Guarded per user id so a
+  // later store refresh (or a manual switch) never snaps the UI back.
+  useEffect(() => {
+    if (authStatus !== "authenticated" || !authUser) {
+      return;
+    }
+
+    const userId = String(authUser.id);
+    if (syncedLanguageForUserRef.current === userId) {
+      return;
+    }
+
+    syncedLanguageForUserRef.current = userId;
+    const preferred = toAuthLanguage(authUser.preferredLanguage);
+    if (preferred) {
+      setLanguage(preferred);
+    }
+  }, [authStatus, authUser]);
 
   const copy = AUTH_COPY[language];
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
@@ -215,6 +243,16 @@ export function LoginScreen() {
     await mobileAuthActions.updateMe(input);
   }
 
+  // Persists the chosen display language to the account so notifications (built
+  // from `preferredLanguage` on the server) follow it. Best-effort: a failed
+  // write only means the badge language lags, never a broken UI.
+  function changeLanguage(nextLanguage: AuthLanguage): void {
+    setLanguage(nextLanguage);
+    if (authStatus === "authenticated") {
+      void mobileAuthActions.updateMe({ language: nextLanguage }).catch(() => undefined);
+    }
+  }
+
   async function submitPasswordChange(input: ChangePasswordRequest): Promise<void> {
     await mobileAuthActions.changePassword(input);
   }
@@ -299,7 +337,7 @@ export function LoginScreen() {
       <DashboardHomeScreen
         language={language}
         user={authUser}
-        onChangeLanguage={setLanguage}
+        onChangeLanguage={changeLanguage}
         onLogout={submitLogout}
         onChangePassword={submitPasswordChange}
         onUpdateProfile={submitProfileUpdate}
@@ -412,70 +450,72 @@ export function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create(scaleStyles({
-  bottom: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  bottomBold: {
-    color: authControlStyles.colors.ink,
-  },
-  bottomLink: {
-    borderBottomColor: authControlStyles.colors.ink,
-    borderBottomWidth: 1,
-    color: authControlStyles.colors.ink,
-    fontFamily: "monospace",
-    fontSize: 11,
-    letterSpacing: 0.7,
-    paddingBottom: 1,
-  },
-  bottomText: {
-    color: authControlStyles.colors.ink40,
-    fontFamily: "monospace",
-    fontSize: 11,
-    letterSpacing: 0.7,
-  },
-  centeredState: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  formSide: {
-    backgroundColor: authControlStyles.colors.paper,
-    flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: 32,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  main: {
-    paddingBottom: 42,
-    paddingTop: 30,
-  },
-  safeArea: {
-    backgroundColor: authControlStyles.colors.paper,
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  selectedStore: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 14,
-    marginTop: 12,
-  },
-  stateText: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 14,
-    marginTop: 14,
-  },
-}));
+const styles = StyleSheet.create(
+  scaleStyles({
+    bottom: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    bottomBold: {
+      color: authControlStyles.colors.ink,
+    },
+    bottomLink: {
+      borderBottomColor: authControlStyles.colors.ink,
+      borderBottomWidth: 1,
+      color: authControlStyles.colors.ink,
+      fontFamily: "monospace",
+      fontSize: 11,
+      letterSpacing: 0.7,
+      paddingBottom: 1,
+    },
+    bottomText: {
+      color: authControlStyles.colors.ink40,
+      fontFamily: "monospace",
+      fontSize: 11,
+      letterSpacing: 0.7,
+    },
+    centeredState: {
+      alignItems: "center",
+      flex: 1,
+      justifyContent: "center",
+    },
+    formSide: {
+      backgroundColor: authControlStyles.colors.paper,
+      flexGrow: 1,
+      justifyContent: "space-between",
+      paddingBottom: 32,
+      paddingHorizontal: 24,
+      paddingTop: 32,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    main: {
+      paddingBottom: 42,
+      paddingTop: 30,
+    },
+    safeArea: {
+      backgroundColor: authControlStyles.colors.paper,
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    selectedStore: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 14,
+      marginTop: 12,
+    },
+    stateText: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 14,
+      marginTop: 14,
+    },
+  }),
+);

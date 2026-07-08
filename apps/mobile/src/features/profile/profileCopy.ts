@@ -10,6 +10,13 @@ export const PROFILE_COPY: Record<
     avatarError: string;
     avatarSaved: string;
     cancel: string;
+    certificationHeading: string;
+    certificationHint: string;
+    certificationEmpty: string;
+    certificationInProgress: string;
+    certificationLevel: string;
+    certificationLoading: string;
+    certificationError: string;
     contactHeading: string;
     contactHint: string;
     edit: string;
@@ -50,12 +57,17 @@ export const PROFILE_COPY: Record<
     titleAccent: string;
     titleSuffix: string;
     updateError: string;
-    trainingRecords: string;
-    trainingRecordsHint: string;
-    trainingRecordsEmpty: string;
   }
-> = {
+  > = {
   zh: {
+    certificationHeading: "认证墙",
+    certificationHint: "已获得 {earned} / {total} 项认证",
+    certificationEmpty: "尚未获得任何认证。",
+    certificationInProgress: "进行中",
+    certificationLevel: "Lv.",
+    certificationLoading: "加载中…",
+    certificationError: "加载失败",
+
     accountHeading: "账号安全",
     accountHint: "修改密码前需要验证当前密码。",
     address: "地址",
@@ -104,11 +116,16 @@ export const PROFILE_COPY: Record<
     titleAccent: "资料",
     titleSuffix: "。",
     updateError: "资料保存失败，请稍后重试。",
-    trainingRecords: "培训记录",
-    trainingRecordsHint: "已完成的培训资料与测验成绩。",
-    trainingRecordsEmpty: "还没有已完成的培训。",
   },
   en: {
+    certificationHeading: "Certifications",
+    certificationHint: "{earned} / {total} certifications earned",
+    certificationEmpty: "No certifications yet.",
+    certificationInProgress: "In progress",
+    certificationLevel: "Lv.",
+    certificationLoading: "Loading…",
+    certificationError: "Failed to load",
+
     accountHeading: "Account security",
     accountHint: "Your current password is required before changing it.",
     address: "Address",
@@ -157,11 +174,16 @@ export const PROFILE_COPY: Record<
     titleAccent: "profile",
     titleSuffix: ".",
     updateError: "Profile could not be saved. Please try again.",
-    trainingRecords: "Training records",
-    trainingRecordsHint: "Completed training materials and quiz scores.",
-    trainingRecordsEmpty: "No completed training yet.",
   },
   fr: {
+    certificationHeading: "Certifications",
+    certificationHint: "{earned} / {total} certifications obtenues",
+    certificationEmpty: "Aucune certification pour le moment.",
+    certificationInProgress: "En cours",
+    certificationLevel: "Nv.",
+    certificationLoading: "Chargement…",
+    certificationError: "Échec du chargement",
+
     accountHeading: "Sécurité du compte",
     accountHint: "Le mot de passe actuel est requis avant modification.",
     address: "Adresse",
@@ -210,8 +232,5 @@ export const PROFILE_COPY: Record<
     titleAccent: "profil",
     titleSuffix: ".",
     updateError: "Le profil n'a pas pu être enregistré. Réessayez plus tard.",
-    trainingRecords: "Historique de formation",
-    trainingRecordsHint: "Supports terminés et scores quiz.",
-    trainingRecordsEmpty: "Aucune formation terminée pour l'instant.",
   },
 };

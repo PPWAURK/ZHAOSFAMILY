@@ -47,6 +47,7 @@ model User {
   dashboardPosts             DashboardPost[]            @relation("DashboardPostAuthor")
   refreshSessions            RefreshSession[]
   pushTokens                 PushToken[]
+  notifications              Notification[]
   createdRecruitmentRequests RecruitmentRequest[]       @relation("RecruitmentRequestCreatedBy")
   handledRecruitmentRequests RecruitmentRequest[]       @relation("RecruitmentRequestHandledBy")
   caseShares                 CaseShare[]                @relation("CaseShareAuthor")
@@ -91,6 +92,22 @@ model PushToken {
 
   @@index([userId])
   @@map("push_tokens")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  type      String    @db.VarChar(50)
+  title     String    @db.VarChar(200)
+  body      String    @db.Text
+  data      Json?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 model Role {
@@ -514,6 +531,7 @@ model TrainingBadge {
   rarity                 String                     @default("common") @db.VarChar(20)
   level                  Int?
   iconType               String                     @default("default") @map("icon_type") @db.VarChar(40)
+  imageFileName          String?                    @map("image_file_name") @db.VarChar(100)
   requiredScore          Int                        @default(80) @map("required_score")
   requiredCompletionRate Int                        @default(100) @map("required_completion_rate")
   isActive               Boolean                    @default(true) @map("is_active")

@@ -170,7 +170,10 @@ export default function TrainingCoursePage({ courseId }) {
                   {course.prog}% · {t.shared.courseStatus[course.status]}
                 </p>
 
-                <Link href="/dashboard/training" className={styles.onboardingAction}>
+                <Link
+                  href="/dashboard/training/materials"
+                  className={styles.onboardingAction}
+                >
                   <span>{actionLabel}</span>
                   <span className={styles.onboardingArrow}>→</span>
                 </Link>

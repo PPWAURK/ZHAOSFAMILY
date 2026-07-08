@@ -15,6 +15,7 @@ import {
   DASHBOARD_MENU_LABELS,
 } from "@/features/dashboard/constants/dashboard-copy";
 import { PROFILE_COPY } from "@/features/profile/constants/profile-copy";
+import CertificationWall from "@/features/profile/components/CertificationWall";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/profile/profile-page.module.css";
 
@@ -447,6 +448,20 @@ export default function ProfilePage() {
             </p>
           ) : null}
         </section>
+
+        {/* Certifications / Badges */}
+        <CertificationWall
+          lang={lang}
+          labels={{
+            heading: t.certificationHeading,
+            hint: t.certificationHint,
+            empty: t.certificationEmpty,
+            inProgress: t.certificationInProgress,
+            level: t.certificationLevel,
+            loading: t.certificationLoading,
+            error: t.certificationError,
+          }}
+        />
 
         {/* Identité */}
         <section className={styles.section}>

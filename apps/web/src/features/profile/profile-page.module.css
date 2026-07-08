@@ -381,6 +381,92 @@
   background: var(--paper);
 }
 
+/* Certification wall */
+.certGrid {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+}
+
+.certGrid::-webkit-scrollbar {
+  height: 4px;
+}
+
+.certGrid::-webkit-scrollbar-track {
+  background: var(--red-soft);
+}
+
+.certGrid::-webkit-scrollbar-thumb {
+  background: var(--red);
+}
+
+.certCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  align-items: center;
+  text-align: center;
+  flex: 0 0 auto;
+  width: 170px;
+  scroll-snap-align: start;
+}
+
+.certImage {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  display: block;
+}
+
+.certInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.certName {
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.certMeta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-40);
+  text-transform: uppercase;
+}
+
+.certSubheading {
+  margin: 6px 0 0;
+  font-family: var(--zh-serif);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink-60);
+}
+
+.certProgressTrack {
+  width: 100%;
+  height: 4px;
+  background: var(--red-soft-2);
+  overflow: hidden;
+  margin: 4px 0 2px;
+}
+
+.certProgressFill {
+  height: 100%;
+  background: var(--red);
+  transition: width 0.3s ease;
+}
 .heroMeta span + span::before {
   content: "· ";
   color: var(--ink-40);

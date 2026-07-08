@@ -1,13 +1,14 @@
 import { ProductsService } from './products.service';
 
 describe('ProductsService', () => {
-  it('returns the products for one supplier ordered by id', async () => {
+  it('returns only on-shelf products for one supplier ordered by id', async () => {
     const prismaService = {
       product: {
         findMany: jest.fn().mockResolvedValue([
           {
             id: BigInt(4),
             supplierId: 1,
+            isActive: true,
             reference: 'VEG-004',
             category: 'frais',
             nameCn: '白萝卜',
@@ -33,10 +34,12 @@ describe('ProductsService', () => {
     expect(prismaService.product.findMany).toHaveBeenCalledWith({
       where: {
         supplierId: 1,
+        isActive: true,
       },
       select: {
         id: true,
         supplierId: true,
+        isActive: true,
         reference: true,
         category: true,
         nameCn: true,
@@ -60,6 +63,7 @@ describe('ProductsService', () => {
       {
         id: '4',
         supplierId: 1,
+        isActive: true,
         reference: 'VEG-004',
         category: 'frais',
         nameCn: '白萝卜',
@@ -76,5 +80,18 @@ describe('ProductsService', () => {
         unitPriceHt3: null,
       },
     ]);
+  });
+
+  it('includes off-shelf products when includeInactive is set', async () => {
+    const prismaService = {
+      product: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const productsService = new ProductsService(prismaService as never);
+
+    await productsService.listProductsBySupplier(1, true);
+
+    expect(prismaService.product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { supplierId: 1 } }),
+    );
   });
 });

@@ -20,6 +20,25 @@ export type NotificationPayload = {
   data?: Record<string, unknown>;
 };
 
+/** View shape returned by the notification-center endpoints. */
+export type NotificationItem = {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type NotificationListResult = {
+  items: NotificationItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  unreadCount: number;
+};
+
 /** Expo accepts at most 100 messages per push request. */
 export const EXPO_PUSH_CHUNK_SIZE = 100;
 

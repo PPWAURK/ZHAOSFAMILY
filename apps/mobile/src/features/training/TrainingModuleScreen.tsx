@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Directory, File } from "expo-file-system";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  type GestureResponderEvent,
+  View,
+} from "react-native";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
@@ -8,6 +14,9 @@ import {
   fetchTrainingMyPlan,
   updateTrainingMaterialProgress,
 } from "@/features/training/trainingApi";
+import {
+  getTrainingMapNodePrimaryAction,
+} from "@/features/training/trainingMapActions";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { buildTrainingMapData } from "@/features/training/trainingMapState";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
@@ -443,6 +452,9 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         >
           {mapData.positionGates.map((gate) => {
             const isExpanded = expandedPositions[gate.positionId] ?? false;
+            const positionLabel =
+              copy.positionLabels[gate.positionId] || gate.positionLabel;
+
             return (
               <View key={gate.positionId}>
                 <Pressable
@@ -452,7 +464,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
                   ]}
                   onPress={() => togglePosition(gate.positionId)}
                 >
-                  <Text style={trainingStyles.mapPositionGateTitle}>{gate.positionLabel}</Text>
+                  <Text style={trainingStyles.mapPositionGateTitle}>{positionLabel}</Text>
                   <Text style={trainingStyles.mapPositionGateProgress}>
                     {gate.completedCount}/{gate.totalCount}
                   </Text>
@@ -623,6 +635,29 @@ function MapNodeCard({
   const checkpointLabel = isDone ? "✓" : String(index + 1).padStart(2, "0");
   const typeLabel = getMaterialTypeLabel(material, c);
   const description = material.description || material.originalName;
+  const primaryAction = getTrainingMapNodePrimaryAction(node);
+  const primaryActionLabel =
+    primaryAction === "quiz"
+      ? node.isQuizPassed
+        ? c.reviewQuiz
+        : c.mapNodeQuiz
+      : c.mapNodeStudy;
+  const handlePrimaryPress = () => {
+    if (primaryAction === "quiz") {
+      onQuiz(material);
+      return;
+    }
+
+    onStudy(material);
+  };
+  const handlePrimaryButtonPress = (event: GestureResponderEvent) => {
+    event.stopPropagation();
+    handlePrimaryPress();
+  };
+  const handleStudyButtonPress = (event: GestureResponderEvent) => {
+    event.stopPropagation();
+    onStudy(material);
+  };
 
   return (
     <View style={[trainingStyles.mapNodeRow, isRight && trainingStyles.mapNodeRowRight]}>
@@ -640,7 +675,10 @@ function MapNodeCard({
           </Text>
         </View>
 
-        <View style={[trainingStyles.mapNodePanel, isDone && trainingStyles.mapNodePanelCompleted]}>
+        <Pressable
+          style={[trainingStyles.mapNodePanel, isDone && trainingStyles.mapNodePanelCompleted]}
+          onPress={handlePrimaryPress}
+        >
           <View style={trainingStyles.mapNodeTitleRow}>
             <View style={trainingStyles.mapNodeTitleGroup}>
               <Text style={trainingStyles.mapNodeTitle}>{material.title}</Text>
@@ -667,19 +705,22 @@ function MapNodeCard({
           </View>
 
           <View style={trainingStyles.mapNodeActionRow}>
-            <Pressable style={trainingStyles.mapNodeActionButton} onPress={() => onStudy(material)}>
-              <Text style={trainingStyles.mapNodeActionText}>{c.mapNodeStudy}</Text>
+            <Pressable
+              style={trainingStyles.mapNodeActionButton}
+              onPress={handlePrimaryButtonPress}
+            >
+              <Text style={trainingStyles.mapNodeActionText}>{primaryActionLabel}</Text>
             </Pressable>
-            {node.hasQuiz && !node.isQuizPassed ? (
+            {primaryAction === "quiz" ? (
               <Pressable
                 style={trainingStyles.mapNodeActionButton}
-                onPress={() => onQuiz(material)}
+                onPress={handleStudyButtonPress}
               >
-                <Text style={trainingStyles.mapNodeActionText}>{c.mapNodeQuiz}</Text>
+                <Text style={trainingStyles.mapNodeActionText}>{c.mapNodeStudy}</Text>
               </Pressable>
             ) : null}
           </View>
-        </View>
+        </Pressable>
       </View>
     </View>
   );

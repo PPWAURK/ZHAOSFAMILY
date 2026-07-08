@@ -297,6 +297,7 @@ describe('TrainingQuizService.submitAttempt', () => {
       passed: true,
       materialCompleted: true,
       newBadges: [{ code: 'general_onboarding_certification' }],
+      newTitles: [],
     });
     type CreateAttempt = (input: {
       data: {

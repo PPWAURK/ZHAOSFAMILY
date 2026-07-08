@@ -12,10 +12,7 @@ function toInputValue(product) {
     nameCn: product.nameCn || "",
     designationFr: product.designationFr || "",
     unit: product.unit || "",
-    price:
-      product.price === null || product.price === undefined
-        ? ""
-        : String(product.price),
+    price: product.price === null || product.price === undefined ? "" : String(product.price),
     specification: product.specification || "",
     image: product.image || "",
   };
@@ -29,6 +26,7 @@ export default function ProductEditRow({
   onStartEdit,
   onCancelEdit,
   onSave,
+  onToggleActive,
   onRequestDelete,
 }) {
   const [draft, setDraft] = useState(() => toInputValue(product));
@@ -272,10 +270,8 @@ export default function ProductEditRow({
   }
 
   return (
-    <tr>
-      <td style={{ fontFamily: "var(--mono)", fontSize: 12 }}>
-        {product.reference || "—"}
-      </td>
+    <tr style={product.isActive === false ? { opacity: 0.55 } : undefined}>
+      <td style={{ fontFamily: "var(--mono)", fontSize: 12 }}>{product.reference || "—"}</td>
       <td>{product.category || "—"}</td>
       <td>
         <div className={styles.nameCell}>
@@ -288,6 +284,9 @@ export default function ProductEditRow({
             />
           ) : null}
           <span>{product.nameCn || "—"}</span>
+          {product.isActive === false ? (
+            <span className={styles.inactiveBadge}>{copy.inactiveBadge}</span>
+          ) : null}
         </div>
       </td>
       <td>{product.designationFr || "—"}</td>
@@ -304,9 +303,7 @@ export default function ProductEditRow({
       </td>
       <td>{product.specification || "—"}</td>
       <td>
-        <span className={styles.productImageStatus}>
-          {product.image ? copy.imagePresent : "—"}
-        </span>
+        <span className={styles.productImageStatus}>{product.image ? copy.imagePresent : "—"}</span>
       </td>
       <td>
         <div className={styles.rowActions}>
@@ -316,6 +313,13 @@ export default function ProductEditRow({
             onClick={onStartEdit}
           >
             {copy.edit}
+          </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
+            onClick={onToggleActive}
+          >
+            {product.isActive === false ? copy.activate : copy.deactivate}
           </button>
           <button
             type="button"

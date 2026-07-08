@@ -83,5 +83,10 @@ export {
 export function buildMediaFileUrl(objectKey: string): string {
   const url = `${API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
   const token = getAccessToken() ?? readStoredToken(ACCESS_TOKEN_STORAGE_KEY);
+
   return token ? `${url}&token=${encodeURIComponent(token)}` : url;
+}
+
+export function buildBadgeImageUrl(fileName: string): string {
+  return `${API_URL}/training/badges/svg/${encodeURIComponent(fileName)}`;
 }

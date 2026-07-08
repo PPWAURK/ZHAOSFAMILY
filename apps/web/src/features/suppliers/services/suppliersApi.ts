@@ -1,8 +1,4 @@
-import {
-  ApiClientError,
-  apiClient,
-  buildMediaFileUrl,
-} from "@/shared/api/api-client";
+import { ApiClientError, apiClient, buildMediaFileUrl } from "@/shared/api/api-client";
 import { isDefined } from "@/shared/utils/typeGuards";
 import { createProductsApi, createSuppliersApi } from "@zhao/api";
 import type {
@@ -44,15 +40,14 @@ function normalizeProduct(raw: ProductApiRecord | null): SupplierProduct | null 
   return {
     id: String(raw.id),
     supplierId: Number(raw.supplierId),
+    isActive: raw.isActive !== false,
     reference: raw.reference ?? "",
     category: raw.category ?? "",
     nameCn: raw.nameCn ?? "",
     designationFr: raw.designationFr ?? "",
     unit: raw.unit ?? "",
     price:
-      typeof raw.unitPriceHt === "number" && Number.isFinite(raw.unitPriceHt)
-        ? raw.unitPriceHt
-        : 0,
+      typeof raw.unitPriceHt === "number" && Number.isFinite(raw.unitPriceHt) ? raw.unitPriceHt : 0,
     image: raw.image ?? "",
     specification: raw.specification ?? "",
   };
@@ -75,9 +70,7 @@ export async function fetchSupplier(id: string): Promise<SupplierSummary | null>
   }
 }
 
-export async function createSupplierApi(
-  input: SupplierInput,
-): Promise<SupplierSummary | null> {
+export async function createSupplierApi(input: SupplierInput): Promise<SupplierSummary | null> {
   const body: CreateSupplierRequest = {
     name: input.name,
     includeAllProductsInOrder: !!input.includeAllProductsInOrder,
@@ -107,10 +100,12 @@ export async function deleteSupplierApi(id: string): Promise<void> {
   await suppliersApi.remove(id);
 }
 
-export async function fetchProductsBySupplier(
-  supplierId: string,
-): Promise<SupplierProduct[]> {
-  const data = await productsApi.list({ supplierId: Number(supplierId) });
+export async function fetchProductsBySupplier(supplierId: string): Promise<SupplierProduct[]> {
+  // Management view shows off-shelf products too, so they can be re-listed.
+  const data = await productsApi.list({
+    supplierId: Number(supplierId),
+    includeInactive: true,
+  });
   return Array.isArray(data) ? data.map(normalizeProduct).filter(isDefined) : [];
 }
 
@@ -124,11 +119,9 @@ export async function createProductApi(
     nameCn: input.nameCn || "",
   };
   if (input.reference !== undefined) body.reference = input.reference || "";
-  if (input.designationFr !== undefined)
-    body.designationFr = input.designationFr || "";
+  if (input.designationFr !== undefined) body.designationFr = input.designationFr || "";
   if (input.unit !== undefined) body.unit = input.unit || "";
-  if (input.specification !== undefined)
-    body.specification = input.specification || "";
+  if (input.specification !== undefined) body.specification = input.specification || "";
   if (input.image !== undefined) body.image = input.image || "";
   if (input.price !== undefined && Number.isFinite(Number(input.price))) {
     body.unitPriceHt = Number(input.price);
@@ -142,14 +135,13 @@ export async function updateProductApi(
   input: SupplierProductInput,
 ): Promise<SupplierProduct | null> {
   const body: UpdateProductRequest = {};
+  if (input.isActive !== undefined) body.isActive = input.isActive;
   if (input.reference !== undefined) body.reference = input.reference || "";
   if (input.category !== undefined) body.category = input.category || "";
   if (input.nameCn !== undefined) body.nameCn = input.nameCn || "";
-  if (input.designationFr !== undefined)
-    body.designationFr = input.designationFr || "";
+  if (input.designationFr !== undefined) body.designationFr = input.designationFr || "";
   if (input.unit !== undefined) body.unit = input.unit || "";
-  if (input.specification !== undefined)
-    body.specification = input.specification || "";
+  if (input.specification !== undefined) body.specification = input.specification || "";
   if (input.image !== undefined) body.image = input.image || "";
   if (input.price !== undefined && Number.isFinite(Number(input.price))) {
     body.unitPriceHt = Number(input.price);
@@ -167,10 +159,7 @@ export async function uploadProductImage(file: File): Promise<string> {
   formData.append("file", file);
   formData.append("folder", "suppliers/products");
 
-  const uploaded = await apiClient.upload<ProductImageUploadResult>(
-    "/media/upload",
-    formData,
-  );
+  const uploaded = await apiClient.upload<ProductImageUploadResult>("/media/upload", formData);
 
   if (!uploaded.objectKey) {
     throw new Error("PRODUCT_IMAGE_UPLOAD_MISSING_OBJECT_KEY");

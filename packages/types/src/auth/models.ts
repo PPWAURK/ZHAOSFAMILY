@@ -1,12 +1,6 @@
 import type { EntityId } from "../common";
 
-export type UserRole =
-  | "admin"
-  | "owner"
-  | "manager"
-  | "staff"
-  | "viewer"
-  | (string & {});
+export type UserRole = "admin" | "owner" | "manager" | "staff" | "viewer" | (string & {});
 
 export type AuthStoreRef = {
   id?: EntityId;
@@ -32,6 +26,7 @@ export type AuthUser = {
   establishment?: string | null;
   avatar?: string | null;
   avatarUrl?: string | null;
+  preferredLanguage?: "zh" | "en" | "fr" | (string & {}) | null;
   permissions?: string[];
   store?: AuthStoreRef | null;
 };

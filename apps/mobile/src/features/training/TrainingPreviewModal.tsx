@@ -3,7 +3,6 @@ import { Image, Modal, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
-import { useConfirm } from "@/components/confirm/ConfirmProvider";
 import type { TRAINING_COPY } from "@/features/training/trainingCopy";
 import {
   assessViewerStats,
@@ -58,12 +57,12 @@ export function TrainingPreviewModal({
   onStartQuiz,
   syncProgress,
 }: TrainingPreviewModalProps) {
-  const confirm = useConfirm();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<ViewerStats | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
   const [hasSyncFailed, setHasSyncFailed] = useState(false);
+  const [isConfirmingComplete, setIsConfirmingComplete] = useState(false);
   const lastSyncedPctRef = useRef(0);
   const latestPctRef = useRef(0);
 
@@ -85,6 +84,7 @@ export function TrainingPreviewModal({
     setIsCompleted(material?.progress.status === "completed");
     setIsMarking(false);
     setHasSyncFailed(false);
+    setIsConfirmingComplete(false);
     lastSyncedPctRef.current = material?.progress.progressPct ?? 0;
     latestPctRef.current = material?.progress.progressPct ?? 0;
   }, [materialId]);
@@ -158,16 +158,17 @@ export function TrainingPreviewModal({
     }
   }, [stats]);
 
-  async function handleMarkCompletePress(): Promise<void> {
-    const confirmed = await confirm({
-      title: copy.markCompleteConfirmTitle,
-      message: copy.markCompleteConfirmMessage,
-      confirmLabel: copy.markCompleteConfirmOk,
-      cancelLabel: copy.markCompleteConfirmCancel,
-    });
-    if (confirmed) {
-      void completeMaterial();
-    }
+  function handleMarkCompletePress(): void {
+    setIsConfirmingComplete(true);
+  }
+
+  function handleCancelComplete(): void {
+    setIsConfirmingComplete(false);
+  }
+
+  function handleConfirmComplete(): void {
+    setIsConfirmingComplete(false);
+    void completeMaterial();
   }
 
   function handleClose(): void {
@@ -234,7 +235,7 @@ export function TrainingPreviewModal({
               ? styles.markCompleteButtonDisabled
               : null,
           ]}
-          onPress={() => void handleMarkCompletePress()}
+          onPress={handleMarkCompletePress}
         >
           <Text style={styles.markCompleteButtonText}>
             {copy.markComplete}
@@ -244,6 +245,45 @@ export function TrainingPreviewModal({
           <Text style={styles.syncFailedText}>{copy.progressSyncFailed}</Text>
         ) : null}
       </View>
+    );
+  }
+
+  function renderCompleteConfirm(): React.ReactNode {
+    if (!isConfirmingComplete) return null;
+
+    return (
+      <Pressable
+        style={styles.viewerConfirmBackdrop}
+        onPress={handleCancelComplete}
+      >
+        <Pressable style={styles.viewerConfirmCard} onPress={() => {}}>
+          <Text style={styles.viewerConfirmTitle}>
+            {copy.markCompleteConfirmTitle}
+          </Text>
+          <Text style={styles.viewerConfirmMessage}>
+            {copy.markCompleteConfirmMessage}
+          </Text>
+
+          <View style={styles.viewerConfirmActions}>
+            <Pressable
+              style={[styles.viewerConfirmButton, styles.viewerConfirmCancelButton]}
+              onPress={handleCancelComplete}
+            >
+              <Text style={styles.viewerConfirmCancelText}>
+                {copy.markCompleteConfirmCancel}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.viewerConfirmButton, styles.viewerConfirmOkButton]}
+              onPress={handleConfirmComplete}
+            >
+              <Text style={styles.viewerConfirmOkText}>
+                {copy.markCompleteConfirmOk}
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
     );
   }
 
@@ -324,6 +364,7 @@ export function TrainingPreviewModal({
         </View>
 
         {renderFooter()}
+        {renderCompleteConfirm()}
       </SafeAreaView>
     </Modal>
   );

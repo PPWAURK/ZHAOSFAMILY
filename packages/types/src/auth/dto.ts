@@ -68,6 +68,7 @@ export type ResetPasswordDto = {
 export type ResetPasswordRequest = ResetPasswordDto;
 
 export type UpdateMeDto = {
+  language?: "zh" | "en" | "fr";
   phone?: string;
   address?: string;
   profilePhotoDataUrl?: string;

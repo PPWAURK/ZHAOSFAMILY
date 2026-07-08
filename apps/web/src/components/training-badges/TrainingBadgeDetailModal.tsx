@@ -1,11 +1,13 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import type {
   BadgeStatus,
   EmployeeTrainingBadge,
   TrainingBadgeDefinition,
 } from "@/types/trainingBadge";
 import { TrainingBadgeSvg } from "@/components/training-badges/TrainingBadgeSvg";
+import { API_URL, buildBadgeImageUrl, getAccessToken } from "@/shared/api/api-client";
 import styles from "@/components/training-badges/training-badges.module.css";
 
 export interface TrainingBadgeDetailLabels {
@@ -48,6 +50,55 @@ export function TrainingBadgeDetailModal({
   labels,
   onClose,
 }: TrainingBadgeDetailModalProps) {
+  const [svgFiles, setSvgFiles] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || !badge) return;
+
+    setSelectedFile(badge.imageFileName ?? null);
+
+    fetch(`${API_URL}/training/badges/svg-files`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setSvgFiles)
+      .catch(() => {});
+  }, [open, badge]);
+
+  const handleSelect = useCallback(
+    async (fileName: string) => {
+      if (!badge || saving) return;
+
+      setSaving(true);
+      setSelectedFile(fileName);
+
+      try {
+        const token = getAccessToken();
+        const res = await fetch(
+          `${API_URL}/training/badges/${badge.id}/image`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            credentials: "include",
+            body: JSON.stringify({ imageFileName: fileName }),
+          },
+        );
+
+        if (!res.ok) {
+          setSelectedFile(badge.imageFileName ?? null);
+        }
+      } catch {
+        setSelectedFile(badge.imageFileName ?? null);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [badge, saving],
+  );
+
   if (!open || !badge || !employeeBadge) {
     return null;
   }
@@ -70,6 +121,7 @@ export function TrainingBadgeDetailModal({
             progress={employeeBadge.completionRate}
             size="lg"
             stableId={`${badge.id}-detail`}
+            imageFileName={selectedFile ?? badge.imageFileName}
           />
           <div>
             <p className={styles.meta}>{statusLabel}</p>
@@ -80,6 +132,32 @@ export function TrainingBadgeDetailModal({
             ×
           </button>
         </header>
+
+        {svgFiles.length > 0 && (
+          <details className={styles.svgPickerSection}>
+            <summary className={styles.svgPickerSummary}>
+              Change image {selectedFile ? `(${selectedFile})` : ""}
+            </summary>
+            <div className={styles.svgPickerGrid}>
+              {svgFiles.map((file) => {
+                const isSelected = file === selectedFile;
+                return (
+                  <button
+                    key={file}
+                    type="button"
+                    className={`${styles.svgPickerItem} ${isSelected ? styles.svgPickerItemActive : ""}`}
+                    disabled={saving}
+                    onClick={() => handleSelect(file)}
+                    title={file}
+                  >
+                    <img src={buildBadgeImageUrl(file)} alt={file} />
+                    <span>{file}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </details>
+        )}
 
         <div className={styles.modalContent}>
           {unlockHint ? <p className={styles.description}>{unlockHint}</p> : null}

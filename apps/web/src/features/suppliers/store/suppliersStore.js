@@ -131,13 +131,10 @@ export function useSupplierDetail(supplierId) {
     [supplierId],
   );
 
-  const removeProduct = useCallback(
-    async (productId) => {
-      await deleteProductApi(productId);
-      setProducts((prev) => prev.filter((p) => p.id !== String(productId)));
-    },
-    [],
-  );
+  const removeProduct = useCallback(async (productId) => {
+    await deleteProductApi(productId);
+    setProducts((prev) => prev.filter((p) => p.id !== String(productId)));
+  }, []);
 
   return {
     supplier,

@@ -1,9 +1,11 @@
 export type ListProductsQuery = {
   supplierId: number;
+  includeInactive?: boolean;
 };
 
 export type CreateProductRequest = {
   supplierId: number;
+  isActive?: boolean;
   reference?: string;
   category: string;
   nameCn: string;
@@ -15,4 +17,3 @@ export type CreateProductRequest = {
 };
 
 export type UpdateProductRequest = Partial<CreateProductRequest>;
-

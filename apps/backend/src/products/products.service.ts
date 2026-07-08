@@ -6,6 +6,7 @@ import type { UpdateProductDto } from './dto/update-product.dto';
 export type ProductListItem = {
   id: string;
   supplierId: number;
+  isActive: boolean;
   reference: string | null;
   category: string;
   nameCn: string;
@@ -95,6 +96,7 @@ function containsCjk(value: string): boolean {
 const PRODUCT_SELECT = {
   id: true,
   supplierId: true,
+  isActive: true,
   reference: true,
   category: true,
   nameCn: true,
@@ -114,6 +116,7 @@ const PRODUCT_SELECT = {
 type PrismaProductRow = {
   id: bigint;
   supplierId: number;
+  isActive: boolean;
   reference: string | null;
   category: string;
   nameCn: string;
@@ -134,6 +137,7 @@ function toProductListItem(product: PrismaProductRow): ProductListItem {
   return {
     id: product.id.toString(),
     supplierId: product.supplierId,
+    isActive: product.isActive,
     reference: fixMojibake(product.reference),
     category: fixMojibake(product.category),
     nameCn: fixMojibake(product.nameCn),
@@ -163,9 +167,12 @@ function parseProductId(id: string): bigint {
 export class ProductsService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async listProductsBySupplier(supplierId: number): Promise<ProductListItem[]> {
+  async listProductsBySupplier(
+    supplierId: number,
+    includeInactive = false,
+  ): Promise<ProductListItem[]> {
     const products = await this.prismaService.product.findMany({
-      where: { supplierId },
+      where: { supplierId, ...(includeInactive ? {} : { isActive: true }) },
       select: PRODUCT_SELECT,
       orderBy: { id: 'asc' },
     });
@@ -239,6 +246,7 @@ export class ProductsService {
         ...(dto.specification !== undefined
           ? { specification: dto.specification || null }
           : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
       select: PRODUCT_SELECT,
     });

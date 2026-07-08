@@ -497,3 +497,61 @@
     display: grid;
   }
 }
+
+.svgPickerSection {
+  margin: 14px 0 0;
+}
+
+.svgPickerSummary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 0;
+  user-select: none;
+}
+
+.svgPickerGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  margin-top: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.svgPickerItem {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 6px 4px;
+  transition: border-color 0.15s;
+}
+
+.svgPickerItem:hover {
+  border-color: #bd2828;
+}
+
+.svgPickerItemActive {
+  border-color: #bd2828;
+  box-shadow: 0 0 0 1px #bd2828;
+}
+
+.svgPickerItem img {
+  height: 36px;
+  width: 36px;
+}
+
+.svgPickerItem span {
+  color: #6b6b6b;
+  font-size: 9px;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

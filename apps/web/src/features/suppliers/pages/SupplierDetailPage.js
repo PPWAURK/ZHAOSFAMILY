@@ -20,13 +20,16 @@ const NEW_PRODUCT_ID = "__new__";
 const ALL_CATEGORIES = "__all__";
 
 function normalizeSearchText(value) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function emptyProduct(supplierId) {
   return {
     id: NEW_PRODUCT_ID,
     supplierId,
+    isActive: true,
     reference: "",
     category: "",
     nameCn: "",
@@ -135,6 +138,15 @@ export default function SupplierDetailPage({ supplierId }) {
     }
   }
 
+  async function toggleProductActive(product) {
+    setPageError("");
+    try {
+      await updateProduct(product.id, { isActive: !product.isActive });
+    } catch (err) {
+      setPageError(err?.message || t.saveError);
+    }
+  }
+
   async function confirmDeleteProduct() {
     if (!pendingDelete) return;
     setDeleting(true);
@@ -237,9 +249,7 @@ export default function SupplierDetailPage({ supplierId }) {
 
             {supplier.orderNotice ? (
               <div className={styles.orderNotice}>
-                <span className={styles.orderNoticeLabel}>
-                  {t.fieldOrderNotice}
-                </span>
+                <span className={styles.orderNoticeLabel}>{t.fieldOrderNotice}</span>
                 {supplier.orderNotice}
               </div>
             ) : null}
@@ -254,9 +264,7 @@ export default function SupplierDetailPage({ supplierId }) {
             <div className={styles.section}>
               <div className={styles.sectionHeader}>
                 <div className={styles.sectionHeadingBlock}>
-                  <h2 className={styles.sectionHeading}>
-                    {t.detailInfoHeading}
-                  </h2>
+                  <h2 className={styles.sectionHeading}>{t.detailInfoHeading}</h2>
                   <p className={styles.sectionHint}>{t.detailInfoHint}</p>
                 </div>
                 {!editingInfo ? (
@@ -290,11 +298,7 @@ export default function SupplierDetailPage({ supplierId }) {
                   </div>
                   <div className={styles.cardMetaRow}>
                     <dt>{t.fieldIncludeAll}</dt>
-                    <dd>
-                      {supplier.includeAllProductsInOrder
-                        ? t.truePill
-                        : t.falsePill}
-                    </dd>
+                    <dd>{supplier.includeAllProductsInOrder ? t.truePill : t.falsePill}</dd>
                   </div>
                 </dl>
               )}
@@ -384,13 +388,10 @@ export default function SupplierDetailPage({ supplierId }) {
                       />
                     ) : null}
 
-                    {filteredProducts.length === 0 &&
-                    editingProductId !== NEW_PRODUCT_ID ? (
+                    {filteredProducts.length === 0 && editingProductId !== NEW_PRODUCT_ID ? (
                       <tr>
                         <td colSpan={9} className={styles.rowEmpty}>
-                          {products.length === 0
-                            ? t.noProducts
-                            : t.noMatchedProducts}
+                          {products.length === 0 ? t.noProducts : t.noMatchedProducts}
                         </td>
                       </tr>
                     ) : null}
@@ -405,6 +406,7 @@ export default function SupplierDetailPage({ supplierId }) {
                         onStartEdit={() => setEditingProductId(product.id)}
                         onCancelEdit={cancelEdit}
                         onSave={saveProduct}
+                        onToggleActive={() => toggleProductActive(product)}
                         onRequestDelete={() => setPendingDelete(product)}
                       />
                     ))}

@@ -142,6 +142,15 @@ export default function TrainingSpacePage() {
       {({ t, styles }) => {
         const requiredCourses = filterCourses(materialCourses.required, filter);
         const optionalCourses = filterCourses(materialCourses.optional, filter);
+        const continueCourse =
+          materialCourses.required.find(
+            (course) => course.status !== "completed",
+          ) ??
+          materialCourses.required[0] ??
+          null;
+        const continueHref = continueCourse
+          ? `/dashboard/training/materials/player?id=${continueCourse.materialId}`
+          : "/dashboard/training/materials";
 
         return (
           <>
@@ -177,10 +186,10 @@ export default function TrainingSpacePage() {
                 <h2 className={styles.onboardingTitle}>{t.page.onboardingTitle}</h2>
                 <p className={styles.onboardingDetail}>{t.page.onboardingDesc}</p>
               </div>
-              <button type="button" className={styles.onboardingAction}>
+              <Link href={continueHref} className={styles.onboardingAction}>
                 <span>{t.page.onboardingAction}</span>
                 <span className={styles.onboardingArrow}>→</span>
-              </button>
+              </Link>
             </section>
 
             {planError ? (

@@ -509,6 +509,9 @@ export class AuthService {
     const user = await this.prismaService.user.update({
       where: { id: payload.sub },
       data: {
+        ...(dto.language !== undefined
+          ? { preferredLanguage: dto.language }
+          : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}),
         ...(dto.address !== undefined
           ? { address: dto.address.trim() || null }

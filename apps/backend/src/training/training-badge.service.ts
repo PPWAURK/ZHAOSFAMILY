@@ -36,6 +36,7 @@ type BadgeRow = {
   rarity: string;
   level: number | null;
   iconType: string;
+  imageFileName: string | null;
   requiredScore: number;
   requiredCompletionRate: number;
   isActive: boolean;
@@ -73,6 +74,7 @@ function toBadgeItem(row: BadgeRow): TrainingBadgeItem {
     rarity: row.rarity,
     level: row.level,
     iconType: row.iconType,
+    imageFileName: row.imageFileName,
     requiredScore: row.requiredScore,
     requiredCompletionRate: row.requiredCompletionRate,
     isActive: row.isActive,
@@ -191,6 +193,27 @@ export class TrainingBadgeService {
           })),
         });
       }
+    });
+
+    return this.requireBadge(badgeCode);
+  }
+
+  async updateBadgeImage(
+    badgeCode: string,
+    imageFileName: string | null,
+  ): Promise<TrainingBadgeItem> {
+    const badge = await this.prismaService.trainingBadge.findUnique({
+      where: { code: badgeCode },
+      select: { code: true },
+    });
+
+    if (!badge) {
+      throw new NotFoundException('TRAINING_BADGE_NOT_FOUND');
+    }
+
+    await this.prismaService.trainingBadge.update({
+      where: { code: badgeCode },
+      data: { imageFileName },
     });
 
     return this.requireBadge(badgeCode);

@@ -29,12 +29,13 @@ async function bootstrap(): Promise<void> {
 
   app.use(
     helmet({
+      crossOriginResourcePolicy: false,
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'blob:'],
+          imgSrc: ["'self'", 'data:', 'blob:', ...corsOrigins],
           frameAncestors: corsOrigins,
         },
       },

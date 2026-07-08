@@ -19,6 +19,14 @@ export const PROFILE_COPY = {
     fieldStore: "门店",
     noValue: "未填写",
 
+    certificationHeading: "认证墙",
+    certificationHint: "已获得 {earned} / {total} 项认证",
+    certificationEmpty: "尚未获得任何认证。完成培训课程即可解锁。",
+    certificationInProgress: "进行中",
+    certificationLevel: "Lv.",
+    certificationLoading: "正在加载认证…",
+    certificationError: "加载失败，请稍后重试。",
+
     contactHeading: "联系方式",
     contactHint: "用于紧急联系与运营通知。",
     fieldPhone: "电话",
@@ -83,6 +91,14 @@ export const PROFILE_COPY = {
     fieldRole: "Role",
     fieldStore: "Store",
     noValue: "Not set",
+
+    certificationHeading: "Certifications",
+    certificationHint: "{earned} / {total} certifications earned",
+    certificationEmpty: "No certifications yet. Complete training courses to unlock them.",
+    certificationInProgress: "In progress",
+    certificationLevel: "Lv.",
+    certificationLoading: "Loading certifications…",
+    certificationError: "Failed to load, please try again later.",
 
     contactHeading: "Contact",
     contactHint: "Used for emergencies and operational notices.",
@@ -149,6 +165,14 @@ export const PROFILE_COPY = {
     fieldRole: "Poste",
     fieldStore: "Boutique",
     noValue: "Non renseigné",
+
+    certificationHeading: "Certifications",
+    certificationHint: "{earned} / {total} certifications obtenues",
+    certificationEmpty: "Aucune certification pour le moment. Suivez des formations pour en débloquer.",
+    certificationInProgress: "En cours",
+    certificationLevel: "Nv.",
+    certificationLoading: "Chargement des certifications…",
+    certificationError: "Échec du chargement, réessayez plus tard.",
 
     contactHeading: "Coordonnées",
     contactHint: "Utilisées en cas d'urgence et pour les notifications d'exploitation.",

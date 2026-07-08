@@ -19,22 +19,29 @@ const TYPE_TO_ENTRY: Record<string, NotificationEntry> = {
   "case-share": "case-shares",
 };
 
+/** Resolves the dashboard entry a notification `type` deep-links to, if any. */
+export function resolveNotificationEntry(
+  type: string | undefined | null,
+): NotificationEntry | null {
+  if (typeof type !== "string") {
+    return null;
+  }
+
+  return TYPE_TO_ENTRY[type] ?? null;
+}
+
 /**
  * Routes the user to the relevant module when they open the app by tapping a
  * push notification. Uses `useLastNotificationResponse` so it also handles taps
  * that launched the app from a killed state. Fires once per distinct tap.
  */
-export function useNotificationNavigation(
-  onNavigate: (entry: NotificationEntry) => void,
-): void {
+export function useNotificationNavigation(onNavigate: (entry: NotificationEntry) => void): void {
   const response = Notifications.useLastNotificationResponse();
   const handlerRef = useRef(onNavigate);
   handlerRef.current = onNavigate;
 
   useEffect(() => {
-    const data = response?.notification.request.content.data as
-      | { type?: unknown }
-      | undefined;
+    const data = response?.notification.request.content.data as { type?: unknown } | undefined;
     const type = data?.type;
 
     if (typeof type !== "string") {
