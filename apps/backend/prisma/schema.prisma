@@ -510,10 +510,10 @@ model TrainingBadge {
   descriptionZh          String?                    @map("description_zh") @db.VarChar(500)
   descriptionEn          String?                    @map("description_en") @db.VarChar(500)
   descriptionFr          String?                    @map("description_fr") @db.VarChar(500)
-  track                  String                     @db.VarChar(40)
-  rarity                 String                     @db.VarChar(20)
+  track                  String                     @default("general") @db.VarChar(40)
+  rarity                 String                     @default("common") @db.VarChar(20)
   level                  Int?
-  iconType               String                     @map("icon_type") @db.VarChar(40)
+  iconType               String                     @default("default") @map("icon_type") @db.VarChar(40)
   requiredScore          Int                        @default(80) @map("required_score")
   requiredCompletionRate Int                        @default(100) @map("required_completion_rate")
   isActive               Boolean                    @default(true) @map("is_active")
