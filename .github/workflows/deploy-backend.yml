@@ -1,22 +1,22 @@
 name: Deploy Backend
 
-# Deploys the backend to the self-hosted server over SSH. The backend runs
-# directly under PM2 (process "zhao-family-backend"), not in a container; MySQL
-# and MinIO are pre-existing Docker containers the backend connects to via its
-# server-side apps/backend/.env.production (gitignored, never overwritten here).
+# Builds an immutable backend image in CI, pushes it to GHCR, then deploys it to
+# the single prod host over SSH (docker compose). The app runs as a container
+# (restart: always); MySQL and MinIO stay as pre-existing containers the backend
+# reaches via the server-side apps/backend/.env (gitignored, never overwritten).
+# See docs/deployment-hardening-plan.md.
 #
-# The server holds a GitHub clone at ${{ secrets.DEPLOY_DIR }} (/opt/zhao-family).
-# Trigger: push to main on backend-relevant paths, or manual dispatch.
+# Trigger: manual only (workflow_dispatch). Driven one-click from ZHAO Monitor's
+# "Deploy Backend" button (`gh workflow run`). Push-to-main auto-deploy is
+# intentionally disabled so deploys are always deliberate.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/backend/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
+    inputs:
+      apply_migrations:
+        description: "Run prisma migrate deploy during this deploy (schema is migrated MANUALLY on this legacy DB — enable only deliberately; a backup is taken first)"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-backend
@@ -24,12 +24,54 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
+  build:
+    name: Build & push image (GHCR)
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.img.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute image ref (lowercased owner)
+        id: img
+        run: echo "ref=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/zhao-backend" >> "$GITHUB_OUTPUT"
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.img.outputs.ref }}:${{ github.sha }}
+            ${{ steps.img.outputs.ref }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
-    name: SSH deploy (PM2)
+    name: Deploy to prod (docker compose)
+    needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Copy compose file to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT }}
+          source: docker-compose.backend.yml
+          target: ${{ secrets.DEPLOY_DIR }}
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -38,15 +80,76 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_SSH_PORT }}
           script_stop: true
+          envs: GHCR_USER,GHCR_TOKEN,IMAGE,IMAGE_TAG,APPLY_MIGRATIONS,DEPLOY_DIR
           script: |
             set -euo pipefail
-            export CI=true
-            cd "${{ secrets.DEPLOY_DIR }}"
-            # Force-align the working tree to origin/main (discards local drift;
-            # the server's .env.production is gitignored and untouched).
-            git fetch origin --prune
-            git checkout -f -B main origin/main
-            pnpm install --frozen-lockfile
-            pnpm --filter backend build
-            pm2 reload zhao-family-backend --update-env
-            pm2 save
+            cd "$DEPLOY_DIR"
+            COMPOSE="docker compose -f docker-compose.backend.yml"
+            export IMAGE_TAG
+
+            # Authenticate to GHCR just for this deploy (token is run-scoped).
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+
+            # Remember the currently-running image for rollback.
+            PREV_IMAGE="$(docker inspect --format '{{.Config.Image}}' zhao-family-backend 2>/dev/null || true)"
+            echo "current image: ${PREV_IMAGE:-<none>}"
+
+            # Pull the new image (compose resolves ${IMAGE_TAG}).
+            $COMPOSE pull
+
+            # --- migration drift gate (read-only) ---
+            # Schema is migrated MANUALLY on this legacy DB. Refuse to roll out
+            # code that outruns the schema (that mismatch once crashed prod),
+            # unless the operator opted in via apply_migrations.
+            STATUS="$($COMPOSE run --rm --no-deps -T backend prisma migrate status --schema=prisma/schema.prisma 2>&1 || true)"
+            echo "$STATUS"
+            if echo "$STATUS" | grep -q "Database schema is up to date"; then
+              echo "schema up to date — no migrations pending"
+            elif [ "$APPLY_MIGRATIONS" = "true" ]; then
+              echo "pending migrations + apply_migrations=true — backing up then applying"
+              TS="$(date +%Y%m%d_%H%M%S)"
+              mkdir -p "$HOME/backups"
+              DBURL="$(grep -E '^DATABASE_URL=' apps/backend/.env | head -1 | sed -E 's/^DATABASE_URL=//; s/^"//; s/"$//')"
+              creds="${DBURL#mysql://}"; up="${creds%%@*}"; DBUSER="${up%%:*}"; DBPASS="${up#*:}"
+              rest="${creds#*@}"; DBNAME="${rest##*/}"; DBNAME="${DBNAME%%\?*}"
+              docker exec -e MYSQL_PWD="$DBPASS" zhao-family-mysql \
+                mysqldump --single-transaction --quick --default-character-set=utf8mb4 \
+                -u"$DBUSER" "$DBNAME" 2>/dev/null | gzip > "$HOME/backups/premigrate_${TS}.sql.gz"
+              echo "backup: $HOME/backups/premigrate_${TS}.sql.gz"
+              $COMPOSE run --rm --no-deps -T backend prisma migrate deploy --schema=prisma/schema.prisma
+            else
+              echo "::error::Pending DB migrations detected. Apply them manually, or re-run 'Deploy Backend' with apply_migrations=true. Aborting so new code never runs against an old schema."
+              exit 1
+            fi
+
+            # --- roll out the new container ---
+            $COMPOSE up -d
+
+            # --- health gate (rollback on failure) ---
+            PORT="$(grep -E '^PORT=' apps/backend/.env | head -1 | cut -d= -f2 | tr -d '"' || true)"
+            PREFIX="$(grep -E '^API_PREFIX=' apps/backend/.env | head -1 | cut -d= -f2 | tr -d '"' || true)"
+            HEALTH_URL="http://127.0.0.1:${PORT:-3002}/${PREFIX:-api}/health"
+            ok=0
+            for i in $(seq 1 15); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$HEALTH_URL" || true)"
+              if [ "$code" = "200" ]; then ok=1; echo "health OK ($code) after try $i"; break; fi
+              echo "health not ready ($code), retry $i/15"; sleep 3
+            done
+            if [ "$ok" != "1" ]; then
+              echo "::error::health check failed at $HEALTH_URL"
+              docker logs zhao-family-backend --tail 40 2>&1 || true
+              if [ -n "$PREV_IMAGE" ]; then
+                echo "rolling back to $PREV_IMAGE"
+                IMAGE_TAG="${PREV_IMAGE##*:}" $COMPOSE up -d || true
+              fi
+              exit 1
+            fi
+            echo "deploy OK: $IMAGE ($IMAGE_TAG)"
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ${{ needs.build.outputs.image }}
+          IMAGE_TAG: ${{ github.sha }}
+          APPLY_MIGRATIONS: ${{ github.event.inputs.apply_migrations }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}

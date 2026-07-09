@@ -1,20 +1,28 @@
+# Keep the docker build context small and deterministic.
 .git
-.next
-.expo
-coverage
-dist
-node_modules
-out
+.github
+**/node_modules
+**/dist
+**/.next
+**/.expo
+**/.turbo
+**/coverage
+**/out
 pnpm-debug.log*
-*.tsbuildinfo
+**/*.tsbuildinfo
+**/*.log
+**/.DS_Store
 
-# Local-only configuration
-.env
-.env.local
-.env.*.local
+# Local env / secrets — never enter the image (mounted at runtime via env_file)
+**/.env
+**/.env.*
 
 # Native build outputs
-apps/mobile/android/.gradle
-apps/mobile/android/app/build
-apps/mobile/ios/Pods
-apps/mobile/ios/build
+apps/mobile/android
+apps/mobile/ios
+apps/web/out
+
+# Repo cruft not part of the backend build
+backups
+*.sql
+ZHAO 2

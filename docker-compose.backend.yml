@@ -1,0 +1,41 @@
+# Production backend, containerized. See docs/deployment-hardening-plan.md.
+#
+# SEPARATE from the infra compose (the server's own docker-compose.prod.yml, which
+# manages the pre-existing zhao-family-mysql container). This file manages ONLY the
+# backend container — never merge them, and never name this file
+# docker-compose.prod.yml on the server, so a backend `compose down` can never stop
+# the prod database container.
+#
+# network_mode: host is deliberate — it keeps DATABASE_URL (127.0.0.1:3310 ->
+# zhao-family-mysql), the MinIO endpoint, and nginx -> 127.0.0.1:3002 working
+# UNCHANGED from the PM2 setup. The app binds PORT (default 3002) directly on the
+# host, so no `ports:` mapping is needed (and it would be ignored under host net).
+#
+# Secrets stay on the host in apps/backend/.env (gitignored) and are injected via
+# env_file — never baked into the image.
+#
+# Usage on the prod box:
+#   export IMAGE_TAG=<git-sha>            # or leave unset for :latest
+#   docker compose -f docker-compose.backend.yml pull
+#   docker compose -f docker-compose.backend.yml up -d
+# Rollback: set IMAGE_TAG to the previous sha and `up -d` again.
+
+services:
+  backend:
+    image: ghcr.io/ppwaurk/zhao-backend:${IMAGE_TAG:-latest}
+    container_name: zhao-family-backend
+    restart: always
+    network_mode: host
+    env_file:
+      - apps/backend/.env
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3002)+'/'+(process.env.API_PREFIX||'api')+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
