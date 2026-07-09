@@ -18,6 +18,10 @@ function parseCorsOrigins(corsOrigin: string | undefined): string[] {
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  // Derriere un reverse proxy (nginx) qui termine le TLS : sans cela req.protocol
+  // vaut "http" et les URL generees (PDF de commande) partent en http://, ce qui
+  // fait echouer le telechargement cote mobile (ATS iOS) et degrade le partage.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   const configService = app.get(ConfigService);
   const apiPrefix = configService.get<string>('API_PREFIX') || 'api';
   const port = Number(configService.get<string>('PORT') || 3002);

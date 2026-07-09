@@ -284,25 +284,22 @@ export function getOrderProductVariants(product: OrderProduct): OrderProductVari
 }
 
 export function resolveOrderPdfUrl(pdfUrl: string): string {
-  if (/^https?:\/\//i.test(pdfUrl)) {
-    return normalizeOrderPdfProtocol(pdfUrl);
-  }
+  const apiBase = MOBILE_API_URL.endsWith("/") ? MOBILE_API_URL : `${MOBILE_API_URL}/`;
 
-  return new URL(pdfUrl, MOBILE_API_URL).toString();
-}
-
-function normalizeOrderPdfProtocol(pdfUrl: string): string {
   try {
-    const orderPdfUrl = new URL(pdfUrl);
-    const apiUrl = new URL(MOBILE_API_URL);
-    const apiUsesHttps = apiUrl.protocol === "https:";
-    const sameApiHost = orderPdfUrl.host === apiUrl.host;
+    const parsed = new URL(pdfUrl, apiBase);
+    const apiUrl = new URL(apiBase);
 
-    if (apiUsesHttps && sameApiHost && orderPdfUrl.protocol === "http:") {
-      orderPdfUrl.protocol = "https:";
+    // Le backend, derriere le reverse proxy, peut renvoyer une URL en http://
+    // ou avec un host interne (IP/localhost) que l'appareil ne peut pas atteindre.
+    // On garde le chemin renvoye mais on force l'origine (protocole + host) connue
+    // et joignable du mobile, sinon le telechargement du PDF echoue et le partage
+    // retombe silencieusement sur un simple lien.
+    if (parsed.protocol !== apiUrl.protocol || parsed.host !== apiUrl.host) {
+      return new URL(`${parsed.pathname}${parsed.search}`, apiUrl.origin).toString();
     }
 
-    return orderPdfUrl.toString();
+    return parsed.toString();
   } catch {
     return pdfUrl;
   }
