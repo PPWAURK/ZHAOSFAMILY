@@ -190,6 +190,38 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     gap: 8,
     padding: 14,
   },
+  orderCardActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingTop: 4,
+  },
+  orderCardAction: {
+    alignItems: "center",
+    borderColor: "rgba(193, 22, 22, 0.3)",
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 38,
+    paddingHorizontal: 12,
+  },
+  orderCardActionDanger: {
+    borderColor: authControlStyles.colors.red,
+  },
+  orderCardActionPrimary: {
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: authControlStyles.colors.red,
+  },
+  orderCardActionText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  orderCardActionTextPrimary: {
+    color: authControlStyles.colors.paper,
+  },
   orderCardLocked: {
     opacity: 0.58,
   },
@@ -265,6 +297,59 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     fontSize: 14,
     fontWeight: "500",
     lineHeight: 18,
+  },
+  returnField: {
+    gap: 8,
+  },
+  returnFieldLabel: {
+    color: authControlStyles.colors.ink40,
+    fontFamily: "monospace",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  returnInput: {
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 15,
+    minHeight: 46,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  returnNotesInput: {
+    minHeight: 76,
+    textAlignVertical: "top",
+  },
+  returnItem: {
+    alignItems: "center",
+    borderBottomColor: "rgba(193, 22, 22, 0.1)",
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    paddingVertical: 10,
+  },
+  returnItemInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  returnItemList: {
+    borderTopColor: "rgba(193, 22, 22, 0.16)",
+    borderTopWidth: 1,
+  },
+  returnItemMeta: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "monospace",
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  returnPanel: {
+    borderColor: "rgba(193, 22, 22, 0.22)",
+    borderWidth: 1,
+    gap: 12,
+    padding: 14,
   },
   progressFill: {
     backgroundColor: authControlStyles.colors.red,

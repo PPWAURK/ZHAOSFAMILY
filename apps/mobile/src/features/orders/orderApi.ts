@@ -11,10 +11,12 @@ import type {
   OrderProduct,
   OrderProductApiRecord,
   OrderProductVariant,
+  OrderReturnDraft,
   OrderStockMap,
   OrderSupplier,
   PurchaseOrder,
   QuantityMap,
+  ReturnQuantityMap,
 } from "@/features/orders/orderTypes";
 
 const STOCK_ENFORCED_SUPPLIER_IDS = new Set<string>(["8"]);
@@ -190,6 +192,50 @@ export async function updatePurchaseOrder(
       items: buildCreateOrderItems(quantities),
     },
   );
+}
+
+export async function deletePurchaseOrder(orderId: number | string): Promise<void> {
+  await mobileApiClient.delete(`/orders/${encodeURIComponent(String(orderId))}`);
+}
+
+export async function fetchOrderReturnDraft(
+  orderId: number | string,
+): Promise<OrderReturnDraft> {
+  return mobileApiClient.get<OrderReturnDraft>(
+    `/orders/${encodeURIComponent(String(orderId))}/return-draft`,
+  );
+}
+
+export async function createPurchaseReturn({
+  orderId,
+  reason,
+  notes,
+  quantities,
+}: {
+  orderId: number | string;
+  reason: string;
+  notes?: string;
+  quantities: ReturnQuantityMap;
+}): Promise<unknown> {
+  const items = Object.entries(quantities)
+    .map(([purchaseOrderItemId, quantity]) => ({
+      purchaseOrderItemId: Number(purchaseOrderItemId),
+      quantity: Number(quantity) || 0,
+    }))
+    .filter(
+      (item) =>
+        Number.isInteger(item.purchaseOrderItemId) &&
+        item.purchaseOrderItemId > 0 &&
+        Number.isInteger(item.quantity) &&
+        item.quantity > 0,
+    );
+
+  return mobileApiClient.post("/orders/returns", {
+    orderId: Number(orderId),
+    reason,
+    notes,
+    items,
+  });
 }
 
 export async function downloadOrderPdfToCache(

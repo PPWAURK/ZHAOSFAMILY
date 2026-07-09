@@ -1,5 +1,3 @@
-import "../src/styles/global.css";
-
 import { ConfirmProvider } from "@/components/confirm/ConfirmProvider";
 import { ToastProvider } from "@/components/toast/ToastProvider";
 import { SplashScreen } from "@/features/splash/SplashScreen";

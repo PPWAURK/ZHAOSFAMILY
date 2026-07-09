@@ -86,6 +86,11 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
         label: { zh: "培训记录", en: "Training records", fr: "Historique formation" },
       },
       {
+        id: "my-case-shares",
+        icon: "案",
+        label: { zh: "我的案例", en: "My cases", fr: "Mes cas" },
+      },
+      {
         id: "waiting-queue",
         icon: "队",
         label: { zh: "排队管理", en: "Waiting queue", fr: "File d'attente" },

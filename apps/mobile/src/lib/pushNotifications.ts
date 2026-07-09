@@ -1,6 +1,5 @@
 import Constants from "expo-constants";
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import type {
   PushTokenPlatform,
@@ -14,18 +13,41 @@ const ANDROID_CHANNEL_ID = "default";
 // Last Expo token we registered with the backend, kept so logout can revoke it
 // while the access token is still present.
 let lastRegisteredToken: string | null = null;
+let isNotificationHandlerConfigured = false;
 
-// Foreground presentation: show an alert + play a sound when a push arrives
-// while the app is open.
-Notifications.setNotificationHandler({
-  handleNotification: () =>
-    Promise.resolve({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-});
+type ExpoNotifications = typeof import("expo-notifications");
+
+function isExpoGoAndroid(): boolean {
+  return Platform.OS === "android" && Constants.appOwnership === "expo";
+}
+
+async function loadNotifications(): Promise<ExpoNotifications | null> {
+  if (isExpoGoAndroid()) {
+    return null;
+  }
+
+  return import("expo-notifications");
+}
+
+function configureNotificationHandler(notifications: ExpoNotifications): void {
+  if (isNotificationHandlerConfigured) {
+    return;
+  }
+
+  isNotificationHandlerConfigured = true;
+
+  // Foreground presentation: show an alert + play a sound when a push arrives
+  // while the app is open.
+  notifications.setNotificationHandler({
+    handleNotification: () =>
+      Promise.resolve({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+  });
+}
 
 function resolveProjectId(): string | undefined {
   return (
@@ -34,21 +56,25 @@ function resolveProjectId(): string | undefined {
   );
 }
 
-async function ensureAndroidChannel(): Promise<void> {
+async function ensureAndroidChannel(
+  notifications: ExpoNotifications,
+): Promise<void> {
   if (Platform.OS !== "android") return;
 
-  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+  await notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
     name: "Default",
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: notifications.AndroidImportance.DEFAULT,
     lightColor: "#6F0D10",
   });
 }
 
-async function ensurePermission(): Promise<boolean> {
-  const settings = await Notifications.getPermissionsAsync();
+async function ensurePermission(
+  notifications: ExpoNotifications,
+): Promise<boolean> {
+  const settings = await notifications.getPermissionsAsync();
   if (settings.granted) return true;
 
-  const request = await Notifications.requestPermissionsAsync();
+  const request = await notifications.requestPermissionsAsync();
   return request.granted;
 }
 
@@ -60,14 +86,19 @@ async function ensurePermission(): Promise<boolean> {
 export async function getDevicePushToken(): Promise<RegisterPushTokenRequest | null> {
   if (!Device.isDevice) return null;
 
-  await ensureAndroidChannel();
+  const notifications = await loadNotifications();
+  if (!notifications) return null;
 
-  if (!(await ensurePermission())) return null;
+  configureNotificationHandler(notifications);
+
+  await ensureAndroidChannel(notifications);
+
+  if (!(await ensurePermission(notifications))) return null;
 
   const projectId = resolveProjectId();
   if (!projectId) return null;
 
-  const { data: token } = await Notifications.getExpoPushTokenAsync({
+  const { data: token } = await notifications.getExpoPushTokenAsync({
     projectId,
   });
 

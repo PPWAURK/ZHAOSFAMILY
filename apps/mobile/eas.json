@@ -1,11 +1,12 @@
 {
   "cli": {
-    "version": ">= 3.0.0"
+    "version": ">= 3.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "preview": {
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaoplatforme.com/backend3"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaosfamily.com/api"
       },
       "android": {
         "buildType": "apk"
@@ -14,7 +15,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaoplatforme.com/backend3"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.zhaosfamily.com/api"
       },
       "android": {
         "buildType": "app-bundle"

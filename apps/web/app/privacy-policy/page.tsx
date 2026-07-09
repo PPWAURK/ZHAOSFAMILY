@@ -20,7 +20,7 @@ const dataPurposes = [
 
 const userRights = [
   "demander l'accès, la rectification ou la suppression de leurs données ;",
-  "demander la suppression du compte via la page dédiée ;",
+  "supprimer leur compte depuis la page « Profil » de l'application ;",
   "contacter le support pour toute question liée à la confidentialité.",
 ];
 
@@ -94,8 +94,8 @@ export default function PrivacyPolicyPage(): JSX.Element {
             ))}
           </ul>
           <p>
-            Les demandes de suppression peuvent être envoyées depuis la page dédiée à la
-            suppression du compte et des données.
+            La suppression de compte se fait directement depuis la page « Profil » de
+            l'application, avec confirmation par mot de passe. La page dédiée explique ce parcours.
           </p>
           <a className={styles.mailButton} href="/delete-account">
             Ouvrir la page de suppression

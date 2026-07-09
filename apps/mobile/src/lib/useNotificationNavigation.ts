@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 /**
  * Dashboard entries a tapped notification can route to. These must match the
@@ -19,6 +20,36 @@ const TYPE_TO_ENTRY: Record<string, NotificationEntry> = {
   "case-share": "case-shares",
 };
 
+type NotificationResponse =
+  Awaited<
+    ReturnType<
+      typeof import("expo-notifications")["getLastNotificationResponseAsync"]
+    >
+  >;
+
+function isExpoGoAndroid(): boolean {
+  return Platform.OS === "android" && Constants.appOwnership === "expo";
+}
+
+function navigateFromResponse(
+  response: NotificationResponse | null,
+  onNavigate: (entry: NotificationEntry) => void,
+): void {
+  const data = response?.notification.request.content.data as
+    | { type?: unknown }
+    | undefined;
+  const type = data?.type;
+
+  if (typeof type !== "string") {
+    return;
+  }
+
+  const entry = TYPE_TO_ENTRY[type];
+  if (entry) {
+    onNavigate(entry);
+  }
+}
+
 /** Resolves the dashboard entry a notification `type` deep-links to, if any. */
 export function resolveNotificationEntry(
   type: string | undefined | null,
@@ -36,21 +67,43 @@ export function resolveNotificationEntry(
  * that launched the app from a killed state. Fires once per distinct tap.
  */
 export function useNotificationNavigation(onNavigate: (entry: NotificationEntry) => void): void {
-  const response = Notifications.useLastNotificationResponse();
   const handlerRef = useRef(onNavigate);
   handlerRef.current = onNavigate;
 
   useEffect(() => {
-    const data = response?.notification.request.content.data as { type?: unknown } | undefined;
-    const type = data?.type;
-
-    if (typeof type !== "string") {
+    if (isExpoGoAndroid()) {
       return;
     }
 
-    const entry = TYPE_TO_ENTRY[type];
-    if (entry) {
-      handlerRef.current(entry);
+    let isMounted = true;
+    let subscription: { remove: () => void } | null = null;
+
+    async function registerNotificationListener(): Promise<void> {
+      const notifications = await import("expo-notifications");
+
+      if (!isMounted) {
+        return;
+      }
+
+      const lastResponse =
+        await notifications.getLastNotificationResponseAsync();
+
+      if (isMounted) {
+        navigateFromResponse(lastResponse, handlerRef.current);
+      }
+
+      subscription = notifications.addNotificationResponseReceivedListener(
+        (response) => {
+          navigateFromResponse(response, handlerRef.current);
+        },
+      );
     }
-  }, [response]);
+
+    void registerNotificationListener();
+
+    return () => {
+      isMounted = false;
+      subscription?.remove();
+    };
+  }, []);
 }

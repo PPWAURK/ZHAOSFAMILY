@@ -3,11 +3,11 @@ import type { JSX } from "react";
 
 import styles from "./page.module.css";
 
-const requestDetails = [
-  "l'adresse e-mail utilisée dans l'application ;",
-  "votre nom ou identifiant utilisateur si disponible ;",
-  "le nom de l'application : ZHAO Family ;",
-  "la mention claire que vous souhaitez supprimer votre compte et vos données associées.",
+const selfDeleteSteps = [
+  "connectez-vous à votre compte ZHAO Family ;",
+  "ouvrez la page « Profil » depuis le tableau de bord ou l'accueil mobile ;",
+  "sélectionnez « Supprimer mon compte » ;",
+  "saisissez votre mot de passe actuel pour confirmer l'action.",
 ];
 
 const deletedData = [
@@ -22,7 +22,7 @@ const deletedData = [
 export const metadata: Metadata = {
   title: "Suppression de compte - ZHAO Family",
   description:
-    "Demander la suppression de votre compte et des données associées pour l'application ZHAO Family.",
+    "Supprimer votre compte et les données associées depuis le profil ZHAO Family.",
 };
 
 export default function DeleteAccountPage(): JSX.Element {
@@ -63,32 +63,30 @@ export default function DeleteAccountPage(): JSX.Element {
           <section className={styles.section} aria-labelledby="request-title">
             <div className={styles.sectionBody}>
               <h2 className={styles.sectionTitle} id="request-title">
-                Demander la suppression
+                Supprimer votre compte
               </h2>
               <p>
-                Si vous souhaitez supprimer votre compte utilisateur ainsi que les données
-                associées, vous pouvez envoyer une demande par e-mail à l&apos;adresse suivante :
+                La suppression de compte est désormais disponible directement dans
+                l&apos;application. Il n&apos;est plus nécessaire d&apos;envoyer une demande par
+                e-mail au support pour supprimer votre compte.
               </p>
-              <a className={styles.mailButton} href="mailto:zhaogroupe12@gmail.com">
-                zhaogroupe12@gmail.com
-              </a>
             </div>
           </section>
 
           <section className={styles.section} aria-labelledby="details-title">
             <div className={styles.sectionBody}>
               <h2 className={styles.sectionTitle} id="details-title">
-                Informations à fournir
+                Étapes à suivre
               </h2>
-              <p>Dans votre message, veuillez indiquer :</p>
+              <p>Pour supprimer votre compte :</p>
               <ul className={styles.list}>
-                {requestDetails.map((detail) => (
-                  <li key={detail}>{detail}</li>
+                {selfDeleteSteps.map((step) => (
+                  <li key={step}>{step}</li>
                 ))}
               </ul>
               <p>
-                Après réception de votre demande, nous procéderons à une vérification afin de
-                confirmer que vous êtes bien le titulaire du compte concerné.
+                Cette confirmation par mot de passe permet de vérifier que vous êtes bien le
+                titulaire du compte concerné.
               </p>
             </div>
           </section>
@@ -99,8 +97,10 @@ export default function DeleteAccountPage(): JSX.Element {
                 Délai de traitement
               </h2>
               <p>
-                Les demandes de suppression de compte sont traitées dans un délai maximum de{" "}
-                <strong>30 jours</strong>.
+                Après confirmation, votre compte est désactivé et les informations personnelles
+                liées au profil sont supprimées ou anonymisées. Certaines données peuvent toutefois
+                être conservées temporairement lorsqu&apos;une obligation légale, comptable, de
+                sécurité ou de prévention des abus l&apos;exige.
               </p>
             </div>
           </section>
@@ -144,7 +144,7 @@ export default function DeleteAccountPage(): JSX.Element {
             </div>
           </section>
 
-          <footer className={styles.footer}>Dernière mise à jour : 17 juin 2026</footer>
+          <footer className={styles.footer}>Dernière mise à jour : 9 juillet 2026</footer>
         </article>
       </div>
     </main>

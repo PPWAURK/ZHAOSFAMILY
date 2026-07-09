@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const DEFAULT_LANGUAGE = "zh";
 const LANGUAGE_STORAGE_KEY = "zhao_preferred_language";
@@ -26,7 +26,11 @@ function persistLanguage(language) {
 }
 
 export function usePreferredLanguage() {
-  const [language, setLanguageState] = useState(readStoredLanguage);
+  const [language, setLanguageState] = useState(DEFAULT_LANGUAGE);
+
+  useEffect(() => {
+    setLanguageState(readStoredLanguage());
+  }, []);
 
   const setLanguage = useCallback((nextLanguage) => {
     if (!SUPPORTED_LANGUAGES.has(nextLanguage)) {

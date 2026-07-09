@@ -84,6 +84,8 @@ export type OrderHistoryItem = PurchaseOrder & {
   supplierId?: number | string;
   returnCount?: number;
   canEdit?: boolean;
+  canReturn?: boolean;
+  canDelete?: boolean;
   createdAt?: string;
 };
 
@@ -105,3 +107,20 @@ export type OrderDetail = OrderHistoryItem & {
   deliveryDate: string;
   items: OrderDetailItem[];
 };
+
+export type OrderReturnDraftItem = OrderDetailItem & {
+  orderedQuantity: number;
+  returnedQuantity: number;
+  remainingQuantity: number;
+};
+
+export type OrderReturnDraft = {
+  orderId: number | string;
+  orderNumber: string;
+  supplierId: number | string;
+  supplierName: string;
+  deliveryDate: string;
+  items: OrderReturnDraftItem[];
+};
+
+export type ReturnQuantityMap = Record<string, string>;

@@ -1,14 +1,19 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useState, type ReactElement } from "react";
 import {
+  AppState,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type AppStateStatus,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import type {
@@ -41,9 +46,10 @@ import { CASE_SHARES_COPY } from "@/features/case-shares/caseSharesCopy";
 
 type CaseSharesModuleScreenProps = {
   language: AuthLanguage;
+  mode?: "public" | "mine";
+  onRegisterPublishAction?: (action: (() => void) | null) => void;
+  onOpenMyCases?: () => void;
 };
-
-type CaseTab = "feed" | "mine";
 
 const CASE_TYPES: CaseShareType[] = ["personal", "team"];
 
@@ -71,13 +77,15 @@ function assetToUpload(
 
 export function CaseSharesModuleScreen({
   language,
+  mode = "public",
+  onRegisterPublishAction,
+  onOpenMyCases,
 }: CaseSharesModuleScreenProps) {
   useScreenName("case-shares");
   const copy = CASE_SHARES_COPY[language];
   const confirm = useConfirm();
   const toast = useToast();
 
-  const [activeTab, setActiveTab] = useState<CaseTab>("feed");
   const [feed, setFeed] = useState<CaseShareItem[]>([]);
   const [mine, setMine] = useState<CaseShareItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +99,7 @@ export function CaseSharesModuleScreen({
   );
   const [composerError, setComposerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPickingImage, setIsPickingImage] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [likingId, setLikingId] = useState<number | null>(null);
 
@@ -136,37 +145,81 @@ export function CaseSharesModuleScreen({
     };
   }, [copy.loadError]);
 
-  function openComposer(): void {
+  const openComposer = useCallback((): void => {
     setComposerType("personal");
     setComposerContent("");
     setComposerImage(null);
     setComposerError("");
+    setIsPickingImage(false);
     setComposerOpen(true);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!onRegisterPublishAction) {
+      return undefined;
+    }
+
+    onRegisterPublishAction(openComposer);
+
+    return () => {
+      onRegisterPublishAction(null);
+    };
+  }, [onRegisterPublishAction, openComposer]);
+
+  useEffect(() => {
+    function handleAppStateChange(nextAppState: AppStateStatus): void {
+      if (nextAppState === "active") {
+        setIsPickingImage(false);
+      }
+    }
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   async function handlePickImage(): Promise<void> {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permission.granted) {
-      setComposerError(copy.imagePermission);
+    if (isPickingImage) {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      mediaTypes: ["images"],
-      quality: 0.7,
-    });
+    setIsPickingImage(true);
+    setComposerError("");
 
-    if (result.canceled) {
-      return;
-    }
+    try {
+      const currentPermission =
+        await ImagePicker.getMediaLibraryPermissionsAsync();
+      const permission = currentPermission.granted
+        ? currentPermission
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    const upload = assetToUpload(result.assets[0]);
+      if (!permission.granted) {
+        setComposerError(copy.imagePermission);
+        return;
+      }
 
-    if (upload) {
-      setComposerError("");
-      setComposerImage(upload);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: false,
+        mediaTypes: ["images"],
+        quality: 0.65,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const upload = assetToUpload(result.assets[0]);
+
+      if (upload) {
+        setComposerImage(upload);
+      }
+    } finally {
+      setIsPickingImage(false);
     }
   }
 
@@ -202,7 +255,7 @@ export function CaseSharesModuleScreen({
 
       setMine((current) => [created, ...current]);
       setComposerOpen(false);
-      setActiveTab("mine");
+      onOpenMyCases?.();
       toast.success(copy.submitSuccess);
     } catch (error) {
       const isUpload = composerImage && !(error instanceof Error);
@@ -311,20 +364,30 @@ export function CaseSharesModuleScreen({
 
   function renderCard(item: CaseShareItem, showStatus: boolean): ReactElement {
     return (
-      <View key={item.id} style={shared.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.typeBadge}>{copy.typeLabels[item.type]}</Text>
-          {showStatus ? (
-            <Text style={[styles.statusBadge, statusBadgeStyle(item.status)]}>
-              {copy.statusLabels[item.status]}
+      <View key={item.id} style={styles.caseCard}>
+        <View style={styles.caseCardHeader}>
+          <View style={styles.authorMark}>
+            <Text style={styles.authorMarkText}>
+              {item.author.name.slice(0, 1).toUpperCase()}
             </Text>
-          ) : null}
+          </View>
+          <View style={styles.authorInfo}>
+            <Text style={styles.authorName} numberOfLines={1}>
+              {item.author.name}
+            </Text>
+            <Text style={styles.restaurantMeta} numberOfLines={1}>
+              {item.restaurant.name} · {formatDate(item.createdAt)}
+            </Text>
+          </View>
+          <View style={styles.badgeColumn}>
+            <Text style={styles.typeBadge}>{copy.typeLabels[item.type]}</Text>
+            {showStatus ? (
+              <Text style={[styles.statusBadge, statusBadgeStyle(item.status)]}>
+                {copy.statusLabels[item.status]}
+              </Text>
+            ) : null}
+          </View>
         </View>
-
-        <Text style={shared.cardMeta}>
-          {item.author.name} · {item.restaurant.name} ·{" "}
-          {formatDate(item.createdAt)}
-        </Text>
 
         <Text style={styles.cardContent}>{item.content}</Text>
 
@@ -389,52 +452,32 @@ export function CaseSharesModuleScreen({
     );
   }
 
-  const visibleList = activeTab === "feed" ? feed : mine;
-  const emptyText = activeTab === "feed" ? copy.feedEmpty : copy.mineEmpty;
+  const isMineMode = mode === "mine";
+  const visibleList = isMineMode ? mine : feed;
+  const emptyText = isMineMode ? copy.mineEmpty : copy.feedEmpty;
+  const title = isMineMode ? copy.mineTitle : copy.title;
+  const intro = isMineMode ? copy.mineIntro : copy.intro;
 
   return (
-    <View style={shared.container}>
-      <View style={shared.header}>
-        <TrackingText color={authControlStyles.colors.red} size={10.5}>
-          {copy.kicker}
-        </TrackingText>
-        <Text style={shared.title}>
-          {copy.title}
-          <Text style={shared.titleAccent}>{copy.titleAccent}</Text>
+    <View
+      style={[
+        shared.container,
+        styles.screen,
+        onRegisterPublishAction ? null : styles.screenWithFloatingButton,
+      ]}
+    >
+      <View style={styles.hero}>
+        <View style={styles.kickerRow}>
+          <View style={styles.kickerDot} />
+          <TrackingText color={authControlStyles.colors.red} size={10.5}>
+            {copy.kicker}
+          </TrackingText>
+        </View>
+        <Text style={styles.heroTitle}>
+          {title}
+          <Text style={styles.heroTitleAccent}>{copy.titleAccent}</Text>
         </Text>
-        <Text style={shared.hint}>{copy.intro}</Text>
-      </View>
-
-      <Pressable
-        style={[shared.actionButton, shared.actionButtonPrimary]}
-        onPress={openComposer}
-      >
-        <Text style={[shared.actionButtonText, shared.actionButtonTextPrimary]}>
-          {copy.publish}
-        </Text>
-      </Pressable>
-
-      <View style={shared.filterScrollerContent}>
-        {(["feed", "mine"] as CaseTab[]).map((tab) => {
-          const isActive = activeTab === tab;
-
-          return (
-            <Pressable
-              key={tab}
-              style={[shared.filterPill, isActive ? shared.filterPillActive : null]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text
-                style={[
-                  shared.filterPillText,
-                  isActive ? shared.filterPillTextActive : null,
-                ]}
-              >
-                {tab === "feed" ? copy.tabFeed : copy.tabMine}
-              </Text>
-            </Pressable>
-          );
-        })}
+        <Text style={styles.heroIntro}>{intro}</Text>
       </View>
 
       {isLoading ? <ZhaoLoadingIndicator label={copy.loading} /> : null}
@@ -444,137 +487,245 @@ export function CaseSharesModuleScreen({
       ) : null}
 
       {!isLoading && !loadError && visibleList.length === 0 ? (
-        <Text style={shared.emptyText}>{emptyText}</Text>
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconFrame}>
+            <Ionicons
+              color={authControlStyles.colors.red}
+              name="reader-outline"
+              size={24}
+            />
+          </View>
+          <Text style={styles.emptyText}>{emptyText}</Text>
+        </View>
       ) : null}
 
       {!isLoading && !loadError && visibleList.length > 0 ? (
         <View style={shared.list}>
-          {visibleList.map((item) => renderCard(item, activeTab === "mine"))}
+          {visibleList.map((item) => renderCard(item, isMineMode))}
         </View>
+      ) : null}
+
+      {!onRegisterPublishAction ? (
+        <Pressable
+          accessibilityLabel={copy.publish}
+          accessibilityRole="button"
+          style={styles.floatingPublishButton}
+          onPress={openComposer}
+        >
+          <Ionicons color="#ffffff" name="add" size={30} />
+        </Pressable>
       ) : null}
 
       <Modal
         animationType="slide"
-        presentationStyle="overFullScreen"
-        transparent
+        presentationStyle="fullScreen"
         visible={composerOpen}
         onRequestClose={() => setComposerOpen(false)}
       >
-        <View style={styles.modalRoot}>
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => setComposerOpen(false)}
-          />
-          <View style={styles.modalSheet}>
-            <View style={shared.sectionHeader}>
-              <Text style={shared.sectionTitle}>{copy.composerTitle}</Text>
-              <Pressable onPress={() => setComposerOpen(false)}>
-                <Text style={shared.actionButtonText}>{copy.cancel}</Text>
+        <SafeAreaView style={styles.composerPage}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={styles.composerKeyboardView}
+          >
+            <View style={styles.composerNav}>
+              <Pressable
+                accessibilityLabel={copy.cancel}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.composerCloseButton,
+                  pressed ? styles.composerCloseButtonPressed : null,
+                ]}
+                onPress={() => setComposerOpen(false)}
+              >
+                <Ionicons
+                  color={authControlStyles.colors.red}
+                  name="close"
+                  size={22}
+                />
               </Pressable>
+              <Text style={styles.composerNavTitle}>{copy.publish}</Text>
+              <View style={styles.composerNavSpacer} />
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={shared.statLabel}>{copy.typeLabel}</Text>
-              <View style={shared.roleGrid}>
-                {CASE_TYPES.map((type) => {
-                  const isActive = composerType === type;
-
-                  return (
-                    <Pressable
-                      key={type}
-                      style={[
-                        shared.rolePill,
-                        isActive ? shared.rolePillActive : null,
-                      ]}
-                      onPress={() => setComposerType(type)}
-                    >
-                      <Text
-                        style={[
-                          shared.rolePillText,
-                          isActive ? shared.rolePillTextActive : null,
-                        ]}
-                      >
-                        {copy.typeLabels[type]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+            <ScrollView
+              contentContainerStyle={styles.composerScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.composerHero}>
+                <TrackingText color={authControlStyles.colors.red} size={10.5}>
+                  {copy.kicker}
+                </TrackingText>
+                <Text style={styles.composerTitle}>{copy.composerTitle}</Text>
+                <Text style={styles.composerIntro}>{copy.composerIntro}</Text>
               </View>
 
-              <Text style={[shared.statLabel, styles.fieldSpacing]}>
-                {copy.contentLabel}
-              </Text>
-              <TextInput
-                multiline
-                placeholder={copy.contentPlaceholder}
-                placeholderTextColor={authControlStyles.colors.ink40}
-                style={[shared.searchInput, styles.contentInput]}
-                textAlignVertical="top"
-                value={composerContent}
-                onChangeText={(value) => {
-                  setComposerError("");
-                  setComposerContent(value);
-                }}
-              />
+              <View style={styles.composerSection}>
+                <Text style={styles.composerLabel}>{copy.typeLabel}</Text>
+                <View style={styles.typeChoiceGrid}>
+                  {CASE_TYPES.map((type) => {
+                    const isActive = composerType === type;
 
-              <Text style={[shared.statLabel, styles.fieldSpacing]}>
-                {copy.imageLabel}
-              </Text>
-              {composerImage ? (
-                <Image
-                  resizeMode="cover"
-                  source={{ uri: composerImage.uri }}
-                  style={styles.composerImage}
-                />
-              ) : null}
-              <View style={shared.actionRow}>
-                <Pressable
-                  style={shared.actionButton}
-                  onPress={() => void handlePickImage()}
-                >
-                  <Text style={shared.actionButtonText}>
-                    {composerImage ? copy.imageReplace : copy.imagePick}
+                    return (
+                      <Pressable
+                        key={type}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isActive }}
+                        style={[
+                          styles.typeChoice,
+                          isActive ? styles.typeChoiceActive : null,
+                        ]}
+                        onPress={() => setComposerType(type)}
+                      >
+                        <View
+                          style={[
+                            styles.typeChoiceIcon,
+                            isActive ? styles.typeChoiceIconActive : null,
+                          ]}
+                        >
+                          <Ionicons
+                            color={
+                              isActive
+                                ? "#ffffff"
+                                : authControlStyles.colors.red
+                            }
+                            name={
+                              type === "personal"
+                                ? "person-outline"
+                                : "people-outline"
+                            }
+                            size={20}
+                          />
+                        </View>
+                        <Text
+                          style={[
+                            styles.typeChoiceText,
+                            isActive ? styles.typeChoiceTextActive : null,
+                          ]}
+                        >
+                          {copy.typeLabels[type]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.composerSection}>
+                <View style={styles.composerFieldHeader}>
+                  <Text style={styles.composerLabel}>{copy.contentLabel}</Text>
+                  <Text style={styles.contentCounter}>
+                    {composerContent.trim().length}
                   </Text>
-                </Pressable>
+                </View>
+                <TextInput
+                  multiline
+                  placeholder={copy.contentPlaceholder}
+                  placeholderTextColor={authControlStyles.colors.ink40}
+                  style={styles.composerTextInput}
+                  textAlignVertical="top"
+                  value={composerContent}
+                  onChangeText={(value) => {
+                    setComposerError("");
+                    setComposerContent(value);
+                  }}
+                />
+              </View>
+
+              <View style={styles.composerSection}>
+                <Text style={styles.composerLabel}>{copy.imageLabel}</Text>
                 {composerImage ? (
+                  <View style={styles.imagePreviewFrame}>
+                    <Image
+                      resizeMode="cover"
+                      source={{ uri: composerImage.uri }}
+                      style={styles.composerImage}
+                    />
+                    <View style={styles.imagePreviewActions}>
+                      <Pressable
+                        disabled={isPickingImage}
+                        style={styles.imageActionButton}
+                        onPress={() => void handlePickImage()}
+                      >
+                        <Ionicons
+                          color={authControlStyles.colors.red}
+                          name="image-outline"
+                          size={16}
+                        />
+                        <Text style={styles.imageActionText}>
+                          {isPickingImage ? copy.loading : copy.imageReplace}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.imageActionButton}
+                        onPress={() => setComposerImage(null)}
+                      >
+                        <Ionicons
+                          color={authControlStyles.colors.red}
+                          name="trash-outline"
+                          size={16}
+                        />
+                        <Text style={styles.imageActionText}>
+                          {copy.imageRemove}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
                   <Pressable
-                    style={shared.actionButton}
-                    onPress={() => setComposerImage(null)}
+                    accessibilityRole="button"
+                    disabled={isPickingImage}
+                    style={[
+                      styles.imageEmptyUpload,
+                      isPickingImage ? styles.imageUploadDisabled : null,
+                    ]}
+                    onPress={() => void handlePickImage()}
                   >
-                    <Text style={shared.actionButtonText}>
-                      {copy.imageRemove}
+                    <View style={styles.imageEmptyIcon}>
+                      <Ionicons
+                        color={authControlStyles.colors.red}
+                        name="camera-outline"
+                        size={26}
+                      />
+                    </View>
+                    <Text style={styles.imageEmptyTitle}>
+                      {isPickingImage ? copy.loading : copy.imagePick}
+                    </Text>
+                    <Text style={styles.imageEmptyHint}>
+                      {copy.imageEmptyHint}
                     </Text>
                   </Pressable>
-                ) : null}
+                )}
               </View>
 
               {composerError ? (
-                <Text style={[shared.message, styles.fieldSpacing]}>
-                  {composerError}
-                </Text>
+                <View style={styles.composerErrorBox}>
+                  <Ionicons
+                    color={authControlStyles.colors.red}
+                    name="alert-circle-outline"
+                    size={18}
+                  />
+                  <Text style={styles.composerErrorText}>{composerError}</Text>
+                </View>
               ) : null}
+            </ScrollView>
 
+            <View style={styles.composerFooter}>
               <Pressable
                 disabled={isSubmitting}
                 style={[
-                  shared.actionButton,
-                  shared.actionButtonPrimary,
-                  styles.fieldSpacing,
+                  styles.composerSubmitButton,
+                  isSubmitting ? styles.composerSubmitButtonDisabled : null,
                 ]}
                 onPress={() => void handleSubmit()}
               >
-                <Text
-                  style={[
-                    shared.actionButtonText,
-                    shared.actionButtonTextPrimary,
-                  ]}
-                >
+                <Text style={styles.composerSubmitText}>
                   {isSubmitting ? copy.submitting : copy.submit}
                 </Text>
               </Pressable>
-            </ScrollView>
-          </View>
-        </View>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
 
       <Modal
@@ -672,27 +823,198 @@ function statusBadgeStyle(status: CaseShareStatus): { color: string } {
 }
 
 const styles = StyleSheet.create({
+  authorInfo: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
+  },
+  authorMark: {
+    alignItems: "center",
+    backgroundColor: "rgba(193, 22, 22, 0.08)",
+    borderColor: "rgba(193, 22, 22, 0.2)",
+    borderWidth: 1,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
+  },
+  authorMarkText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "serif",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  authorName: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 17,
+    fontWeight: "700",
+    lineHeight: 21,
+  },
+  badgeColumn: {
+    alignItems: "flex-end",
+    gap: 5,
+    maxWidth: 104,
+  },
   cardContent: {
     color: authControlStyles.colors.ink,
     fontFamily: "serif",
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 16,
+    lineHeight: 25,
   },
-  cardHeader: {
+  cardImage: {
+    backgroundColor: "rgba(193, 22, 22, 0.06)",
+    borderRadius: 6,
+    height: 200,
+    width: "100%",
+  },
+  caseCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(193, 22, 22, 0.14)",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 14,
+    padding: 14,
+  },
+  caseCardHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  composerCloseButton: {
+    alignItems: "center",
+    borderColor: "rgba(193, 22, 22, 0.22)",
+    borderRadius: 19,
+    borderWidth: 1,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
+  },
+  composerCloseButtonPressed: {
+    backgroundColor: "rgba(193, 22, 22, 0.08)",
+  },
+  composerErrorBox: {
+    alignItems: "center",
+    backgroundColor: "rgba(193, 22, 22, 0.06)",
+    borderColor: "rgba(193, 22, 22, 0.18)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    padding: 12,
+  },
+  composerErrorText: {
+    color: authControlStyles.colors.red,
+    flex: 1,
+    fontFamily: "serif",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  composerFieldHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  cardImage: {
-    backgroundColor: "rgba(193, 22, 22, 0.06)",
-    height: 200,
-    width: "100%",
+  composerFooter: {
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderTopColor: "rgba(193, 22, 22, 0.12)",
+    borderTopWidth: 1,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  composerHero: {
+    gap: 8,
+    paddingTop: 8,
+  },
+  composerIntro: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 15,
+    lineHeight: 22,
   },
   composerImage: {
     backgroundColor: "rgba(193, 22, 22, 0.06)",
-    height: 180,
-    marginBottom: 10,
+    height: 210,
     width: "100%",
+  },
+  composerKeyboardView: {
+    flex: 1,
+  },
+  composerLabel: {
+    color: authControlStyles.colors.ink40,
+    fontFamily: "monospace",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  composerNav: {
+    alignItems: "center",
+    borderBottomColor: "rgba(193, 22, 22, 0.12)",
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  composerNavSpacer: {
+    width: 38,
+  },
+  composerNavTitle: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  composerPage: {
+    backgroundColor: authControlStyles.colors.paper,
+    flex: 1,
+  },
+  composerScrollContent: {
+    gap: 22,
+    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+  },
+  composerSection: {
+    gap: 10,
+  },
+  composerSubmitButton: {
+    alignItems: "center",
+    backgroundColor: authControlStyles.colors.red,
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 52,
+  },
+  composerSubmitButtonDisabled: {
+    opacity: 0.64,
+  },
+  composerSubmitText: {
+    color: "#ffffff",
+    fontFamily: "monospace",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  composerTextInput: {
+    backgroundColor: "rgba(10, 10, 10, 0.025)",
+    borderColor: "rgba(193, 22, 22, 0.14)",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 17,
+    lineHeight: 25,
+    minHeight: 190,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  composerTitle: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 32,
+    fontWeight: "700",
+    lineHeight: 38,
   },
   commentAuthor: {
     color: authControlStyles.colors.ink,
@@ -734,6 +1056,38 @@ const styles = StyleSheet.create({
     minHeight: 120,
     paddingTop: 12,
   },
+  contentCounter: {
+    color: authControlStyles.colors.ink40,
+    fontFamily: "monospace",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  emptyIconFrame: {
+    alignItems: "center",
+    backgroundColor: "rgba(193, 22, 22, 0.06)",
+    borderColor: "rgba(193, 22, 22, 0.18)",
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
+  emptyState: {
+    alignItems: "flex-start",
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(193, 22, 22, 0.14)",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    minHeight: 160,
+    padding: 18,
+  },
+  emptyText: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 15,
+    lineHeight: 23,
+  },
   interactionBar: {
     borderTopColor: authControlStyles.colors.ink10,
     borderTopWidth: 1,
@@ -745,6 +1099,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
+    minHeight: 34,
   },
   interactionText: {
     color: authControlStyles.colors.ink60,
@@ -760,6 +1115,122 @@ const styles = StyleSheet.create({
   },
   fieldSpacing: {
     marginTop: 14,
+  },
+  imageActionButton: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    minHeight: 46,
+  },
+  imageActionText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  imageEmptyHint: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 14,
+    lineHeight: 21,
+    maxWidth: 270,
+    textAlign: "center",
+  },
+  imageEmptyIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(193, 22, 22, 0.08)",
+    borderRadius: 24,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
+  imageEmptyTitle: {
+    color: authControlStyles.colors.red,
+    fontFamily: "serif",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  imageEmptyUpload: {
+    alignItems: "center",
+    backgroundColor: "rgba(193, 22, 22, 0.035)",
+    borderColor: "rgba(193, 22, 22, 0.22)",
+    borderRadius: 8,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    gap: 9,
+    justifyContent: "center",
+    minHeight: 178,
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+  },
+  imageUploadDisabled: {
+    opacity: 0.7,
+  },
+  imagePreviewActions: {
+    backgroundColor: "#ffffff",
+    borderTopColor: "rgba(193, 22, 22, 0.12)",
+    borderTopWidth: 1,
+    flexDirection: "row",
+  },
+  imagePreviewFrame: {
+    backgroundColor: "rgba(193, 22, 22, 0.04)",
+    borderColor: "rgba(193, 22, 22, 0.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  floatingPublishButton: {
+    alignItems: "center",
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: "#ffffff",
+    borderRadius: 29,
+    borderWidth: 2,
+    bottom: 24,
+    height: 58,
+    justifyContent: "center",
+    position: "absolute",
+    right: 0,
+    shadowColor: authControlStyles.colors.red,
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+    width: 58,
+    elevation: 6,
+  },
+  hero: {
+    gap: 8,
+    paddingRight: 18,
+  },
+  heroIntro: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  heroTitle: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 31,
+    fontWeight: "600",
+    lineHeight: 36,
+  },
+  heroTitleAccent: {
+    color: authControlStyles.colors.red,
+    fontStyle: "italic",
+    fontWeight: "400",
+  },
+  kickerDot: {
+    backgroundColor: authControlStyles.colors.red,
+    height: 5,
+    width: 5,
+  },
+  kickerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -779,6 +1250,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 18,
   },
+  restaurantMeta: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  screen: {
+    position: "relative",
+  },
+  screenWithFloatingButton: {
+    minHeight: 590,
+    paddingBottom: 112,
+  },
   statusBadge: {
     fontFamily: "monospace",
     fontSize: 10,
@@ -792,6 +1276,49 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1,
+    textAlign: "right",
     textTransform: "uppercase",
+  },
+  typeChoice: {
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(193, 22, 22, 0.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    gap: 10,
+    minHeight: 104,
+    minWidth: 0,
+    padding: 13,
+  },
+  typeChoiceActive: {
+    backgroundColor: "rgba(193, 22, 22, 0.06)",
+    borderColor: "rgba(193, 22, 22, 0.46)",
+  },
+  typeChoiceGrid: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  typeChoiceIcon: {
+    alignItems: "center",
+    borderColor: "rgba(193, 22, 22, 0.2)",
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  typeChoiceIconActive: {
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: authControlStyles.colors.red,
+  },
+  typeChoiceText: {
+    color: authControlStyles.colors.ink,
+    fontFamily: "serif",
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  typeChoiceTextActive: {
+    color: authControlStyles.colors.red,
   },
 });

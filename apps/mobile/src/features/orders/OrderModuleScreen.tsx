@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Linking, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  Linking,
+  Pressable,
+  ScrollView,
+  Share,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import type { ShareAction } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
@@ -8,12 +17,15 @@ import { authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
   buildCreateOrderItems,
+  createPurchaseReturn,
   createPurchaseOrder,
+  deletePurchaseOrder,
   downloadOrderPdfToCache,
   fetchOrderDetail,
   fetchOrderHistory,
   fetchOrderInventory,
   fetchOrderProducts,
+  fetchOrderReturnDraft,
   fetchOrderSuppliers,
   resolveOrderPdfUrl,
   supplierEnforcesStock,
@@ -46,10 +58,12 @@ import type {
   OrderProduct,
   OrderDetail,
   OrderHistoryItem,
+  OrderReturnDraft,
   OrderStockMap,
   OrderSupplier,
   PurchaseOrder,
   QuantityMap,
+  ReturnQuantityMap,
 } from "@/features/orders/orderTypes";
 
 type OrderModuleScreenProps = {
@@ -76,6 +90,12 @@ export function OrderModuleScreen({
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [selectedHistorySupplierId, setSelectedHistorySupplierId] = useState("");
   const [editingOrder, setEditingOrder] = useState<OrderDetail | null>(null);
+  const [activeReturnOrder, setActiveReturnOrder] =
+    useState<OrderHistoryItem | null>(null);
+  const [returnDraft, setReturnDraft] = useState<OrderReturnDraft | null>(null);
+  const [returnReason, setReturnReason] = useState("");
+  const [returnNotes, setReturnNotes] = useState("");
+  const [returnQuantities, setReturnQuantities] = useState<ReturnQuantityMap>({});
   const [areFiltersVisible, setAreFiltersVisible] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -89,8 +109,11 @@ export function OrderModuleScreen({
   const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isLoadingReturnDraft, setIsLoadingReturnDraft] = useState(false);
   const [isSharingPdf, setIsSharingPdf] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
   // The product-selection page (supplier chosen, editing a new order) is the
@@ -392,6 +415,7 @@ export function OrderModuleScreen({
     setMode(nextMode);
     setSelectedSupplierId("");
     setEditingOrder(null);
+    clearReturnPanel();
     setOriginalStockMap({});
     setQuantities({});
     setAreFiltersVisible(false);
@@ -404,7 +428,140 @@ export function OrderModuleScreen({
     setSelectedHistorySupplierId("");
   }
 
+  function clearReturnPanel(): void {
+    setActiveReturnOrder(null);
+    setReturnDraft(null);
+    setReturnReason("");
+    setReturnNotes("");
+    setReturnQuantities({});
+  }
+
+  async function refreshOrderHistory(): Promise<void> {
+    const orders = await fetchOrderHistory();
+    setOrderHistory(orders);
+  }
+
+  async function handleDeleteHistoryOrder(order: OrderHistoryItem): Promise<void> {
+    if (order.canDelete === false || (order.returnCount && order.returnCount > 0)) {
+      return;
+    }
+
+    const orderNumber = order.number || String(order.id);
+
+    Alert.alert(
+      copy.confirmDeleteTitle,
+      copy.confirmDeleteMessage.replace("{number}", orderNumber),
+      [
+        { text: copy.confirmDeleteCancel, style: "cancel" },
+        {
+          text: copy.confirmDeleteConfirm,
+          style: "destructive",
+          onPress: () => {
+            void deleteHistoryOrder(order.id);
+          },
+        },
+      ],
+    );
+  }
+
+  async function deleteHistoryOrder(orderId: number | string): Promise<void> {
+    try {
+      setDeletingOrderId(String(orderId));
+      setErrorMessage("");
+      await deletePurchaseOrder(orderId);
+      await refreshOrderHistory();
+      clearReturnPanel();
+      setShareMessage(copy.deletedOrder);
+    } catch {
+      setErrorMessage(copy.deleteError);
+    } finally {
+      setDeletingOrderId(null);
+    }
+  }
+
+  async function handleOpenReturn(order: OrderHistoryItem): Promise<void> {
+    if (order.canReturn === false) {
+      return;
+    }
+
+    try {
+      setActiveReturnOrder(order);
+      setReturnDraft(null);
+      setReturnReason("");
+      setReturnNotes("");
+      setReturnQuantities({});
+      setIsLoadingReturnDraft(true);
+      setErrorMessage("");
+      const draft = await fetchOrderReturnDraft(order.id);
+      setReturnDraft(draft);
+    } catch {
+      setErrorMessage(copy.returnSubmitError);
+      clearReturnPanel();
+    } finally {
+      setIsLoadingReturnDraft(false);
+    }
+  }
+
+  function updateReturnQuantity(
+    purchaseOrderItemId: number,
+    value: string,
+    maxQuantity: number,
+  ): void {
+    const parsedValue = Number(value.replace(/[^0-9]/g, "")) || 0;
+    const nextQuantity = Math.min(Math.max(parsedValue, 0), maxQuantity);
+
+    setReturnQuantities((current) => ({
+      ...current,
+      [String(purchaseOrderItemId)]: nextQuantity > 0 ? String(nextQuantity) : "",
+    }));
+    setErrorMessage("");
+  }
+
+  async function handleSubmitReturn(): Promise<void> {
+    if (!returnDraft || isSubmittingReturn) {
+      return;
+    }
+
+    const reason = returnReason.trim();
+    const selectedItems = Object.values(returnQuantities).filter(
+      (quantity) => Number(quantity) > 0,
+    );
+
+    if (!reason) {
+      setErrorMessage(copy.returnReasonRequired);
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      setErrorMessage(copy.returnItemRequired);
+      return;
+    }
+
+    try {
+      setIsSubmittingReturn(true);
+      setErrorMessage("");
+      await createPurchaseReturn({
+        orderId: returnDraft.orderId,
+        reason,
+        notes: returnNotes.trim() || undefined,
+        quantities: returnQuantities,
+      });
+      await refreshOrderHistory();
+      clearReturnPanel();
+      setShareMessage(copy.returnCreated);
+    } catch {
+      setErrorMessage(copy.returnSubmitError);
+    } finally {
+      setIsSubmittingReturn(false);
+    }
+  }
+
   async function handleSelectHistoryOrder(order: OrderHistoryItem): Promise<void> {
+    if (order.canEdit === false) {
+      setErrorMessage(copy.returnedOrderLocked);
+      return;
+    }
+
     if (order.returnCount && order.returnCount > 0) {
       setErrorMessage(copy.returnedOrderLocked);
       return;
@@ -421,6 +578,7 @@ export function OrderModuleScreen({
       }
 
       setEditingOrder(detail);
+      clearReturnPanel();
       setSelectedSupplierId(String(detail.supplierId));
       setDeliveryMode("other");
       setCustomDate(detail.deliveryDate);
@@ -529,12 +687,15 @@ export function OrderModuleScreen({
           <View style={styles.orderHistoryList}>
             {filteredOrderHistory.map((order) => {
               const isLocked = Boolean(order.returnCount && order.returnCount > 0);
+              const isDeletingOrder = deletingOrderId === String(order.id);
+              const canEditOrder = order.canEdit !== false && !isLocked;
+              const canReturnOrder = order.canReturn !== false;
+              const canDeleteOrder = order.canDelete !== false && !isLocked;
 
               return (
-                <Pressable
+                <View
                   key={order.id}
                   style={[styles.orderCard, isLocked ? styles.orderCardLocked : null]}
-                  onPress={() => void handleSelectHistoryOrder(order)}
                 >
                   <Text style={styles.orderCardTitle}>{order.number}</Text>
                   <Text style={styles.orderCardMeta}>
@@ -547,10 +708,129 @@ export function OrderModuleScreen({
                   {isLocked ? (
                     <Text style={styles.errorText}>{copy.returnedOrderLocked}</Text>
                   ) : null}
-                </Pressable>
+                  <View style={styles.orderCardActions}>
+                    <Pressable
+                      disabled={!canEditOrder || isDeletingOrder}
+                      style={[
+                        styles.orderCardAction,
+                        styles.orderCardActionPrimary,
+                        !canEditOrder || isDeletingOrder ? styles.disabledButton : null,
+                      ]}
+                      onPress={() => void handleSelectHistoryOrder(order)}
+                    >
+                      <Text
+                        style={[
+                          styles.orderCardActionText,
+                          styles.orderCardActionTextPrimary,
+                        ]}
+                      >
+                        {copy.editOrder}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={!canReturnOrder || isDeletingOrder}
+                      style={[
+                        styles.orderCardAction,
+                        !canReturnOrder || isDeletingOrder ? styles.disabledButton : null,
+                      ]}
+                      onPress={() => void handleOpenReturn(order)}
+                    >
+                      <Text style={styles.orderCardActionText}>{copy.returnOrder}</Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={!canDeleteOrder || isDeletingOrder}
+                      style={[
+                        styles.orderCardAction,
+                        styles.orderCardActionDanger,
+                        !canDeleteOrder || isDeletingOrder ? styles.disabledButton : null,
+                      ]}
+                      onPress={() => void handleDeleteHistoryOrder(order)}
+                    >
+                      <Text style={styles.orderCardActionText}>
+                        {isDeletingOrder ? copy.deletingOrder : copy.deleteOrder}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
               );
             })}
           </View>
+          {activeReturnOrder ? (
+            <View style={styles.returnPanel}>
+              <SectionTitle label={`${copy.returnTitle}: ${activeReturnOrder.number}`} />
+              {isLoadingReturnDraft ? (
+                <StateRow label={copy.loadingReturnDraft} />
+              ) : returnDraft?.items.some((item) => item.remainingQuantity > 0) ? (
+                <>
+                  <View style={styles.returnField}>
+                    <Text style={styles.returnFieldLabel}>{copy.returnReason}</Text>
+                    <TextInput
+                      style={styles.returnInput}
+                      value={returnReason}
+                      onChangeText={(value) => {
+                        setReturnReason(value);
+                        setErrorMessage("");
+                      }}
+                    />
+                  </View>
+                  <View style={styles.returnField}>
+                    <Text style={styles.returnFieldLabel}>{copy.returnNotes}</Text>
+                    <TextInput
+                      multiline
+                      style={[styles.returnInput, styles.returnNotesInput]}
+                      value={returnNotes}
+                      onChangeText={setReturnNotes}
+                    />
+                  </View>
+                  <View style={styles.returnItemList}>
+                    {returnDraft.items
+                      .filter((item) => item.remainingQuantity > 0)
+                      .map((item) => (
+                        <View key={item.purchaseOrderItemId} style={styles.returnItem}>
+                          <View style={styles.returnItemInfo}>
+                            <Text style={styles.selectedName}>
+                              {language === "zh"
+                                ? item.nameZh || item.nameFr || "-"
+                                : item.nameFr || item.nameZh || "-"}
+                            </Text>
+                            <Text style={styles.returnItemMeta}>
+                              {item.specification || "-"} · {item.unit || "-"}
+                            </Text>
+                            <Text style={styles.returnItemMeta}>
+                              {copy.returnRemaining}: {item.remainingQuantity}
+                            </Text>
+                          </View>
+                          <TextInput
+                            keyboardType="number-pad"
+                            maxLength={4}
+                            style={styles.quantityInput}
+                            value={returnQuantities[String(item.purchaseOrderItemId)] || ""}
+                            placeholder="0"
+                            onChangeText={(value) =>
+                              updateReturnQuantity(
+                                item.purchaseOrderItemId,
+                                value,
+                                item.remainingQuantity,
+                              )
+                            }
+                            accessibilityLabel={copy.returnQuantity}
+                          />
+                        </View>
+                      ))}
+                  </View>
+                  <PrimaryButton
+                    disabled={isSubmittingReturn}
+                    label={isSubmittingReturn ? copy.submittingReturn : copy.submitReturn}
+                    onPress={handleSubmitReturn}
+                  />
+                </>
+              ) : (
+                <Text style={styles.stateText}>{copy.returnEmpty}</Text>
+              )}
+              <SecondaryButton label={copy.cancelReturn} onPress={clearReturnPanel} />
+            </View>
+          ) : null}
+          {shareMessage ? <Text style={styles.stateText}>{shareMessage}</Text> : null}
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </View>
       ) : null}

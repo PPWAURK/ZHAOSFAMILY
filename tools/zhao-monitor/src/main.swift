@@ -230,11 +230,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     func runDispatch(_ key: String) {
         let workflows: [String]
+        var fields: [String: String] = [:]
         switch key {
         case "ci":
             workflows = [cfg("ciWorkflow")]
         case "backend":
             workflows = [cfg("backendWorkflow")]
+        case "backend:migrate":
+            workflows = [cfg("backendWorkflow")]
+            fields["apply_migrations"] = "true"
         case "web":
             workflows = [cfg("webWorkflow")]
         case "all":
@@ -246,7 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             var ok = true
             var detail = "已提交，查看 Actions"
             for workflow in workflows {
-                let (code, out) = self.runGH(file: workflow, repo: repo, ref: ref)
+                let (code, out) = self.runGH(file: workflow, repo: repo, ref: ref, fields: fields)
                 if code != 0 {
                     ok = false
                     detail = out.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -347,11 +351,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
     }
 
-    func runGH(file: String, repo: String, ref: String) -> (Int32, String) {
+    func runGH(file: String, repo: String, ref: String, fields: [String: String] = [:]) -> (Int32, String) {
         let task = Process()
         task.launchPath = "/bin/zsh"
-        task.arguments = ["-lc",
-            "gh workflow run \(sh(file)) --ref \(sh(ref)) --repo \(sh(repo)) 2>&1"]
+        var cmd = "gh workflow run \(sh(file)) --ref \(sh(ref)) --repo \(sh(repo))"
+        for (k, v) in fields { cmd += " --field \(sh("\(k)=\(v)"))" }
+        cmd += " 2>&1"
+        task.arguments = ["-lc", cmd]
         let pipe = Pipe()
         task.standardOutput = pipe
         task.standardError = pipe

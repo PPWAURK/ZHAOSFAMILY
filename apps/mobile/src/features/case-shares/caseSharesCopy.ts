@@ -6,14 +6,16 @@ export type CaseSharesCopy = {
   title: string;
   titleAccent: string;
   intro: string;
-  tabFeed: string;
-  tabMine: string;
+  mineTitle: string;
+  mineIntro: string;
   publish: string;
   composerTitle: string;
+  composerIntro: string;
   typeLabel: string;
   contentLabel: string;
   contentPlaceholder: string;
   imageLabel: string;
+  imageEmptyHint: string;
   imagePick: string;
   imageReplace: string;
   imageRemove: string;
@@ -56,17 +58,19 @@ export type CaseSharesCopy = {
 export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
   zh: {
     kicker: "ZHAO · 案例",
-    title: "我们的案例",
+    title: "优秀案例",
     titleAccent: "。",
-    intro: "分享你的个人或团队案例，经总部审核后公开给所有伙伴。",
-    tabFeed: "公开案例",
-    tabMine: "我的案例",
+    intro: "浏览伙伴分享的经验，也把你的门店实践提交给大家学习。",
+    mineTitle: "我的案例",
+    mineIntro: "查看你提交的案例、审核状态和未通过原因。",
     publish: "发布案例",
     composerTitle: "发布新案例",
+    composerIntro: "写清楚发生了什么、怎么解决、值得大家学习的地方。",
     typeLabel: "案例类型",
     contentLabel: "案例内容",
     contentPlaceholder: "写下这次案例的经过与收获…",
     imageLabel: "图片（可选，最多 1 张）",
+    imageEmptyHint: "添加现场、菜品、服务或团队照片，让案例更容易被理解。",
     imagePick: "选择图片",
     imageReplace: "更换图片",
     imageRemove: "移除图片",
@@ -79,8 +83,8 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
     contentRequired: "请先填写案例内容。",
     uploadError: "图片上传失败，请稍后重试。",
     loading: "加载中…",
-    feedEmpty: "暂无公开案例。",
-    mineEmpty: "你还没有发布案例。",
+    feedEmpty: "还没有公开案例，欢迎分享第一个门店经验。",
+    mineEmpty: "你还没有发布案例，记录一次值得复盘的服务或团队经验。",
     loadError: "加载失败，请稍后重试。",
     reviewNoteLabel: "审核备注",
     delete: "删除",
@@ -107,17 +111,19 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
   },
   en: {
     kicker: "ZHAO · CASES",
-    title: "Our cases",
+    title: "Shared cases",
     titleAccent: ".",
-    intro: "Share a personal or team case; it goes public once HQ approves it.",
-    tabFeed: "Public cases",
-    tabMine: "My cases",
+    intro: "Learn from team experiences and submit your own store practice.",
+    mineTitle: "My cases",
+    mineIntro: "Review your submissions, approval status, and rejection notes.",
     publish: "Share a case",
     composerTitle: "Share a new case",
+    composerIntro: "Describe what happened, how it was solved, and what others can learn.",
     typeLabel: "Case type",
     contentLabel: "Case content",
     contentPlaceholder: "Tell what happened and what you learned…",
     imageLabel: "Image (optional, 1 max)",
+    imageEmptyHint: "Add a store, service, dish, or team photo to make the case clearer.",
     imagePick: "Pick an image",
     imageReplace: "Replace image",
     imageRemove: "Remove image",
@@ -130,8 +136,8 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
     contentRequired: "Please write the case content first.",
     uploadError: "Image upload failed. Please try again.",
     loading: "Loading…",
-    feedEmpty: "No public cases yet.",
-    mineEmpty: "You have not shared any case yet.",
+    feedEmpty: "No public cases yet. Share the first store experience.",
+    mineEmpty: "You have not shared a case yet. Capture one service or team lesson.",
     loadError: "Loading failed. Please try again.",
     reviewNoteLabel: "Review note",
     delete: "Delete",
@@ -158,17 +164,19 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
   },
   fr: {
     kicker: "ZHAO · CAS",
-    title: "Nos cas",
+    title: "Cas partagés",
     titleAccent: ".",
-    intro: "Partagez un cas personnel ou d'équipe ; il devient public après validation du siège.",
-    tabFeed: "Cas publics",
-    tabMine: "Mes cas",
+    intro: "Parcourez les expériences des équipes et partagez vos pratiques terrain.",
+    mineTitle: "Mes cas",
+    mineIntro: "Consultez vos cas, leur statut de validation et les motifs de refus.",
     publish: "Partager un cas",
     composerTitle: "Partager un nouveau cas",
+    composerIntro: "Expliquez la situation, la solution et ce que les équipes peuvent retenir.",
     typeLabel: "Type de cas",
     contentLabel: "Contenu du cas",
     contentPlaceholder: "Racontez ce qui s'est passé et ce que vous en retenez…",
     imageLabel: "Image (optionnelle, 1 max)",
+    imageEmptyHint: "Ajoutez une photo terrain, service, plat ou équipe pour clarifier le cas.",
     imagePick: "Choisir une image",
     imageReplace: "Remplacer l'image",
     imageRemove: "Retirer l'image",
@@ -181,8 +189,8 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
     contentRequired: "Veuillez d'abord rédiger le contenu du cas.",
     uploadError: "Échec de l'envoi de l'image. Réessayez plus tard.",
     loading: "Chargement…",
-    feedEmpty: "Aucun cas public pour le moment.",
-    mineEmpty: "Vous n'avez encore partagé aucun cas.",
+    feedEmpty: "Aucun cas public pour le moment. Partagez la première expérience terrain.",
+    mineEmpty: "Vous n'avez encore partagé aucun cas. Gardez une trace d'une leçon d'équipe.",
     loadError: "Échec du chargement. Réessayez plus tard.",
     reviewNoteLabel: "Note de validation",
     delete: "Supprimer",

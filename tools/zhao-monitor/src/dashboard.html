@@ -226,8 +226,11 @@
             </div>
             <div class="panel">
               <h3>后端</h3>
-              <p>触发后端 PM2 部署 workflow，会影响生产 API。</p>
-              <button class="action danger" onclick="fire('backend')">部署后端</button>
+              <p>触发后端部署 workflow（构建镜像 → GHCR → 生产 docker compose），会影响生产 API。</p>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0 0 8px">
+                <input type="checkbox" id="applyMig"> 同时应用数据库迁移（apply_migrations，会先自动备份）
+              </label>
+              <button class="action danger" onclick="fireBackend()">部署后端</button>
             </div>
             <div class="panel">
               <h3>Web</h3>
@@ -480,13 +483,19 @@
   };
 
   function fire(key){
-    if(!confirmAction(key)) return;
-    showToast('触发中... '+(LABEL[key]||key),'');
+    var base=key.split(':')[0];
+    if(!confirmAction(base)) return;
+    showToast('触发中... '+(LABEL[base]||base)+(key.indexOf(':migrate')>=0?'（含迁移）':''),'');
     try{ window.webkit.messageHandlers.dispatch.postMessage(key); }
     catch(e){ showToast('无法调用 gh（需在已登录 gh 的机器上）','bad'); }
   }
+  function fireBackend(){
+    var migrate=!!(document.getElementById('applyMig')||{}).checked;
+    fire(migrate?'backend:migrate':'backend');
+  }
   window.dispatchResult=function(key,ok,msg){
-    showToast((ok?'✓ 已触发 ':'✗ 失败 ')+(LABEL[key]||key)+(msg?' — '+msg:''), ok?'ok':'bad');
+    var base=(key||'').split(':')[0];
+    showToast((ok?'✓ 已触发 ':'✗ 失败 ')+(LABEL[base]||base)+(msg?' — '+msg:''), ok?'ok':'bad');
   };
   function easLocal(key){
     if(!confirmAction(key)) return;

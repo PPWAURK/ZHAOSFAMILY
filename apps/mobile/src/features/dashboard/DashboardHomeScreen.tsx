@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
@@ -49,6 +49,7 @@ import {
   type DashboardNewsPost,
 } from "@/features/dashboard/dashboardNewsApi";
 import { CaseSharesModuleScreen } from "@/features/case-shares/CaseSharesModuleScreen";
+import { CASE_SHARES_COPY } from "@/features/case-shares/caseSharesCopy";
 import { OrderModuleScreen } from "@/features/orders/OrderModuleScreen";
 import { ORDER_COPY } from "@/features/orders/orderCopy";
 import { ProfileScreen } from "@/features/profile/ProfileScreen";
@@ -77,6 +78,7 @@ type NewsDeskCategory = "news" | "congrats" | "issues";
 
 const NEWS_CATEGORY_FILTERS: NewsDeskCategory[] = ["news", "congrats", "issues"];
 const PDF_LOADING_MIN_DURATION_MS = 2000;
+const MAX_NEWS_PER_CATEGORY = 20;
 
 function resolveDisplayName(user: AuthUser, fallback: string): string {
   const composedName = [user.familyName, user.givenName].filter(Boolean).join(" ");
@@ -193,6 +195,7 @@ function isConnectedDashboardEntry(entryId: string): boolean {
   return (
     entryId === "home" ||
     entryId === "case-shares" ||
+    entryId === "my-case-shares" ||
     entryId === "orders" ||
     entryId === "profile" ||
     entryId === "recruitment-requests" ||
@@ -222,6 +225,8 @@ export function DashboardHomeScreen({
   // The order module reports when its long product-selection view is active so
   // the scroll-to-top/bottom helpers only show there, not on the supplier list.
   const [isOrderProductView, setIsOrderProductView] = useState(false);
+  const [caseSharePublishAction, setCaseSharePublishAction] =
+    useState<(() => void) | null>(null);
   const [newsPosts, setNewsPosts] = useState<DashboardNewsPost[]>([]);
   const [newsError, setNewsError] = useState("");
   const [isLoadingNews, setIsLoadingNews] = useState(true);
@@ -247,6 +252,13 @@ export function DashboardHomeScreen({
   // Safe-area insets read here (outside the Modal) — RN Modal renders in a
   // separate native window where SafeAreaView resolves insets to 0.
   const insets = useSafeAreaInsets();
+
+  const handleCaseSharePublishActionChange = useCallback(
+    (action: (() => void) | null): void => {
+      setCaseSharePublishAction(() => action);
+    },
+    [],
+  );
 
   // Keep the mobile trigger on the right while matching the Web drawer styling.
   const [isMoreRendered, setIsMoreRendered] = useState(false);
@@ -324,12 +336,14 @@ export function DashboardHomeScreen({
   );
   const visibleNewsPosts = useMemo(
     () =>
-      newsPosts.filter((post) => {
-        const matchesCategory =
-          resolveNewsDeskCategory(post.category) === selectedNewsCategory;
+      newsPosts
+        .filter((post) => {
+          const matchesCategory =
+            resolveNewsDeskCategory(post.category) === selectedNewsCategory;
 
-        return matchesCategory && postMatchesSearch(post, newsSearchTerm);
-      }),
+          return matchesCategory && postMatchesSearch(post, newsSearchTerm);
+        })
+        .slice(0, MAX_NEWS_PER_CATEGORY),
     [newsPosts, newsSearchTerm, selectedNewsCategory],
   );
   const canGoToPreviousNews = newsCarouselIndex > 0;
@@ -344,7 +358,7 @@ export function DashboardHomeScreen({
         const posts = await fetchDashboardNewsPosts();
 
         if (!isCancelled) {
-          setNewsPosts(posts.slice(0, 8));
+          setNewsPosts(posts);
         }
       } catch {
         if (!isCancelled) {
@@ -595,7 +609,19 @@ export function DashboardHomeScreen({
           ) : activeEntry === "recruitment-requests" ? (
             <RecruitmentModuleScreen language={language} />
           ) : activeEntry === "case-shares" ? (
-            <CaseSharesModuleScreen language={language} />
+            <CaseSharesModuleScreen
+              language={language}
+              mode="public"
+              onRegisterPublishAction={handleCaseSharePublishActionChange}
+              onOpenMyCases={() => setActiveEntry("my-case-shares")}
+            />
+          ) : activeEntry === "my-case-shares" ? (
+            <CaseSharesModuleScreen
+              language={language}
+              mode="mine"
+              onRegisterPublishAction={handleCaseSharePublishActionChange}
+              onOpenMyCases={() => setActiveEntry("my-case-shares")}
+            />
           ) : activeEntry === "waiting-queue" ? (
             <WaitingQueueModuleScreen language={language} />
           ) : activeEntry === "training" ? (
@@ -1016,6 +1042,18 @@ export function DashboardHomeScreen({
               />
             </Pressable>
           </View>
+        ) : null}
+
+        {(activeEntry === "case-shares" || activeEntry === "my-case-shares") &&
+        caseSharePublishAction ? (
+          <Pressable
+            accessibilityLabel={CASE_SHARES_COPY[language].publish}
+            accessibilityRole="button"
+            style={styles.caseSharePublishButton}
+            onPress={caseSharePublishAction}
+          >
+            <Ionicons color="#ffffff" name="add" size={30} />
+          </Pressable>
         ) : null}
 
         <Modal
@@ -1654,6 +1692,27 @@ const styles = StyleSheet.create(scaleStyles({
     fontWeight: "600",
     lineHeight: 36,
     marginTop: 16,
+  },
+  caseSharePublishButton: {
+    alignItems: "center",
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: "#ffffff",
+    borderRadius: 29,
+    borderWidth: 2,
+    bottom: 104,
+    height: 58,
+    justifyContent: "center",
+    position: "absolute",
+    right: 18,
+    zIndex: 8,
+    ...crossPlatformShadow({
+      color: authControlStyles.colors.red,
+      offset: { width: 0, height: 8 },
+      opacity: 0.24,
+      radius: 16,
+      elevation: 12,
+    }),
+    width: 58,
   },
   orderJumpButton: {
     alignItems: "center",
