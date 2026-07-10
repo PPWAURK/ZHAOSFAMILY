@@ -22,9 +22,7 @@ describe('ProductImagesService', () => {
 
   it('stores an uploaded product image under the local uploads directory', async () => {
     mockRandomUUID.mockReturnValue('123e4567-e89b-12d3-a456-426614174000');
-    const service = new ProductImagesService({
-      get: jest.fn().mockReturnValue('api'),
-    } as never);
+    const service = new ProductImagesService();
     const buffer = Buffer.from('image data');
 
     const result = await service.saveImage({
@@ -40,11 +38,11 @@ describe('ProductImagesService', () => {
       expect.stringContaining(fileName),
       buffer,
     );
-    expect(result).toEqual({ imageUrl: `/api/products/images/${fileName}` });
+    expect(result).toEqual({ imagePath: `/products/images/${fileName}` });
   });
 
   it('rejects file types outside the product image allowlist', async () => {
-    const service = new ProductImagesService({ get: jest.fn() } as never);
+    const service = new ProductImagesService();
 
     await expect(
       service.saveImage({ mimetype: 'image/gif' } as Express.Multer.File),
@@ -52,7 +50,7 @@ describe('ProductImagesService', () => {
   });
 
   it('only resolves generated product image file names that exist locally', () => {
-    const service = new ProductImagesService({ get: jest.fn() } as never);
+    const service = new ProductImagesService();
     mockExistsSync.mockReturnValue(true);
 
     expect(service.getImagePath(fileName)).toContain(fileName);

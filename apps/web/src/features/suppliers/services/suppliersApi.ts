@@ -1,4 +1,4 @@
-import { ApiClientError, apiClient } from "@/shared/api/api-client";
+import { API_URL, ApiClientError, apiClient } from "@/shared/api/api-client";
 import { isDefined } from "@/shared/utils/typeGuards";
 import { createProductsApi, createSuppliersApi } from "@zhao/api";
 import type {
@@ -20,8 +20,22 @@ const suppliersApi = createSuppliersApi(apiClient);
 const productsApi = createProductsApi(apiClient);
 
 type ProductImageUploadResult = {
-  imageUrl?: string;
+  imagePath?: string;
 };
+
+function resolveProductImageUrl(image: string | null | undefined): string {
+  if (!image) return "";
+
+  if (image.startsWith("/api/products/images/")) {
+    return `${API_URL}${image.slice("/api".length)}`;
+  }
+
+  if (image.startsWith("/products/images/")) {
+    return `${API_URL}${image}`;
+  }
+
+  return image;
+}
 
 function normalizeSupplier(raw: SupplierApiRecord | null): SupplierSummary | null {
   if (!raw) return null;
@@ -48,7 +62,7 @@ function normalizeProduct(raw: ProductApiRecord | null): SupplierProduct | null 
     unit: raw.unit ?? "",
     price:
       typeof raw.unitPriceHt === "number" && Number.isFinite(raw.unitPriceHt) ? raw.unitPriceHt : 0,
-    image: raw.image ?? "",
+    image: resolveProductImageUrl(raw.image),
     specification: raw.specification ?? "",
   };
 }
@@ -160,9 +174,9 @@ export async function uploadProductImage(file: File): Promise<string> {
 
   const uploaded = await apiClient.upload<ProductImageUploadResult>("/products/images", formData);
 
-  if (!uploaded.imageUrl) {
-    throw new Error("PRODUCT_IMAGE_UPLOAD_MISSING_URL");
+  if (!uploaded.imagePath) {
+    throw new Error("PRODUCT_IMAGE_UPLOAD_MISSING_PATH");
   }
 
-  return uploaded.imageUrl;
+  return `${API_URL}${uploaded.imagePath}`;
 }
