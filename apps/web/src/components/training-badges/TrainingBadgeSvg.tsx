@@ -22,7 +22,7 @@ export interface TrainingBadgeSvgProps {
 }
 
 const DEFAULT_BADGE_IMAGE = "badge.svg";
-const ICON_SVG_SCALE = 2.5;
+const ICON_SVG_SCALE = 1;
 
 const BADGE_FRAME_PREFIXES = ["badge"];
 

@@ -24,7 +24,13 @@ function makeRecord(overrides: Record<string, unknown> = {}) {
     reviewedAt: null,
     createdAt: new Date('2026-06-23T10:00:00.000Z'),
     updatedAt: new Date('2026-06-23T10:00:00.000Z'),
-    author: { id: AUTHOR.id, name: 'Wang', email: 'wang@zhao.local' },
+    author: {
+      id: AUTHOR.id,
+      name: 'Wang',
+      email: 'wang@zhao.local',
+      profilePhoto: 'https://cdn.example.com/wang.jpg',
+      jobRole: 'front-of-house',
+    },
     restaurant: { id: AUTHOR.restaurantId, name: 'ZHAO Choisy' },
     likes: [],
     _count: { likes: 0, comments: 0 },
@@ -112,7 +118,15 @@ describe('CaseSharesService', () => {
           imageSizeBytes: null,
         },
         include: {
-          author: { select: { id: true, name: true, email: true } },
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              profilePhoto: true,
+              jobRole: true,
+            },
+          },
           restaurant: { select: { id: true, name: true } },
           likes: { where: { userId: AUTHOR.id }, select: { id: true } },
           _count: { select: { comments: true, likes: true } },
@@ -148,6 +162,91 @@ describe('CaseSharesService', () => {
         expect.objectContaining({ page: 1, pageSize: 10, total: 1 }),
       );
       expect(result.items).toHaveLength(1);
+    });
+  });
+
+  describe('getAuthorProfile', () => {
+    it('returns only the author information intended for the public profile', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: AUTHOR.id,
+        name: 'Wang',
+        profilePhoto: 'https://cdn.example.com/wang.jpg',
+        jobRole: 'front-of-house',
+        restaurant: { id: AUTHOR.restaurantId, name: 'ZHAO Choisy' },
+        trainingTitles: [
+          {
+            earnedAt: new Date('2026-06-10T10:00:00.000Z'),
+            title: {
+              code: 'SERVICE_STAR',
+              nameZh: '服务之星',
+              nameEn: 'Service star',
+              nameFr: 'Étoile du service',
+              frameStyle: 'gold',
+              unlockPositionCode: 'FOH',
+            },
+          },
+        ],
+        trainingBadges: [
+          {
+            earnedAt: new Date('2026-06-11T10:00:00.000Z'),
+            badge: {
+              code: 'FOH_LEVEL_1',
+              nameZh: '前厅一级',
+              nameEn: 'Front of house level 1',
+              nameFr: 'Salle niveau 1',
+              rarity: 'common',
+              level: 1,
+              imageFileName: 'badge.svg',
+            },
+          },
+        ],
+      });
+
+      const profile = await service.getAuthorProfile(AUTHOR.id);
+
+      expect(profile).toEqual({
+        id: AUTHOR.id,
+        name: 'Wang',
+        avatarUrl: 'https://cdn.example.com/wang.jpg',
+        jobRole: 'front-of-house',
+        restaurant: { id: AUTHOR.restaurantId, name: 'ZHAO Choisy' },
+        titles: [
+          {
+            code: 'SERVICE_STAR',
+            name: {
+              zh: '服务之星',
+              en: 'Service star',
+              fr: 'Étoile du service',
+            },
+            frameStyle: 'gold',
+            unlockPositionCode: 'FOH',
+            earned: true,
+            earnedAt: '2026-06-10T10:00:00.000Z',
+          },
+        ],
+        badges: [
+          {
+            code: 'FOH_LEVEL_1',
+            name: {
+              zh: '前厅一级',
+              en: 'Front of house level 1',
+              fr: 'Salle niveau 1',
+            },
+            rarity: 'common',
+            level: 1,
+            imageFileName: 'badge.svg',
+            earnedAt: '2026-06-11T10:00:00.000Z',
+          },
+        ],
+      });
+    });
+
+    it('throws when the requested author does not exist', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.getAuthorProfile(404)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 

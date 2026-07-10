@@ -625,7 +625,7 @@ export function DashboardHomeScreen({
           ) : activeEntry === "waiting-queue" ? (
             <WaitingQueueModuleScreen language={language} />
           ) : activeEntry === "training" ? (
-            <TrainingModuleScreen language={language} />
+            <TrainingModuleScreen language={language} user={user} />
           ) : activeEntry === "training-records" ? (
             <TrainingHistoryView copy={TRAINING_COPY[language]} language={language} />
           ) : (

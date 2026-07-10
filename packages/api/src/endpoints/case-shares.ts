@@ -1,5 +1,6 @@
 import type {
   CaseShareCommentItem,
+  CaseShareAuthorProfile,
   CaseShareItem,
   CreateCaseShareCommentRequest,
   CreateCaseShareRequest,
@@ -19,6 +20,9 @@ export type CaseSharesApi = {
     query?: ListMyCaseSharesQuery,
   ) => Promise<PaginatedResponse<CaseShareItem>>;
   getDetail: (id: number | string) => Promise<CaseShareItem>;
+  getAuthorProfile: (
+    authorId: number | string,
+  ) => Promise<CaseShareAuthorProfile>;
   create: (input: CreateCaseShareRequest) => Promise<CaseShareItem>;
   remove: (id: number | string) => Promise<{ id: number }>;
   listPending: (
@@ -75,6 +79,10 @@ export function createCaseSharesApi(apiClient: ApiClient): CaseSharesApi {
       ),
     getDetail: (id) =>
       apiClient.get<CaseShareItem>(`/case-shares/${encodeURIComponent(id)}`),
+    getAuthorProfile: (authorId) =>
+      apiClient.get<CaseShareAuthorProfile>(
+        `/case-shares/authors/${encodeURIComponent(authorId)}`,
+      ),
     create: (input) => apiClient.post<CaseShareItem>("/case-shares", input),
     remove: (id) =>
       apiClient.delete<{ id: number }>(`/case-shares/${encodeURIComponent(id)}`),

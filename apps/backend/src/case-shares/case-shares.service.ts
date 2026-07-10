@@ -21,6 +21,7 @@ import type { ListMyCaseSharesQueryDto } from './dto/list-my-case-shares-query.d
 import type { ReviewCaseShareDto } from './dto/review-case-share.dto';
 import type {
   CaseShareActor,
+  CaseShareAuthorProfile,
   CaseShareCommentItem,
   CaseShareItem,
   CaseShareStatus,
@@ -38,7 +39,15 @@ const IMAGE_OBJECT_KEY_PREFIX = 'case-shares/';
 // likes filtré sur l'utilisateur courant -> likedByCurrentUser ; _count -> totaux.
 function buildCaseShareInclude(actorId: number) {
   return {
-    author: { select: { id: true, name: true, email: true } },
+    author: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        profilePhoto: true,
+        jobRole: true,
+      },
+    },
     restaurant: { select: { id: true, name: true } },
     likes: { where: { userId: actorId }, select: { id: true } },
     _count: { select: { comments: true, likes: true } },
@@ -105,6 +114,80 @@ export class CaseSharesService {
     }
 
     return this.mapItem(record, actor);
+  }
+
+  async getAuthorProfile(authorId: number): Promise<CaseShareAuthorProfile> {
+    const author = await this.prismaService.user.findUnique({
+      where: { id: authorId },
+      select: {
+        id: true,
+        name: true,
+        profilePhoto: true,
+        jobRole: true,
+        restaurant: { select: { id: true, name: true } },
+        trainingTitles: {
+          select: {
+            earnedAt: true,
+            title: {
+              select: {
+                code: true,
+                nameZh: true,
+                nameEn: true,
+                nameFr: true,
+                frameStyle: true,
+                unlockPositionCode: true,
+              },
+            },
+          },
+          orderBy: { earnedAt: 'desc' },
+        },
+        trainingBadges: {
+          select: {
+            earnedAt: true,
+            badge: {
+              select: {
+                code: true,
+                nameZh: true,
+                nameEn: true,
+                nameFr: true,
+                rarity: true,
+                level: true,
+                imageFileName: true,
+              },
+            },
+          },
+          orderBy: { earnedAt: 'desc' },
+        },
+      },
+    });
+
+    if (!author) {
+      throw new NotFoundException('CASE_SHARE_AUTHOR_NOT_FOUND');
+    }
+
+    return {
+      id: author.id,
+      name: author.name,
+      avatarUrl: author.profilePhoto,
+      jobRole: author.jobRole,
+      restaurant: author.restaurant,
+      titles: author.trainingTitles.map(({ earnedAt, title }) => ({
+        code: title.code,
+        name: { zh: title.nameZh, en: title.nameEn, fr: title.nameFr },
+        frameStyle: title.frameStyle,
+        unlockPositionCode: title.unlockPositionCode,
+        earned: true,
+        earnedAt: earnedAt.toISOString(),
+      })),
+      badges: author.trainingBadges.map(({ earnedAt, badge }) => ({
+        code: badge.code,
+        name: { zh: badge.nameZh, en: badge.nameEn, fr: badge.nameFr },
+        rarity: badge.rarity,
+        level: badge.level,
+        imageFileName: badge.imageFileName,
+        earnedAt: earnedAt.toISOString(),
+      })),
+    };
   }
 
   async create(
@@ -434,6 +517,8 @@ export class CaseSharesService {
         id: record.author.id,
         name: record.author.name,
         email: record.author.email,
+        avatarUrl: record.author.profilePhoto,
+        jobRole: record.author.jobRole,
       },
       restaurant: {
         id: record.restaurant.id,
@@ -462,6 +547,8 @@ export class CaseSharesService {
         id: record.author.id,
         name: record.author.name,
         email: record.author.email,
+        avatarUrl: null,
+        jobRole: null,
       },
       createdAt: record.createdAt.toISOString(),
     };

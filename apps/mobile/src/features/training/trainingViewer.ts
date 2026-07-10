@@ -43,6 +43,11 @@ export type PdfViewerMessage = {
 
 export type ViewerMessage = VideoViewerMessage | PdfViewerMessage;
 
+export type PdfWatermarkIdentity = {
+  email: string;
+  name: string;
+};
+
 const VIEWER_MESSAGE_SOURCE = "zhao-training-viewer";
 
 export function parseViewerMessage(rawData: string): ViewerMessage | null {
@@ -142,7 +147,17 @@ const PDFJS_VERSION = "3.11.174";
 const PDFJS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
 const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
 
-export function buildPdfViewerHtml(base64Data: string): string {
+export function buildPdfViewerHtml(
+  base64Data: string,
+  watermarkIdentity: PdfWatermarkIdentity,
+): string {
+  const serializeForInlineScript = (value: string): string =>
+    JSON.stringify(value).replace(/</g, "\\u003c");
+  const serializedWatermarkName = serializeForInlineScript(watermarkIdentity.name);
+  const serializedWatermarkEmail = serializeForInlineScript(
+    watermarkIdentity.email,
+  );
+
   return `<!DOCTYPE html>
 <html style="height:100%">
 <head>
@@ -152,7 +167,11 @@ export function buildPdfViewerHtml(base64Data: string): string {
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{min-height:100%;background:#525659}
 #pages{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px}
-canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.4)}
+.page{position:relative;max-width:100%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.4)}
+.page canvas{display:block;max-width:100%;height:auto}
+.watermark{position:absolute;left:50%;display:flex;flex-direction:column;align-items:center;gap:4px;color:rgba(96,38,38,.5);font-family:sans-serif;pointer-events:none;transform:translate(-50%,-50%) rotate(-32deg);white-space:nowrap}
+.watermark--top{top:18%}.watermark--middle{top:50%}.watermark--bottom{top:82%}
+.watermark-name{font-size:18px;font-weight:600;letter-spacing:2px}.watermark-email{font-size:16px;font-weight:500;letter-spacing:1px}
 #err{display:none;color:#fff;font-family:sans-serif;font-size:14px;line-height:1.5;padding:24px;text-align:center}
 </style>
 </head>
@@ -212,16 +231,34 @@ canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,
             return pdf.getPage(pageNum).then(function(page){
               var base=page.getViewport({scale:1});
               var viewport=page.getViewport({scale:maxWidth/base.width});
+              var pageElement=document.createElement('div');
+              pageElement.className='page';
+              pageElement.style.width=viewport.width+'px';
+              pageElement.style.height=viewport.height+'px';
+              pageElement.setAttribute('data-page',String(pageNum));
               var canvas=document.createElement('canvas');
               var ctx=canvas.getContext('2d');
               canvas.width=Math.floor(viewport.width*dpr);
               canvas.height=Math.floor(viewport.height*dpr);
               canvas.style.width=viewport.width+'px';
               canvas.style.height=viewport.height+'px';
-              canvas.setAttribute('data-page',String(pageNum));
+              pageElement.appendChild(canvas);
+              ['top','middle','bottom'].forEach(function(position){
+                var watermark=document.createElement('div');
+                watermark.className='watermark watermark--'+position;
+                var watermarkName=document.createElement('span');
+                watermarkName.className='watermark-name';
+                watermarkName.textContent=${serializedWatermarkName};
+                var watermarkEmail=document.createElement('span');
+                watermarkEmail.className='watermark-email';
+                watermarkEmail.textContent=${serializedWatermarkEmail};
+                watermark.appendChild(watermarkName);
+                watermark.appendChild(watermarkEmail);
+                pageElement.appendChild(watermark);
+              });
               ctx.scale(dpr,dpr);
-              container.appendChild(canvas);
-              observer.observe(canvas);
+              container.appendChild(pageElement);
+              observer.observe(pageElement);
               return page.render({canvasContext:ctx,viewport:viewport}).promise;
             });
           });

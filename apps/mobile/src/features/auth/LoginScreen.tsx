@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -36,6 +37,7 @@ import { secureTokenStorage } from "@/lib/tokenStorage";
 import { unregisterPushToken } from "@/lib/pushNotifications";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SUPPORT_URL = "https://zhaosfamily.com/support";
 
 const initialRegisterForm: RegisterFormState = {
   familyName: "",
@@ -175,6 +177,16 @@ export function LoginScreen() {
     clearFeedback();
 
     if (nextMode === "register") void loadRestaurants();
+  }
+
+  async function openSupport(): Promise<void> {
+    clearFeedback();
+
+    try {
+      await Linking.openURL(SUPPORT_URL);
+    } catch {
+      setFeedback(copy.supportOpenError);
+    }
   }
 
   async function submitLogin(): Promise<void> {
@@ -439,7 +451,7 @@ export function LoginScreen() {
               <Text style={styles.bottomText}>
                 {copy.est} <Text style={styles.bottomBold}>{copy.estYear}</Text>
               </Text>
-              <Pressable>
+              <Pressable onPress={() => void openSupport()}>
                 <Text style={styles.bottomLink}>{copy.help}</Text>
               </Pressable>
             </View>

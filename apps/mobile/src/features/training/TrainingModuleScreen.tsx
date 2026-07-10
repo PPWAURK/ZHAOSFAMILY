@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Directory, File } from "expo-file-system";
+import type { AuthUser } from "@zhao/types";
 import {
   Pressable,
   ScrollView,
@@ -11,6 +12,7 @@ import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
   downloadTrainingMaterialToCache,
+  fetchTrainingMyBadges,
   fetchTrainingMyPlan,
   updateTrainingMaterialProgress,
 } from "@/features/training/trainingApi";
@@ -19,6 +21,7 @@ import {
 } from "@/features/training/trainingMapActions";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { buildTrainingMapData } from "@/features/training/trainingMapState";
+import { TrainingBadgeUnlockModal } from "@/features/training/TrainingBadgeUnlockModal";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
 import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
 import { applyMaterialProgress } from "@/features/training/trainingProgressRules";
@@ -28,8 +31,10 @@ import {
   buildVideoPlayerHtml,
   isPdfMaterial,
   isVideoMaterial,
+  type PdfWatermarkIdentity,
 } from "@/features/training/trainingViewer";
 import type {
+  TrainingBadge,
   TrainingMapData,
   TrainingMaterialProgress,
   TrainingPlan,
@@ -39,6 +44,7 @@ import type {
 
 type TrainingModuleScreenProps = {
   language: AuthLanguage;
+  user: AuthUser;
 };
 
 type NextTrainingFocus = {
@@ -125,6 +131,18 @@ function getMaterialTypeLabel(
   return copy.materialTypes[material.type] || material.type;
 }
 
+function buildPdfWatermarkIdentity(user: AuthUser): PdfWatermarkIdentity {
+  const composedName = [user.familyName || user.lastName, user.givenName || user.firstName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return {
+    name: composedName || user.name?.trim() || "-",
+    email: user.email?.trim() || "-",
+  };
+}
+
 /**
  * 闯关地图主组件
  *
@@ -135,14 +153,17 @@ function getMaterialTypeLabel(
  *
  * 成就/称号由底部入口进入单独页面
  */
-export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
+export function TrainingModuleScreen({ language, user }: TrainingModuleScreenProps) {
   const copy = TRAINING_COPY[language];
+  const pdfWatermarkIdentity = buildPdfWatermarkIdentity(user);
 
   const [localLoading, setLocalLoading] = useState(false);
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const [previewMaterial, setPreviewMaterial] = useState<TrainingPlanMaterial | null>(null);
   const [quizMaterial, setQuizMaterial] = useState<TrainingPlanMaterial | null>(null);
+  const [newlyEarnedBadges, setNewlyEarnedBadges] = useState<TrainingBadge[]>([]);
+  const [pendingBadgeUnlocks, setPendingBadgeUnlocks] = useState<TrainingBadge[]>([]);
   const [previewFileUri, setPreviewFileUri] = useState<string | null>(null);
   const [previewBaseUri, setPreviewBaseUri] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
@@ -200,7 +221,9 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
           const downloadedFile = new File(fileUri);
           const base64Data = await downloadedFile.base64();
 
-          await viewerFile.write(buildPdfViewerHtml(base64Data));
+          await viewerFile.write(
+            buildPdfViewerHtml(base64Data, pdfWatermarkIdentity),
+          );
           setPreviewFileUri(viewerFile.uri);
           setPreviewBaseUri(pdfDirectory.uri);
           return;
@@ -214,7 +237,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         setIsLoadingPreview(false);
       }
     },
-    [copy.openError],
+    [copy.openError, pdfWatermarkIdentity],
   );
 
   const handleClosePreview = useCallback(() => {
@@ -224,23 +247,61 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     setPreviewError(null);
   }, []);
 
+  useEffect(() => {
+    if (previewMaterial || pendingBadgeUnlocks.length === 0) return;
+
+    setNewlyEarnedBadges(pendingBadgeUnlocks);
+    setPendingBadgeUnlocks([]);
+  }, [pendingBadgeUnlocks, previewMaterial]);
+
   const syncMaterialProgress = useCallback(
     async (
       materialId: number,
       input: UpdateTrainingProgressInput,
     ): Promise<TrainingMaterialProgress | null> => {
+      const shouldCheckNewBadges = input.status === "completed";
+      const earnedBadgeCodes = new Set<string>();
+
+      if (shouldCheckNewBadges) {
+        try {
+          const badges = await fetchTrainingMyBadges();
+          badges.badges
+            .filter((badge) => badge.status === "certified")
+            .forEach((badge) => earnedBadgeCodes.add(badge.code));
+        } catch {
+          // A badge lookup failure must not block the completion record.
+        }
+      }
+
       try {
         const progress = await updateTrainingMaterialProgress(materialId, input);
         setPlan((previous) =>
           previous ? applyMaterialProgress(previous, materialId, progress) : previous,
         );
 
+        if (shouldCheckNewBadges && progress.status === "completed") {
+          try {
+            const badges = await fetchTrainingMyBadges();
+            const newBadges = badges.badges.filter(
+              (badge) =>
+                badge.status === "certified" && !earnedBadgeCodes.has(badge.code),
+            );
+
+            if (newBadges.length > 0) {
+              setPendingBadgeUnlocks(newBadges);
+              handleClosePreview();
+            }
+          } catch {
+            // The learning progress remains valid if the reminder lookup fails.
+          }
+        }
+
         return progress;
       } catch {
         return null;
       }
     },
-    [],
+    [handleClosePreview],
   );
 
   const handleStartQuiz = useCallback((material: TrainingPlanMaterial) => {
@@ -252,6 +313,15 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
     setQuizMaterial(null);
     void loadPlan();
   }, [loadPlan]);
+
+  const handleQuizPassed = useCallback(
+    (badges: TrainingBadge[]) => {
+      setQuizMaterial(null);
+      setNewlyEarnedBadges(badges);
+      void loadPlan();
+    },
+    [loadPlan],
+  );
 
   const togglePosition = useCallback((positionId: string) => {
     setExpandedPositions((prev) => ({
@@ -278,7 +348,7 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         language={language}
         materialId={quizMaterial.id}
         onClose={handleQuizClose}
-        onPassed={handleQuizClose}
+        onPassed={handleQuizPassed}
       />
     );
   }
@@ -537,6 +607,12 @@ export function TrainingModuleScreen({ language }: TrainingModuleScreenProps) {
         }}
         onStartQuiz={handleStartQuiz}
         syncProgress={syncMaterialProgress}
+      />
+      <TrainingBadgeUnlockModal
+        badges={newlyEarnedBadges}
+        copy={copy}
+        language={language}
+        onClose={() => setNewlyEarnedBadges([])}
       />
     </View>
   );

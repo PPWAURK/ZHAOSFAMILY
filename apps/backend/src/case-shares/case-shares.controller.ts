@@ -26,6 +26,7 @@ import { ListMyCaseSharesQueryDto } from './dto/list-my-case-shares-query.dto';
 import { ReviewCaseShareDto } from './dto/review-case-share.dto';
 import type {
   CaseShareActor,
+  CaseShareAuthorProfile,
   CaseShareCommentItem,
   CaseShareItem,
   PaginatedCaseShareComments,
@@ -72,6 +73,16 @@ export class CaseSharesController {
       await this.getActor(authorization),
       query,
     );
+  }
+
+  @Get('authors/:authorId')
+  async getAuthorProfile(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('authorId', ParseIntPipe) authorId: number,
+  ): Promise<CaseShareAuthorProfile> {
+    await this.getActor(authorization);
+
+    return this.caseSharesService.getAuthorProfile(authorId);
   }
 
   @Get(':id')

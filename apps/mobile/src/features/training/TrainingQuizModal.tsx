@@ -12,6 +12,7 @@ import { trainingStyles as styles } from "@/features/training/trainingStyles";
 import {
   QUIZ_LANGUAGES,
   type QuizLanguage,
+  type TrainingBadge,
   type TrainingQuiz,
   type TrainingQuizAttemptResult,
   type TrainingQuizQuestion,
@@ -67,7 +68,7 @@ type TrainingQuizModalProps = {
   language: "zh" | "en" | "fr";
   materialId: number | null;
   onClose: () => void;
-  onPassed: () => void;
+  onPassed: (newBadges: TrainingBadge[]) => void;
 };
 
 type Phase = "loading" | "taking" | "result" | "error";
@@ -229,7 +230,7 @@ export function TrainingQuizModal({
       setResult(attempt);
       setPhase("result");
 
-      if (attempt.passed) onPassed();
+      if (attempt.passed) onPassed(attempt.newBadges);
     } catch {
       setErrorMessage(copy.quizSubmitError);
     } finally {

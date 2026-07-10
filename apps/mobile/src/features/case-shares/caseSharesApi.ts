@@ -1,6 +1,7 @@
 import { createCaseSharesApi, getAccessToken } from "@zhao/api";
 import type {
   CaseShareCommentItem,
+  CaseShareAuthorProfile,
   CaseShareItem,
   CreateCaseShareRequest,
   PaginatedResponse,
@@ -32,6 +33,12 @@ export function fetchPublicCaseShares(): Promise<
 
 export function fetchMyCaseShares(): Promise<PaginatedResponse<CaseShareItem>> {
   return caseSharesApi.listMine();
+}
+
+export function fetchCaseShareAuthorProfile(
+  authorId: number,
+): Promise<CaseShareAuthorProfile> {
+  return caseSharesApi.getAuthorProfile(authorId);
 }
 
 export function createCaseShare(

@@ -50,6 +50,7 @@ export type AuthCopy = {
   join: string;
   switchBack: string;
   help: string;
+  supportOpenError: string;
   est: string;
   estYear: string;
   storeRefresh: string;
@@ -213,6 +214,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     join: "申请加入 →",
     switchBack: "返回登入 →",
     help: "需要帮助?",
+    supportOpenError: "无法打开帮助页面，请稍后重试。",
     est: "© La Taverne de ZHAO.",
     estYear: "2011",
     storeRefresh: "刷新",
@@ -292,6 +294,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     join: "Request to join →",
     switchBack: "Back to sign in →",
     help: "Need help?",
+    supportOpenError: "Could not open the help page. Please try again.",
     est: "© La Taverne de ZHAO.",
     estYear: "2011",
     storeRefresh: "Refresh",
@@ -371,6 +374,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     join: "Demander a rejoindre →",
     switchBack: "Retour connexion →",
     help: "Besoin d'aide?",
+    supportOpenError: "Impossible d'ouvrir la page d'aide. Reessayez plus tard.",
     est: "© La Taverne de ZHAO.",
     estYear: "2011",
     storeRefresh: "Rafraichir",

@@ -1,22 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { SvgXml } from "react-native-svg";
 import { scaleStyles } from "@/lib/responsive";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 import { fetchTrainingMyBadges } from "@/features/training/trainingApi";
+import { TrainingBadgeSvg } from "@/features/training/TrainingBadgeSvg";
 import type { TrainingMyBadges } from "@/features/training/trainingTypes";
-import { MOBILE_API_URL } from "@/lib/env";
 
 const COLORS = authControlStyles.colors;
-const BADGE_EMBLEM_SIZE = 76;
-const ICON_SVG_SCALE = 2.5;
-const BADGE_FRAME_PREFIXES = ["badge"];
-
-function isBadgeFrame(fileName: string): boolean {
-  const name = fileName.replace(/\.svg$/i, "");
-
-  return BADGE_FRAME_PREFIXES.some((prefix) => name === prefix || name.startsWith(`${prefix}-`));
-}
 
 function getBadgeName(
   badge: TrainingMyBadges["badges"][number],
@@ -25,82 +15,10 @@ function getBadgeName(
   return badge.name[language as keyof typeof badge.name] || badge.name.zh || badge.code;
 }
 
-function buildBadgeImageUrl(fileName: string): string {
-  return `${MOBILE_API_URL}/training/badges/svg/${encodeURIComponent(fileName)}`;
-}
-
 function getCompletionRateWidth(completionRate: number): ViewStyle["width"] {
   const safeCompletionRate = Math.max(0, Math.min(100, completionRate));
 
   return `${safeCompletionRate}%` as ViewStyle["width"];
-}
-
-function BadgeSvg({
-  badge,
-}: {
-  badge: TrainingMyBadges["badges"][number];
-}) {
-  const [svgXml, setSvgXml] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  const cacheRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const src = buildBadgeImageUrl(badge.imageFileName || "badge.svg");
-
-    if (cacheRef.current) {
-      if (active) setSvgXml(cacheRef.current);
-      return;
-    }
-
-    fetch(src)
-      .then((res) => {
-        if (!res.ok) throw new Error("NOT_FOUND");
-        return res.text();
-      })
-      .then((xml) => {
-        cacheRef.current = xml;
-        if (active) setSvgXml(xml);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [badge.imageFileName, badge.code]);
-
-  if (failed) {
-    const name = badge.name.zh || badge.name.en || badge.code;
-
-    return (
-      <View style={styles.badgeEmblem}>
-        <Text style={styles.badgeEmblemText}>
-          {name ? name.charAt(0).toUpperCase() : "?"}
-        </Text>
-      </View>
-    );
-  }
-
-  if (!svgXml) {
-    return <View style={styles.badgeEmblem} />;
-  }
-
-  const imageFileName = badge.imageFileName || "badge.svg";
-  const shouldScaleIcon = !isBadgeFrame(imageFileName);
-
-  return (
-    <View style={styles.badgeSvgViewport}>
-      <SvgXml
-        xml={svgXml}
-        style={shouldScaleIcon ? styles.scaledBadgeSvg : undefined}
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid meet"
-      />
-    </View>
-  );
 }
 
 export function CertificationWall({
@@ -186,7 +104,7 @@ export function CertificationWall({
         >
           {certified.map((badge) => (
             <View key={badge.code} style={styles.card}>
-              <BadgeSvg badge={badge} />
+              <TrainingBadgeSvg badge={badge} size={76} />
               <Text style={styles.badgeName} numberOfLines={2}>
                 {getBadgeName(badge, language)}
               </Text>
@@ -212,7 +130,7 @@ export function CertificationWall({
           >
             {inProgress.map((badge) => (
               <View key={badge.code} style={styles.card}>
-                <BadgeSvg badge={badge} />
+                <TrainingBadgeSvg badge={badge} size={76} />
                 <Text style={styles.badgeName} numberOfLines={2}>
                   {getBadgeName(badge, language)}
                 </Text>
@@ -291,34 +209,6 @@ const styles = StyleSheet.create(
       padding: 12,
       width: 112,
       minHeight: 162,
-    },
-    badgeEmblem: {
-      alignItems: "center",
-      backgroundColor: COLORS.paper,
-      borderColor: COLORS.ink10,
-      borderRadius: 8,
-      borderWidth: 1,
-      height: BADGE_EMBLEM_SIZE,
-      justifyContent: "center",
-      width: BADGE_EMBLEM_SIZE,
-    },
-    badgeSvgViewport: {
-      alignItems: "center",
-      height: BADGE_EMBLEM_SIZE,
-      justifyContent: "center",
-      overflow: "hidden",
-      width: BADGE_EMBLEM_SIZE,
-    },
-    scaledBadgeSvg: {
-      transform: [{ scale: ICON_SVG_SCALE }],
-    },
-    badgeEmblemText: {
-      color: COLORS.red,
-      fontFamily: "serif",
-      fontSize: 30,
-      fontWeight: "700",
-      lineHeight: 34,
-      textAlign: "center",
     },
     badgeName: {
       color: COLORS.ink,

@@ -42,6 +42,7 @@ import {
   uploadCaseImage,
   type CaseImageUpload,
 } from "@/features/case-shares/caseSharesApi";
+import { CaseShareAuthorProfileModal } from "@/features/case-shares/CaseShareAuthorProfileModal";
 import { CASE_SHARES_COPY } from "@/features/case-shares/caseSharesCopy";
 
 type CaseSharesModuleScreenProps = {
@@ -109,6 +110,7 @@ export function CaseSharesModuleScreen({
   const [commentsError, setCommentsError] = useState("");
   const [commentInput, setCommentInput] = useState("");
   const [isSendingComment, setIsSendingComment] = useState(false);
+  const [authorProfileId, setAuthorProfileId] = useState<number | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -366,19 +368,32 @@ export function CaseSharesModuleScreen({
     return (
       <View key={item.id} style={styles.caseCard}>
         <View style={styles.caseCardHeader}>
-          <View style={styles.authorMark}>
-            <Text style={styles.authorMarkText}>
-              {item.author.name.slice(0, 1).toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.authorInfo}>
-            <Text style={styles.authorName} numberOfLines={1}>
-              {item.author.name}
-            </Text>
-            <Text style={styles.restaurantMeta} numberOfLines={1}>
-              {item.restaurant.name} · {formatDate(item.createdAt)}
-            </Text>
-          </View>
+          <Pressable
+            accessibilityLabel={item.author.name}
+            accessibilityRole="button"
+            style={styles.authorPressable}
+            onPress={() => setAuthorProfileId(item.author.id)}
+          >
+            <View style={styles.authorMark}>
+              {item.author.avatarUrl ? (
+                <Image source={{ uri: item.author.avatarUrl }} style={styles.authorAvatarImage} />
+              ) : (
+                <Text style={styles.authorMarkText}>
+                  {item.author.name.slice(0, 1).toUpperCase()}
+                </Text>
+              )}
+            </View>
+            <View style={styles.authorInfo}>
+              <Text style={styles.authorName} numberOfLines={1}>
+                {item.author.name}
+              </Text>
+              <Text style={styles.restaurantMeta} numberOfLines={1}>
+                {item.restaurant.name}
+                {item.author.jobRole ? ` · ${item.author.jobRole}` : ""}
+                {` · ${formatDate(item.createdAt)}`}
+              </Text>
+            </View>
+          </Pressable>
           <View style={styles.badgeColumn}>
             <Text style={styles.typeBadge}>{copy.typeLabels[item.type]}</Text>
             {showStatus ? (
@@ -811,6 +826,12 @@ export function CaseSharesModuleScreen({
           </View>
         </View>
       </Modal>
+
+      <CaseShareAuthorProfileModal
+        authorId={authorProfileId}
+        language={language}
+        onClose={() => setAuthorProfileId(null)}
+      />
     </View>
   );
 }
@@ -828,6 +849,10 @@ const styles = StyleSheet.create({
     gap: 3,
     minWidth: 0,
   },
+  authorAvatarImage: {
+    height: "100%",
+    width: "100%",
+  },
   authorMark: {
     alignItems: "center",
     backgroundColor: "rgba(193, 22, 22, 0.08)",
@@ -835,6 +860,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 38,
     justifyContent: "center",
+    overflow: "hidden",
     width: 38,
   },
   authorMarkText: {
@@ -849,6 +875,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     lineHeight: 21,
+  },
+  authorPressable: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 10,
+    minWidth: 0,
   },
   badgeColumn: {
     alignItems: "flex-end",
