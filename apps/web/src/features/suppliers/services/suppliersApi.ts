@@ -1,4 +1,4 @@
-import { ApiClientError, apiClient, buildMediaFileUrl } from "@/shared/api/api-client";
+import { ApiClientError, apiClient } from "@/shared/api/api-client";
 import { isDefined } from "@/shared/utils/typeGuards";
 import { createProductsApi, createSuppliersApi } from "@zhao/api";
 import type {
@@ -20,7 +20,7 @@ const suppliersApi = createSuppliersApi(apiClient);
 const productsApi = createProductsApi(apiClient);
 
 type ProductImageUploadResult = {
-  objectKey?: string;
+  imageUrl?: string;
 };
 
 function normalizeSupplier(raw: SupplierApiRecord | null): SupplierSummary | null {
@@ -157,13 +157,12 @@ export async function deleteProductApi(productId: string): Promise<void> {
 export async function uploadProductImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("folder", "suppliers/products");
 
-  const uploaded = await apiClient.upload<ProductImageUploadResult>("/media/upload", formData);
+  const uploaded = await apiClient.upload<ProductImageUploadResult>("/products/images", formData);
 
-  if (!uploaded.objectKey) {
-    throw new Error("PRODUCT_IMAGE_UPLOAD_MISSING_OBJECT_KEY");
+  if (!uploaded.imageUrl) {
+    throw new Error("PRODUCT_IMAGE_UPLOAD_MISSING_URL");
   }
 
-  return buildMediaFileUrl(uploaded.objectKey);
+  return uploaded.imageUrl;
 }
