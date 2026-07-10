@@ -21,6 +21,7 @@ const productsApi = createProductsApi(apiClient);
 
 type ProductImageUploadResult = {
   imagePath?: string;
+  imageUrl?: string;
 };
 
 function resolveProductImageUrl(image: string | null | undefined): string {
@@ -174,9 +175,13 @@ export async function uploadProductImage(file: File): Promise<string> {
 
   const uploaded = await apiClient.upload<ProductImageUploadResult>("/products/images", formData);
 
-  if (!uploaded.imagePath) {
-    throw new Error("PRODUCT_IMAGE_UPLOAD_MISSING_PATH");
+  if (uploaded.imagePath) {
+    return `${API_URL}${uploaded.imagePath}`;
   }
 
-  return `${API_URL}${uploaded.imagePath}`;
+  if (uploaded.imageUrl) {
+    return resolveProductImageUrl(uploaded.imageUrl);
+  }
+
+  throw new Error("PRODUCT_IMAGE_UPLOAD_MISSING_PATH");
 }
