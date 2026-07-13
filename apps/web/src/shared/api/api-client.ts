@@ -74,12 +74,26 @@ export {
   setRefreshToken,
 };
 
-// Browsers render <img>/<video>/<a> src URLs without an Authorization
-// header, so media URLs carry the access token as a query param instead.
-// The backend's /media/file route validates it the same way as the header.
-// Fall back to storage when the in-memory token hasn't been hydrated yet
-// (AuthContext sets it on mount) — otherwise the URL would ship without a
-// token and the backend rejects it with ACCESS_TOKEN_REQUIRED.
+export type SignedMediaUrl = {
+  url: string;
+  expiresAt: string;
+};
+
+// Exchanges an objectKey for a short-lived presigned URL that loads directly
+// from the private bucket (R2). The request is authenticated with the normal
+// Bearer header via apiClient, so the session token never enters the media URL.
+// Prefer this (or the useMediaUrl hook) over buildMediaFileUrl.
+export async function fetchSignedMediaUrl(
+  objectKey: string,
+): Promise<SignedMediaUrl> {
+  return apiClient.get<SignedMediaUrl>(
+    `/media/sign?objectKey=${encodeURIComponent(objectKey)}`,
+  );
+}
+
+// @deprecated Legacy media URL that embeds the full access token as a query
+// param (leaks into logs/history). Superseded by fetchSignedMediaUrl /
+// useMediaUrl. Kept only until every consumer is migrated.
 export function buildMediaFileUrl(objectKey: string): string {
   const url = `${API_URL}/media/file?objectKey=${encodeURIComponent(objectKey)}`;
   const token = getAccessToken() ?? readStoredToken(ACCESS_TOKEN_STORAGE_KEY);

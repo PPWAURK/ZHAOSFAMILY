@@ -4,6 +4,8 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
 } from '@nestjs/common';
 import {
   createHmac,
@@ -35,6 +37,8 @@ const DELETED_ACCOUNT_NAME = 'Compte supprimé';
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 8;
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
+const PERMISSIONS_CACHE_TTL_MS = 1000 * 60;
+const PERMISSIONS_CACHE_SWEEP_INTERVAL_MS = 1000 * 60 * 5;
 const DEFAULT_WEB_APP_URL = 'http://localhost:3000';
 
 export type AuthUser = {
@@ -198,8 +202,18 @@ function hasNotExpired(expiresAt: Date | null): boolean {
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AuthService.name);
+
+  // Short-TTL cache of resolved permissions, keyed by userId. Role/permission
+  // changes are low-frequency and invalidate this on write (see
+  // invalidateUserPermissions), so the TTL is just a safety net. Single-process
+  // only — acceptable for the current single-instance deployment.
+  private readonly permissionsCache = new Map<
+    number,
+    { permissions: string[]; expiresAt: number }
+  >();
+  private permissionsCacheSweeper?: ReturnType<typeof setInterval>;
 
   constructor(
     private readonly prismaService: PrismaService,
@@ -207,6 +221,33 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
   ) {}
+
+  // Started only through Nest's lifecycle (not in unit tests that construct the
+  // service directly), so no stray timer keeps the test process alive. unref()
+  // lets the Node process exit even while the interval is pending.
+  onModuleInit(): void {
+    this.permissionsCacheSweeper = setInterval(
+      () => this.sweepExpiredPermissions(),
+      PERMISSIONS_CACHE_SWEEP_INTERVAL_MS,
+    );
+    this.permissionsCacheSweeper.unref?.();
+  }
+
+  onModuleDestroy(): void {
+    if (this.permissionsCacheSweeper) {
+      clearInterval(this.permissionsCacheSweeper);
+      this.permissionsCacheSweeper = undefined;
+    }
+  }
+
+  private sweepExpiredPermissions(): void {
+    const now = Date.now();
+    for (const [userId, entry] of this.permissionsCache) {
+      if (entry.expiresAt <= now) {
+        this.permissionsCache.delete(userId);
+      }
+    }
+  }
 
   async register(registerDto: RegisterDto): Promise<RegisterResponse> {
     const normalizedEmail = registerDto.email.trim().toLowerCase();
@@ -636,6 +677,8 @@ export class AuthService {
       }),
     ]);
 
+    this.invalidateUserPermissions(user.id);
+
     return { message: 'ACCOUNT_DELETED' };
   }
 
@@ -798,7 +841,30 @@ export class AuthService {
     return this.configService.get<string>('PASSWORD_RESET_DEBUG') === 'true';
   }
 
+  /**
+   * Drop the cached permissions for a user. Call after any change to the
+   * user's roles or a role's permissions so the next lookup is fresh.
+   */
+  invalidateUserPermissions(userId: number): void {
+    this.permissionsCache.delete(userId);
+  }
+
   private async listUserPermissions(userId: number): Promise<string[]> {
+    const cached = this.permissionsCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.permissions;
+    }
+
+    const permissions = await this.queryUserPermissions(userId);
+    this.permissionsCache.set(userId, {
+      permissions,
+      expiresAt: Date.now() + PERMISSIONS_CACHE_TTL_MS,
+    });
+
+    return permissions;
+  }
+
+  private async queryUserPermissions(userId: number): Promise<string[]> {
     const userRoles = (await this.prismaService.userRole.findMany({
       where: { userId },
       select: {

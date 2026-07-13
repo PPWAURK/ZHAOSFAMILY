@@ -48,6 +48,10 @@ export function generateTrainingQuizDraftSSE(
   const controller = new AbortController();
   const url = `${API_URL}${materialPath(materialId, "/generate/sse")}`;
 
+  // Intentional raw fetch (not apiClient): this is a Server-Sent Events stream
+  // read incrementally via ReadableStream.getReader(), which the axios-based
+  // apiClient does not support. It still reuses the shared API_URL + access
+  // token, so auth stays consistent with the rest of the client.
   fetch(url, {
     method: "GET",
     headers: {

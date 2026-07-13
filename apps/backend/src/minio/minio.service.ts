@@ -120,6 +120,27 @@ export class MinioService implements OnModuleInit {
     );
   }
 
+  /**
+   * Presigned GET URL that lets a browser fetch the object directly from the
+   * bucket (R2) for `expirySeconds`, without exposing our session token in the
+   * URL. Signing is a local HMAC computation — no network round-trip — so we
+   * only assert the client is configured rather than pinging the bucket.
+   */
+  async getPresignedGetUrl(
+    objectKey: string,
+    expirySeconds: number,
+  ): Promise<string> {
+    if (!this.isConfigured()) {
+      throw new ServiceUnavailableException('MINIO_NOT_CONFIGURED');
+    }
+
+    return this.client.presignedGetObject(
+      this.bucket,
+      objectKey,
+      expirySeconds,
+    );
+  }
+
   async statObject(
     objectKey: string,
   ): Promise<Awaited<ReturnType<Minio.Client['statObject']>>> {

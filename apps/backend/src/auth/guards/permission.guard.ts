@@ -5,10 +5,10 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
 import { AuthService } from '../auth.service';
 import { parseBearerToken } from '../auth-token.utils';
 import { ANY_PERMISSIONS_KEY, PERMISSIONS_KEY } from '../permissions';
+import type { AuthenticatedRequest } from '../authenticated-request';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -36,10 +36,16 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request>();
-    const userPermissions = await this.authService.getPermissionsForToken(
-      parseBearerToken(request.headers.authorization),
-    );
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    // The global AuthGuard already resolved the caller on every non-@Public
+    // route, so reuse its permissions instead of re-querying. Only fall back to
+    // the token (e.g. a @Public route that still declares permissions) when the
+    // user was not attached — preserving the previous behavior for that edge.
+    const userPermissions =
+      request.user?.permissions ??
+      (await this.authService.getPermissionsForToken(
+        parseBearerToken(request.headers.authorization),
+      ));
     const grantedPermissions = new Set(userPermissions);
     const hasAllPermissions = requiredPermissions.every((permission) =>
       grantedPermissions.has(permission),

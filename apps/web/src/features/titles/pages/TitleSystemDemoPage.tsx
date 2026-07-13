@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CurrentTitleHero, TitleGallery } from "@/components/titles";
+import { CurrentTitleHero, TitleGallery } from "@/features/titles/components";
 import { titleCatalog, findTitleById } from "@/data/titleCatalog";
 import type { TitleCatalogItem } from "@/types/title";
-import styles from "@/components/titles/title-components.module.css";
+import styles from "@/features/titles/components/title-components.module.css";
 
 const TITLE_LABELS: Record<string, string> = {
   "titles.growth.sproutPartner": "新芽伙伴",

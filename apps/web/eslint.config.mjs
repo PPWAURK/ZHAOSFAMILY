@@ -56,4 +56,14 @@ export default [
       "@typescript-eslint/no-explicit-any": "warn",
     },
   },
+  {
+    // Node tooling scripts (build/lint helpers), not browser code.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
 ];

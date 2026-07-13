@@ -39,6 +39,7 @@ describe('MediaController', () => {
       getFile: jest.fn(),
       getFileMetadata: jest.fn(),
       getFileRange: jest.fn(),
+      getSignedUrl: jest.fn(),
     };
     const authService = {
       getCurrentUser: jest.fn().mockResolvedValue({ id: 1 }),
@@ -79,6 +80,30 @@ describe('MediaController', () => {
     );
     expect(response.setHeader).toHaveBeenCalledWith('Content-Length', '123');
     expect(stream.pipe).toHaveBeenCalledWith(response);
+  });
+
+  it('returns a presigned URL and its expiry without exposing the session token', async () => {
+    const { controller, mediaService } = createController();
+    mediaService.getSignedUrl.mockResolvedValue(
+      'https://acct.r2.cloudflarestorage.com/company-private-files/training/video.mp4?X-Amz-Signature=abc',
+    );
+
+    const before = Date.now();
+    const result = await controller.signFile({
+      objectKey: 'training/2026/07/uuid.mp4',
+    });
+    const after = Date.now();
+
+    expect(mediaService.getSignedUrl).toHaveBeenCalledWith(
+      'training/2026/07/uuid.mp4',
+      60 * 60 * 4,
+    );
+    expect(result.url).toContain('X-Amz-Signature');
+    expect(result.url).not.toContain('token=');
+
+    const expiresAtMs = new Date(result.expiresAt).getTime();
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + 60 * 60 * 4 * 1000);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + 60 * 60 * 4 * 1000);
   });
 
   it('allows browser media tags to embed ranged file responses cross-origin', async () => {

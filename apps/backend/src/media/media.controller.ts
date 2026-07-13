@@ -22,8 +22,10 @@ import { MediaService, type UploadedMedia } from './media.service';
 import { AuthService } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { Public } from '../auth/decorators/public.decorator';
+import { SignMediaQueryDto } from './dto/sign-media.dto';
 
 const MEDIA_UPLOAD_MAX_BYTES = 5 * 1024 * 1024 * 1024;
+const MEDIA_SIGNED_URL_TTL_SECONDS = 60 * 60 * 4;
 const MEDIA_UPLOAD_TEMP_DIR = path.join(tmpdir(), 'zhao-media-uploads');
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -134,6 +136,30 @@ export class MediaController {
     return this.mediaService.upload(file, { folder });
   }
 
+  // Issues a short-lived presigned URL so the browser can load the object
+  // directly from the bucket (R2) without our session token ever entering the
+  // URL. Authenticated via the global AuthGuard (NOT @Public); the caller must
+  // hold a valid session to obtain a signature.
+  @Get('sign')
+  async signFile(
+    @Query() query: SignMediaQueryDto,
+  ): Promise<{ url: string; expiresAt: string }> {
+    const url = await this.mediaService.getSignedUrl(
+      query.objectKey,
+      MEDIA_SIGNED_URL_TTL_SECONDS,
+    );
+
+    return {
+      url,
+      expiresAt: new Date(
+        Date.now() + MEDIA_SIGNED_URL_TTL_SECONDS * 1000,
+      ).toISOString(),
+    };
+  }
+
+  // Deprecated: legacy path that streams through this server and accepts the
+  // session token as a `?token=` query param. Superseded by GET /media/sign
+  // (presigned direct-to-bucket). Kept for one release for backward compat.
   // Public so browsers can load <img>/<video> src URLs directly (no header
   // support there). Authentication is still mandatory: accepts a Bearer
   // header for API/server callers, or a `?token=` query param fallback for

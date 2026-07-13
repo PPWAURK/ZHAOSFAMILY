@@ -5,10 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthService } from '../auth.service';
 import { parseBearerToken } from '../auth-token.utils';
+import type { AuthenticatedRequest } from '../authenticated-request';
 
 /**
  * Global authentication guard. Validates the Bearer access token on every
@@ -33,7 +33,7 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request>();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const accessToken = parseBearerToken(request.headers.authorization);
 
     if (!accessToken) {
@@ -43,7 +43,9 @@ export class AuthGuard implements CanActivate {
     // getCurrentUser validates the token signature/expiry, checks the user
     // still exists, and verifies the account status is approved. Any failure
     // throws UnauthorizedException, blocking the request before the controller.
-    await this.authService.getCurrentUser(accessToken);
+    // Attach the resolved user (permissions included) so PermissionGuard and
+    // controllers reuse it instead of re-querying the database.
+    request.user = await this.authService.getCurrentUser(accessToken);
 
     return true;
   }

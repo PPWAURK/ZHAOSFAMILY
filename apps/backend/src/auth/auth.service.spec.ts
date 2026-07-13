@@ -620,4 +620,71 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
+
+  it('caches permissions across lookups and re-queries after invalidation', async () => {
+    const { authService, prismaService } = createService();
+    const token = signTestAccessToken(42);
+
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 42,
+      familyName: 'A',
+      givenName: 'B',
+      name: 'A B',
+      email: 'a@b.c',
+      emailVerified: true,
+      accountStatus: 'approved',
+      restaurantId: 1,
+      restaurant: { id: 1, name: 'S', address: 'x', photoUrl: null },
+      jobRole: null,
+      birthday: null,
+      profilePhoto: null,
+      phone: null,
+      address: null,
+      userLevel: 0,
+      preferredLanguage: 'fr',
+    } as never);
+    prismaService.userRole.findMany.mockResolvedValue([
+      {
+        role: {
+          rolePermissions: [{ permission: { key: 'training.material.read' } }],
+        },
+      },
+    ] as never);
+
+    await authService.getCurrentUser(token);
+    await authService.getCurrentUser(token);
+    // The expensive permission join runs once; the second lookup hits the cache.
+    expect(prismaService.userRole.findMany).toHaveBeenCalledTimes(1);
+
+    authService.invalidateUserPermissions(42);
+    await authService.getCurrentUser(token);
+    expect(prismaService.userRole.findMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('sweeps expired permission entries on its interval, keeping fresh ones', () => {
+    jest.useFakeTimers();
+    try {
+      const { authService } = createService();
+      const cache = (
+        authService as unknown as {
+          permissionsCache: Map<
+            number,
+            { permissions: string[]; expiresAt: number }
+          >;
+        }
+      ).permissionsCache;
+      cache.set(1, { permissions: [], expiresAt: Date.now() - 1 });
+      cache.set(2, { permissions: [], expiresAt: Date.now() + 1000 * 60 * 60 });
+
+      authService.onModuleInit();
+      jest.advanceTimersByTime(1000 * 60 * 5);
+
+      expect(cache.has(1)).toBe(false);
+      expect(cache.has(2)).toBe(true);
+
+      authService.onModuleDestroy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

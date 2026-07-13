@@ -99,6 +99,13 @@ export class MediaService {
     }
   }
 
+  async getSignedUrl(
+    objectKey: string,
+    expirySeconds: number,
+  ): Promise<string> {
+    return this.minioService.getPresignedGetUrl(objectKey, expirySeconds);
+  }
+
   async getFile(objectKey: string): Promise<MediaFile> {
     const metadata = await this.getFileMetadata(objectKey);
     const stream = await this.minioService.getFileStream(objectKey);

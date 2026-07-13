@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { AuthUser } from '../auth/auth.service';
+import { AuthService, type AuthUser } from '../auth/auth.service';
 import { ACCOUNT_STATUS } from '../auth/account-status';
 import { accountApprovedNotification } from '../notifications/notification-content';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -187,6 +187,7 @@ export class PermissionsService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly authService: AuthService,
   ) {}
 
   async listRoles(): Promise<PermissionRoleItem[]> {
@@ -362,6 +363,8 @@ export class PermissionsService {
       });
     });
 
+    this.authService.invalidateUserPermissions(userId);
+
     return this.getUser(userId);
   }
 
@@ -432,6 +435,8 @@ export class PermissionsService {
         skipDuplicates: true,
       });
     });
+
+    this.authService.invalidateUserPermissions(userId);
 
     await this.notifyAccountApproved(userId, targetUser.preferredLanguage);
 

@@ -67,12 +67,18 @@ describe('PermissionsService', () => {
       unregisterToken: jest.fn(),
     };
 
+    const authService = {
+      invalidateUserPermissions: jest.fn(),
+    };
+
     return {
       prismaService,
       notificationsService,
+      authService,
       service: new PermissionsService(
         prismaService as never,
         notificationsService as never,
+        authService as never,
       ),
     };
   }

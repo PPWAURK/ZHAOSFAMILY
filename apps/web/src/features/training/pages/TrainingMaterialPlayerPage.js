@@ -9,9 +9,9 @@ import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
 import {
   fetchTrainingMaterial,
-  getTrainingMediaUrl,
   updateTrainingProgress,
 } from "@/features/training/services/trainingMediaApi";
+import { useMediaUrl } from "@/shared/hooks/useMediaUrl";
 
 const PLAYER_PAGE_COPY = {
   zh: {
@@ -69,6 +69,7 @@ export default function TrainingMaterialPlayerPage() {
   const [progressErrorMessage, setProgressErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProgress, setIsSavingProgress] = useState(false);
+  const { url: mediaUrl } = useMediaUrl(material?.objectKey);
 
   useEffect(() => {
     let isActive = true;
@@ -159,10 +160,16 @@ export default function TrainingMaterialPlayerPage() {
           );
         }
 
-        const mediaUrl = getTrainingMediaUrl(material.objectKey);
         const isVideo = material.mimeType?.startsWith("video/");
         const isPdf = material.mimeType === "application/pdf";
         const isImage = material.mimeType?.startsWith("image/");
+
+        if (!mediaUrl) {
+          return (
+            <section className={styles.materialEmpty}>正在加载资料...</section>
+          );
+        }
+
         const pdfPreviewUrl = `${mediaUrl}#toolbar=0&navpanes=0&download=0`;
         const watermarkLabel = resolveWatermarkLabel(user);
 

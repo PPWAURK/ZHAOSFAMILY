@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { TrainingBadgeWall } from "@/components/training-badges";
+import { TrainingBadgeWall } from "@/features/training/components/badges";
 import {
   fetchTrainingBadges,
   fetchTrainingMaterials,
@@ -10,7 +10,7 @@ import {
 } from "@/features/training/services/trainingMediaApi";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
-import badgeStyles from "@/components/training-badges/training-badges.module.css";
+import badgeStyles from "@/features/training/components/badges/training-badges.module.css";
 
 const TRACKS = [
   "general",
