@@ -139,7 +139,9 @@ function buildFullName(familyName: string, givenName: string): string {
   return [familyName, givenName].filter(Boolean).join(' ').trim();
 }
 
-function parseOptionalBirthday(birthday: string | undefined): Date | null {
+function parseOptionalBirthday(
+  birthday: string | null | undefined,
+): Date | null {
   const normalizedBirthday = birthday?.trim();
 
   if (!normalizedBirthday) {

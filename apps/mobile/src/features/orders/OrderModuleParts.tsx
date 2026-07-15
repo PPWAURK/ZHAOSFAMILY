@@ -101,7 +101,8 @@ export function ProductQuantityRow({
   product,
   quantities,
   showStock,
-  stockLabel,
+  inStockLabel,
+  outOfStockLabel,
   stockMap,
   onChangeQuantity,
 }: {
@@ -109,13 +110,15 @@ export function ProductQuantityRow({
   product: OrderProduct;
   quantities: QuantityMap;
   showStock: boolean;
-  stockLabel: string;
+  inStockLabel: string;
+  outOfStockLabel: string;
   stockMap: OrderStockMap;
   onChangeQuantity: (variantId: string, value: string) => void;
 }) {
   const productName = getOrderProductName(product, language);
   const imageSource = buildProductImageSource(product.image);
   const variants = getOrderProductVariants(product);
+  const isInStock = (stockMap[product.id] ?? 0) > 0;
 
   return (
     <View style={[styles.productCard, productCardTabletStyle]}>
@@ -150,9 +153,23 @@ export function ProductQuantityRow({
             </Text>
           ) : null}
           {showStock ? (
-            <Text style={styles.productMeta}>
-              {stockLabel}: {stockMap[product.id] ?? 0}
-            </Text>
+            <View
+              style={[
+                styles.stockStatus,
+                isInStock ? styles.stockStatusInStock : styles.stockStatusOutOfStock,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.stockStatusText,
+                  isInStock
+                    ? styles.stockStatusTextInStock
+                    : styles.stockStatusTextOutOfStock,
+                ]}
+              >
+                {isInStock ? inStockLabel : outOfStockLabel}
+              </Text>
+            </View>
           ) : null}
         </View>
       </View>

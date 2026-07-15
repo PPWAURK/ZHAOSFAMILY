@@ -54,6 +54,8 @@ model User {
   reviewedCaseShares         CaseShare[]                @relation("CaseShareReviewedBy")
   caseShareComments          CaseShareComment[]         @relation("CaseShareCommentAuthor")
   caseShareLikes             CaseShareLike[]            @relation("CaseShareLikeUser")
+  createdRecipes             Recipe[]                   @relation("RecipeCreatedBy")
+  updatedRecipes             Recipe[]                   @relation("RecipeUpdatedBy")
 
   @@index([restaurantId])
   @@index([accountStatus])
@@ -731,6 +733,74 @@ model CaseShareLike {
   @@unique([caseShareId, userId])
   @@index([userId, createdAt])
   @@map("case_share_likes")
+}
+
+model Recipe {
+  id              Int                    @id @default(autoincrement())
+  name            String                 @db.VarChar(255)
+  nameFr          String?                @map("name_fr") @db.VarChar(255)
+  category        String                 @db.VarChar(80)
+  categoryFr      String?                @map("category_fr") @db.VarChar(80)
+  tags            Json?
+  servings        Int                    @default(1)
+  preparationMinutes Int                 @default(0) @map("preparation_minutes")
+  cookingMinutes  Int                    @default(0) @map("cooking_minutes")
+  coverImageUrl   String?                @map("cover_image_url") @db.Text
+  finishedImageUrl String?               @map("finished_image_url") @db.Text
+  note            String?                @db.Text
+  noteFr          String?                @map("note_fr") @db.Text
+  status          String                 @default("draft") @db.VarChar(20)
+  createdByUserId Int?                   @map("created_by_user_id")
+  updatedByUserId Int?                   @map("updated_by_user_id")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+  createdBy       User?                  @relation("RecipeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?                  @relation("RecipeUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  jobRoles        RecipeJobRole[]
+  ingredients     RecipeIngredient[]
+  steps           RecipeStep[]
+
+  @@index([status, category])
+  @@index([createdAt])
+  @@map("recipes")
+}
+
+model RecipeJobRole {
+  id        Int      @id @default(autoincrement())
+  recipeId  Int      @map("recipe_id")
+  jobRole   String   @map("job_role") @db.VarChar(80)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, jobRole])
+  @@index([jobRole])
+  @@map("recipe_job_roles")
+}
+
+model RecipeIngredient {
+  id        Int      @id @default(autoincrement())
+  recipeId  Int      @map("recipe_id")
+  name      String   @db.VarChar(255)
+  nameFr    String?  @map("name_fr") @db.VarChar(255)
+  quantity  Decimal  @db.Decimal(10, 2)
+  unit      String   @db.VarChar(30)
+  unitFr    String?  @map("unit_fr") @db.VarChar(30)
+  sortOrder Int      @default(0) @map("sort_order")
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId, sortOrder])
+  @@map("recipe_ingredients")
+}
+
+model RecipeStep {
+  id          Int      @id @default(autoincrement())
+  recipeId    Int      @map("recipe_id")
+  instruction String   @db.Text
+  instructionFr String? @map("instruction_fr") @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId, sortOrder])
+  @@map("recipe_steps")
 }
 
 model WaitingQueueEntry {

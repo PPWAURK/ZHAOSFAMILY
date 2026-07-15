@@ -95,6 +95,27 @@ export default function RegisterDetailsStep({
       <div className={styles.field}>
         <div className={styles.fieldRow}>
           <div className={styles.fieldCol}>
+            <label className={styles.fieldLabel} htmlFor="f-birthday">
+              {t.labelBirthday}
+            </label>
+            <input
+              id="f-birthday"
+              className={styles.fieldInput}
+              type="date"
+              max={maxBirthday}
+              value={extraDetails.birthday}
+              disabled={isFormDisabled}
+              onClick={openDatePicker}
+              onChange={(event) => onChangeExtraDetail("birthday", event.target.value)}
+            />
+            <p className={styles.fieldHint}>{t.birthdayHint}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <div className={styles.fieldRow}>
+          <div className={styles.fieldCol}>
             <label className={styles.fieldLabel} htmlFor="f-avatar">
               {t.labelAvatar}
             </label>
@@ -141,26 +162,6 @@ export default function RegisterDetailsStep({
                 </p>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.field}>
-        <div className={styles.fieldRow}>
-          <div className={styles.fieldCol}>
-            <label className={styles.fieldLabel} htmlFor="f-birthday">
-              {t.labelBirthday}
-            </label>
-            <input
-              id="f-birthday"
-              className={styles.fieldInput}
-              type="date"
-              max={maxBirthday}
-              value={extraDetails.birthday}
-              disabled={isFormDisabled}
-              onClick={openDatePicker}
-              onChange={(event) => onChangeExtraDetail("birthday", event.target.value)}
-            />
           </div>
         </div>
       </div>

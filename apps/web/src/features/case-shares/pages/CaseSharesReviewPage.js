@@ -10,10 +10,10 @@ import {
 } from "@/features/dashboard/constants/dashboard-copy";
 import { CASE_SHARES_REVIEW_COPY } from "@/features/case-shares/constants/case-shares-copy";
 import {
-  buildCaseImageUrl,
   fetchPendingCaseShares,
   reviewCaseShare,
 } from "@/features/case-shares/services/caseSharesApi";
+import { MediaImage } from "@/shared/components/media/MediaImage";
 import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/case-shares/case-shares-review-page.module.css";
@@ -228,9 +228,9 @@ export default function CaseSharesReviewPage() {
                       <p className={styles.cardContent}>{caseItem.content}</p>
 
                       {caseItem.image ? (
-                        <img
+                        <MediaImage
                           className={styles.cardImage}
-                          src={buildCaseImageUrl(caseItem.image.objectKey)}
+                          objectKey={caseItem.image.objectKey}
                           alt={caseItem.image.name}
                         />
                       ) : null}

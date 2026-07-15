@@ -355,7 +355,7 @@ describe('API endpoints (e2e)', () => {
     ]);
   });
 
-  it('registers a user', async () => {
+  it('registers a user without a birthday', async () => {
     const prismaService = createPrismaServiceMock();
     app = await createTestApp(prismaService);
 
@@ -370,7 +370,6 @@ describe('API endpoints (e2e)', () => {
         email: 'lina@example.com',
         password: 'password123',
         restaurantId: 1,
-        birthday: '1995-03-01',
         jobRole: 'front-of-house',
         profilePhotoDataUrl: 'data:image/png;base64,abc123',
         level: 7,
@@ -406,7 +405,7 @@ describe('API endpoints (e2e)', () => {
       email: 'lina@example.com',
       emailVerified: false,
       restaurantId: 1,
-      birthday: new Date('1995-03-01T00:00:00.000Z'),
+      birthday: null,
       jobRole: 'front-of-house',
       profilePhoto: 'data:image/png;base64,abc123',
       userLevel: 7,

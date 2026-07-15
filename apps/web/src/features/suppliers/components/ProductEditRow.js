@@ -37,6 +37,7 @@ export default function ProductEditRow({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const imageInputRef = useRef(null);
   const isRowSubmitting = submitting || isUploadingImage;
+  const hasProductImage = Boolean(product.image && !imageError);
 
   useEffect(() => {
     if (editing) {
@@ -275,7 +276,7 @@ export default function ProductEditRow({
       <td>{product.category || "—"}</td>
       <td>
         <div className={styles.nameCell}>
-          {product.image && !imageError ? (
+          {hasProductImage ? (
             <img
               src={product.image}
               alt=""
@@ -303,7 +304,9 @@ export default function ProductEditRow({
       </td>
       <td>{product.specification || "—"}</td>
       <td>
-        <span className={styles.productImageStatus}>{product.image ? copy.imagePresent : "—"}</span>
+        <span className={styles.productImageStatus}>
+          {hasProductImage ? copy.imagePresent : copy.imageEmpty}
+        </span>
       </td>
       <td>
         <div className={styles.rowActions}>

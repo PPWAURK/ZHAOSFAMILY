@@ -23,7 +23,6 @@ import {
   fillMarketingScore,
   fillOperationsScore,
   publishAbcCycle,
-  resolveAbcMediaUrl,
   uploadAbcReport,
 } from "@/features/abc-scores/services/abcScoresApi";
 import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
@@ -431,7 +430,6 @@ export default function AbcScoresPage() {
               onEdit={openEdit}
               onUpload={handleUpload}
               uploadingFor={uploadingFor}
-              resolveMediaUrl={resolveAbcMediaUrl}
             />
           </>
         ) : null}

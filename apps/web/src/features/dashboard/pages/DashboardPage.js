@@ -5,10 +5,7 @@ import { motion } from "motion/react";
 import Link from "next/link";
 import { canSeeNavEntry } from "@zhao/utils";
 
-import {
-  fetchPublishedLeaderboard,
-  resolveAbcMediaUrl,
-} from "@/features/abc-scores/services/abcScoresApi";
+import { fetchPublishedLeaderboard } from "@/features/abc-scores/services/abcScoresApi";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import DashboardNewsModule from "@/features/dashboard/components/DashboardNewsModule";
 import Sidebar from "@/features/dashboard/components/Sidebar";
@@ -59,9 +56,7 @@ function mapLeaderboardEntries(board) {
     auditDate: entry.auditDate ? entry.auditDate.slice(0, 10) : publishedDate,
     focus: entry.focus ?? "",
     imageSrc: resolveStorePhotoPath(entry.photoUrl),
-    reportUrl: entry.reportObjectKey
-      ? resolveAbcMediaUrl(entry.reportObjectKey)
-      : null,
+    reportObjectKey: entry.reportObjectKey ?? null,
   }));
 }
 

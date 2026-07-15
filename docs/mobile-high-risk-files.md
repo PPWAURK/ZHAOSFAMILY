@@ -96,7 +96,7 @@
 | `src/features/orders/orderStyles.ts` | **468** | 接近警戒线 |
 | `src/features/stores/storeStyles.ts` | **415** | 接近警戒线 |
 | `src/features/auth/AuthFormControls.tsx` | **500** | 组件 + 样式合一，到极限 |
-| `src/features/register/RegisterForm.tsx` | **779** | 含 4 个内部子组件（AvatarPicker/BirthdayPicker/StorePicker/RolePicker） |
+| `src/features/auth/RegisterForm.tsx` | **776** | 含 4 个内部子组件（AvatarPicker/BirthdayPicker/StorePicker/RolePicker） |
 
 ---
 

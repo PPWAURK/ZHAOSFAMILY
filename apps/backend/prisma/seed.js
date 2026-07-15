@@ -102,6 +102,10 @@ const PERMISSIONS = [
     key: 'screen_security.delete',
     description: 'Delete screen security event records',
   },
+  {
+    key: 'recipe.manage',
+    description: 'Create, update, publish, and delete recipes',
+  },
 ];
 
 const TRAINING_POSITIONS = [
@@ -1016,6 +1020,7 @@ const ROLES = [
       'training.material.play',
       'training.progress.view_store',
       'inventory.movement.create',
+      'recipe.manage',
     ],
   },
   {
@@ -1031,6 +1036,7 @@ const ROLES = [
       'training.progress.view_store',
       'training.badge.manage',
       'training.title.manage',
+      'recipe.manage',
     ],
   },
   {

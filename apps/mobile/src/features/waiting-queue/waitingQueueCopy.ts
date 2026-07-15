@@ -20,13 +20,20 @@ export type WaitingQueueCopy = {
   submitSuccess: string;
   submitError: string;
   requiredError: string;
+  currentTab: string;
+  historyTab: string;
   listTitle: string;
+  historyTitle: string;
   loading: string;
   empty: string;
+  historyEmpty: string;
   loadError: string;
   peopleUnit: string;
   waitingFor: string;
   minutesUnit: string;
+  seatedStatus: string;
+  cancelledStatus: string;
+  historyUpdatedAt: string;
   seat: string;
   seating: string;
   seatError: string;
@@ -53,13 +60,20 @@ export const WAITING_QUEUE_COPY: Record<AuthLanguage, WaitingQueueCopy> = {
     submitSuccess: "已加入排队",
     submitError: "添加失败，请重试",
     requiredError: "请填写姓名和人数",
+    currentTab: "当前排队",
+    historyTab: "历史记录",
     listTitle: "当前排队",
+    historyTitle: "排队历史",
     loading: "加载中…",
     empty: "暂无排队客人",
+    historyEmpty: "暂无历史排队记录",
     loadError: "加载失败，请重试",
     peopleUnit: "人",
     waitingFor: "已等待",
     minutesUnit: "分钟",
+    seatedStatus: "已入座",
+    cancelledStatus: "已取消",
+    historyUpdatedAt: "更新时间",
     seat: "入座",
     seating: "处理中…",
     seatError: "操作失败，请重试",
@@ -84,13 +98,20 @@ export const WAITING_QUEUE_COPY: Record<AuthLanguage, WaitingQueueCopy> = {
     submitSuccess: "Added to the queue",
     submitError: "Could not add, please retry",
     requiredError: "Please fill in name and party size",
+    currentTab: "Current queue",
+    historyTab: "History",
     listTitle: "Current queue",
+    historyTitle: "Queue history",
     loading: "Loading…",
     empty: "No one is waiting",
+    historyEmpty: "No queue history",
     loadError: "Could not load, please retry",
     peopleUnit: "ppl",
     waitingFor: "Waiting",
     minutesUnit: "min",
+    seatedStatus: "Seated",
+    cancelledStatus: "Cancelled",
+    historyUpdatedAt: "Updated",
     seat: "Seat",
     seating: "Working…",
     seatError: "Action failed, please retry",
@@ -115,13 +136,20 @@ export const WAITING_QUEUE_COPY: Record<AuthLanguage, WaitingQueueCopy> = {
     submitSuccess: "Ajouté à la file",
     submitError: "Échec de l'ajout, réessayez",
     requiredError: "Renseignez le nom et le nombre de personnes",
+    currentTab: "File actuelle",
+    historyTab: "Historique",
     listTitle: "File actuelle",
+    historyTitle: "Historique de la file",
     loading: "Chargement…",
     empty: "Personne en attente",
+    historyEmpty: "Aucun historique de file",
     loadError: "Échec du chargement, réessayez",
     peopleUnit: "pers.",
     waitingFor: "Attente",
     minutesUnit: "min",
+    seatedStatus: "Installé",
+    cancelledStatus: "Annulé",
+    historyUpdatedAt: "Mis à jour",
     seat: "Faire entrer",
     seating: "Traitement…",
     seatError: "Action échouée, réessayez",

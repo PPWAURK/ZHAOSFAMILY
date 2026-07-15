@@ -4,6 +4,7 @@ export * from "./case-shares";
 export * from "./notifications";
 export * from "./products";
 export * from "./recruitment";
+export * from "./recipes";
 export * from "./restaurants";
 export * from "./suppliers";
 export * from "./waiting-queue";

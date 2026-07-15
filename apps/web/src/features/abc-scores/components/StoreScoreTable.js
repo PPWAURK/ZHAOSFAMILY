@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { MediaLink } from "@/shared/components/media/MediaLink";
 
 function ScoreCell({ value, t, styles, canEdit, onEdit }) {
   return (
@@ -19,21 +20,19 @@ function ScoreCell({ value, t, styles, canEdit, onEdit }) {
   );
 }
 
-function ReportCell({ store, t, styles, canUpload, isUploading, onUpload, resolveMediaUrl }) {
+function ReportCell({ store, t, styles, canUpload, isUploading, onUpload }) {
   const inputRef = useRef(null);
 
   return (
     <td>
       {store.media.map((item) => (
-        <a
+        <MediaLink
           key={item.id}
           className={styles.reportLink}
-          href={resolveMediaUrl(item.objectKey)}
-          target="_blank"
-          rel="noreferrer"
+          objectKey={item.objectKey}
         >
           {t.viewReport}
-        </a>
+        </MediaLink>
       ))}
       {canUpload ? (
         <label className={styles.linkButton}>
@@ -67,7 +66,6 @@ export default function StoreScoreTable({
   onEdit,
   onUpload,
   uploadingFor,
-  resolveMediaUrl,
 }) {
   return (
     <div className={styles.tableWrap}>
@@ -125,7 +123,6 @@ export default function StoreScoreTable({
                   canUpload={canOperations && isDraft}
                   isUploading={uploadingFor === store.restaurantId}
                   onUpload={(file) => onUpload(store.restaurantId, file)}
-                  resolveMediaUrl={resolveMediaUrl}
                 />
                 <td>
                   {store.grade ? (

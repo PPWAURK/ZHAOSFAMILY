@@ -58,6 +58,10 @@ export const INVENTORY_PERMISSIONS = {
   createMovement: 'inventory.movement.create',
 } as const;
 
+export const RECIPE_PERMISSIONS = {
+  manage: 'recipe.manage',
+} as const;
+
 export const ABC_SCORE_PERMISSIONS = {
   read: 'abc.score.read',
   fillMarketing: 'abc.score.fill_marketing',

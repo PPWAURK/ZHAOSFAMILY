@@ -14,6 +14,7 @@ import {
   getDashboardNewsAttachmentUrl,
   uploadDashboardNewsAttachment,
 } from "@/features/dashboard/services/dashboardNewsApi";
+import { fetchSignedMediaUrl } from "@/shared/api/api-client";
 import styles from "@/features/dashboard/dashboard-page.module.css";
 
 const HOLDING_JOB_ROLE = "holding";
@@ -438,17 +439,20 @@ export default function DashboardNewsModule({ lang, copy }) {
   }
 
   function resolveAttachmentHref(attachment) {
-    return attachment?.objectKey
-      ? getDashboardNewsAttachmentUrl(attachment.objectKey)
-      : attachment?.href || "#";
+    // objectKey attachments are opened via a freshly-signed presigned URL in
+    // the click handler; only external links keep a real href.
+    return attachment?.objectKey ? "#" : attachment?.href || "#";
   }
 
   function handleAttachmentClick(event, attachment) {
     if (!attachment?.objectKey) {
-      return;
+      return; // external href — let the browser follow it
     }
 
-    event.currentTarget.href = getDashboardNewsAttachmentUrl(attachment.objectKey);
+    event.preventDefault();
+    void fetchSignedMediaUrl(attachment.objectKey).then(({ url }) => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
   }
 
   function updateForm(field, value) {

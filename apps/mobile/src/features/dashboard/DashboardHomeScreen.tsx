@@ -54,6 +54,7 @@ import { OrderModuleScreen } from "@/features/orders/OrderModuleScreen";
 import { ORDER_COPY } from "@/features/orders/orderCopy";
 import { ProfileScreen } from "@/features/profile/ProfileScreen";
 import { RecruitmentModuleScreen } from "@/features/recruitment/RecruitmentModuleScreen";
+import { RecipeModuleScreen } from "@/features/recipes/RecipeModuleScreen";
 import { StoresModuleScreen } from "@/features/stores/StoresModuleScreen";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { TrainingHistoryView } from "@/features/training/TrainingHistoryView";
@@ -197,6 +198,7 @@ function isConnectedDashboardEntry(entryId: string): boolean {
     entryId === "case-shares" ||
     entryId === "my-case-shares" ||
     entryId === "orders" ||
+    entryId === "recipes" ||
     entryId === "profile" ||
     entryId === "recruitment-requests" ||
     entryId === "stores" ||
@@ -608,6 +610,8 @@ export function DashboardHomeScreen({
             />
           ) : activeEntry === "recruitment-requests" ? (
             <RecruitmentModuleScreen language={language} />
+          ) : activeEntry === "recipes" ? (
+            <RecipeModuleScreen language={language} user={user} />
           ) : activeEntry === "case-shares" ? (
             <CaseSharesModuleScreen
               language={language}

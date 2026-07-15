@@ -15,6 +15,71 @@ export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:3002/api";
 
+const PRODUCT_IMAGE_PATH = "/products/images";
+const LEGACY_PRODUCT_IMAGE_PATH = `/api${PRODUCT_IMAGE_PATH}`;
+const PRODUCT_IMAGE_FILE_NAME_PATTERN =
+  /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$/i;
+
+function getProductImagePath(image: string): string {
+  if (!image.startsWith("http://") && !image.startsWith("https://")) {
+    return image.split(/[?#]/, 1)[0];
+  }
+
+  try {
+    return new URL(image).pathname;
+  } catch {
+    return image;
+  }
+}
+
+function isCurrentApiUrl(image: string): boolean {
+  if (!image.startsWith("http://") && !image.startsWith("https://")) {
+    return true;
+  }
+
+  try {
+    return new URL(image).origin === new URL(API_URL).origin;
+  } catch {
+    return false;
+  }
+}
+
+function isInvalidProductImageUrl(image: string): boolean {
+  if (!isCurrentApiUrl(image)) {
+    return false;
+  }
+
+  const path = getProductImagePath(image);
+  const isProductImagePath =
+    path === PRODUCT_IMAGE_PATH ||
+    path === LEGACY_PRODUCT_IMAGE_PATH ||
+    path.startsWith(`${PRODUCT_IMAGE_PATH}/`) ||
+    path.startsWith(`${LEGACY_PRODUCT_IMAGE_PATH}/`);
+
+  return isProductImagePath && !PRODUCT_IMAGE_FILE_NAME_PATTERN.test(path);
+}
+
+export function resolveProductImageUrl(
+  image: string | null | undefined,
+): string {
+  if (!image) return "";
+
+  const normalizedImage = image.trim();
+  if (!normalizedImage || isInvalidProductImageUrl(normalizedImage)) {
+    return "";
+  }
+
+  if (normalizedImage.startsWith(`${LEGACY_PRODUCT_IMAGE_PATH}/`)) {
+    return `${API_URL}${normalizedImage.slice("/api".length)}`;
+  }
+
+  if (normalizedImage.startsWith(`${PRODUCT_IMAGE_PATH}/`)) {
+    return `${API_URL}${normalizedImage}`;
+  }
+
+  return normalizedImage;
+}
+
 function hasBrowserStorage(): boolean {
   return typeof window !== "undefined";
 }

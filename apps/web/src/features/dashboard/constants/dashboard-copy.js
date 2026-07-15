@@ -76,6 +76,14 @@ export const DASHBOARD_NAV = [
         en: "Learning materials",
         fr: "Ressources",
       },
+      {
+        id: "recipes",
+        href: "/dashboard/recipes",
+        zh: "食谱管理",
+        en: "Recipe management",
+        fr: "Gestion des recettes",
+        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
+      },
     ],
   },
   {

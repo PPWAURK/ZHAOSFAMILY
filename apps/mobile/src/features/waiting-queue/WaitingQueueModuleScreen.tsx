@@ -21,6 +21,7 @@ type WaitingQueueModuleScreenProps = {
 };
 
 type SpecialCaseKey = "hasDisabled" | "hasPregnant" | "hasElderly";
+type QueueListMode = "waiting" | "history";
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -34,12 +35,34 @@ function waitingMinutes(createdAt: string, now: number): number {
   return Math.max(0, Math.floor((now - start) / 60000));
 }
 
+function formatHistoryTimestamp(value: string, language: AuthLanguage): string {
+  const locale = language === "zh" ? "zh-CN" : language === "fr" ? "fr-FR" : "en-US";
+  const parsedDate = new Date(value);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsedDate);
+}
+
+function sortHistoryEntries(entries: WaitingQueueEntry[]): WaitingQueueEntry[] {
+  return [...entries].sort(
+    (first, second) =>
+      new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime(),
+  );
+}
+
 export function WaitingQueueModuleScreen({
   language,
 }: WaitingQueueModuleScreenProps) {
   useScreenName("waiting-queue");
   const copy = WAITING_QUEUE_COPY[language];
   const [entries, setEntries] = useState<WaitingQueueEntry[]>([]);
+  const [listMode, setListMode] = useState<QueueListMode>("waiting");
   const [now, setNow] = useState(() => Date.now());
   const [name, setName] = useState("");
   const [partySize, setPartySize] = useState("1");
@@ -59,8 +82,20 @@ export function WaitingQueueModuleScreen({
     let isCancelled = false;
 
     async function load(): Promise<void> {
+      setIsLoading(true);
+
       try {
-        const nextEntries = await fetchWaitingQueue();
+        const nextEntries =
+          listMode === "waiting"
+            ? await fetchWaitingQueue("waiting")
+            : sortHistoryEntries(
+                (
+                  await Promise.all([
+                    fetchWaitingQueue("seated"),
+                    fetchWaitingQueue("cancelled"),
+                  ])
+                ).flat(),
+              );
 
         if (!isCancelled) {
           setEntries(nextEntries);
@@ -79,13 +114,18 @@ export function WaitingQueueModuleScreen({
     }
 
     void load();
-    const interval = setInterval(() => void load(), POLL_INTERVAL_MS);
+    const interval =
+      listMode === "waiting"
+        ? setInterval(() => void load(), POLL_INTERVAL_MS)
+        : null;
 
     return () => {
       isCancelled = true;
-      clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+      }
     };
-  }, [copy.loadError]);
+  }, [copy.loadError, listMode]);
 
   function resetMessages(): void {
     setMessage("");
@@ -119,7 +159,9 @@ export function WaitingQueueModuleScreen({
         note: note.trim() || undefined,
       });
 
-      setEntries((current) => [...current, created]);
+      if (listMode === "waiting") {
+        setEntries((current) => [...current, created]);
+      }
       setName("");
       setPartySize("1");
       setSpecialCases({
@@ -255,13 +297,46 @@ export function WaitingQueueModuleScreen({
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{copy.listTitle}</Text>
+          <Text style={styles.sectionTitle}>
+            {listMode === "waiting" ? copy.listTitle : copy.historyTitle}
+          </Text>
+        </View>
+
+        <View style={styles.roleGrid}>
+          <Pressable
+            style={[styles.rolePill, listMode === "waiting" ? styles.rolePillActive : null]}
+            onPress={() => setListMode("waiting")}
+          >
+            <Text
+              style={[
+                styles.rolePillText,
+                listMode === "waiting" ? styles.rolePillTextActive : null,
+              ]}
+            >
+              {copy.currentTab}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.rolePill, listMode === "history" ? styles.rolePillActive : null]}
+            onPress={() => setListMode("history")}
+          >
+            <Text
+              style={[
+                styles.rolePillText,
+                listMode === "history" ? styles.rolePillTextActive : null,
+              ]}
+            >
+              {copy.historyTab}
+            </Text>
+          </Pressable>
         </View>
 
         {isLoading ? <ZhaoLoadingIndicator label={copy.loading} /> : null}
 
         {!isLoading && entries.length === 0 && !errorMessage ? (
-          <Text style={styles.emptyText}>{copy.empty}</Text>
+          <Text style={styles.emptyText}>
+            {listMode === "waiting" ? copy.empty : copy.historyEmpty}
+          </Text>
         ) : null}
 
         {!isLoading && entries.length > 0 ? (
@@ -277,12 +352,14 @@ export function WaitingQueueModuleScreen({
                 <View key={entry.id} style={styles.card}>
                   <View style={styles.cardBody}>
                     <Text style={styles.cardName}>
-                      {index + 1}. {entry.customerName} · {entry.partySize}{" "}
+                      {listMode === "waiting" ? `${index + 1}. ` : ""}
+                      {entry.customerName} · {entry.partySize}{" "}
                       {copy.peopleUnit}
                     </Text>
                     <Text style={styles.cardMeta}>
-                      {copy.waitingFor}: {waitingMinutes(entry.createdAt, now)}{" "}
-                      {copy.minutesUnit}
+                      {listMode === "waiting"
+                        ? `${copy.waitingFor}: ${waitingMinutes(entry.createdAt, now)} ${copy.minutesUnit}`
+                        : `${entry.status === "seated" ? copy.seatedStatus : copy.cancelledStatus} · ${copy.historyUpdatedAt}: ${formatHistoryTimestamp(entry.seatedAt ?? entry.updatedAt, language)}`}
                     </Text>
                     {tags.length > 0 ? (
                       <Text style={styles.cardMeta}>{tags.join(" · ")}</Text>
@@ -291,20 +368,22 @@ export function WaitingQueueModuleScreen({
                       <Text style={styles.emptyText}>{entry.note}</Text>
                     ) : null}
                   </View>
-                  <Pressable
-                    disabled={seatingId === entry.id}
-                    style={[styles.actionButton, styles.actionButtonPrimary]}
-                    onPress={() => void handleSeat(entry.id)}
-                  >
-                    <Text
-                      style={[
-                        styles.actionButtonText,
-                        styles.actionButtonTextPrimary,
-                      ]}
+                  {listMode === "waiting" ? (
+                    <Pressable
+                      disabled={seatingId === entry.id}
+                      style={[styles.actionButton, styles.actionButtonPrimary]}
+                      onPress={() => void handleSeat(entry.id)}
                     >
-                      {seatingId === entry.id ? copy.seating : copy.seat}
-                    </Text>
-                  </Pressable>
+                      <Text
+                        style={[
+                          styles.actionButtonText,
+                          styles.actionButtonTextPrimary,
+                        ]}
+                      >
+                        {seatingId === entry.id ? copy.seating : copy.seat}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               );
             })}

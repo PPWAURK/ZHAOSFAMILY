@@ -1,4 +1,4 @@
-import { apiClient } from "@/shared/api/api-client";
+import { apiClient, resolveProductImageUrl } from "@/shared/api/api-client";
 import { isDefined } from "@/shared/utils/typeGuards";
 import type {
   CreateInventoryMovementInput,
@@ -18,7 +18,7 @@ function normalizeLine(raw: InventoryApiRecord | null): InventoryLine | null {
     category: raw.category ?? "",
     nameCn: raw.nameCn ?? "",
     designationFr: raw.designationFr ?? "",
-    image: raw.image ?? "",
+    image: resolveProductImageUrl(raw.image),
     unit: raw.unit ?? "",
     specification: raw.specification ?? "",
     stock: Number.isFinite(raw.stock) ? Number(raw.stock) : 0,

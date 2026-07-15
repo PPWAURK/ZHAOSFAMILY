@@ -1,0 +1,3 @@
+ALTER TABLE `recipes`
+  ADD COLUMN `note` TEXT NULL,
+  ADD COLUMN `note_fr` TEXT NULL;

@@ -16,6 +16,7 @@ import { PermissionsModule } from './permissions/permissions.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { RecruitmentRequestsModule } from './recruitment-requests/recruitment-requests.module';
+import { RecipesModule } from './recipes/recipes.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { TrainingModule } from './training/training.module';
@@ -42,6 +43,7 @@ import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
     HealthModule,
     ProductsModule,
     RecruitmentRequestsModule,
+    RecipesModule,
     RestaurantsModule,
     SuppliersModule,
     OrdersModule,

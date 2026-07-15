@@ -299,7 +299,7 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('stores null birthday when registration sends an empty birthday', async () => {
+  it('stores null birthday when registration omits birthday', async () => {
     const { authService, prismaService } = createService();
 
     await authService.register({
@@ -308,7 +308,6 @@ describe('AuthService', () => {
       email: 'lina@example.com',
       password: 'password123',
       restaurantId: 3,
-      birthday: '',
       acceptedTerms: true,
       language: 'fr',
     });

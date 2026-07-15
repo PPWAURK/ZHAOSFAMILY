@@ -2,13 +2,16 @@ import { createWaitingQueueApi } from "@zhao/api";
 import type {
   CreateWaitingQueueEntryRequest,
   WaitingQueueEntry,
+  WaitingQueueStatus,
 } from "@zhao/types";
 import { mobileApiClient } from "@/lib/api";
 
 const waitingQueueApi = createWaitingQueueApi(mobileApiClient);
 
-export async function fetchWaitingQueue(): Promise<WaitingQueueEntry[]> {
-  const entries = await waitingQueueApi.list();
+export async function fetchWaitingQueue(
+  status?: WaitingQueueStatus,
+): Promise<WaitingQueueEntry[]> {
+  const entries = await waitingQueueApi.list(status);
 
   return Array.isArray(entries) ? entries : [];
 }

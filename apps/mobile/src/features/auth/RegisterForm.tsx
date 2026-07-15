@@ -14,8 +14,8 @@ import type { AuthCopy, RoleOption } from "@/features/auth/authCopy";
 import zhaoLogo from "@/features/auth/assets/zhao-logo.png";
 import { MOBILE_API_URL } from "@/lib/env";
 
-const BIRTHDAY_START_YEAR = 1950;
 const ZHAO_GROUPE_ORIGIN = "https://www.zhaogroupe.com";
+const BIRTHDAY_START_YEAR = 1950;
 
 function resolveApiOrigin(): string {
   try {
@@ -39,11 +39,7 @@ function getBirthdayParts(value: string): { day: number; month: number; year: nu
   const [year, month, day] = value.split("-").map((part) => Number(part));
 
   if (!year || !month || !day) {
-    return {
-      day: 1,
-      month: 1,
-      year: 2000,
-    };
+    return { day: 1, month: 1, year: 2000 };
   }
 
   return { day, month, year };
@@ -205,12 +201,12 @@ export function RegisterForm({
         value={form.password}
       />
       <BirthdayPicker
+        hint={copy.birthdayHint}
         label={copy.labelBirthday}
         placeholder={copy.phBirthday}
         value={form.birthday}
         onChange={(value) => onChange("birthday", value)}
       />
-
       <StorePicker
         copy={copy}
         isLoadingRestaurants={isLoadingRestaurants}
@@ -240,13 +236,14 @@ export function RegisterForm({
 }
 
 type BirthdayPickerProps = {
+  hint: string;
   label: string;
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
 };
 
-function BirthdayPicker({ label, placeholder, value, onChange }: BirthdayPickerProps) {
+function BirthdayPicker({ hint, label, placeholder, value, onChange }: BirthdayPickerProps) {
   const selectedParts = getBirthdayParts(value);
   const years = Array.from(
     { length: getCurrentYear() - BIRTHDAY_START_YEAR + 1 },
@@ -270,7 +267,6 @@ function BirthdayPicker({ label, placeholder, value, onChange }: BirthdayPickerP
     <View style={styles.birthdaySection}>
       <TrackingText size={10.5}>{label}</TrackingText>
       <Text style={styles.birthdayValue}>{value || placeholder}</Text>
-
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.dateOptionRow}>
           {years.map((year) => (
@@ -283,7 +279,6 @@ function BirthdayPicker({ label, placeholder, value, onChange }: BirthdayPickerP
           ))}
         </View>
       </ScrollView>
-
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.dateOptionRow}>
           {months.map((month) => (
@@ -296,7 +291,6 @@ function BirthdayPicker({ label, placeholder, value, onChange }: BirthdayPickerP
           ))}
         </View>
       </ScrollView>
-
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.dateOptionRow}>
           {days.map((day) => (
@@ -309,6 +303,9 @@ function BirthdayPicker({ label, placeholder, value, onChange }: BirthdayPickerP
           ))}
         </View>
       </ScrollView>
+      <TrackingText color={authControlStyles.colors.ink60} size={10.5}>
+        {hint}
+      </TrackingText>
     </View>
   );
 }

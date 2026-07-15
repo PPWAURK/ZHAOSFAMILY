@@ -298,6 +298,29 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     fontWeight: "500",
     lineHeight: 18,
   },
+  stockStatus: {
+    alignSelf: "flex-start",
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  stockStatusInStock: {
+    backgroundColor: "rgba(25, 122, 61, 0.14)",
+  },
+  stockStatusOutOfStock: {
+    backgroundColor: "rgba(193, 22, 22, 0.14)",
+  },
+  stockStatusText: {
+    fontFamily: "monospace",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  stockStatusTextInStock: {
+    color: authControlStyles.colors.success,
+  },
+  stockStatusTextOutOfStock: {
+    color: authControlStyles.colors.red,
+  },
   returnField: {
     gap: 8,
   },

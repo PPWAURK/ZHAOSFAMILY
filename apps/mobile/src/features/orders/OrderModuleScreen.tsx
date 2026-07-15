@@ -1027,7 +1027,8 @@ export function OrderModuleScreen({
                 quantities={quantities}
                 showStock={isStockEnforced}
                 stockMap={availableStockMap}
-                stockLabel={copy.stock}
+                inStockLabel={copy.inStock}
+                outOfStockLabel={copy.outOfStock}
                 onChangeQuantity={updateQuantity}
               />
             ))}

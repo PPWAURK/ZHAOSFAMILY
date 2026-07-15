@@ -76,6 +76,11 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
     label: { zh: "菜单模块", en: "MENU MODULE", fr: "MODULE MENU" },
     items: [
       {
+        id: "recipes",
+        icon: "食",
+        label: { zh: "食谱", en: "Recipes", fr: "Recettes" },
+      },
+      {
         id: "profile",
         icon: "我",
         label: { zh: "个人资料", en: "Profile", fr: "Profil" },

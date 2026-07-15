@@ -13,7 +13,7 @@ export type RegisterDto = {
   email: string;
   password: string;
   restaurantId: number;
-  birthday?: string;
+  birthday?: string | null;
   jobRole?: string;
   profilePhotoDataUrl?: string;
   level?: number;

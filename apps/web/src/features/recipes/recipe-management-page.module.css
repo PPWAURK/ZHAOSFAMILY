@@ -1,0 +1,204 @@
+.page { --red:#c11616; --ink:#0a0a0a; --paper:#fffdf9; min-height:100vh; background:var(--paper); color:var(--ink); font-family:"Noto Serif","Noto Serif SC","Songti SC",serif; }
+.top { align-items:center; border-bottom:1px solid rgba(10,10,10,.15); display:flex; justify-content:space-between; min-height:72px; padding:0 4vw; }
+.topLeft,.topIndex,.topLang,.editorHead,.editorActions,.heading,.listToolbar,.statusFilters,.sectionHeading,.timeFields { align-items:center; display:flex; }
+.topLeft { gap:22px; }.menuToggle,.topLang button,.statusFilters button,.roleChoices button,.sectionHeading button,.outlineButton { background:transparent; border:0; color:var(--ink); cursor:pointer; font:700 11px/1 "JetBrains Mono",monospace; letter-spacing:.08em; text-transform:uppercase; }.menuToggle { border:1px solid var(--ink); min-height:36px; padding:0 12px; }.topIndex { flex-wrap:wrap; font:11px/1.2 "JetBrains Mono",monospace; gap:12px; letter-spacing:.08em; }.topIndex strong{font-weight:800}.topLang{gap:7px}.topLang button{color:rgba(10,10,10,.45);padding:8px 0}.topLangActive{color:var(--red)!important}
+.workspace{margin:0 auto;max-width:1540px;padding:clamp(32px,5vw,76px) 4vw 72px}.heading{align-items:end;gap:32px;justify-content:space-between;margin-bottom:42px}.kicker{color:var(--red);font:700 11px/1 "JetBrains Mono",monospace;letter-spacing:.12em;margin:0 0 16px;text-transform:uppercase}.kicker span{background:var(--red);border-radius:50%;display:inline-block;height:7px;margin-right:8px;width:7px}.heading h1{font-size:clamp(40px,5vw,72px);font-weight:500;letter-spacing:-.07em;line-height:.9;margin:0}.heading h1 span{color:var(--red)}.heading>div>p:last-child{color:rgba(10,10,10,.62);font-size:16px;line-height:1.65;margin:18px 0 0;max-width:540px}.primaryButton{background:var(--red);border:1px solid var(--red);color:#fff;cursor:pointer;font:700 11px/1 "JetBrains Mono",monospace;letter-spacing:.08em;min-height:44px;padding:0 16px;text-transform:uppercase;white-space:nowrap}.primaryButton span{font-size:17px;margin-left:7px}
+.layout{border-top:1px solid var(--ink);display:grid;grid-template-columns:minmax(280px,.82fr) minmax(0,2.18fr)}.recipeList{border-right:1px solid rgba(10,10,10,.18);padding:22px 20px 24px}.listToolbar{align-items:stretch;flex-direction:column;gap:14px}.listToolbar input,.field input,.ingredientRow input,.steps textarea{background:#fff;border:1px solid rgba(10,10,10,.2);border-radius:0;color:var(--ink);font:15px/1.35 "Noto Serif","Noto Serif SC",serif;min-height:40px;outline:none;padding:8px 10px;width:100%}.listToolbar input:focus,.field input:focus,.ingredientRow input:focus,.steps textarea:focus{border-color:var(--red)}.statusFilters{gap:12px}.statusFilters button{border-bottom:1px solid transparent;color:rgba(10,10,10,.52);padding:7px 0}.statusFilters .statusActive{border-color:var(--red);color:var(--red)}.listSummary{color:rgba(10,10,10,.55);font:11px/1 "JetBrains Mono",monospace;letter-spacing:.08em;margin:24px 0 10px}.recipeRows{display:grid;gap:2px}.recipeRow{background:transparent;border:0;border-bottom:1px solid rgba(10,10,10,.12);cursor:pointer;display:flex;gap:12px;padding:12px 0;text-align:left;width:100%}.recipeRow img{height:64px;object-fit:cover;width:64px}.recipeRowBody{display:grid;gap:4px;min-width:0}.recipeRowTop{display:flex;gap:8px}.recipeRow em,.recipeRow small{color:rgba(10,10,10,.55);font:10px/1.25 "JetBrains Mono",monospace;font-style:normal}.recipeRow em{color:var(--red)}.recipeRow strong{font-size:16px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recipeRowActive strong{color:var(--red)}
+.editor{padding:26px clamp(20px,3vw,50px)}.editorHead{align-items:start;gap:20px;justify-content:space-between;margin-bottom:30px}.editorHead p,.assignment p{color:var(--red);font:700 10px/1 "JetBrains Mono",monospace;letter-spacing:.1em;margin:0 0 8px;text-transform:uppercase}.editorHead h2{font-size:28px;font-weight:500;letter-spacing:-.04em;margin:0}.editorActions{flex-wrap:wrap;gap:10px;justify-content:end}.outlineButton{border:1px solid rgba(10,10,10,.35);min-height:44px;padding:0 13px}.saved{color:#197a3d;font:10px/1.2 "JetBrains Mono",monospace}.editorGrid{display:grid;gap:16px;grid-template-columns:1.4fr 1fr .65fr 1.1fr}.field span,.images span{display:block;font:700 10px/1 "JetBrains Mono",monospace;letter-spacing:.08em;margin-bottom:8px;text-transform:uppercase}.timeFields{gap:7px}.assignment{border-bottom:1px solid rgba(10,10,10,.15);border-top:1px solid rgba(10,10,10,.15);display:grid;gap:20px;grid-template-columns:190px 1fr;margin:30px 0;padding:20px 0}.assignment>div>span{color:rgba(10,10,10,.58);font-size:13px;line-height:1.5}.roleChoices{display:flex;flex-wrap:wrap;gap:8px}.roleChoices button{border:1px solid rgba(10,10,10,.2);font-family:"Noto Serif","Noto Serif SC",serif;font-size:13px;letter-spacing:0;min-height:32px;padding:0 10px;text-transform:none}.roleChoices .roleChoiceActive{background:var(--red);border-color:var(--red);color:#fff}.contentColumns{display:grid;gap:36px;grid-template-columns:1fr 1fr}.sectionHeading{justify-content:space-between;margin-bottom:12px}.sectionHeading h3{font-size:18px;font-weight:500;margin:0}.sectionHeading button{color:var(--red);font-size:10px}.ingredients,.steps{display:grid;gap:8px;margin:0;padding:0}.ingredientRow{display:grid;gap:8px;grid-template-columns:1fr 78px 52px}.steps{counter-reset:step;list-style:none}.steps li{counter-increment:step;display:grid;gap:9px;grid-template-columns:20px 1fr}.steps li::before{color:var(--red);content:counter(step,decimal-leading-zero);font:10px/1.5 "JetBrains Mono",monospace;padding-top:10px}.steps textarea{min-height:70px;resize:vertical}.images{border-top:1px solid rgba(10,10,10,.15);display:grid;gap:16px;grid-template-columns:1fr 1fr;margin-top:34px;padding-top:22px}.images img{aspect-ratio:2.4/1;object-fit:cover;width:100%}
+@media (max-width: 980px){.layout{grid-template-columns:1fr}.recipeList{border-bottom:1px solid rgba(10,10,10,.18);border-right:0}.recipeRows{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.editorGrid{grid-template-columns:1fr 1fr}.contentColumns{grid-template-columns:1fr}.heading{align-items:start;flex-direction:column}}@media (max-width:620px){.top{padding:0 18px}.topIndex span:last-child{display:none}.workspace{padding:34px 18px 50px}.heading h1{font-size:48px}.editor{padding:22px 0}.editorHead{flex-direction:column}.editorActions{justify-content:start}.editorGrid,.assignment,.images{grid-template-columns:1fr}.assignment{gap:14px}.recipeList{padding:18px 0}.recipeRows{grid-template-columns:1fr}.contentColumns{gap:28px}}
+
+/* Keep the shell identical to the existing dashboard modules. */
+.page {
+  --red-deep: #8c1414;
+  --red-soft: rgba(193, 22, 22, 0.08);
+  --ink-40: rgba(10, 10, 10, 0.4);
+  --ink-20: rgba(10, 10, 10, 0.2);
+  --paper: #ffffff;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: 40px 56px;
+}
+
+.top {
+  gap: 24px;
+  min-height: auto;
+  padding: 0 0 18px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.top::after {
+  background: var(--red);
+  bottom: -1px;
+  content: "";
+  height: 3px;
+  left: 0;
+  position: absolute;
+  width: 72px;
+}
+
+.topLeft {
+  gap: 20px;
+  min-width: 0;
+}
+
+.menuToggle {
+  align-items: center;
+  background: var(--red);
+  border: 1px solid var(--red);
+  color: #fff;
+  display: inline-flex;
+  font-family: var(--mono);
+  font-size: 11px;
+  gap: 10px;
+  letter-spacing: 0.18em;
+  min-height: 0;
+  padding: 9px 16px 9px 12px;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.menuToggle:hover {
+  background: var(--red-deep);
+  border-color: var(--red-deep);
+  transform: translateY(-1px);
+}
+
+.menuToggleOpen,
+.menuToggleOpen:hover {
+  background: var(--paper);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.menuToggleIcon {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: center;
+  width: 14px;
+}
+
+.menuToggleIcon span {
+  background: currentColor;
+  display: block;
+  height: 1.5px;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+}
+
+.menuToggleOpen .menuToggleIcon span:nth-child(1) {
+  transform: translateY(4.5px) rotate(45deg);
+}
+
+.menuToggleOpen .menuToggleIcon span:nth-child(2) {
+  opacity: 0;
+}
+
+.menuToggleOpen .menuToggleIcon span:nth-child(3) {
+  transform: translateY(-4.5px) rotate(-45deg);
+}
+
+.topIndex {
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-weight: 500;
+  gap: 18px;
+}
+
+.topIndexBold {
+  color: var(--ink);
+}
+
+.topLang {
+  font-family: var(--mono);
+  font-size: 11px;
+  gap: 14px;
+  letter-spacing: 0.08em;
+}
+
+.topLangBtn {
+  color: var(--ink-40) !important;
+  font: inherit !important;
+  padding: 0 !important;
+  transition: color 0.15s ease;
+}
+
+.topLangBtn:hover {
+  color: var(--ink) !important;
+}
+
+.topLangActive,
+.topLangActive:hover {
+  color: var(--red) !important;
+}
+
+.topLangSep {
+  color: var(--ink-20);
+}
+
+.imageField {
+  display: grid;
+  gap: 10px;
+}
+
+.imagePreview {
+  background: #f5f2ec;
+  border: 1px solid rgba(10, 10, 10, 0.14);
+  overflow: hidden;
+}
+
+.imageUploadButton {
+  align-items: center;
+  border: 1px solid rgba(10, 10, 10, 0.35);
+  cursor: pointer;
+  display: inline-flex;
+  font: 700 10px/1 var(--mono);
+  justify-content: center;
+  letter-spacing: 0.08em;
+  min-height: 38px;
+  padding: 0 12px;
+  text-transform: uppercase;
+  width: max-content;
+}
+
+.imageUploadButton input {
+  display: none;
+}
+
+.imageUploadButton:has(input:disabled) {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.imageError {
+  color: var(--red);
+  font: 12px/1.5 "Noto Serif", "Noto Serif SC", serif;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.saveError {
+  color: var(--red);
+  font: 11px/1.45 var(--mono);
+  max-width: 260px;
+}
+
+.ingredientRow {
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) 68px 56px 56px;
+}
+
+.stepTranslations {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 620px) {
+  .page {
+    padding: 24px 18px;
+  }
+
+  .top {
+    padding: 0 0 16px;
+  }
+}

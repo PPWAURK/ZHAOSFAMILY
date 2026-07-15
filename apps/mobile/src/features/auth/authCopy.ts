@@ -31,6 +31,7 @@ export type AuthCopy = {
   phGivenName: string;
   phPassword: string;
   phBirthday: string;
+  birthdayHint: string;
   avatarHint: string;
   show: string;
   hide: string;
@@ -186,7 +187,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     labelGivenName: "GIVEN NAME · 名",
     labelAccount: "EMAIL · 账号",
     labelPassword: "PASSWORD · 密码",
-    labelBirthday: "BIRTHDAY · 生日",
+    labelBirthday: "出生日期（可选）",
     labelAvatar: "AVATAR · 头像",
     labelJobRole: "POSITION · 主岗位",
     labelStore: "STORE · 门店",
@@ -195,6 +196,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     phGivenName: "你的名",
     phPassword: "••••••••",
     phBirthday: "YYYY-MM-DD",
+    birthdayHint: "此字段为可选，无需填写即可使用应用。",
     avatarHint: "可选，可拍照或从相册选择，用于员工档案头像。",
     show: "显示",
     hide: "隐藏",
@@ -242,7 +244,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
       invalidCredentials: "邮箱或密码不正确。",
       accountPending: "账号正在等待门店上级审批，通过后才能登录。",
       accountRejected: "账号申请未通过，请联系门店上级或总部。",
-      invalidBirthday: "请选择有效生日。",
+      invalidBirthday: "请选择有效出生日期。",
       network: "无法连接后端服务，请检查 API 地址和网络。",
       loginFallback: "登录失败，请稍后重试。",
       registerFallback: "注册失败，请稍后重试。",
@@ -266,7 +268,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     labelGivenName: "GIVEN NAME",
     labelAccount: "EMAIL",
     labelPassword: "PASSWORD",
-    labelBirthday: "BIRTHDAY",
+    labelBirthday: "Date of birth (optional)",
     labelAvatar: "AVATAR",
     labelJobRole: "PRIMARY POSITION",
     labelStore: "STORE",
@@ -275,6 +277,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     phGivenName: "Your given name",
     phPassword: "••••••••",
     phBirthday: "YYYY-MM-DD",
+    birthdayHint: "This field is optional and is not required to use the app.",
     avatarHint: "Optional. Take a photo or choose one from your library.",
     show: "SHOW",
     hide: "HIDE",
@@ -322,7 +325,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
       invalidCredentials: "Email or password is incorrect.",
       accountPending: "Your account is waiting for manager approval before sign-in.",
       accountRejected: "Your account request was rejected. Contact your manager or headquarters.",
-      invalidBirthday: "Choose a valid birthday.",
+      invalidBirthday: "Choose a valid date of birth.",
       network: "Cannot reach the backend. Check API URL and network.",
       loginFallback: "Sign in failed. Please try again.",
       registerFallback: "Registration failed. Please try again.",
@@ -346,7 +349,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     labelGivenName: "PRENOM",
     labelAccount: "E-MAIL",
     labelPassword: "MOT DE PASSE",
-    labelBirthday: "DATE DE NAISSANCE",
+    labelBirthday: "Date de naissance (facultatif)",
     labelAvatar: "PHOTO",
     labelJobRole: "POSTE PRINCIPAL",
     labelStore: "BOUTIQUE",
@@ -355,6 +358,7 @@ export const AUTH_COPY: Record<AuthLanguage, AuthCopy> = {
     phGivenName: "Votre prenom",
     phPassword: "••••••••",
     phBirthday: "YYYY-MM-DD",
+    birthdayHint: "Ce champ est facultatif et n’est pas nécessaire pour utiliser l’application.",
     avatarHint: "Optionnel. Prenez une photo ou choisissez-en une.",
     show: "AFFICHER",
     hide: "MASQUER",

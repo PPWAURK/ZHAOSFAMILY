@@ -1,4 +1,9 @@
-import { API_URL, ApiClientError, apiClient } from "@/shared/api/api-client";
+import {
+  API_URL,
+  ApiClientError,
+  apiClient,
+  resolveProductImageUrl,
+} from "@/shared/api/api-client";
 import { isDefined } from "@/shared/utils/typeGuards";
 import { createProductsApi, createSuppliersApi } from "@zhao/api";
 import type {
@@ -23,20 +28,6 @@ type ProductImageUploadResult = {
   imagePath?: string;
   imageUrl?: string;
 };
-
-function resolveProductImageUrl(image: string | null | undefined): string {
-  if (!image) return "";
-
-  if (image.startsWith("/api/products/images/")) {
-    return `${API_URL}${image.slice("/api".length)}`;
-  }
-
-  if (image.startsWith("/products/images/")) {
-    return `${API_URL}${image}`;
-  }
-
-  return image;
-}
 
 function normalizeSupplier(raw: SupplierApiRecord | null): SupplierSummary | null {
   if (!raw) return null;

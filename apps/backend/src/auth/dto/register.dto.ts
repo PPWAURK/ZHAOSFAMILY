@@ -41,7 +41,7 @@ export class RegisterDto {
 
   @IsOptional()
   @IsDateString({}, { message: 'INVALID_BIRTHDAY' })
-  birthday?: string;
+  birthday?: string | null;
 
   @IsOptional()
   @Matches(JOB_ROLE_PATTERN, { message: 'INVALID_JOB_ROLE' })
