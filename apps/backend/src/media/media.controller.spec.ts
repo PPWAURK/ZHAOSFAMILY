@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import type { Readable } from 'stream';
+import { ForbiddenException } from '@nestjs/common';
 import { MediaController } from './media.controller';
 
 function createResponseMock(): Response & {
@@ -104,6 +105,19 @@ describe('MediaController', () => {
     const expiresAtMs = new Date(result.expiresAt).getTime();
     expect(expiresAtMs).toBeGreaterThanOrEqual(before + 60 * 60 * 4 * 1000);
     expect(expiresAtMs).toBeLessThanOrEqual(after + 60 * 60 * 4 * 1000);
+  });
+
+  it('denies inspection report signatures without the inspection read permission', async () => {
+    const { authService, controller, mediaService } = createController();
+    authService.getCurrentUser.mockResolvedValue({ id: 1, permissions: [] });
+
+    await expect(
+      controller.signFile(
+        { objectKey: 'abc-inspections/reports/2026/07/report.pdf' },
+        'Bearer test-token',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(mediaService.getSignedUrl).not.toHaveBeenCalled();
   });
 
   it('allows browser media tags to embed ranged file responses cross-origin', async () => {

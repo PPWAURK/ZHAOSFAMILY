@@ -10,7 +10,7 @@ import {
   DASHBOARD_MENU_LABELS,
 } from "@/features/dashboard/constants/dashboard-copy";
 import { ABC_COPY } from "@/features/abc-scores/constants/abc-copy";
-import LeaderboardPreview from "@/features/abc-scores/components/LeaderboardPreview";
+import GradePreviewModal from "@/features/abc-scores/components/GradePreviewModal";
 import ProgressBar from "@/features/abc-scores/components/ProgressBar";
 import ScoreEditModal from "@/features/abc-scores/components/ScoreEditModal";
 import StoreScoreTable from "@/features/abc-scores/components/StoreScoreTable";
@@ -19,10 +19,9 @@ import {
   deleteAbcCycle,
   fetchAbcCycle,
   fetchAbcCycles,
-  fetchAbcPreview,
-  fillMarketingScore,
-  fillOperationsScore,
+  fetchAbcGradeDirectory,
   publishAbcCycle,
+  recordAbcInspection,
   uploadAbcReport,
 } from "@/features/abc-scores/services/abcScoresApi";
 import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
@@ -30,7 +29,7 @@ import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/abc-scores/abc-scores-page.module.css";
 
-const EMPTY_DRAFT = { score: "", notes: "", grade: "" };
+const EMPTY_DRAFT = { notes: "", grade: "" };
 
 export default function AbcScoresPage() {
   const { user } = useAuth();
@@ -53,18 +52,17 @@ export default function AbcScoresPage() {
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
+  const [uploadingFor, setUploadingFor] = useState(null);
   const [preview, setPreview] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [uploadingFor, setUploadingFor] = useState(null);
   const [publishing, setPublishing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const t = ABC_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const permissions = user?.permissions || [];
-  const canMarketing = permissions.includes("abc.score.fill_marketing");
-  const canOperations = permissions.includes("abc.score.fill_operations");
-  const canPublish = permissions.includes("abc.score.publish");
+  const canManage = permissions.includes("abc.inspection.manage");
+  const canPublish = permissions.includes("abc.inspection.publish");
   const isDraft = detail?.status === "draft";
 
   const loadCycles = useCallback(async () => {
@@ -104,17 +102,14 @@ export default function AbcScoresPage() {
     };
   }, [loadCycles, t.loadError]);
 
-  const refreshDetail = useCallback(
-    async (cycleId) => {
-      if (!cycleId) {
-        setDetail(null);
-        return;
-      }
-      const nextDetail = await fetchAbcCycle(cycleId);
-      setDetail(nextDetail);
-    },
-    [],
-  );
+  const refreshDetail = useCallback(async (cycleId) => {
+    if (!cycleId) {
+      setDetail(null);
+      return;
+    }
+    const nextDetail = await fetchAbcCycle(cycleId);
+    setDetail(nextDetail);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,10 +157,9 @@ export default function AbcScoresPage() {
     }
   }
 
-  function openEdit(restaurantId, department, current) {
-    setEditState({ restaurantId, department });
+  function openEdit(restaurantId, current) {
+    setEditState({ restaurantId });
     setDraft({
-      score: current.score ?? "",
       notes: current.notes ?? "",
       grade: current.grade ?? "",
     });
@@ -176,22 +170,17 @@ export default function AbcScoresPage() {
     if (!editState || !currentCycleId) {
       return;
     }
-    const score = Number(draft.score);
-    if (!Number.isInteger(score) || score < 0 || score > 100) {
+    if (!draft.grade) {
       setEditError(t.saveError);
       return;
     }
     setSaving(true);
     setEditError("");
     try {
-      const isOperations = editState.department === "operations";
-      const payload = {
-        score,
+      await recordAbcInspection(currentCycleId, editState.restaurantId, {
+        grade: draft.grade,
         notes: draft.notes || undefined,
-        ...(isOperations ? { grade: draft.grade || undefined } : {}),
-      };
-      const fill = isOperations ? fillOperationsScore : fillMarketingScore;
-      await fill(currentCycleId, editState.restaurantId, payload);
+      });
       await refreshDetail(currentCycleId);
       setEditState(null);
       setDraft(EMPTY_DRAFT);
@@ -218,19 +207,6 @@ export default function AbcScoresPage() {
     }
   }
 
-  async function handlePreview() {
-    if (!currentCycleId) {
-      return;
-    }
-    try {
-      const board = await fetchAbcPreview(currentCycleId);
-      setPreview(board);
-      setPreviewOpen(true);
-    } catch (previewErr) {
-      setError(previewErr instanceof Error ? previewErr.message : t.loadError);
-    }
-  }
-
   async function handlePublish() {
     if (!currentCycleId || !(await confirm(t.publishConfirm))) {
       return;
@@ -248,11 +224,21 @@ export default function AbcScoresPage() {
     }
   }
 
+  async function handlePreview() {
+    if (!currentCycleId) {
+      return;
+    }
+
+    try {
+      setPreview(await fetchAbcGradeDirectory(currentCycleId));
+      setPreviewOpen(true);
+    } catch (previewErr) {
+      setError(previewErr instanceof Error ? previewErr.message : t.loadError);
+    }
+  }
+
   async function handleDelete() {
-    if (
-      !currentCycleId ||
-      !(await confirm({ message: t.deleteConfirm, tone: "danger" }))
-    ) {
+    if (!currentCycleId || !(await confirm({ message: t.deleteConfirm, tone: "danger" }))) {
       return;
     }
     setDeleting(true);
@@ -353,9 +339,7 @@ export default function AbcScoresPage() {
               </select>
               <span
                 className={`${styles.cycleStatus} ${
-                  detail.status === "published"
-                    ? styles.cycleStatusPublished
-                    : ""
+                  detail.status === "published" ? styles.cycleStatusPublished : ""
                 }`}
               >
                 {detail.status === "published" ? t.statusPublished : t.statusDraft}
@@ -363,15 +347,9 @@ export default function AbcScoresPage() {
 
               <div className={styles.progressGroup}>
                 <ProgressBar
-                  label={t.progressMarketing}
-                  filled={detail.progress.marketing.filled}
-                  total={detail.progress.marketing.total}
-                  styles={styles}
-                />
-                <ProgressBar
-                  label={t.progressOperations}
-                  filled={detail.progress.operations.filled}
-                  total={detail.progress.operations.total}
+                  label={t.progressInspections}
+                  filled={detail.progress.filled}
+                  total={detail.progress.total}
                   styles={styles}
                 />
               </div>
@@ -387,13 +365,11 @@ export default function AbcScoresPage() {
                   {t.createCycle}
                 </button>
               ) : null}
-              <button
-                type="button"
-                className={styles.ghostButton}
-                onClick={handlePreview}
-              >
-                {t.preview}
-              </button>
+              {isDraft ? (
+                <button type="button" className={styles.ghostButton} onClick={handlePreview}>
+                  {t.preview}
+                </button>
+              ) : null}
               {canPublish && isDraft ? (
                 <button
                   type="button"
@@ -416,16 +392,13 @@ export default function AbcScoresPage() {
               ) : null}
             </div>
 
-            {!isDraft ? (
-              <p className={styles.publishedHint}>{t.publishedHint}</p>
-            ) : null}
+            {!isDraft ? <p className={styles.publishedHint}>{t.publishedHint}</p> : null}
 
             <StoreScoreTable
               stores={detail.stores}
               t={t}
               styles={styles}
-              canMarketing={canMarketing}
-              canOperations={canOperations}
+              canManage={canManage}
               isDraft={isDraft}
               onEdit={openEdit}
               onUpload={handleUpload}
@@ -461,11 +434,8 @@ export default function AbcScoresPage() {
         open={Boolean(editState)}
         t={t}
         styles={styles}
-        department={editState?.department}
         draft={draft}
-        onChange={(key, value) =>
-          setDraft((current) => ({ ...current, [key]: value }))
-        }
+        onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}
         onSubmit={submitEdit}
         onClose={() => {
           setEditState(null);
@@ -476,11 +446,11 @@ export default function AbcScoresPage() {
         error={editError}
       />
 
-      <LeaderboardPreview
+      <GradePreviewModal
         open={previewOpen}
+        directory={preview}
         t={t}
         styles={styles}
-        leaderboard={preview}
         onClose={() => setPreviewOpen(false)}
       />
 
@@ -525,11 +495,7 @@ export default function AbcScoresPage() {
               >
                 {t.cancel}
               </button>
-              <button
-                type="submit"
-                className={styles.primaryButton}
-                disabled={creating}
-              >
+              <button type="submit" className={styles.primaryButton} disabled={creating}>
                 {t.create}
               </button>
             </div>

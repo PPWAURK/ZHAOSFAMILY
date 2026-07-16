@@ -2,13 +2,13 @@ import { createAbcScoresApi } from "@zhao/api";
 import type {
   AbcCycleDetail,
   AbcCycleSummary,
-  AbcLeaderboard,
-  AbcProgress,
-  AbcStoreScoreItem,
+  AbcGradeDirectory,
+  AbcInspectionProgress,
+  AbcPublicGradeBoard,
+  AbcStoreInspectionItem,
   CreateAbcCycleRequest,
-  FillAbcOperationsRequest,
-  FillAbcScoreRequest,
   ListAbcCyclesQuery,
+  RecordAbcInspectionRequest,
 } from "@zhao/types";
 
 import { apiClient, buildMediaFileUrl } from "@/shared/api/api-client";
@@ -19,15 +19,11 @@ type MediaUploadResult = {
   objectKey?: string;
 };
 
-export function fetchAbcCycles(
-  query?: ListAbcCyclesQuery,
-): Promise<AbcCycleSummary[]> {
+export function fetchAbcCycles(query?: ListAbcCyclesQuery): Promise<AbcCycleSummary[]> {
   return abcScoresApi.listCycles(query);
 }
 
-export function createAbcCycle(
-  input: CreateAbcCycleRequest,
-): Promise<AbcCycleSummary> {
+export function createAbcCycle(input: CreateAbcCycleRequest): Promise<AbcCycleSummary> {
   return abcScoresApi.createCycle(input);
 }
 
@@ -35,38 +31,33 @@ export function fetchAbcCycle(id: number | string): Promise<AbcCycleDetail> {
   return abcScoresApi.getCycle(id);
 }
 
-export function fetchAbcProgress(id: number | string): Promise<AbcProgress> {
+export function fetchAbcProgress(id: number | string): Promise<AbcInspectionProgress> {
   return abcScoresApi.getProgress(id);
 }
 
-export function fetchAbcPreview(id: number | string): Promise<AbcLeaderboard> {
-  return abcScoresApi.getPreview(id);
+export function fetchAbcGradeDirectory(cycleId: number | string): Promise<AbcGradeDirectory> {
+  return abcScoresApi.getGradeDirectory(cycleId);
 }
 
-// 首页用：最新已发布周期的排行榜（无已发布周期时返回 null）。
-export function fetchPublishedLeaderboard(): Promise<AbcLeaderboard | null> {
-  return abcScoresApi.getPublished();
+export function fetchPublishedAbcGradeCycles(): Promise<AbcCycleSummary[]> {
+  return abcScoresApi.listPublishedGradeCycles();
 }
 
-export function fillMarketingScore(
+export function fetchPublishedAbcGradeBoard(
+  cycleId?: number | string,
+): Promise<AbcPublicGradeBoard | null> {
+  return abcScoresApi.getPublishedGradeBoard(cycleId);
+}
+
+export function recordAbcInspection(
   cycleId: number | string,
   restaurantId: number | string,
-  input: FillAbcScoreRequest,
-): Promise<AbcStoreScoreItem> {
-  return abcScoresApi.fillMarketing(cycleId, restaurantId, input);
+  input: RecordAbcInspectionRequest,
+): Promise<AbcStoreInspectionItem> {
+  return abcScoresApi.recordInspection(cycleId, restaurantId, input);
 }
 
-export function fillOperationsScore(
-  cycleId: number | string,
-  restaurantId: number | string,
-  input: FillAbcOperationsRequest,
-): Promise<AbcStoreScoreItem> {
-  return abcScoresApi.fillOperations(cycleId, restaurantId, input);
-}
-
-export function publishAbcCycle(
-  id: number | string,
-): Promise<AbcCycleSummary> {
+export function publishAbcCycle(id: number | string): Promise<AbcCycleSummary> {
   return abcScoresApi.publish(id);
 }
 
@@ -74,21 +65,16 @@ export function deleteAbcCycle(id: number | string): Promise<{ id: number }> {
   return abcScoresApi.deleteCycle(id);
 }
 
-// Operations 上传评分报告：先把文件传到 /media/upload 拿 objectKey，
-// 再把 objectKey 关联到该周期+门店（仿 stores 上传图片的流程）。
 export async function uploadAbcReport(
   cycleId: number | string,
   restaurantId: number | string,
   file: File,
-): Promise<AbcStoreScoreItem> {
+): Promise<AbcStoreInspectionItem> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("folder", "abc-scores/reports");
+  formData.append("folder", "abc-inspections/reports");
 
-  const uploaded = await apiClient.upload<MediaUploadResult>(
-    "/media/upload",
-    formData,
-  );
+  const uploaded = await apiClient.upload<MediaUploadResult>("/media/upload", formData);
 
   if (!uploaded.objectKey) {
     throw new Error("ABC_REPORT_UPLOAD_MISSING_OBJECT_KEY");

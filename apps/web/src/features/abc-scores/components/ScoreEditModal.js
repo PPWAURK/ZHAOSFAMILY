@@ -2,7 +2,6 @@ export default function ScoreEditModal({
   open,
   t,
   styles,
-  department,
   draft,
   onChange,
   onSubmit,
@@ -13,9 +12,6 @@ export default function ScoreEditModal({
   if (!open) {
     return null;
   }
-
-  const isOperations = department === "operations";
-  const departmentLabel = isOperations ? t.tableOperations : t.tableMarketing;
 
   return (
     <div
@@ -37,7 +33,7 @@ export default function ScoreEditModal({
         }}
       >
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>{departmentLabel}</h2>
+          <h2 className={styles.modalTitle}>{t.recordInspection}</h2>
           <button
             type="button"
             className={styles.modalClose}
@@ -50,32 +46,18 @@ export default function ScoreEditModal({
         </div>
 
         <label className={styles.formField}>
-          <span>{t.score}</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={draft.score ?? ""}
+          <span>{t.gradeLabel}</span>
+          <select
+            value={draft.grade ?? ""}
             disabled={saving}
-            onChange={(event) => onChange("score", event.target.value)}
-          />
+            onChange={(event) => onChange("grade", event.target.value)}
+          >
+            <option value="">{t.gradeNone}</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
         </label>
-
-        {isOperations ? (
-          <label className={styles.formField}>
-            <span>{t.gradeLabel}</span>
-            <select
-              value={draft.grade ?? ""}
-              disabled={saving}
-              onChange={(event) => onChange("grade", event.target.value)}
-            >
-              <option value="">{t.gradeNone}</option>
-              <option value="A">A</option>
-              <option value="B">B</option>
-              <option value="C">C</option>
-            </select>
-          </label>
-        ) : null}
 
         <label className={styles.formField}>
           <span>{t.notes}</span>
@@ -94,19 +76,10 @@ export default function ScoreEditModal({
         ) : null}
 
         <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={styles.ghostButton}
-            onClick={onClose}
-            disabled={saving}
-          >
+          <button type="button" className={styles.ghostButton} onClick={onClose} disabled={saving}>
             {t.cancel}
           </button>
-          <button
-            type="submit"
-            className={styles.primaryButton}
-            disabled={saving}
-          >
+          <button type="submit" className={styles.primaryButton} disabled={saving}>
             {t.save}
           </button>
         </div>

@@ -9,23 +9,18 @@ import { Platform } from "react-native";
 export type NotificationEntry = "home" | "training" | "case-shares";
 
 // Maps a notification's `data.type` (set by the backend) to a dashboard entry.
-// Account approvals, announcements and published store rankings land on the
-// home desk; new training material opens the training module; case
+// Account approvals and announcements land on the home desk; new training material opens the training module; case
 // likes/comments open the cases tab.
 const TYPE_TO_ENTRY: Record<string, NotificationEntry> = {
   "account-approved": "home",
   "dashboard-news": "home",
-  "abc-leaderboard": "home",
   "training-material": "training",
   "case-share": "case-shares",
 };
 
-type NotificationResponse =
-  Awaited<
-    ReturnType<
-      typeof import("expo-notifications")["getLastNotificationResponseAsync"]
-    >
-  >;
+type NotificationResponse = Awaited<
+  ReturnType<(typeof import("expo-notifications"))["getLastNotificationResponseAsync"]>
+>;
 
 function isExpoGoAndroid(): boolean {
   return Platform.OS === "android" && Constants.appOwnership === "expo";
@@ -35,9 +30,7 @@ function navigateFromResponse(
   response: NotificationResponse | null,
   onNavigate: (entry: NotificationEntry) => void,
 ): void {
-  const data = response?.notification.request.content.data as
-    | { type?: unknown }
-    | undefined;
+  const data = response?.notification.request.content.data as { type?: unknown } | undefined;
   const type = data?.type;
 
   if (typeof type !== "string") {
@@ -85,18 +78,15 @@ export function useNotificationNavigation(onNavigate: (entry: NotificationEntry)
         return;
       }
 
-      const lastResponse =
-        await notifications.getLastNotificationResponseAsync();
+      const lastResponse = await notifications.getLastNotificationResponseAsync();
 
       if (isMounted) {
         navigateFromResponse(lastResponse, handlerRef.current);
       }
 
-      subscription = notifications.addNotificationResponseReceivedListener(
-        (response) => {
-          navigateFromResponse(response, handlerRef.current);
-        },
-      );
+      subscription = notifications.addNotificationResponseReceivedListener((response) => {
+        navigateFromResponse(response, handlerRef.current);
+      });
     }
 
     void registerNotificationListener();

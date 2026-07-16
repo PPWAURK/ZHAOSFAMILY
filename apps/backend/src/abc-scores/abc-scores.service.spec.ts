@@ -1,9 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { ACCOUNT_STATUS } from '../auth/account-status';
 import { AbcScoresService } from './abc-scores.service';
 
 const ACTOR = { id: 7, permissions: [] };
-
 const ANY_DATE = expect.any(Date) as unknown as Date;
 
 const DRAFT_CYCLE = {
@@ -32,19 +30,17 @@ function createPrismaServiceMock() {
       update: jest.fn(),
       delete: jest.fn(),
     },
-    abcStoreScore: {
+    abcStoreInspection: {
       findMany: jest.fn(),
-      findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       upsert: jest.fn(),
     },
-    abcScoreMedia: { create: jest.fn(), findMany: jest.fn() },
+    abcInspectionMedia: { create: jest.fn(), findMany: jest.fn() },
     restaurant: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       count: jest.fn(),
     },
-    user: { findMany: jest.fn() },
   };
 }
 
@@ -52,44 +48,31 @@ function createMediaServiceMock() {
   return { deleteFile: jest.fn() };
 }
 
-function createNotificationsServiceMock() {
-  return { sendToUsers: jest.fn().mockResolvedValue(undefined) };
-}
-
 describe('AbcScoresService', () => {
   let prisma: ReturnType<typeof createPrismaServiceMock>;
   let media: ReturnType<typeof createMediaServiceMock>;
-  let notifications: ReturnType<typeof createNotificationsServiceMock>;
   let service: AbcScoresService;
 
   beforeEach(() => {
     prisma = createPrismaServiceMock();
     media = createMediaServiceMock();
-    notifications = createNotificationsServiceMock();
-    service = new AbcScoresService(
-      prisma as never,
-      media as never,
-      notifications as never,
-    );
+    service = new AbcScoresService(prisma as never, media as never);
   });
 
   describe('getProgress', () => {
-    it('counts stores filled per department against the total', async () => {
+    it('counts stores with a recorded grade against the total', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.restaurant.count.mockResolvedValue(12);
-      prisma.abcStoreScore.findMany.mockResolvedValue([
-        { marketingScore: 80, operationsScore: null },
-        { marketingScore: 70, operationsScore: 90 },
-        { marketingScore: null, operationsScore: 60 },
+      prisma.abcStoreInspection.findMany.mockResolvedValue([
+        { grade: 'A' },
+        { grade: null },
+        { grade: 'C' },
       ]);
 
-      const progress = await service.getProgress(1);
-
-      expect(progress).toEqual({
-        marketing: { filled: 2, total: 12 },
-        operations: { filled: 2, total: 12 },
+      await expect(service.getProgress(1)).resolves.toEqual({
+        filled: 2,
+        total: 12,
       });
-      // 总数排除控股实体「ZHAO Groupe」（非门店）。
       expect(prisma.restaurant.count).toHaveBeenCalledWith({
         where: { name: { not: 'ZHAO Groupe' } },
       });
@@ -104,246 +87,188 @@ describe('AbcScoresService', () => {
     });
   });
 
-  describe('fillMarketingScore', () => {
-    it('upserts the marketing fields with audit metadata', async () => {
+  describe('recordInspection', () => {
+    it('upserts a grade and improvement notes without storing a score', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.restaurant.findUnique.mockResolvedValue(RESTAURANT);
-      prisma.abcStoreScore.upsert.mockResolvedValue({
+      prisma.abcStoreInspection.upsert.mockResolvedValue({
         ...RESTAURANT,
-        marketingScore: 88,
-        marketingNotes: 'Great reviews',
-        marketingFilledAt: new Date('2026-06-22T11:00:00.000Z'),
-        operationsScore: null,
-        operationsNotes: null,
-        operationsFilledAt: null,
+        grade: 'B',
+        inspectionNotes: 'Improve closing checklist',
+        inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
         media: [],
       });
 
-      const item = await service.fillMarketingScore(ACTOR, 1, 2, {
-        score: 88,
-        notes: 'Great reviews',
+      const item = await service.recordInspection(ACTOR, 1, 2, {
+        grade: 'B',
+        notes: 'Improve closing checklist',
       });
 
-      expect(item.marketingScore).toBe(88);
-      const marketingData = {
-        marketingScore: 88,
-        marketingNotes: 'Great reviews',
-        marketingFilledByUserId: 7,
-        marketingFilledAt: ANY_DATE,
+      expect(item).toMatchObject({
+        grade: 'B',
+        inspectionNotes: 'Improve closing checklist',
+      });
+      const inspectionData = {
+        grade: 'B',
+        inspectionNotes: 'Improve closing checklist',
+        inspectedByUserId: 7,
+        inspectedAt: ANY_DATE,
       };
-      expect(prisma.abcStoreScore.upsert).toHaveBeenCalledWith({
+      expect(prisma.abcStoreInspection.upsert).toHaveBeenCalledWith({
         where: { cycleId_restaurantId: { cycleId: 1, restaurantId: 2 } },
-        create: { cycleId: 1, restaurantId: 2, ...marketingData },
-        update: marketingData,
+        create: { cycleId: 1, restaurantId: 2, ...inspectionData },
+        update: inspectionData,
         include: { media: { orderBy: { createdAt: 'desc' } } },
       });
     });
 
-    it('rejects edits on a published cycle', async () => {
+    it('rejects edits on an archived cycle', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue({
         ...DRAFT_CYCLE,
         status: 'published',
       });
 
       await expect(
-        service.fillMarketingScore(ACTOR, 1, 2, { score: 50 }),
+        service.recordInspection(ACTOR, 1, 2, { grade: 'A' }),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('rejects scoring the holding entity (not a store)', async () => {
+    it('rejects recording an inspection for the holding entity', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.restaurant.findUnique.mockResolvedValue({
+        ...RESTAURANT,
         id: 99,
         name: 'ZHAO Groupe',
-        address: '169 avenue de Choisy 75013',
-        photoUrl: null,
       });
 
       await expect(
-        service.fillMarketingScore(ACTOR, 1, 99, { score: 50 }),
+        service.recordInspection(ACTOR, 1, 99, { grade: 'A' }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
-  describe('getLeaderboard', () => {
-    it('ranks stores by total score and returns the manual grade', async () => {
+  describe('getGradeDirectory', () => {
+    it('returns stores in the configured store order without rank or score', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.restaurant.findMany.mockResolvedValue([
-        { id: 1, name: 'Alpha' },
-        { id: 2, name: 'Bravo' },
-        { id: 3, name: 'Charlie' },
+        { id: 1, name: 'Alpha', address: 'A', photoUrl: null },
+        { id: 2, name: 'Bravo', address: 'B', photoUrl: null },
       ]);
-      prisma.abcStoreScore.findMany.mockResolvedValue([
-        {
-          restaurantId: 1,
-          marketingScore: 10,
-          operationsScore: 10,
-          grade: 'C',
-        },
+      prisma.abcStoreInspection.findMany.mockResolvedValue([
         {
           restaurantId: 2,
-          marketingScore: 90,
-          operationsScore: 90,
           grade: 'A',
-        },
-        {
-          restaurantId: 3,
-          marketingScore: 50,
-          operationsScore: 50,
-          grade: null,
+          inspectionNotes: 'Keep standards',
+          inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
         },
       ]);
 
-      const board = await service.getLeaderboard(1);
+      const directory = await service.getGradeDirectory(1);
 
-      expect(board.entries.map((entry) => entry.restaurantId)).toEqual([
-        2, 3, 1,
+      expect(directory.entries).toEqual([
+        expect.objectContaining({ restaurantId: 1, grade: null }),
+        expect.objectContaining({ restaurantId: 2, grade: 'A' }),
       ]);
-      // 排名仍按总分降序，但 A/B/C 来自手动填写（未填写为 null，不自动计算）。
-      expect(board.entries.map((entry) => entry.grade)).toEqual([
-        'A',
-        null,
-        'C',
-      ]);
-      expect(board.entries[0].totalScore).toBe(180);
+      expect(directory.entries[1]).not.toHaveProperty('rank');
+      expect(directory.entries[1]).not.toHaveProperty('totalScore');
     });
   });
 
-  describe('fillOperationsScore', () => {
-    it('persists the manually entered grade alongside the audit score', async () => {
-      prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
-      prisma.restaurant.findUnique.mockResolvedValue(RESTAURANT);
-      prisma.abcStoreScore.upsert.mockResolvedValue({
-        ...RESTAURANT,
-        marketingScore: null,
-        marketingNotes: null,
-        marketingFilledAt: null,
-        operationsScore: 75,
-        operationsNotes: null,
-        operationsFilledAt: new Date('2026-06-22T11:00:00.000Z'),
-        grade: 'B',
-        media: [],
-      });
+  describe('getPublishedGradeBoard', () => {
+    it('lists published grade cycles from newest to oldest', async () => {
+      prisma.abcScoreCycle.findMany.mockResolvedValue([
+        {
+          ...DRAFT_CYCLE,
+          id: 2,
+          status: 'published',
+          publishedAt: new Date('2026-06-24T09:00:00.000Z'),
+        },
+      ]);
 
-      const item = await service.fillOperationsScore(ACTOR, 1, 2, {
-        score: 75,
-        grade: 'B',
+      await expect(service.listPublishedGradeCycles()).resolves.toEqual([
+        expect.objectContaining({ id: 2, status: 'published' }),
+      ]);
+      expect(prisma.abcScoreCycle.findMany).toHaveBeenCalledWith({
+        where: { status: 'published' },
+        orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+        take: 24,
       });
+    });
 
-      expect(item.grade).toBe('B');
-      const operationsData = {
-        operationsScore: 75,
-        operationsNotes: null,
-        operationsFilledByUserId: 7,
-        operationsFilledAt: ANY_DATE,
-        grade: 'B',
-      };
-      expect(prisma.abcStoreScore.upsert).toHaveBeenCalledWith({
-        where: { cycleId_restaurantId: { cycleId: 1, restaurantId: 2 } },
-        create: { cycleId: 1, restaurantId: 2, ...operationsData },
-        update: operationsData,
-        include: { media: { orderBy: { createdAt: 'desc' } } },
+    it('returns only grade-board fields from the latest published cycle', async () => {
+      prisma.abcScoreCycle.findFirst.mockResolvedValue({
+        ...DRAFT_CYCLE,
+        status: 'published',
+        publishedAt: new Date('2026-06-24T09:00:00.000Z'),
       });
+      prisma.abcScoreCycle.findUnique.mockResolvedValue({
+        ...DRAFT_CYCLE,
+        status: 'published',
+      });
+      prisma.restaurant.findMany.mockResolvedValue([
+        { id: 1, name: 'Alpha', address: 'A', photoUrl: null },
+        { id: 2, name: 'Bravo', address: 'B', photoUrl: null },
+      ]);
+      prisma.abcStoreInspection.findMany.mockResolvedValue([
+        {
+          restaurantId: 2,
+          grade: 'A',
+          inspectionNotes: 'Keep standards',
+          inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
+        },
+      ]);
+
+      const board = await service.getPublishedGradeBoard();
+
+      expect(board?.entries).toEqual([
+        {
+          restaurantId: 2,
+          storeName: 'Bravo',
+          storeAddress: 'B',
+          photoUrl: null,
+          grade: 'A',
+        },
+      ]);
+      expect(board?.entries[0]).not.toHaveProperty('inspectionNotes');
+      expect(board?.entries[0]).not.toHaveProperty('media');
+      expect(board?.entries[0]).not.toHaveProperty('totalScore');
+    });
+
+    it('returns null when no cycle has been published', async () => {
+      prisma.abcScoreCycle.findFirst.mockResolvedValue(null);
+
+      await expect(service.getPublishedGradeBoard()).resolves.toBeNull();
     });
   });
 
   describe('publishCycle', () => {
-    it('publishes a draft and pushes one grouped notification per language', async () => {
+    it('archives a draft cycle without broadcasting a leaderboard notification', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.abcScoreCycle.update.mockResolvedValue({
         ...DRAFT_CYCLE,
         status: 'published',
         publishedAt: new Date('2026-06-24T09:00:00.000Z'),
       });
-      prisma.user.findMany.mockResolvedValue([
-        { id: 11, preferredLanguage: 'zh' },
-        { id: 12, preferredLanguage: 'fr' },
-        { id: 13, preferredLanguage: 'zh' },
-        { id: 14, preferredLanguage: null },
-      ]);
 
-      const summary = await service.publishCycle(1);
-
-      expect(summary.status).toBe('published');
-      expect(prisma.user.findMany).toHaveBeenCalledWith({
-        where: { accountStatus: ACCOUNT_STATUS.approved },
-        select: { id: true, preferredLanguage: true },
-      });
-      // zh → [11, 13] ; fr → [12, 14] (null retombe sur le défaut fr).
-      expect(notifications.sendToUsers).toHaveBeenCalledTimes(2);
-      expect(notifications.sendToUsers).toHaveBeenCalledWith(
-        [11, 13],
-        expect.objectContaining({
-          data: { type: 'abc-leaderboard', cycleId: '1' },
-        }),
-      );
-      expect(notifications.sendToUsers).toHaveBeenCalledWith(
-        [12, 14],
-        expect.objectContaining({
-          data: { type: 'abc-leaderboard', cycleId: '1' },
-        }),
-      );
-    });
-
-    it('is idempotent and does not re-notify an already published cycle', async () => {
-      prisma.abcScoreCycle.findUnique.mockResolvedValue({
-        ...DRAFT_CYCLE,
+      await expect(service.publishCycle(1)).resolves.toMatchObject({
         status: 'published',
       });
-
-      await service.publishCycle(1);
-
-      expect(prisma.abcScoreCycle.update).not.toHaveBeenCalled();
-      expect(notifications.sendToUsers).not.toHaveBeenCalled();
-    });
-
-    it('still publishes when the push broadcast fails', async () => {
-      prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
-      prisma.abcScoreCycle.update.mockResolvedValue({
-        ...DRAFT_CYCLE,
-        status: 'published',
-        publishedAt: new Date('2026-06-24T09:00:00.000Z'),
-      });
-      prisma.user.findMany.mockRejectedValue(new Error('db down'));
-
-      const summary = await service.publishCycle(1);
-
-      expect(summary.status).toBe('published');
     });
   });
 
   describe('deleteCycle', () => {
-    it('deletes the cycle and best-effort removes report objects', async () => {
-      prisma.abcScoreCycle.findUnique.mockResolvedValue({
-        ...DRAFT_CYCLE,
-        status: 'published',
-      });
-      prisma.abcScoreMedia.findMany.mockResolvedValue([
-        { objectKey: 'abc-scores/reports/a.pdf' },
-        { objectKey: 'abc-scores/reports/b.pdf' },
+    it('deletes the cycle and best-effort removes private report objects', async () => {
+      prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
+      prisma.abcInspectionMedia.findMany.mockResolvedValue([
+        { objectKey: 'abc-inspections/reports/a.pdf' },
       ]);
       prisma.abcScoreCycle.delete.mockResolvedValue(DRAFT_CYCLE);
-      // 一个文件删失败不应中断整体删除。
-      media.deleteFile
-        .mockRejectedValueOnce(new Error('gone'))
-        .mockResolvedValueOnce(undefined);
+      media.deleteFile.mockResolvedValue(undefined);
 
-      const result = await service.deleteCycle(1);
-
-      expect(result).toEqual({ id: 1 });
-      expect(prisma.abcScoreCycle.delete).toHaveBeenCalledWith({
-        where: { id: 1 },
-      });
-      expect(media.deleteFile).toHaveBeenCalledTimes(2);
-    });
-
-    it('throws when the cycle does not exist', async () => {
-      prisma.abcScoreCycle.findUnique.mockResolvedValue(null);
-
-      await expect(service.deleteCycle(404)).rejects.toBeInstanceOf(
-        NotFoundException,
+      await expect(service.deleteCycle(1)).resolves.toEqual({ id: 1 });
+      expect(media.deleteFile).toHaveBeenCalledWith(
+        'abc-inspections/reports/a.pdf',
       );
-      expect(prisma.abcScoreCycle.delete).not.toHaveBeenCalled();
     });
   });
 });

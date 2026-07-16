@@ -173,7 +173,7 @@ model Restaurant {
   purchaseReturns     PurchaseReturn[]
   dashboardPosts      DashboardPost[]
   recruitmentRequests RecruitmentRequest[]
-  abcStoreScores      AbcStoreScore[]
+  abcStoreInspections AbcStoreInspection[]
   caseShares          CaseShare[]
   waitingQueueEntries WaitingQueueEntry[]
 
@@ -187,45 +187,39 @@ model AbcScoreCycle {
   publishedAt DateTime?       @map("published_at")
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
-  scores      AbcStoreScore[]
+  inspections AbcStoreInspection[]
 
   @@index([status, createdAt])
   @@map("abc_score_cycles")
 }
 
-model AbcStoreScore {
-  id                       Int             @id @default(autoincrement())
-  cycleId                  Int             @map("cycle_id")
-  restaurantId             Int             @map("restaurant_id")
-  marketingScore           Int?            @map("marketing_score")
-  marketingNotes           String?         @map("marketing_notes") @db.Text
-  marketingFilledByUserId  Int?            @map("marketing_filled_by_user_id")
-  marketingFilledAt        DateTime?       @map("marketing_filled_at")
-  operationsScore          Int?            @map("operations_score")
-  operationsNotes          String?         @map("operations_notes") @db.Text
-  operationsFilledByUserId Int?            @map("operations_filled_by_user_id")
-  operationsFilledAt       DateTime?       @map("operations_filled_at")
-  grade                    String?         @db.VarChar(1)
-  createdAt                DateTime        @default(now()) @map("created_at")
-  updatedAt                DateTime        @updatedAt @map("updated_at")
-  cycle                    AbcScoreCycle   @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  restaurant               Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  media                    AbcScoreMedia[]
+model AbcStoreInspection {
+  id                Int                  @id @default(autoincrement())
+  cycleId           Int                  @map("cycle_id")
+  restaurantId      Int                  @map("restaurant_id")
+  grade             String?              @db.VarChar(1)
+  inspectionNotes   String?              @map("inspection_notes") @db.Text
+  inspectedByUserId Int?                 @map("inspected_by_user_id")
+  inspectedAt       DateTime?            @map("inspected_at")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  cycle             AbcScoreCycle        @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  restaurant        Restaurant            @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  media             AbcInspectionMedia[]
 
   @@unique([cycleId, restaurantId])
   @@index([restaurantId])
   @@map("abc_store_scores")
 }
 
-model AbcScoreMedia {
-  id               Int           @id @default(autoincrement())
-  storeScoreId     Int           @map("store_score_id")
-  objectKey        String        @map("object_key") @db.VarChar(512)
-  fileName         String?       @map("file_name") @db.VarChar(255)
-  department       String        @default("operations") @db.VarChar(20)
-  uploadedByUserId Int?          @map("uploaded_by_user_id")
-  createdAt        DateTime      @default(now()) @map("created_at")
-  storeScore       AbcStoreScore @relation(fields: [storeScoreId], references: [id], onDelete: Cascade)
+model AbcInspectionMedia {
+  id               Int                @id @default(autoincrement())
+  storeScoreId     Int                @map("store_score_id")
+  objectKey        String             @map("object_key") @db.VarChar(512)
+  fileName         String?            @map("file_name") @db.VarChar(255)
+  uploadedByUserId Int?               @map("uploaded_by_user_id")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  inspection       AbcStoreInspection @relation(fields: [storeScoreId], references: [id], onDelete: Cascade)
 
   @@index([storeScoreId])
   @@map("abc_score_media")

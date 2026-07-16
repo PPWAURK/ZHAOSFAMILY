@@ -1,36 +1,15 @@
 import { useRef } from "react";
 import { MediaLink } from "@/shared/components/media/MediaLink";
 
-function ScoreCell({ value, t, styles, canEdit, onEdit }) {
-  return (
-    <td>
-      {value !== null ? (
-        <span className={styles.scoreValue}>{value}</span>
-      ) : (
-        <span className={styles.scoreEmpty}>{t.notFilled}</span>
-      )}
-      {canEdit ? (
-        <span className={styles.cellActions}>
-          <button type="button" className={styles.linkButton} onClick={onEdit}>
-            {t.edit}
-          </button>
-        </span>
-      ) : null}
-    </td>
-  );
-}
+const GRADES = ["A", "B", "C"];
 
-function ReportCell({ store, t, styles, canUpload, isUploading, onUpload }) {
+function ReportActions({ store, t, styles, canUpload, isUploading, onUpload }) {
   const inputRef = useRef(null);
 
   return (
-    <td>
+    <div className={styles.reportActions}>
       {store.media.map((item) => (
-        <MediaLink
-          key={item.id}
-          className={styles.reportLink}
-          objectKey={item.objectKey}
-        >
+        <MediaLink key={item.id} className={styles.reportLink} objectKey={item.objectKey}>
           {t.viewReport}
         </MediaLink>
       ))}
@@ -52,7 +31,66 @@ function ReportCell({ store, t, styles, canUpload, isUploading, onUpload }) {
           {isUploading ? t.uploading : t.uploadReport}
         </label>
       ) : null}
-    </td>
+    </div>
+  );
+}
+
+function StoreGradeCard({
+  store,
+  grade,
+  t,
+  styles,
+  canManage,
+  isDraft,
+  onEdit,
+  onUpload,
+  uploadingFor,
+  showReports,
+  showNotes,
+}) {
+  const gradeClass = styles[`gradeStoreCard${grade}`] ?? styles.gradeStoreCard;
+
+  return (
+    <article className={`${styles.gradeStoreCard} ${gradeClass}`}>
+      <div className={styles.gradeStoreHeader}>
+        <div>
+          <h3 className={styles.storeName}>{store.storeName}</h3>
+          <p className={styles.storeAddress}>{store.storeAddress}</p>
+        </div>
+        <span className={styles.gradeBadge}>{grade}</span>
+      </div>
+      {showNotes ? (
+        <p className={styles.gradeStoreNotes}>{store.inspectionNotes ?? t.notFilled}</p>
+      ) : null}
+      {showReports || (canManage && isDraft) ? (
+        <div className={styles.gradeStoreFooter}>
+          {showReports ? (
+            <ReportActions
+              store={store}
+              t={t}
+              styles={styles}
+              canUpload={canManage && isDraft}
+              isUploading={uploadingFor === store.restaurantId}
+              onUpload={(file) => onUpload(store.restaurantId, file)}
+            />
+          ) : null}
+          {canManage && isDraft ? (
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() =>
+                onEdit(store.restaurantId, {
+                  grade: store.grade,
+                  notes: store.inspectionNotes,
+                })
+              }
+            >
+              {t.edit}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -60,85 +98,77 @@ export default function StoreScoreTable({
   stores,
   t,
   styles,
-  canMarketing,
-  canOperations,
+  canManage,
   isDraft,
   onEdit,
   onUpload,
   uploadingFor,
+  showReports = true,
+  showNotes = true,
 }) {
-  return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>{t.tableStore}</th>
-            <th>{t.tableMarketing}</th>
-            <th>{t.tableOperations}</th>
-            <th>{t.tableReport}</th>
-            <th>{t.tableGrade}</th>
-            <th>{t.tableTotal}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stores.map((store) => {
-            const total =
-              (store.marketingScore ?? 0) + (store.operationsScore ?? 0);
+  const storesByGrade = new Map(
+    GRADES.map((grade) => [grade, stores.filter((store) => store.grade === grade)]),
+  );
+  const ungradedStores = stores.filter((store) => !store.grade);
 
-            return (
-              <tr key={store.restaurantId}>
-                <td>
-                  <div className={styles.storeName}>{store.storeName}</div>
-                  <div className={styles.storeAddress}>{store.storeAddress}</div>
-                </td>
-                <ScoreCell
-                  value={store.marketingScore}
-                  t={t}
-                  styles={styles}
-                  canEdit={canMarketing && isDraft}
-                  onEdit={() =>
-                    onEdit(store.restaurantId, "marketing", {
-                      score: store.marketingScore,
-                      notes: store.marketingNotes,
-                    })
-                  }
-                />
-                <ScoreCell
-                  value={store.operationsScore}
-                  t={t}
-                  styles={styles}
-                  canEdit={canOperations && isDraft}
-                  onEdit={() =>
-                    onEdit(store.restaurantId, "operations", {
-                      score: store.operationsScore,
-                      notes: store.operationsNotes,
-                      grade: store.grade,
-                    })
-                  }
-                />
-                <ReportCell
+  return (
+    <div className={styles.gradeBoard}>
+      {GRADES.map((grade) => {
+        const gradeStores = storesByGrade.get(grade) ?? [];
+
+        return (
+          <section key={grade} className={styles.gradeSection}>
+            <div className={styles.gradeSectionHeading}>
+              <span className={styles[`gradeMarker${grade}`]} aria-hidden="true" />
+              <h2>{t.gradeGroupLabel(grade, gradeStores.length)}</h2>
+            </div>
+            <div className={styles.gradeStoreGrid}>
+              {gradeStores.map((store) => (
+                <StoreGradeCard
+                  key={store.restaurantId}
                   store={store}
+                  grade={grade}
                   t={t}
                   styles={styles}
-                  canUpload={canOperations && isDraft}
-                  isUploading={uploadingFor === store.restaurantId}
-                  onUpload={(file) => onUpload(store.restaurantId, file)}
+                  canManage={canManage}
+                  isDraft={isDraft}
+                  onEdit={onEdit}
+                  onUpload={onUpload}
+                  uploadingFor={uploadingFor}
+                  showReports={showReports}
+                  showNotes={showNotes}
                 />
-                <td>
-                  {store.grade ? (
-                    <span className={styles.gradeBadge}>{store.grade}</span>
-                  ) : (
-                    <span className={styles.scoreEmpty}>{t.gradeNone}</span>
-                  )}
-                </td>
-                <td>
-                  <span className={styles.totalValue}>{total}</span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+      {ungradedStores.length > 0 ? (
+        <section className={styles.gradeSection}>
+          <div className={styles.gradeSectionHeading}>
+            <span className={styles.gradeMarkerUngraded} aria-hidden="true" />
+            <h2>{t.gradeGroupLabel(t.gradeNone, ungradedStores.length)}</h2>
+          </div>
+          <div className={styles.gradeStoreGrid}>
+            {ungradedStores.map((store) => (
+              <StoreGradeCard
+                key={store.restaurantId}
+                store={store}
+                grade="Ungraded"
+                t={t}
+                styles={styles}
+                canManage={canManage}
+                isDraft={isDraft}
+                onEdit={onEdit}
+                onUpload={onUpload}
+                uploadingFor={uploadingFor}
+                showReports={showReports}
+                showNotes={showNotes}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

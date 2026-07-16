@@ -9,7 +9,6 @@ export type NotificationType =
   | "account-approved"
   | "training-material"
   | "dashboard-news"
-  | "abc-leaderboard"
   | "case-share"
   | (string & {});
 

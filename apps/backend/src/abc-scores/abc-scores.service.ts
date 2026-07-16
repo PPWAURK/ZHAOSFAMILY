@@ -5,37 +5,29 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma, Restaurant } from '@prisma/client';
-import { ACCOUNT_STATUS } from '../auth/account-status';
 import { MediaService } from '../media/media.service';
-import {
-  abcLeaderboardPublishedNotification,
-  normalizeLanguage,
-  type NotificationLanguage,
-} from '../notifications/notification-content';
-import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AttachMediaDto } from './dto/attach-media.dto';
 import type { CreateCycleDto } from './dto/create-cycle.dto';
-import type { FillOperationsScoreDto } from './dto/fill-operations-score.dto';
-import type { FillScoreDto } from './dto/fill-score.dto';
+import type { RecordInspectionDto } from './dto/fill-operations-score.dto';
 import type { ListCyclesQueryDto } from './dto/list-cycles-query.dto';
 import type {
   AbcCycleDetail,
   AbcCycleStatus,
   AbcCycleSummary,
   AbcGrade,
-  AbcLeaderboard,
-  AbcProgress,
+  AbcGradeDirectory,
+  AbcInspectionProgress,
+  AbcPublicGradeBoard,
   AbcScoreActor,
-  AbcStoreScoreItem,
+  AbcStoreInspectionItem,
 } from './abc-scores.types';
 
-type ScoreRecord = Prisma.AbcStoreScoreGetPayload<{ include: { media: true } }>;
+type InspectionRecord = Prisma.AbcStoreInspectionGetPayload<{
+  include: { media: true };
+}>;
 type CycleRecord = Prisma.AbcScoreCycleGetPayload<object>;
-type ScoreDepartment = 'marketing' | 'operations';
 
-// 控股实体（seed 中的 HOLDING_RESTAURANT）虽然存在 restaurants 表里，
-// 但不是真实门店，不参与 ABC 评分。沿用 seed 的约定：按店名识别。
 const HOLDING_RESTAURANT_NAME = 'ZHAO Groupe';
 const STORE_WHERE: Prisma.RestaurantWhereInput = {
   name: { not: HOLDING_RESTAURANT_NAME },
@@ -48,18 +40,11 @@ export class AbcScoresService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly mediaService: MediaService,
-    private readonly notificationsService: NotificationsService,
   ) {}
 
   async listCycles(query: ListCyclesQueryDto): Promise<AbcCycleSummary[]> {
-    const where: Prisma.AbcScoreCycleWhereInput = {};
-
-    if (query.status) {
-      where.status = query.status;
-    }
-
     const cycles = await this.prismaService.abcScoreCycle.findMany({
-      where,
+      where: query.status ? { status: query.status } : undefined,
       orderBy: { createdAt: 'desc' },
       take: 120,
     });
@@ -77,60 +62,60 @@ export class AbcScoresService {
 
   async getCycleDetail(cycleId: number): Promise<AbcCycleDetail> {
     const cycle = await this.loadCycle(cycleId);
-    const [restaurants, scores] = await Promise.all([
-      this.prismaService.restaurant.findMany({
-        where: STORE_WHERE,
-        orderBy: { id: 'asc' },
-      }),
-      this.prismaService.abcStoreScore.findMany({
-        where: { cycleId },
-        include: { media: { orderBy: { createdAt: 'desc' } } },
-      }),
-    ]);
-
-    const scoreByRestaurant = new Map(
-      scores.map((score) => [score.restaurantId, score]),
-    );
-    const stores = restaurants.map((restaurant) =>
-      this.mapStoreScore(restaurant, scoreByRestaurant.get(restaurant.id)),
+    const [restaurants, inspections] =
+      await this.loadStoresAndInspections(cycleId);
+    const inspectionByRestaurant = new Map(
+      inspections.map((inspection) => [inspection.restaurantId, inspection]),
     );
 
     return {
       ...this.mapCycleSummary(cycle),
-      stores,
-      progress: this.buildProgress(restaurants.length, scores),
+      stores: restaurants.map((restaurant) =>
+        this.mapStoreInspection(
+          restaurant,
+          inspectionByRestaurant.get(restaurant.id),
+        ),
+      ),
+      progress: this.buildProgress(restaurants.length, inspections),
     };
   }
 
-  async getProgress(cycleId: number): Promise<AbcProgress> {
+  async getProgress(cycleId: number): Promise<AbcInspectionProgress> {
     await this.loadCycle(cycleId);
-    const [total, scores] = await Promise.all([
+    const [total, inspections] = await Promise.all([
       this.prismaService.restaurant.count({ where: STORE_WHERE }),
-      this.prismaService.abcStoreScore.findMany({
+      this.prismaService.abcStoreInspection.findMany({
         where: { cycleId },
-        select: { marketingScore: true, operationsScore: true },
+        select: { grade: true },
       }),
     ]);
 
-    return this.buildProgress(total, scores);
+    return this.buildProgress(total, inspections);
   }
 
-  fillMarketingScore(
+  async recordInspection(
     actor: AbcScoreActor,
     cycleId: number,
     restaurantId: number,
-    dto: FillScoreDto,
-  ): Promise<AbcStoreScoreItem> {
-    return this.fillScore(actor, cycleId, restaurantId, 'marketing', dto);
-  }
+    dto: RecordInspectionDto,
+  ): Promise<AbcStoreInspectionItem> {
+    await this.assertEditableCycle(cycleId);
+    const restaurant = await this.loadRestaurant(restaurantId);
+    const inspectedAt = new Date();
+    const data = {
+      grade: dto.grade,
+      inspectionNotes: this.normalizeOptionalText(dto.notes),
+      inspectedByUserId: actor.id,
+      inspectedAt,
+    };
+    const inspection = await this.prismaService.abcStoreInspection.upsert({
+      where: { cycleId_restaurantId: { cycleId, restaurantId } },
+      create: { cycleId, restaurantId, ...data },
+      update: data,
+      include: { media: { orderBy: { createdAt: 'desc' } } },
+    });
 
-  fillOperationsScore(
-    actor: AbcScoreActor,
-    cycleId: number,
-    restaurantId: number,
-    dto: FillOperationsScoreDto,
-  ): Promise<AbcStoreScoreItem> {
-    return this.fillScore(actor, cycleId, restaurantId, 'operations', dto);
+    return this.mapStoreInspection(restaurant, inspection);
   }
 
   async attachMedia(
@@ -138,142 +123,95 @@ export class AbcScoresService {
     cycleId: number,
     restaurantId: number,
     dto: AttachMediaDto,
-  ): Promise<AbcStoreScoreItem> {
+  ): Promise<AbcStoreInspectionItem> {
     await this.assertEditableCycle(cycleId);
     const restaurant = await this.loadRestaurant(restaurantId);
-    const storeScore = await this.ensureStoreScore(cycleId, restaurantId);
+    const inspection = await this.ensureInspection(cycleId, restaurantId);
 
-    await this.prismaService.abcScoreMedia.create({
+    await this.prismaService.abcInspectionMedia.create({
       data: {
-        storeScoreId: storeScore.id,
+        storeScoreId: inspection.id,
         objectKey: dto.objectKey.trim(),
         fileName: this.normalizeOptionalText(dto.fileName),
-        department: 'operations',
         uploadedByUserId: actor.id,
       },
     });
 
-    return this.mapStoreScore(
+    return this.mapStoreInspection(
       restaurant,
-      await this.loadStoreScore(storeScore.id),
+      await this.loadInspection(inspection.id),
     );
   }
 
-  async getLeaderboard(cycleId: number): Promise<AbcLeaderboard> {
+  async getGradeDirectory(cycleId: number): Promise<AbcGradeDirectory> {
     const cycle = await this.loadCycle(cycleId);
-    const [restaurants, scores] = await this.loadStoresAndScores(cycleId);
-
-    return this.buildLeaderboard(cycle, restaurants, scores);
-  }
-
-  // 首页用：最新已发布周期的排行榜，趋势对照上一个已发布周期。无已发布周期返回 null。
-  async getPublishedLeaderboard(): Promise<AbcLeaderboard | null> {
-    const published = await this.prismaService.abcScoreCycle.findFirst({
-      where: { status: 'published' },
-      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
-    });
-
-    if (!published) {
-      return null;
-    }
-
-    const previous = await this.prismaService.abcScoreCycle.findFirst({
-      where: { status: 'published', id: { not: published.id } },
-      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
-    });
-
-    const [[restaurants, scores], previousTotals] = await Promise.all([
-      this.loadStoresAndScores(published.id),
-      previous
-        ? this.loadCycleTotals(previous.id)
-        : Promise.resolve(new Map<number, number>()),
-    ]);
-
-    return this.buildLeaderboard(
-      published,
-      restaurants,
-      scores,
-      previousTotals,
+    const [restaurants, inspections] =
+      await this.loadStoresAndInspections(cycleId);
+    const inspectionByRestaurant = new Map(
+      inspections.map((inspection) => [inspection.restaurantId, inspection]),
     );
-  }
 
-  private loadStoresAndScores(
-    cycleId: number,
-  ): Promise<[Restaurant[], ScoreRecord[]]> {
-    return Promise.all([
-      this.prismaService.restaurant.findMany({
-        where: STORE_WHERE,
-        orderBy: { id: 'asc' },
-      }),
-      this.prismaService.abcStoreScore.findMany({
-        where: { cycleId },
-        include: { media: { orderBy: { createdAt: 'desc' } } },
-      }),
-    ]);
-  }
-
-  private async loadCycleTotals(cycleId: number): Promise<Map<number, number>> {
-    const scores = await this.prismaService.abcStoreScore.findMany({
-      where: { cycleId },
-      select: {
-        restaurantId: true,
-        marketingScore: true,
-        operationsScore: true,
-      },
-    });
-
-    return new Map(
-      scores.map((score) => [
-        score.restaurantId,
-        (score.marketingScore ?? 0) + (score.operationsScore ?? 0),
-      ]),
-    );
-  }
-
-  private buildLeaderboard(
-    cycle: CycleRecord,
-    restaurants: Restaurant[],
-    scores: ScoreRecord[],
-    previousTotals?: Map<number, number>,
-  ): AbcLeaderboard {
-    const scoreByRestaurant = new Map(
-      scores.map((score) => [score.restaurantId, score]),
-    );
-    const ranked = restaurants
-      .map((restaurant) => {
-        const score = scoreByRestaurant.get(restaurant.id);
-        const marketingScore = score?.marketingScore ?? null;
-        const operationsScore = score?.operationsScore ?? null;
-        const totalScore = (marketingScore ?? 0) + (operationsScore ?? 0);
-        const previousTotal = previousTotals?.get(restaurant.id);
+    return {
+      cycle: this.mapCycleSummary(cycle),
+      entries: restaurants.map((restaurant) => {
+        const inspection = inspectionByRestaurant.get(restaurant.id);
 
         return {
           restaurantId: restaurant.id,
           storeName: restaurant.name,
           storeAddress: restaurant.address,
           photoUrl: restaurant.photoUrl ?? null,
-          marketingScore,
-          operationsScore,
-          totalScore,
-          grade: (score?.grade as AbcGrade | undefined) ?? null,
-          trend:
-            previousTotal === undefined ? null : totalScore - previousTotal,
-          focus: score?.operationsNotes ?? null,
-          auditDate: score?.operationsFilledAt?.toISOString() ?? null,
-          reportObjectKey: score?.media?.[0]?.objectKey ?? null,
+          grade: (inspection?.grade as AbcGrade | undefined) ?? null,
+          inspectionNotes: inspection?.inspectionNotes ?? null,
+          inspectedAt: inspection?.inspectedAt?.toISOString() ?? null,
         };
-      })
-      .sort(
-        (a, b) =>
-          b.totalScore - a.totalScore || a.storeName.localeCompare(b.storeName),
-      );
+      }),
+    };
+  }
+
+  async listPublishedGradeCycles(): Promise<AbcCycleSummary[]> {
+    const cycles = await this.prismaService.abcScoreCycle.findMany({
+      where: { status: 'published' },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      take: 24,
+    });
+
+    return cycles.map((cycle) => this.mapCycleSummary(cycle));
+  }
+
+  async getPublishedGradeBoard(
+    cycleId?: number,
+  ): Promise<AbcPublicGradeBoard | null> {
+    const cycle = await this.prismaService.abcScoreCycle.findFirst({
+      where: cycleId
+        ? { id: cycleId, status: 'published' }
+        : { status: 'published' },
+      orderBy: cycleId ? undefined : [{ publishedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!cycle) {
+      return null;
+    }
+
+    const directory = await this.getGradeDirectory(cycle.id);
 
     return {
-      cycle: this.mapCycleSummary(cycle),
-      entries: ranked.map((entry, index) => ({
-        ...entry,
-        rank: index + 1,
-      })),
+      cycle: directory.cycle,
+      entries: directory.entries.flatMap((entry) => {
+        if (!entry.grade) {
+          return [];
+        }
+
+        return [
+          {
+            restaurantId: entry.restaurantId,
+            storeName: entry.storeName,
+            storeAddress: entry.storeAddress,
+            photoUrl: entry.photoUrl,
+            grade: entry.grade,
+          },
+        ];
+      }),
     };
   }
 
@@ -289,63 +227,13 @@ export class AbcScoresService {
       data: { status: 'published', publishedAt: new Date() },
     });
 
-    await this.notifyLeaderboardPublished(published);
-
     return this.mapCycleSummary(published);
   }
 
-  /**
-   * Best-effort broadcast push when a cycle is published, so every approved
-   * teammate is invited to open the home leaderboard. Grouped by preferred
-   * language; delivery failures must never fail publishing, so errors are
-   * swallowed after logging.
-   */
-  private async notifyLeaderboardPublished(cycle: CycleRecord): Promise<void> {
-    try {
-      const audience = await this.prismaService.user.findMany({
-        where: { accountStatus: ACCOUNT_STATUS.approved },
-        select: { id: true, preferredLanguage: true },
-      });
-      if (audience.length === 0) {
-        return;
-      }
-
-      const idsByLanguage = new Map<NotificationLanguage, number[]>();
-      for (const user of audience) {
-        const language = normalizeLanguage(user.preferredLanguage);
-        const ids = idsByLanguage.get(language) ?? [];
-        ids.push(user.id);
-        idsByLanguage.set(language, ids);
-      }
-
-      await Promise.all(
-        [...idsByLanguage].map(([language, ids]) =>
-          this.notificationsService.sendToUsers(
-            ids,
-            abcLeaderboardPublishedNotification(
-              language,
-              cycle.id,
-              cycle.label,
-            ),
-          ),
-        ),
-      );
-    } catch (error) {
-      this.logger.warn(
-        `Failed to send ABC leaderboard push for cycle ${cycle.id}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-  }
-
-  // 删除整个周期（含已发布）。分数与报告记录通过外键级联一并删除，
-  // 报告文件本体在删库后尽力从存储清理（失败不影响删除结果）。
   async deleteCycle(cycleId: number): Promise<{ id: number }> {
     await this.loadCycle(cycleId);
-
-    const media = await this.prismaService.abcScoreMedia.findMany({
-      where: { storeScore: { cycleId } },
+    const media = await this.prismaService.abcInspectionMedia.findMany({
+      where: { inspection: { cycleId } },
       select: { objectKey: true },
     });
 
@@ -355,82 +243,29 @@ export class AbcScoresService {
     return { id: cycleId };
   }
 
-  private async deleteMediaObjects(objectKeys: string[]): Promise<void> {
-    await Promise.all(
-      objectKeys.map(async (objectKey) => {
-        try {
-          await this.mediaService.deleteFile(objectKey);
-        } catch (error) {
-          this.logger.warn(
-            `Failed to delete ABC report object ${objectKey}: ${String(error)}`,
-          );
-        }
+  private loadStoresAndInspections(
+    cycleId: number,
+  ): Promise<[Restaurant[], InspectionRecord[]]> {
+    return Promise.all([
+      this.prismaService.restaurant.findMany({
+        where: STORE_WHERE,
+        orderBy: { id: 'asc' },
       }),
-    );
-  }
-
-  private async fillScore(
-    actor: AbcScoreActor,
-    cycleId: number,
-    restaurantId: number,
-    department: ScoreDepartment,
-    dto: FillScoreDto | FillOperationsScoreDto,
-  ): Promise<AbcStoreScoreItem> {
-    await this.assertEditableCycle(cycleId);
-    const restaurant = await this.loadRestaurant(restaurantId);
-    const notes = this.normalizeOptionalText(dto.notes);
-    const filledAt = new Date();
-    const data =
-      department === 'marketing'
-        ? {
-            marketingScore: dto.score,
-            marketingNotes: notes,
-            marketingFilledByUserId: actor.id,
-            marketingFilledAt: filledAt,
-          }
-        : {
-            operationsScore: dto.score,
-            operationsNotes: notes,
-            operationsFilledByUserId: actor.id,
-            operationsFilledAt: filledAt,
-            grade: (dto as FillOperationsScoreDto).grade ?? null,
-          };
-
-    const score = await this.prismaService.abcStoreScore.upsert({
-      where: { cycleId_restaurantId: { cycleId, restaurantId } },
-      create: { cycleId, restaurantId, ...data },
-      update: data,
-      include: { media: { orderBy: { createdAt: 'desc' } } },
-    });
-
-    return this.mapStoreScore(restaurant, score);
-  }
-
-  private async ensureStoreScore(
-    cycleId: number,
-    restaurantId: number,
-  ): Promise<{ id: number }> {
-    return this.prismaService.abcStoreScore.upsert({
-      where: { cycleId_restaurantId: { cycleId, restaurantId } },
-      create: { cycleId, restaurantId },
-      update: {},
-      select: { id: true },
-    });
+      this.prismaService.abcStoreInspection.findMany({
+        where: { cycleId },
+        include: { media: { orderBy: { createdAt: 'desc' } } },
+      }),
+    ]);
   }
 
   private buildProgress(
     total: number,
-    scores: Pick<ScoreRecord, 'marketingScore' | 'operationsScore'>[],
-  ): AbcProgress {
+    inspections: Array<{ grade: string | null }>,
+  ): AbcInspectionProgress {
     return {
-      marketing: {
-        filled: scores.filter((score) => score.marketingScore !== null).length,
-        total,
-      },
-      operations: {
-        filled: scores.filter((score) => score.operationsScore !== null).length,
-        total,
-      },
+      filled: inspections.filter((inspection) => inspection.grade !== null)
+        .length,
+      total,
     };
   }
 
@@ -459,7 +294,6 @@ export class AbcScoresService {
       where: { id: restaurantId },
     });
 
-    // 控股实体不是门店，不接受评分 —— 与 STORE_WHERE 过滤保持一致。
     if (!restaurant || restaurant.name === HOLDING_RESTAURANT_NAME) {
       throw new NotFoundException('RESTAURANT_NOT_FOUND');
     }
@@ -467,9 +301,21 @@ export class AbcScoresService {
     return restaurant;
   }
 
-  private async loadStoreScore(storeScoreId: number): Promise<ScoreRecord> {
-    return this.prismaService.abcStoreScore.findUniqueOrThrow({
-      where: { id: storeScoreId },
+  private ensureInspection(
+    cycleId: number,
+    restaurantId: number,
+  ): Promise<{ id: number }> {
+    return this.prismaService.abcStoreInspection.upsert({
+      where: { cycleId_restaurantId: { cycleId, restaurantId } },
+      create: { cycleId, restaurantId },
+      update: {},
+      select: { id: true },
+    });
+  }
+
+  private loadInspection(inspectionId: number): Promise<InspectionRecord> {
+    return this.prismaService.abcStoreInspection.findUniqueOrThrow({
+      where: { id: inspectionId },
       include: { media: { orderBy: { createdAt: 'desc' } } },
     });
   }
@@ -484,27 +330,22 @@ export class AbcScoresService {
     };
   }
 
-  private mapStoreScore(
+  private mapStoreInspection(
     restaurant: Restaurant,
-    score: ScoreRecord | undefined,
-  ): AbcStoreScoreItem {
+    inspection: InspectionRecord | undefined,
+  ): AbcStoreInspectionItem {
     return {
       restaurantId: restaurant.id,
       storeName: restaurant.name,
       storeAddress: restaurant.address,
       photoUrl: restaurant.photoUrl ?? null,
-      marketingScore: score?.marketingScore ?? null,
-      marketingNotes: score?.marketingNotes ?? null,
-      marketingFilledAt: score?.marketingFilledAt?.toISOString() ?? null,
-      operationsScore: score?.operationsScore ?? null,
-      operationsNotes: score?.operationsNotes ?? null,
-      operationsFilledAt: score?.operationsFilledAt?.toISOString() ?? null,
-      grade: (score?.grade as AbcGrade | undefined) ?? null,
-      media: (score?.media ?? []).map((item) => ({
+      grade: (inspection?.grade as AbcGrade | undefined) ?? null,
+      inspectionNotes: inspection?.inspectionNotes ?? null,
+      inspectedAt: inspection?.inspectedAt?.toISOString() ?? null,
+      media: (inspection?.media ?? []).map((item) => ({
         id: item.id,
         objectKey: item.objectKey,
         fileName: item.fileName ?? null,
-        department: item.department,
         createdAt: item.createdAt.toISOString(),
       })),
     };
@@ -514,5 +355,19 @@ export class AbcScoresService {
     const trimmed = value?.trim();
 
     return trimmed ? trimmed : null;
+  }
+
+  private async deleteMediaObjects(objectKeys: string[]): Promise<void> {
+    await Promise.all(
+      objectKeys.map(async (objectKey) => {
+        try {
+          await this.mediaService.deleteFile(objectKey);
+        } catch (error) {
+          this.logger.warn(
+            `Failed to delete ABC inspection report ${objectKey}: ${String(error)}`,
+          );
+        }
+      }),
+    );
   }
 }

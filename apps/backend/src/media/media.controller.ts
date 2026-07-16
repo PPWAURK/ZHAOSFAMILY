@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
+  Headers,
   Post,
   Query,
   Req,
@@ -23,10 +25,18 @@ import { AuthService } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { Public } from '../auth/decorators/public.decorator';
 import { SignMediaQueryDto } from './dto/sign-media.dto';
+import {
+  ABC_INSPECTION_PERMISSIONS,
+  ABC_LEGACY_SCORE_PERMISSIONS,
+} from '../auth/permissions';
 
 const MEDIA_UPLOAD_MAX_BYTES = 5 * 1024 * 1024 * 1024;
 const MEDIA_SIGNED_URL_TTL_SECONDS = 60 * 60 * 4;
 const MEDIA_UPLOAD_TEMP_DIR = path.join(tmpdir(), 'zhao-media-uploads');
+const ABC_INSPECTION_REPORT_FOLDERS = [
+  'abc-inspections/reports/',
+  'abc-scores/reports/',
+];
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -143,7 +153,12 @@ export class MediaController {
   @Get('sign')
   async signFile(
     @Query() query: SignMediaQueryDto,
+    @Headers('authorization') authorization: string | undefined,
   ): Promise<{ url: string; expiresAt: string }> {
+    await this.assertInspectionReportAccess(
+      query.objectKey,
+      parseBearerToken(authorization),
+    );
     const url = await this.mediaService.getSignedUrl(
       query.objectKey,
       MEDIA_SIGNED_URL_TTL_SECONDS,
@@ -183,7 +198,8 @@ export class MediaController {
       throw new UnauthorizedException('ACCESS_TOKEN_REQUIRED');
     }
 
-    await this.authService.getCurrentUser(accessToken);
+    const user = await this.authService.getCurrentUser(accessToken);
+    this.assertInspectionReportPermission(objectKey, user.permissions);
 
     const metadata = await this.mediaService.getFileMetadata(objectKey);
     const range = parseRangeHeader(request.headers.range, metadata.size);
@@ -222,5 +238,36 @@ export class MediaController {
     });
 
     file.stream.pipe(response);
+  }
+
+  private async assertInspectionReportAccess(
+    objectKey: string,
+    accessToken: string | undefined,
+  ): Promise<void> {
+    if (!this.isInspectionReport(objectKey)) {
+      return;
+    }
+
+    const user = await this.authService.getCurrentUser(accessToken);
+    this.assertInspectionReportPermission(objectKey, user.permissions);
+  }
+
+  private assertInspectionReportPermission(
+    objectKey: string,
+    permissions: string[],
+  ): void {
+    if (
+      this.isInspectionReport(objectKey) &&
+      !permissions.includes(ABC_INSPECTION_PERMISSIONS.read) &&
+      !permissions.includes(ABC_LEGACY_SCORE_PERMISSIONS.read)
+    ) {
+      throw new ForbiddenException('ABC_INSPECTION_REPORT_ACCESS_DENIED');
+    }
+  }
+
+  private isInspectionReport(objectKey: string): boolean {
+    return ABC_INSPECTION_REPORT_FOLDERS.some((folder) =>
+      objectKey.startsWith(folder),
+    );
   }
 }

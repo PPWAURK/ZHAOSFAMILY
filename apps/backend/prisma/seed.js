@@ -59,20 +59,16 @@ const PERMISSIONS = [
     description: 'Manage recruitment requests from stores',
   },
   {
-    key: 'abc.score.read',
-    description: 'View ABC score cycles and leaderboard',
+    key: 'abc.inspection.read',
+    description: 'View ABC inspection cycles and grade results',
   },
   {
-    key: 'abc.score.fill_marketing',
-    description: 'Fill ABC marketing scores for stores',
+    key: 'abc.inspection.manage',
+    description: 'Record ABC inspection grades and reports',
   },
   {
-    key: 'abc.score.fill_operations',
-    description: 'Fill ABC operations (audit) scores and upload reports',
-  },
-  {
-    key: 'abc.score.publish',
-    description: 'Publish the ABC score leaderboard',
+    key: 'abc.inspection.publish',
+    description: 'Publish ABC inspection cycles',
   },
   {
     key: 'case.share.review',
@@ -96,7 +92,8 @@ const PERMISSIONS = [
   },
   {
     key: 'screen_security.audit',
-    description: 'View screen security audit log (screenshot and recording events)',
+    description:
+      'View screen security audit log (screenshot and recording events)',
   },
   {
     key: 'screen_security.delete',
@@ -391,8 +388,7 @@ const TRAINING_BADGES = [
     nameEn: 'Food Safety Basic',
     nameFr: 'Securite alimentaire base',
     descriptionZh: '验证食品安全基础知识和日常执行标准。',
-    descriptionEn:
-      'Validates basic food-safety knowledge and daily standards.',
+    descriptionEn: 'Validates basic food-safety knowledge and daily standards.',
     descriptionFr:
       'Valide les bases de securite alimentaire et les standards quotidiens.',
     track: 'safety',
@@ -429,10 +425,8 @@ const TRAINING_BADGES = [
     nameEn: 'Store Rules Basic',
     nameFr: 'Regles magasin de base',
     descriptionZh: '验证门店基本规章制度的理解和遵守。',
-    descriptionEn:
-      'Validates understanding of basic store rules and policies.',
-    descriptionFr:
-      'Valide la comprehension des regles de base du magasin.',
+    descriptionEn: 'Validates understanding of basic store rules and policies.',
+    descriptionFr: 'Valide la comprehension des regles de base du magasin.',
     track: 'general',
     rarity: 'common',
     level: null,
@@ -509,8 +503,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成前厅高峰服务资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing peak-service training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation service en periode de pointe.',
+    descriptionFr: 'Obtenue apres la formation service en periode de pointe.',
     track: 'front',
     rarity: 'rare',
     level: 3,
@@ -644,8 +637,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成厨房独立出餐资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing independent serving training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation service independant en cuisine.',
+    descriptionFr: 'Obtenue apres la formation service independant en cuisine.',
     track: 'kitchen',
     rarity: 'rare',
     level: 3,
@@ -682,8 +674,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成厨房助理实习资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing assistant intern training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation assistant stagiaire en cuisine.',
+    descriptionFr: 'Obtenue apres la formation assistant stagiaire en cuisine.',
     track: 'kitchen',
     rarity: 'epic',
     level: 5,
@@ -701,8 +692,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成厨房助理认证资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing assistant certification training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation assistant certifie en cuisine.',
+    descriptionFr: 'Obtenue apres la formation assistant certifie en cuisine.',
     track: 'kitchen',
     rarity: 'epic',
     level: 5,
@@ -739,10 +729,8 @@ const TRAINING_BADGES = [
     nameEn: 'Coaching Certification',
     nameFr: 'Certification coaching',
     descriptionZh: '完成教练培训资料并通过考核后获得。',
-    descriptionEn:
-      'Earned after completing coaching training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation coaching et son evaluation.',
+    descriptionEn: 'Earned after completing coaching training and assessment.',
+    descriptionFr: 'Obtenue apres la formation coaching et son evaluation.',
     track: 'management',
     rarity: 'rare',
     level: null,
@@ -779,8 +767,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成成本控制资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing cost-awareness training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation sensibilisation aux couts.',
+    descriptionFr: 'Obtenue apres la formation sensibilisation aux couts.',
     track: 'management',
     rarity: 'epic',
     level: null,
@@ -817,8 +804,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成团队沟通资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing team communication training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation communication d equipe.',
+    descriptionFr: 'Obtenue apres la formation communication d equipe.',
     track: 'management',
     rarity: 'epic',
     level: null,
@@ -834,8 +820,7 @@ const TRAINING_BADGES = [
     nameEn: 'Store Operations Basic',
     nameFr: 'Operations magasin base',
     descriptionZh: '验证门店运营、协作和执行基础能力。',
-    descriptionEn:
-      'Validates basic store operations, teamwork, and execution.',
+    descriptionEn: 'Validates basic store operations, teamwork, and execution.',
     descriptionFr:
       'Valide les bases des operations, de la coordination et de la execution.',
     track: 'management',
@@ -895,8 +880,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成五星合伙人进阶资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing advanced five-star partner training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation avancee associe cinq etoiles.',
+    descriptionFr: 'Obtenue apres la formation avancee associe cinq etoiles.',
     track: 'certification',
     rarity: 'epic',
     level: null,
@@ -914,8 +898,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成金牌合伙人进阶资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing advanced gold partner training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation avancee associe or.',
+    descriptionFr: 'Obtenue apres la formation avancee associe or.',
     track: 'certification',
     rarity: 'epic',
     level: null,
@@ -933,8 +916,7 @@ const TRAINING_BADGES = [
     descriptionZh: '完成优秀经理进阶资料并通过考核后获得。',
     descriptionEn:
       'Earned after completing advanced excellent manager training and assessment.',
-    descriptionFr:
-      'Obtenue apres la formation avancee gestionnaire excellent.',
+    descriptionFr: 'Obtenue apres la formation avancee gestionnaire excellent.',
     track: 'certification',
     rarity: 'epic',
     level: null,
@@ -968,7 +950,8 @@ const TRAINING_BADGES = [
     nameZh: '品牌守护者认证',
     nameEn: 'Brand Guardian',
     nameFr: 'Gardien de la marque',
-    descriptionZh: '完成品牌守护者进阶资料并通过考核后获得。要求分数 92 分以上。',
+    descriptionZh:
+      '完成品牌守护者进阶资料并通过考核后获得。要求分数 92 分以上。',
     descriptionEn:
       'Earned after completing brand guardian training. Requires a score of 92+.',
     descriptionFr:
@@ -1021,6 +1004,7 @@ const ROLES = [
       'training.progress.view_store',
       'inventory.movement.create',
       'recipe.manage',
+      'abc.inspection.read',
     ],
   },
   {
@@ -1045,15 +1029,9 @@ const ROLES = [
     permissions: ['training.material.read', 'training.material.play'],
   },
   {
-    name: 'marketing-admin',
-    description: 'Marketing department: fills ABC marketing scores',
-    permissions: ['abc.score.read', 'abc.score.fill_marketing'],
-  },
-  {
-    name: 'operations-admin',
-    description:
-      'Operations department: fills ABC audit scores and uploads reports',
-    permissions: ['abc.score.read', 'abc.score.fill_operations'],
+    name: 'inspection-admin',
+    description: 'Records ABC inspection grades and reports',
+    permissions: ['abc.inspection.read', 'abc.inspection.manage'],
   },
 ];
 

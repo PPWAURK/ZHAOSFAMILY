@@ -76,14 +76,6 @@ export const DASHBOARD_NAV = [
         en: "Learning materials",
         fr: "Ressources",
       },
-      {
-        id: "recipes",
-        href: "/dashboard/recipes",
-        zh: "食谱管理",
-        en: "Recipe management",
-        fr: "Gestion des recettes",
-        visibleForJobRoles: MANAGEMENT_JOB_ROLES,
-      },
     ],
   },
   {
@@ -136,12 +128,7 @@ export const DASHBOARD_NAV = [
         // Store/regional management (by job role) see the entry and get the send
         // view (submit + track their own requests); the backend scopes their list
         // to their own store. Only `recruitment.request.manage` unlocks the HQ desk.
-        visibleForJobRoles: [
-          "regional-manager",
-          "store-manager",
-          "front-manager",
-          "back-manager",
-        ],
+        visibleForJobRoles: ["regional-manager", "store-manager", "front-manager", "back-manager"],
       },
     ],
   },
@@ -151,10 +138,10 @@ export const DASHBOARD_NAV = [
       {
         id: "abc-scores",
         href: "/dashboard/abc-scores",
-        zh: "ABC 评分排行榜",
-        en: "ABC scoreboard",
-        fr: "Classement ABC",
-        requiredPermission: "abc.score.read",
+        zh: "ABC 门店评级",
+        en: "ABC store grades",
+        fr: "Niveaux ABC",
+        requiredPermission: "abc.inspection.read",
         // 营销/运营账号靠权限可见；总部（holding/regional）靠岗位兜底，
         // 与「系统角色」入口同样的 OR 双条件。
         visibleForJobRoles: HEADQUARTER_JOB_ROLES,
@@ -322,6 +309,15 @@ export const DASHBOARD_COPY = {
         detail: "头像、岗位、联系方式与账号安全。",
       },
     ],
+    gradeLeaderboard: {
+      kicker: "ABC STORE GRADES",
+      title: "门店 ABC 评级榜",
+      subtitle: "展示最新已发布周期的 A、B、C 级门店；检查报告仅向总部及管理层开放。",
+      cycleLabel: "检查周期",
+      previousCycle: "查看较新周期",
+      nextCycle: "查看较早周期",
+      cyclePosition: (current, total) => `${current} / ${total}`,
+    },
     newsModule: {
       kicker: "Internal Editorial · Newsroom",
       title: "今日动态",
@@ -424,27 +420,6 @@ export const DASHBOARD_COPY = {
       },
       loadError: "动态加载失败，请稍后重试。",
     },
-    scoreLeaderboard: {
-      kicker: "Store Score · Ranking",
-      title: "门店评分排行榜",
-      subtitle:
-        "展示最新已发布周期每家门店的 A / B / C 等级与评分，点击门店可查看运营上传的评分报告。",
-      summaryLabel: "等级统计",
-      trackingLabel: "后续追踪",
-      tieLabel: "并列",
-      storeUnit: "家",
-      auditLabel: "检查",
-      reportLabel: "查看评分报告",
-      placeLabel: "第 {rank} 名",
-      columns: {
-        rank: "排名",
-        store: "门店",
-        grade: "等级",
-        score: "评分",
-        trend: "趋势",
-        focus: "关注点",
-      },
-    },
     footer: "Since 2011 — ZHAO's Family Holding",
   },
   en: {
@@ -480,6 +455,16 @@ export const DASHBOARD_COPY = {
         detail: "Avatar, role, contact info and account security.",
       },
     ],
+    gradeLeaderboard: {
+      kicker: "ABC STORE GRADES",
+      title: "ABC store grade board",
+      subtitle:
+        "A, B and C store grades from the latest published cycle. Inspection reports stay restricted to headquarters and management.",
+      cycleLabel: "Inspection cycle",
+      previousCycle: "View newer cycle",
+      nextCycle: "View older cycle",
+      cyclePosition: (current, total) => `${current} / ${total}`,
+    },
     newsModule: {
       kicker: "Internal Editorial · Newsroom",
       title: "Today",
@@ -584,27 +569,6 @@ export const DASHBOARD_COPY = {
       },
       loadError: "Updates could not be loaded. Please try again.",
     },
-    scoreLeaderboard: {
-      kicker: "Store Score · Ranking",
-      title: "Store score ranking",
-      subtitle:
-        "A / B / C grade and score for each store from the latest published cycle. Click a store to open the operations audit report.",
-      summaryLabel: "Grade summary",
-      trackingLabel: "Follow-up",
-      tieLabel: "Tie",
-      storeUnit: "stores",
-      auditLabel: "Audit",
-      reportLabel: "View audit report",
-      placeLabel: "No. {rank}",
-      columns: {
-        rank: "Rank",
-        store: "Store",
-        grade: "Grade",
-        score: "Score",
-        trend: "Trend",
-        focus: "Focus",
-      },
-    },
     footer: "Since 2011 — ZHAO's Family Holding",
   },
   fr: {
@@ -640,6 +604,16 @@ export const DASHBOARD_COPY = {
         detail: "Avatar, poste, coordonnées et sécurité du compte.",
       },
     ],
+    gradeLeaderboard: {
+      kicker: "NIVEAUX ABC DES BOUTIQUES",
+      title: "Tableau des niveaux ABC",
+      subtitle:
+        "Niveaux A, B et C du dernier cycle publie. Les rapports d'inspection restent reserves au siege et au management.",
+      cycleLabel: "Cycle d'inspection",
+      previousCycle: "Voir le cycle plus récent",
+      nextCycle: "Voir le cycle plus ancien",
+      cyclePosition: (current, total) => `${current} / ${total}`,
+    },
     newsModule: {
       kicker: "Internal Editorial · Newsroom",
       title: "Aujourd'hui",
@@ -743,27 +717,6 @@ export const DASHBOARD_COPY = {
         open: "Lire",
       },
       loadError: "Les actualites n'ont pas pu charger. Reessayez plus tard.",
-    },
-    scoreLeaderboard: {
-      kicker: "Store Score · Ranking",
-      title: "Classement des boutiques",
-      subtitle:
-        "Niveaux A / B / C et notes de chaque boutique du dernier cycle publie. Cliquez sur une boutique pour ouvrir le rapport d'audit.",
-      summaryLabel: "Synthese des notes",
-      trackingLabel: "Suivi",
-      tieLabel: "Ex aequo",
-      storeUnit: "boutiques",
-      auditLabel: "Audit",
-      reportLabel: "Voir le rapport d'audit",
-      placeLabel: "Rang {rank}",
-      columns: {
-        rank: "Rang",
-        store: "Boutique",
-        grade: "Niveau",
-        score: "Score",
-        trend: "Tendance",
-        focus: "Point cle",
-      },
     },
     footer: "Since 2011 — ZHAO's Family Holding",
   },

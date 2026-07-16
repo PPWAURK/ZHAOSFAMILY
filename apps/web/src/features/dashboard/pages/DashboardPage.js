@@ -5,12 +5,15 @@ import { motion } from "motion/react";
 import Link from "next/link";
 import { canSeeNavEntry } from "@zhao/utils";
 
-import { fetchPublishedLeaderboard } from "@/features/abc-scores/services/abcScoresApi";
+import { ABC_COPY } from "@/features/abc-scores/constants/abc-copy";
+import {
+  fetchPublishedAbcGradeBoard,
+  fetchPublishedAbcGradeCycles,
+} from "@/features/abc-scores/services/abcScoresApi";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import DashboardNewsModule from "@/features/dashboard/components/DashboardNewsModule";
 import Sidebar from "@/features/dashboard/components/Sidebar";
-import StoreScoreLeaderboard from "@/features/dashboard/components/StoreScoreLeaderboard";
-import { resolveStorePhotoPath } from "@/features/stores/services/restaurantsApi";
+import StoreGradeLeaderboard from "@/features/dashboard/components/StoreGradeLeaderboard";
 import {
   DASHBOARD_COPY,
   DASHBOARD_LANGUAGES,
@@ -29,70 +32,70 @@ function resolveDisplayName(user, fallback) {
   );
 }
 
-// 0 或 null 视为无变化，不显示箭头；正数加 "+"。
-function formatTrend(trend) {
-  if (!trend) {
-    return null;
-  }
-  return trend > 0 ? `+${trend}` : String(trend);
-}
-
-function mapLeaderboardEntries(board) {
-  if (!board) {
-    return [];
-  }
-
-  const publishedDate = board.cycle.publishedAt
-    ? board.cycle.publishedAt.slice(0, 10)
-    : "";
-
-  return board.entries.map((entry) => ({
-    id: String(entry.restaurantId),
-    name: entry.storeName,
-    area: entry.storeAddress,
-    grade: entry.grade,
-    score: entry.totalScore,
-    trend: formatTrend(entry.trend),
-    auditDate: entry.auditDate ? entry.auditDate.slice(0, 10) : publishedDate,
-    focus: entry.focus ?? "",
-    imageSrc: resolveStorePhotoPath(entry.photoUrl),
-    reportObjectKey: entry.reportObjectKey ?? null,
-  }));
-}
-
 export default function DashboardPage() {
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scoreEntries, setScoreEntries] = useState([]);
   const { user } = useAuth();
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const t = DASHBOARD_COPY[lang];
+  const abcCopy = ABC_COPY[lang];
   const newsCopy = t.newsModule;
-  const scoreLeaderboardCopy = t.scoreLeaderboard;
+  const [gradeBoard, setGradeBoard] = useState(null);
+  const [gradeCycles, setGradeCycles] = useState([]);
+  const [gradeCycleIndex, setGradeCycleIndex] = useState(0);
   const displayName = resolveDisplayName(user, t.greetingFallback);
   const visibleShortcuts = t.shortcuts.filter((shortcut) =>
     canSeeNavEntry(user, DASHBOARD_SHORTCUT_RULES[shortcut.id]),
   );
 
-  useEffect(() => {
-    let cancelled = false;
+  const selectedGradeCycle = gradeCycles[gradeCycleIndex] ?? null;
 
-    fetchPublishedLeaderboard()
-      .then((board) => {
-        if (!cancelled) {
-          setScoreEntries(mapLeaderboardEntries(board));
+  useEffect(() => {
+    let active = true;
+
+    fetchPublishedAbcGradeCycles()
+      .then((cycles) => {
+        if (active) {
+          setGradeCycles(cycles);
+          setGradeCycleIndex(0);
         }
       })
       .catch(() => {
-        if (!cancelled) {
-          setScoreEntries([]);
+        if (active) {
+          setGradeCycles([]);
+          setGradeBoard(null);
         }
       });
 
     return () => {
-      cancelled = true;
+      active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedGradeCycle) {
+      setGradeBoard(null);
+      return undefined;
+    }
+
+    let active = true;
+
+    fetchPublishedAbcGradeBoard(selectedGradeCycle.id)
+      .then((board) => {
+        if (active) {
+          setGradeBoard(board);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setGradeBoard(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedGradeCycle]);
 
   return (
     <main className={styles.page}>
@@ -199,10 +202,16 @@ export default function DashboardPage() {
 
       <DashboardNewsModule lang={lang} copy={newsCopy} />
 
-      {scoreEntries.length > 0 ? (
-        <StoreScoreLeaderboard
-          copy={scoreLeaderboardCopy}
-          entries={scoreEntries}
+      {gradeBoard ? (
+        <StoreGradeLeaderboard
+          copy={t.gradeLeaderboard}
+          gradeCopy={abcCopy}
+          entries={gradeBoard.entries}
+          cycle={gradeBoard.cycle}
+          cycleIndex={gradeCycleIndex}
+          cycleCount={gradeCycles.length}
+          onPrevious={() => setGradeCycleIndex((index) => Math.max(0, index - 1))}
+          onNext={() => setGradeCycleIndex((index) => Math.min(gradeCycles.length - 1, index + 1))}
         />
       ) : null}
 

@@ -10,61 +10,57 @@ export type AbcCycleSummary = {
   createdAt: string;
 };
 
-export type AbcScoreMediaItem = {
+export type AbcInspectionMediaItem = {
   id: number;
   objectKey: string;
   fileName: string | null;
-  department: string;
   createdAt: string;
 };
 
-export type AbcStoreScoreItem = {
+export type AbcStoreInspectionItem = {
   restaurantId: number;
   storeName: string;
   storeAddress: string;
   photoUrl: string | null;
-  marketingScore: number | null;
-  marketingNotes: string | null;
-  marketingFilledAt: string | null;
-  operationsScore: number | null;
-  operationsNotes: string | null;
-  operationsFilledAt: string | null;
   grade: AbcGrade | null;
-  media: AbcScoreMediaItem[];
+  inspectionNotes: string | null;
+  inspectedAt: string | null;
+  media: AbcInspectionMediaItem[];
 };
 
-export type AbcDepartmentProgress = {
+export type AbcInspectionProgress = {
   filled: number;
   total: number;
 };
 
-export type AbcProgress = {
-  marketing: AbcDepartmentProgress;
-  operations: AbcDepartmentProgress;
-};
-
 export type AbcCycleDetail = AbcCycleSummary & {
-  stores: AbcStoreScoreItem[];
-  progress: AbcProgress;
+  stores: AbcStoreInspectionItem[];
+  progress: AbcInspectionProgress;
 };
 
-export type AbcLeaderboardEntry = {
-  rank: number;
+export type AbcGradeDirectoryEntry = {
   restaurantId: number;
   storeName: string;
   storeAddress: string;
   photoUrl: string | null;
-  marketingScore: number | null;
-  operationsScore: number | null;
-  totalScore: number;
   grade: AbcGrade | null;
-  trend: number | null;
-  focus: string | null;
-  auditDate: string | null;
-  reportObjectKey: string | null;
+  inspectionNotes: string | null;
+  inspectedAt: string | null;
 };
 
-export type AbcLeaderboard = {
+export type AbcGradeDirectory = {
   cycle: AbcCycleSummary;
-  entries: AbcLeaderboardEntry[];
+  entries: AbcGradeDirectoryEntry[];
+};
+
+export type AbcPublicGradeEntry = Pick<
+  AbcGradeDirectoryEntry,
+  "restaurantId" | "storeName" | "storeAddress" | "photoUrl"
+> & {
+  grade: AbcGrade;
+};
+
+export type AbcPublicGradeBoard = {
+  cycle: AbcCycleSummary;
+  entries: AbcPublicGradeEntry[];
 };

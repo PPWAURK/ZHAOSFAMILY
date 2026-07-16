@@ -1,14 +1,14 @@
 import type {
   AbcCycleDetail,
   AbcCycleSummary,
-  AbcLeaderboard,
-  AbcProgress,
-  AbcStoreScoreItem,
+  AbcGradeDirectory,
+  AbcInspectionProgress,
+  AbcPublicGradeBoard,
+  AbcStoreInspectionItem,
   AttachAbcMediaRequest,
   CreateAbcCycleRequest,
-  FillAbcOperationsRequest,
-  FillAbcScoreRequest,
   ListAbcCyclesQuery,
+  RecordAbcInspectionRequest,
 } from "@zhao/types";
 import type { ApiClient } from "../client";
 
@@ -16,24 +16,20 @@ export type AbcScoresApi = {
   listCycles: (query?: ListAbcCyclesQuery) => Promise<AbcCycleSummary[]>;
   createCycle: (input: CreateAbcCycleRequest) => Promise<AbcCycleSummary>;
   getCycle: (id: number | string) => Promise<AbcCycleDetail>;
-  getProgress: (id: number | string) => Promise<AbcProgress>;
-  getPreview: (id: number | string) => Promise<AbcLeaderboard>;
-  getPublished: () => Promise<AbcLeaderboard | null>;
-  fillMarketing: (
+  getProgress: (id: number | string) => Promise<AbcInspectionProgress>;
+  getGradeDirectory: (id: number | string) => Promise<AbcGradeDirectory>;
+  listPublishedGradeCycles: () => Promise<AbcCycleSummary[]>;
+  getPublishedGradeBoard: (id?: number | string) => Promise<AbcPublicGradeBoard | null>;
+  recordInspection: (
     id: number | string,
     restaurantId: number | string,
-    input: FillAbcScoreRequest,
-  ) => Promise<AbcStoreScoreItem>;
-  fillOperations: (
-    id: number | string,
-    restaurantId: number | string,
-    input: FillAbcOperationsRequest,
-  ) => Promise<AbcStoreScoreItem>;
+    input: RecordAbcInspectionRequest,
+  ) => Promise<AbcStoreInspectionItem>;
   attachMedia: (
     id: number | string,
     restaurantId: number | string,
     input: AttachAbcMediaRequest,
-  ) => Promise<AbcStoreScoreItem>;
+  ) => Promise<AbcStoreInspectionItem>;
   publish: (id: number | string) => Promise<AbcCycleSummary>;
   deleteCycle: (id: number | string) => Promise<{ id: number }>;
 };
@@ -56,16 +52,24 @@ export function createAbcScoresApi(apiClient: ApiClient): AbcScoresApi {
     createCycle: (input) => apiClient.post<AbcCycleSummary>("/abc-scores/cycles", input),
     getCycle: (id) => apiClient.get<AbcCycleDetail>(`/abc-scores/cycles/${encodeURIComponent(id)}`),
     getProgress: (id) =>
-      apiClient.get<AbcProgress>(`/abc-scores/cycles/${encodeURIComponent(id)}/progress`),
-    getPreview: (id) =>
-      apiClient.get<AbcLeaderboard>(`/abc-scores/cycles/${encodeURIComponent(id)}/preview`),
-    getPublished: () => apiClient.get<AbcLeaderboard | null>("/abc-scores/published"),
-    fillMarketing: (id, restaurantId, input) =>
-      apiClient.patch<AbcStoreScoreItem>(`${storeBasePath(id, restaurantId)}/marketing`, input),
-    fillOperations: (id, restaurantId, input) =>
-      apiClient.patch<AbcStoreScoreItem>(`${storeBasePath(id, restaurantId)}/operations`, input),
+      apiClient.get<AbcInspectionProgress>(`/abc-scores/cycles/${encodeURIComponent(id)}/progress`),
+    getGradeDirectory: (id) =>
+      apiClient.get<AbcGradeDirectory>(`/abc-scores/cycles/${encodeURIComponent(id)}/overview`),
+    listPublishedGradeCycles: () =>
+      apiClient.get<AbcCycleSummary[]>("/abc-scores/published/cycles"),
+    getPublishedGradeBoard: (id) =>
+      apiClient.get<AbcPublicGradeBoard | null>(
+        id === undefined
+          ? "/abc-scores/published"
+          : `/abc-scores/published/${encodeURIComponent(id)}`,
+      ),
+    recordInspection: (id, restaurantId, input) =>
+      apiClient.patch<AbcStoreInspectionItem>(
+        `${storeBasePath(id, restaurantId)}/inspection`,
+        input,
+      ),
     attachMedia: (id, restaurantId, input) =>
-      apiClient.post<AbcStoreScoreItem>(`${storeBasePath(id, restaurantId)}/media`, input),
+      apiClient.post<AbcStoreInspectionItem>(`${storeBasePath(id, restaurantId)}/media`, input),
     publish: (id) =>
       apiClient.post<AbcCycleSummary>(`/abc-scores/cycles/${encodeURIComponent(id)}/publish`),
     deleteCycle: (id) =>

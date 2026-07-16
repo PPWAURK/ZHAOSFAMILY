@@ -62,10 +62,16 @@ export const RECIPE_PERMISSIONS = {
   manage: 'recipe.manage',
 } as const;
 
-export const ABC_SCORE_PERMISSIONS = {
+export const ABC_INSPECTION_PERMISSIONS = {
+  read: 'abc.inspection.read',
+  manage: 'abc.inspection.manage',
+  publish: 'abc.inspection.publish',
+} as const;
+
+// 兼容已分配旧 ABC 角色的账号。完成权限种子同步后，新权限仍是唯一标准。
+export const ABC_LEGACY_SCORE_PERMISSIONS = {
   read: 'abc.score.read',
-  fillMarketing: 'abc.score.fill_marketing',
-  fillOperations: 'abc.score.fill_operations',
+  manage: 'abc.score.fill_operations',
   publish: 'abc.score.publish',
 } as const;
 

@@ -11,6 +11,12 @@
   --ink-10: rgba(10, 10, 10, 0.1);
   --ink-05: rgba(10, 10, 10, 0.05);
   --paper: #ffffff;
+  --gold: oklch(0.68 0.15 83);
+  --gold-soft: oklch(0.96 0.035 83);
+  --silver: oklch(0.64 0.025 255);
+  --silver-soft: oklch(0.96 0.009 255);
+  --bronze: oklch(0.58 0.1 53);
+  --bronze-soft: oklch(0.955 0.025 53);
   --serif: "Noto Serif", "Noto Serif SC", "Songti SC", serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
 
@@ -393,6 +399,134 @@
   color: var(--red);
 }
 
+/* Grade board: colors categorize the inspection outcome; grade labels remain visible. */
+.gradeBoard {
+  display: grid;
+  gap: 32px;
+  margin-top: 28px;
+}
+
+.gradeSection {
+  display: grid;
+  gap: 12px;
+}
+
+.gradeSectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gradeSectionHeading h2 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.gradeMarkerA,
+.gradeMarkerB,
+.gradeMarkerC,
+.gradeMarkerUngraded {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.gradeMarkerA {
+  background: var(--gold);
+}
+
+.gradeMarkerB {
+  background: var(--silver);
+}
+
+.gradeMarkerC {
+  background: var(--bronze);
+}
+
+.gradeMarkerUngraded {
+  background: var(--ink-20);
+}
+
+.gradeStoreGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.gradeStoreCard {
+  display: grid;
+  gap: 16px;
+  min-height: 172px;
+  padding: 18px;
+  border: 2px solid var(--ink-20);
+  background: var(--paper);
+}
+
+.gradeStoreCardA {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.gradeStoreCardB {
+  border-color: var(--silver);
+  background: var(--silver-soft);
+}
+
+.gradeStoreCardC {
+  border-color: var(--bronze);
+  background: var(--bronze-soft);
+}
+
+.gradeStoreHeader,
+.gradeStoreFooter {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gradeStoreHeader .storeName,
+.gradeStoreHeader .storeAddress {
+  margin: 0;
+}
+
+.gradeStoreFooter {
+  align-items: center;
+  margin-top: auto;
+}
+
+.gradeStoreHeader .gradeBadge {
+  border-color: currentColor;
+  color: var(--ink);
+}
+
+.gradeStoreCardA .gradeBadge {
+  color: oklch(0.41 0.09 83);
+}
+
+.gradeStoreCardB .gradeBadge {
+  color: oklch(0.38 0.02 255);
+}
+
+.gradeStoreCardC .gradeBadge {
+  color: oklch(0.39 0.075 53);
+}
+
+.gradeStoreNotes {
+  margin: 0;
+  color: var(--ink-80);
+  line-height: 1.55;
+}
+
+.reportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Modal */
 .modalBackdrop {
   position: fixed;
@@ -412,6 +546,21 @@
   background: var(--paper);
   border: 1px solid var(--red);
   padding: 26px;
+}
+
+.previewPanel {
+  width: min(1100px, 100%);
+}
+
+.previewPanel .gradeBoard {
+  margin-top: 0;
+}
+
+.previewSubtitle {
+  margin: 4px 0 0;
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 12px;
 }
 
 .modalHeader {
