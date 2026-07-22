@@ -1,7 +1,29 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { MediaLink } from "@/shared/components/media/MediaLink";
 
 const GRADES = ["A", "B", "C"];
+
+function getStoreInitial(storeName) {
+  return storeName.trim().slice(0, 1).toUpperCase();
+}
+
+function StorePhoto({ storeName, photoUrl, styles }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (!photoUrl || imageFailed) {
+    return <span className={styles.storePhotoFallback}>{getStoreInitial(storeName)}</span>;
+  }
+
+  return (
+    <img
+      className={styles.storePhoto}
+      src={photoUrl}
+      alt=""
+      loading="lazy"
+      onError={() => setImageFailed(true)}
+    />
+  );
+}
 
 function ReportActions({ store, t, styles, canUpload, isUploading, onUpload }) {
   const inputRef = useRef(null);
@@ -49,15 +71,22 @@ function StoreGradeCard({
   showNotes,
 }) {
   const gradeClass = styles[`gradeStoreCard${grade}`] ?? styles.gradeStoreCard;
+  const gradeLabel = grade === "Ungraded" ? "—" : grade;
+  const gradeAriaLabel = grade === "Ungraded" ? t.gradeNone : grade;
 
   return (
     <article className={`${styles.gradeStoreCard} ${gradeClass}`}>
-      <div className={styles.gradeStoreHeader}>
-        <div>
-          <h3 className={styles.storeName}>{store.storeName}</h3>
-          <p className={styles.storeAddress}>{store.storeAddress}</p>
+      <div className={styles.gradeStoreTop}>
+        <StorePhoto storeName={store.storeName} photoUrl={store.photoUrl} styles={styles} />
+        <div className={styles.gradeStoreHeader}>
+          <div>
+            <h3 className={styles.storeName}>{store.storeName}</h3>
+            <p className={styles.storeAddress}>{store.storeAddress}</p>
+          </div>
+          <span className={styles.gradeBadge} aria-label={gradeAriaLabel}>
+            {gradeLabel}
+          </span>
         </div>
-        <span className={styles.gradeBadge}>{grade}</span>
       </div>
       {showNotes ? (
         <p className={styles.gradeStoreNotes}>{store.inspectionNotes ?? t.notFilled}</p>
@@ -147,7 +176,7 @@ export default function StoreScoreTable({
         <section className={styles.gradeSection}>
           <div className={styles.gradeSectionHeading}>
             <span className={styles.gradeMarkerUngraded} aria-hidden="true" />
-            <h2>{t.gradeGroupLabel(t.gradeNone, ungradedStores.length)}</h2>
+            <h2>{t.ungradedGroupLabel(ungradedStores.length)}</h2>
           </div>
           <div className={styles.gradeStoreGrid}>
             {ungradedStores.map((store) => (

@@ -1933,7 +1933,7 @@
 
 .uploadWorkspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
   gap: 28px;
   margin-bottom: 18px;
   border-top: 1px solid var(--ink);
@@ -1955,7 +1955,7 @@
 }
 
 .uploadHint {
-  max-width: 560px;
+  max-width: 620px;
   margin: 0 0 22px;
   color: var(--ink-50);
   font-size: 13px;
@@ -1963,23 +1963,25 @@
 }
 
 .uploadActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  width: 100%;
+  max-width: 620px;
 }
 
 .uploadClassifiers {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(140px, 0.7fr);
-  gap: 12px;
+  gap: 18px;
   width: 100%;
-  max-width: 560px;
-  margin-bottom: 18px;
+  max-width: 620px;
+  margin-bottom: 20px;
 }
 
-.uploadClassifiers label {
-  display: grid;
-  gap: 7px;
+.uploadFieldHeader,
+.uploadFieldLabel,
+.uploadTitleField,
+.uploadRequiredToggle {
   color: var(--ink-50);
   font-family: var(--mono);
   font-size: 10px;
@@ -1987,28 +1989,150 @@
   text-transform: uppercase;
 }
 
-.uploadClassifiers select,
-.uploadClassifiers input[type="text"] {
+.uploadFieldHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.uploadFieldHeader strong {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.uploadPositionPicker input,
+.uploadTitleField input {
+  width: 100%;
   min-width: 0;
   min-height: 40px;
   padding: 0 10px;
   border: 1px solid var(--ink-10);
   background: var(--paper);
   color: var(--ink);
-  font: inherit;
+  font: 13px var(--zh);
   letter-spacing: 0;
   text-transform: none;
 }
 
-.uploadClassifiers label:nth-child(3) {
+.uploadPositionPicker input:focus,
+.uploadTitleField input:focus {
+  border-color: var(--red);
+  outline: 2px solid color-mix(in srgb, var(--red) 18%, transparent);
+  outline-offset: 2px;
+}
+
+.uploadPositionOptions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
+  gap: 8px;
+  max-height: 196px;
+  margin-top: 10px;
+  overflow-y: auto;
+}
+
+.uploadPositionOption,
+.uploadPositionOptionActive,
+.uploadTypeOption,
+.uploadTypeOptionActive {
+  border: 1px solid var(--ink-10);
+  background: var(--paper);
+  color: var(--ink-70);
+  cursor: pointer;
+}
+
+.uploadPositionOption,
+.uploadPositionOptionActive {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.uploadPositionOption span,
+.uploadPositionOptionActive span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.uploadPositionOption small,
+.uploadPositionOptionActive small {
+  color: var(--ink-50);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.uploadPositionOption:hover,
+.uploadTypeOption:hover {
+  border-color: var(--ink-30);
+}
+
+.uploadPositionOptionActive,
+.uploadTypeOptionActive {
+  border-color: var(--red);
+  background: var(--red-soft);
+  color: var(--red-deep);
+}
+
+.uploadPositionOptionActive small {
+  color: var(--red-deep);
+}
+
+.uploadPositionOption:focus-visible,
+.uploadPositionOptionActive:focus-visible,
+.uploadTypeOption:focus-visible,
+.uploadTypeOptionActive:focus-visible,
+.uploadQueueActions button:focus-visible,
+.uploadClearButton:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+.uploadPositionEmpty {
   grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ink-50);
+  font-size: 13px;
+}
+
+.uploadTypePicker {
+  display: grid;
+  gap: 8px;
+}
+
+.uploadTypeOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.uploadTypeOption,
+.uploadTypeOptionActive {
+  min-height: 34px;
+  padding: 0 11px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.uploadFieldHelp {
+  margin: 0;
+  color: var(--ink-50);
+  font-size: 12px;
+}
+
+.uploadTitleField {
+  display: grid;
+  gap: 7px;
 }
 
 .uploadRequiredToggle {
   display: inline-flex !important;
-  grid-column: 1 / -1;
-  grid-template-columns: auto 1fr;
   align-items: center;
+  gap: 8px;
   width: fit-content;
 }
 
@@ -2018,7 +2142,6 @@
   accent-color: var(--red);
 }
 
-.uploadPickButton,
 .uploadSubmitButton {
   min-height: 40px;
   padding: 0 16px;
@@ -2028,11 +2151,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
-}
-
-.uploadPickButton {
-  background: transparent;
-  color: var(--ink);
 }
 
 .uploadSubmitButton {
@@ -2046,6 +2164,33 @@
   border-color: var(--ink-10);
   color: var(--ink-40);
   cursor: not-allowed;
+}
+
+.uploadDropzone {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 62px;
+  padding: 10px 14px;
+  border: 1px dashed var(--ink-30);
+  background: var(--cream);
+  color: var(--ink-50);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.uploadDropzone:hover {
+  border-color: var(--red);
+  color: var(--ink-70);
+}
+
+.uploadDropzoneAction {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .uploadInput {
@@ -2081,6 +2226,102 @@
   display: grid;
   gap: 12px;
   margin: 0;
+}
+
+.uploadQueue {
+  display: grid;
+  gap: 8px;
+  max-height: 482px;
+  overflow-y: auto;
+}
+
+.uploadQueueItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.uploadQueueFile {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.uploadQueueFile strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.uploadQueueFile span,
+.uploadQueueFile small {
+  color: var(--ink-50);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.uploadQueueFile .uploadQueueError {
+  color: var(--red);
+  font-family: var(--zh);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.uploadQueueFile .uploadQueueObjectKey {
+  overflow-wrap: anywhere;
+}
+
+.uploadQueueActions {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+  flex: none;
+}
+
+.uploadQueueStatus {
+  color: var(--warn);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.uploadQueueStatusUploaded {
+  color: var(--ok);
+}
+
+.uploadQueueStatusFailed {
+  color: var(--red);
+}
+
+.uploadQueueActions button,
+.uploadClearButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-50);
+  font: 10px var(--mono);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.uploadQueueActions button:hover:not(:disabled),
+.uploadClearButton:hover:not(:disabled) {
+  color: var(--red);
+}
+
+.uploadQueueActions button:disabled,
+.uploadClearButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.uploadClearButton {
+  margin-top: 14px;
+  color: var(--red);
 }
 
 .uploadFileMeta div {
@@ -2127,7 +2368,7 @@
   gap: 10px;
   padding: 16px;
   background: var(--cream);
-  border-left: 4px solid var(--ok);
+  border: 1px solid var(--ok);
 }
 
 .uploadResult div {
@@ -2627,6 +2868,14 @@
   }
 
   .uploadClassifiers {
+    grid-template-columns: 1fr;
+  }
+
+  .uploadActions {
+    grid-template-columns: 1fr;
+  }
+
+  .uploadPositionOptions {
     grid-template-columns: 1fr;
   }
 

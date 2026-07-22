@@ -326,24 +326,29 @@ export default function AbcScoresPage() {
         {!isLoading && detail ? (
           <>
             <div className={styles.cycleBar}>
-              <select
-                className={styles.cycleSelect}
-                value={currentCycleId ?? ""}
-                onChange={(event) => setCurrentCycleId(Number(event.target.value))}
-              >
-                {cycles.map((cycle) => (
-                  <option key={cycle.id} value={cycle.id}>
-                    {cycle.label}
-                  </option>
-                ))}
-              </select>
-              <span
-                className={`${styles.cycleStatus} ${
-                  detail.status === "published" ? styles.cycleStatusPublished : ""
-                }`}
-              >
-                {detail.status === "published" ? t.statusPublished : t.statusDraft}
-              </span>
+              <div className={styles.cycleIdentity}>
+                <span className={styles.cycleLabel}>{t.cycleLabel}</span>
+                <div className={styles.cycleSelectRow}>
+                  <select
+                    className={styles.cycleSelect}
+                    value={currentCycleId ?? ""}
+                    onChange={(event) => setCurrentCycleId(Number(event.target.value))}
+                  >
+                    {cycles.map((cycle) => (
+                      <option key={cycle.id} value={cycle.id}>
+                        {cycle.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span
+                    className={`${styles.cycleStatus} ${
+                      detail.status === "published" ? styles.cycleStatusPublished : ""
+                    }`}
+                  >
+                    {detail.status === "published" ? t.statusPublished : t.statusDraft}
+                  </span>
+                </div>
+              </div>
 
               <div className={styles.progressGroup}>
                 <ProgressBar
@@ -353,46 +358,46 @@ export default function AbcScoresPage() {
                   styles={styles}
                 />
               </div>
-            </div>
 
-            <div className={styles.actionRow}>
-              {canPublish ? (
-                <button
-                  type="button"
-                  className={styles.ghostButton}
-                  onClick={() => setCreateOpen(true)}
-                >
-                  {t.createCycle}
-                </button>
-              ) : null}
-              {isDraft ? (
-                <button type="button" className={styles.ghostButton} onClick={handlePreview}>
-                  {t.preview}
-                </button>
-              ) : null}
-              {canPublish && isDraft ? (
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  onClick={handlePublish}
-                  disabled={publishing}
-                >
-                  {t.publish}
-                </button>
-              ) : null}
-              {canPublish ? (
-                <button
-                  type="button"
-                  className={styles.dangerButton}
-                  onClick={handleDelete}
-                  disabled={deleting}
-                >
-                  {t.deleteCycle}
-                </button>
-              ) : null}
-            </div>
+              <div className={styles.cycleActions}>
+                {canPublish ? (
+                  <button
+                    type="button"
+                    className={styles.ghostButton}
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    {t.createCycle}
+                  </button>
+                ) : null}
+                {isDraft ? (
+                  <button type="button" className={styles.ghostButton} onClick={handlePreview}>
+                    {t.preview}
+                  </button>
+                ) : null}
+                {canPublish && isDraft ? (
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    onClick={handlePublish}
+                    disabled={publishing}
+                  >
+                    {t.publish}
+                  </button>
+                ) : null}
+                {canPublish ? (
+                  <button
+                    type="button"
+                    className={styles.dangerButton}
+                    onClick={handleDelete}
+                    disabled={deleting}
+                  >
+                    {t.deleteCycle}
+                  </button>
+                ) : null}
+              </div>
 
-            {!isDraft ? <p className={styles.publishedHint}>{t.publishedHint}</p> : null}
+              {!isDraft ? <p className={styles.publishedHint}>{t.publishedHint}</p> : null}
+            </div>
 
             <StoreScoreTable
               stores={detail.stores}

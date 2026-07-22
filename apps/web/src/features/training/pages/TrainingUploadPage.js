@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
+import TrainingUploadWorkspace, {
+  getFileBaseName,
+  getMediaTypeForFile,
+} from "@/features/training/components/TrainingUploadWorkspace";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
 import {
   createTrainingMaterial,
@@ -28,7 +31,7 @@ const UPLOAD_PAGE_COPY = {
       title: "上传",
       titleEm: "培训",
       titleSuffix: "资料",
-      lede: "上传视频、PDF 或图片到本地 MinIO，拿到 objectKey 后再绑定到课程资料。",
+      lede: "将视频、PDF 或图片批量上传到本地 MinIO，并自动创建对应的课程资料。",
       stepLabel: "UPLOAD",
       stepDetail: "本地开发文件上传",
     },
@@ -41,7 +44,7 @@ const UPLOAD_PAGE_COPY = {
       title: "Upload",
       titleEm: " training",
       titleSuffix: " media",
-      lede: "Upload videos, PDFs, or images to local MinIO, then bind the objectKey to a course material.",
+      lede: "Batch upload videos, PDFs, or images to local MinIO and automatically create their course materials.",
       stepLabel: "UPLOAD",
       stepDetail: "Local development media upload",
     },
@@ -54,7 +57,7 @@ const UPLOAD_PAGE_COPY = {
       title: "Importer",
       titleEm: " un",
       titleSuffix: " support",
-      lede: "Importez vidéos, PDF ou images vers MinIO local, puis reliez l'objectKey au support de formation.",
+      lede: "Importez en lot des vidéos, PDF ou images vers MinIO local et créez automatiquement les supports de formation.",
       stepLabel: "UPLOAD",
       stepDetail: "Import média en développement local",
     },
@@ -62,34 +65,64 @@ const UPLOAD_PAGE_COPY = {
 };
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024;
-const MEDIA_TYPES = ["VIDEO", "PDF", "QUIZ", "ARTICLE", "IMAGE", "OTHER"];
+const MEDIA_TYPE_OPTIONS = [
+  { value: "AUTO", label: "自动识别" },
+  { value: "VIDEO", label: "视频" },
+  { value: "PDF", label: "PDF" },
+  { value: "IMAGE", label: "图片" },
+  { value: "ARTICLE", label: "文章" },
+  { value: "QUIZ", label: "测验" },
+  { value: "OTHER", label: "其他" },
+];
 
-function formatFileSize(size) {
-  if (!Number.isFinite(size)) return "-";
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+function getPositionSearchText(position) {
+  return [
+    position.code,
+    getTrainingPositionLabel(position, "zh"),
+    getTrainingPositionSecondaryLabel(position, "zh"),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
 
 export default function TrainingUploadPage() {
   const { user, isLoading } = useAuth();
-  const fileInputRef = useRef(null);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadResult, setUploadResult] = useState(null);
+  const nextFileIdRef = useRef(0);
+  const [queuedFiles, setQueuedFiles] = useState([]);
+  const [uploadSummary, setUploadSummary] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [positionId, setPositionId] = useState("FOH");
+  const [positionQuery, setPositionQuery] = useState("");
   const [positions, setPositions] = useState(DEFAULT_TRAINING_POSITION_TREE);
   const [positionsError, setPositionsError] = useState("");
-  const [mediaType, setMediaType] = useState("VIDEO");
+  const [mediaType, setMediaType] = useState("AUTO");
   const [materialTitle, setMaterialTitle] = useState("");
   const [isRequired, setIsRequired] = useState(false);
 
-  const uploadFolder = `training/${positionId}/${mediaType}`;
   const canCreateMaterial = user?.permissions?.includes("training.material.create");
-  const positionOptions = flattenTrainingPositions(positions).filter(
-    (position) => position.isActive,
+  const positionOptions = useMemo(
+    () =>
+      flattenTrainingPositions(positions).filter((position) => position.isActive),
+    [positions],
   );
+  const filteredPositionOptions = useMemo(() => {
+    const normalizedQuery = positionQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) return positionOptions;
+
+    return positionOptions.filter((position) =>
+      getPositionSearchText(position).includes(normalizedQuery),
+    );
+  }, [positionOptions, positionQuery]);
+  const selectedPosition = positionOptions.find(
+    (position) => position.code === positionId,
+  );
+  const pendingFiles = queuedFiles.filter(
+    (item) => item.status !== "uploaded",
+  );
+  const hasSingleFile = queuedFiles.length === 1;
 
   useEffect(() => {
     let isActive = true;
@@ -128,50 +161,127 @@ export default function TrainingUploadPage() {
     };
   }, []);
 
-  function handleFileChange(event) {
-    const nextFile = event.target.files?.[0] ?? null;
-    setSelectedFile(nextFile);
-    setMaterialTitle(nextFile?.name ? nextFile.name.replace(/\.[^.]+$/, "") : "");
-    setUploadResult(null);
-    setErrorMessage("");
+  function addFiles(files) {
+    if (isUploading) return;
+
+    const oversizedFiles = files.filter((file) => file.size > MAX_UPLOAD_BYTES);
+    const validFiles = files.filter((file) => file.size <= MAX_UPLOAD_BYTES);
+
+    if (validFiles.length > 0) {
+      setQueuedFiles((currentFiles) => [
+        ...currentFiles,
+        ...validFiles.map((file) => ({
+          id: `${file.name}-${file.lastModified}-${nextFileIdRef.current++}`,
+          file,
+          status: "ready",
+          error: "",
+          objectKey: "",
+        })),
+      ]);
+    }
+
+    if (validFiles.length === 1 && queuedFiles.length === 0) {
+      setMaterialTitle(getFileBaseName(validFiles[0].name));
+    } else if (validFiles.length > 1) {
+      setMaterialTitle("");
+    }
+
+    setUploadSummary(null);
+    setErrorMessage(
+      oversizedFiles.length > 0
+        ? `${oversizedFiles.length} 个文件超过 5GB，未加入上传队列。`
+        : "",
+    );
+  }
+
+  function removeFile(fileId) {
+    if (isUploading) return;
+
+    setQueuedFiles((currentFiles) =>
+      currentFiles.filter((item) => item.id !== fileId),
+    );
+    setUploadSummary(null);
+  }
+
+  function clearUploadedFiles() {
+    if (isUploading) return;
+
+    setQueuedFiles((currentFiles) =>
+      currentFiles.filter((item) => item.status !== "uploaded"),
+    );
+    setUploadSummary(null);
+  }
+
+  function updateQueuedFile(fileId, changes) {
+    setQueuedFiles((currentFiles) =>
+      currentFiles.map((item) =>
+        item.id === fileId ? { ...item, ...changes } : item,
+      ),
+    );
+  }
+
+  function getMaterialTitle(file) {
+    return hasSingleFile && materialTitle.trim()
+      ? materialTitle.trim()
+      : getFileBaseName(file.name);
   }
 
   async function handleUpload() {
-    if (!selectedFile) {
-      setErrorMessage("请选择一个文件。");
-      return;
-    }
-
-    if (selectedFile.size > MAX_UPLOAD_BYTES) {
-      setErrorMessage("文件超过 5GB。请先压缩视频，或拆成更小的培训资料。");
+    if (pendingFiles.length === 0) {
+      setErrorMessage("请先选择至少一个文件。");
       return;
     }
 
     setIsUploading(true);
     setErrorMessage("");
-    setUploadResult(null);
+    setUploadSummary(null);
 
-    try {
-      const uploaded = await uploadTrainingMedia(selectedFile, {
-        folder: uploadFolder,
-      });
-      const material = await createTrainingMaterial({
-        positionId,
-        type: mediaType,
-        isRequired,
-        title: materialTitle || selectedFile.name,
-        description: "",
-        originalName: uploaded.originalName,
-        mimeType: uploaded.mimeType,
-        sizeBytes: uploaded.size,
-        bucket: uploaded.bucket,
-        objectKey: uploaded.objectKey,
-      });
-      setUploadResult({ ...uploaded, material });
-    } catch (error) {
-      setErrorMessage(error.message || "上传失败，请检查后端和 MinIO 是否运行。");
-    } finally {
-      setIsUploading(false);
+    let uploadedCount = 0;
+    let failedCount = 0;
+
+    for (const item of pendingFiles) {
+      const materialType = mediaType === "AUTO" ? getMediaTypeForFile(item.file) : mediaType;
+      const uploadFolder = `training/${positionId}/${materialType}`;
+
+      updateQueuedFile(item.id, { status: "uploading", error: "" });
+
+      try {
+        const uploaded = await uploadTrainingMedia(item.file, {
+          folder: uploadFolder,
+        });
+        const material = await createTrainingMaterial({
+          positionId,
+          type: materialType,
+          isRequired,
+          title: getMaterialTitle(item.file),
+          description: "",
+          originalName: uploaded.originalName,
+          mimeType: uploaded.mimeType,
+          sizeBytes: uploaded.size,
+          bucket: uploaded.bucket,
+          objectKey: uploaded.objectKey,
+        });
+
+        uploadedCount += 1;
+        updateQueuedFile(item.id, {
+          status: "uploaded",
+          materialId: material.id,
+          objectKey: uploaded.objectKey || "",
+        });
+      } catch (error) {
+        failedCount += 1;
+        updateQueuedFile(item.id, {
+          status: "failed",
+          error: error.message || "上传失败，请检查后端和 MinIO 是否运行。",
+        });
+      }
+    }
+
+    setIsUploading(false);
+
+    setUploadSummary({ uploadedCount, failedCount });
+    if (failedCount > 0) {
+      setErrorMessage(`${failedCount} 个文件上传失败，可在右侧队列中查看并重试。`);
     }
   }
 
@@ -186,150 +296,52 @@ export default function TrainingUploadPage() {
               无权限上传培训资料。请联系管理员分配 training-admin 角色。
             </section>
           ) : (
-          <section className={styles.uploadWorkspace}>
-            <div className={styles.uploadIntro}>
-              <p className={styles.pageStep}>
-                <span className={styles.stepBadge}>{t.page.stepLabel}</span>
-                <span>{t.page.stepDetail}</span>
-              </p>
-              <h2 className={styles.uploadTitle}>选择一个培训文件</h2>
-              <p className={styles.uploadHint}>
-                当前上传到 bucket：company-private-files。文件会按岗位和资料类型进入 MinIO 目录。
-              </p>
-              {positionsError ? (
-                <p className={styles.materialLoadError}>{positionsError}</p>
-              ) : null}
-              <div className={styles.uploadClassifiers}>
-                <label>
-                  岗位
-                  <select
-                    value={positionId}
-                    onChange={(event) => setPositionId(event.target.value)}
-                  >
-                    {positionOptions.map((position) => (
-                      <option key={position.code} value={position.code}>
-                        {getTrainingPositionLabel(position, "zh")} /{" "}
-                        {getTrainingPositionSecondaryLabel(position, "zh")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  类型
-                  <select
-                    value={mediaType}
-                    onChange={(event) => setMediaType(event.target.value)}
-                  >
-                    {MEDIA_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  标题
-                  <input
-                    type="text"
-                    value={materialTitle}
-                    onChange={(event) => setMaterialTitle(event.target.value)}
-                    placeholder="资料标题"
-                  />
-                </label>
-                <label className={styles.uploadRequiredToggle}>
-                  <input
-                    type="checkbox"
-                    checked={isRequired}
-                    onChange={(event) => setIsRequired(event.target.checked)}
-                  />
-                  必修资料
-                </label>
-              </div>
-              <div className={styles.uploadActions}>
-                <button
-                  type="button"
-                  className={styles.uploadPickButton}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  选择文件
-                </button>
-                <button
-                  type="button"
-                  className={styles.uploadSubmitButton}
-                  disabled={!selectedFile || isUploading}
-                  onClick={handleUpload}
-                >
-                  {isUploading ? "上传中..." : "上传到 MinIO"}
-                </button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className={styles.uploadInput}
-                onChange={handleFileChange}
-              />
-            </div>
-
-            <div className={styles.uploadInspector}>
-              <div className={styles.uploadInspectorHeader}>
-                <span>FILE</span>
-                <Link href="/dashboard/training/materials">返回资料库</Link>
-              </div>
-
-              {selectedFile ? (
-                <dl className={styles.uploadFileMeta}>
-                  <div>
-                    <dt>文件名</dt>
-                    <dd>{selectedFile.name}</dd>
-                  </div>
-                  <div>
-                    <dt>类型</dt>
-                    <dd>{selectedFile.type || "未知"}</dd>
-                  </div>
-                  <div>
-                    <dt>大小</dt>
-                    <dd>{formatFileSize(selectedFile.size)}</dd>
-                  </div>
-                  <div>
-                    <dt>目录</dt>
-                    <dd>{uploadFolder}</dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className={styles.uploadEmpty}>还没有选择文件。</p>
-              )}
-            </div>
-          </section>
+            <TrainingUploadWorkspace
+              hasSingleFile={hasSingleFile}
+              isRequired={isRequired}
+              isUploading={isUploading}
+              materialTitle={materialTitle}
+              mediaType={mediaType}
+              mediaTypeOptions={MEDIA_TYPE_OPTIONS}
+              pendingFileCount={pendingFiles.length}
+              positionId={positionId}
+              positionOptions={filteredPositionOptions}
+              positionQuery={positionQuery}
+              positionsError={positionsError}
+              queuedFiles={queuedFiles}
+              selectedPosition={selectedPosition}
+              onAddFiles={addFiles}
+              onClearUploadedFiles={clearUploadedFiles}
+              onMaterialTitleChange={setMaterialTitle}
+              onMediaTypeChange={setMediaType}
+              onPositionChange={setPositionId}
+              onPositionQueryChange={setPositionQuery}
+              onRemoveFile={removeFile}
+              onRequiredChange={setIsRequired}
+              onUpload={handleUpload}
+              styles={styles}
+              t={t}
+            />
           )}
 
           {canCreateMaterial && errorMessage ? (
             <section className={styles.uploadMessageError}>{errorMessage}</section>
           ) : null}
 
-          {canCreateMaterial && uploadResult ? (
+          {canCreateMaterial && uploadSummary ? (
             <section className={styles.uploadResult}>
               <div>
-                <span className={styles.uploadResultLabel}>OBJECT KEY</span>
-                <code>{uploadResult.objectKey}</code>
+                <span className={styles.uploadResultLabel}>已创建</span>
+                <strong>{uploadSummary.uploadedCount} 份培训资料</strong>
               </div>
               <div>
-                <span className={styles.uploadResultLabel}>FOLDER</span>
-                <code>{uploadResult.folder}</code>
+                <span className={styles.uploadResultLabel}>状态</span>
+                <strong>
+                  {uploadSummary.failedCount > 0
+                    ? `${uploadSummary.failedCount} 份需要重试`
+                    : "全部已加入资料库"}
+                </strong>
               </div>
-              <div>
-                <span className={styles.uploadResultLabel}>BUCKET</span>
-                <code>{uploadResult.bucket}</code>
-              </div>
-              <div>
-                <span className={styles.uploadResultLabel}>MIME</span>
-                <code>{uploadResult.mimeType}</code>
-              </div>
-              {uploadResult.material ? (
-                <div>
-                  <span className={styles.uploadResultLabel}>MATERIAL ID</span>
-                  <code>{uploadResult.material.id}</code>
-                </div>
-              ) : null}
             </section>
           ) : null}
         </>
