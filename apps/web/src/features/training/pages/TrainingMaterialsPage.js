@@ -90,6 +90,8 @@ export default function TrainingMaterialsPage() {
   });
   const [savingMaterialId, setSavingMaterialId] = useState(null);
   const [deletingMaterialId, setDeletingMaterialId] = useState(null);
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [quizMaterial, setQuizMaterial] = useState(null);
 
   const permissions = user?.permissions ?? [];
@@ -199,6 +201,36 @@ export default function TrainingMaterialsPage() {
     });
   }
 
+  function selectPosition(positionCode) {
+    setActivePosition(positionCode);
+    setSelectedMaterialIds([]);
+  }
+
+  function toggleMaterialSelection(materialId) {
+    if (isBatchDeleting) return;
+
+    setSelectedMaterialIds((currentIds) =>
+      currentIds.includes(materialId)
+        ? currentIds.filter((id) => id !== materialId)
+        : [...currentIds, materialId],
+    );
+  }
+
+  function toggleVisibleMaterialSelection(visibleItems) {
+    if (isBatchDeleting) return;
+
+    const visibleIds = visibleItems.map((item) => item.materialId);
+    const hasSelectedAll = visibleIds.every((id) =>
+      selectedMaterialIds.includes(id),
+    );
+
+    setSelectedMaterialIds((currentIds) =>
+      hasSelectedAll
+        ? currentIds.filter((id) => !visibleIds.includes(id))
+        : [...new Set([...currentIds, ...visibleIds])],
+    );
+  }
+
   async function saveMaterial(materialId) {
     const nextTitle = editingForm.title.trim();
 
@@ -251,6 +283,9 @@ export default function TrainingMaterialsPage() {
       setMaterials((prev) =>
         prev.filter((item) => item.materialId !== materialId),
       );
+      setSelectedMaterialIds((currentIds) =>
+        currentIds.filter((id) => id !== materialId),
+      );
       if (editingMaterialId === materialId) {
         cancelEditingMaterial();
       }
@@ -259,6 +294,69 @@ export default function TrainingMaterialsPage() {
     } finally {
       setDeletingMaterialId(null);
     }
+  }
+
+  async function deleteSelectedMaterials(selectedItems) {
+    const selectedCount = selectedItems.length;
+
+    if (selectedCount === 0) {
+      return;
+    }
+
+    const shouldDelete = await confirm({
+      title: `删除 ${selectedCount} 份培训资料？`,
+      message:
+        "这会同时删除对应文件和数据库记录，无法撤销。删除失败的资料会保留在列表中。",
+      confirmLabel: "删除所选资料",
+      tone: "danger",
+    });
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setIsBatchDeleting(true);
+    setMaterialsError("");
+
+    const deletedIds = [];
+    const failedItems = [];
+
+    for (const item of selectedItems) {
+      try {
+        await deleteTrainingMaterial(item.materialId);
+        deletedIds.push(item.materialId);
+      } catch (error) {
+        failedItems.push({
+          title: item.title,
+          message: error.message || "删除失败",
+        });
+      }
+    }
+
+    if (deletedIds.length > 0) {
+      setMaterials((currentMaterials) =>
+        currentMaterials.filter(
+          (item) => !deletedIds.includes(item.materialId),
+        ),
+      );
+      setSelectedMaterialIds((currentIds) =>
+        currentIds.filter((id) => !deletedIds.includes(id)),
+      );
+
+      if (deletedIds.includes(editingMaterialId)) {
+        cancelEditingMaterial();
+      }
+    }
+
+    if (failedItems.length > 0) {
+      setMaterialsError(
+        `${failedItems.length} 份资料删除失败：${failedItems
+          .map((item) => item.title)
+          .join("、")}`,
+      );
+    }
+
+    setIsBatchDeleting(false);
   }
 
   return (
@@ -309,7 +407,7 @@ export default function TrainingMaterialsPage() {
                 className={`${styles.positionTab} ${
                   activePosition === position.code ? styles.positionTabActive : ""
                 }`}
-                onClick={() => setActivePosition(position.code)}
+                onClick={() => selectPosition(position.code)}
               >
                 <span className={styles.positionTabNum}>
                   {String(index + 1).padStart(2, "0")}
@@ -348,6 +446,12 @@ export default function TrainingMaterialsPage() {
                   .includes(filters.q.toLowerCase());
               })
               .sort((left, right) => left.sort - right.sort);
+            const selectedVisibleItems = visibleItems.filter((item) =>
+              selectedMaterialIds.includes(item.materialId),
+            );
+            const isAllVisibleSelected =
+              visibleItems.length > 0 &&
+              selectedVisibleItems.length === visibleItems.length;
 
             return (
               <section
@@ -443,6 +547,33 @@ export default function TrainingMaterialsPage() {
                   />
                 </div>
 
+                {canDeleteMaterials && !isLoadingMaterials ? (
+                  <div className={styles.materialBatchActions}>
+                    <label className={styles.materialBatchSelectAll}>
+                      <input
+                        type="checkbox"
+                        checked={isAllVisibleSelected}
+                        disabled={visibleItems.length === 0 || isBatchDeleting}
+                        onChange={() => toggleVisibleMaterialSelection(visibleItems)}
+                      />
+                      全选当前结果
+                    </label>
+                    <span>
+                      已选 {selectedVisibleItems.length} / {visibleItems.length}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.materialBatchDeleteButton}
+                      disabled={selectedVisibleItems.length === 0 || isBatchDeleting}
+                      onClick={() => deleteSelectedMaterials(selectedVisibleItems)}
+                    >
+                      {isBatchDeleting
+                        ? "删除中..."
+                        : `删除已选（${selectedVisibleItems.length}）`}
+                    </button>
+                  </div>
+                ) : null}
+
                 <div className={styles.materialList}>
                   {isLoadingMaterials ? (
                     <div className={styles.materialEmpty}>正在加载培训资料...</div>
@@ -451,9 +582,23 @@ export default function TrainingMaterialsPage() {
                       const isEditing = editingMaterialId === item.materialId;
                       const isSaving = savingMaterialId === item.materialId;
                       const isDeleting = deletingMaterialId === item.materialId;
+                      const isSelected = selectedMaterialIds.includes(item.materialId);
 
                       return (
                       <div key={item.id} className={styles.materialRow}>
+                        {canDeleteMaterials ? (
+                          <label className={styles.materialSelection}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              disabled={isDeleting || isBatchDeleting}
+                              onChange={() => toggleMaterialSelection(item.materialId)}
+                              aria-label={`选择 ${item.title}`}
+                            />
+                          </label>
+                        ) : (
+                          <div className={styles.materialSelectionPlaceholder} />
+                        )}
                         <div className={styles.materialIndex}>
                           {String(itemIndex + 1).padStart(2, "0")}
                         </div>
@@ -578,7 +723,7 @@ export default function TrainingMaterialsPage() {
                                   type="button"
                                   className={styles.materialDeleteButton}
                                   onClick={() => deleteMaterial(item.materialId)}
-                                  disabled={isDeleting}
+                                  disabled={isDeleting || isBatchDeleting}
                                 >
                                   {isDeleting ? "删除中" : "删除"}
                                 </button>
