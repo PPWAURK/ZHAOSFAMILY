@@ -13,6 +13,7 @@ export type DashboardNavItem = {
   requiredPermission?: string;
   visibleForJobRoles?: readonly string[];
   label: Record<AuthLanguage, string>;
+  compactLabel?: Partial<Record<AuthLanguage, string>>;
 };
 
 export type DashboardMenuItem = {
@@ -37,11 +38,18 @@ export const DASHBOARD_PRIMARY_NAV: DashboardNavItem[] = [
     label: { zh: "首页", en: "Home", fr: "Accueil" },
   },
   {
-    id: "stores",
-    icon: "storefront-outline",
-    menuIcon: "店",
+    id: "orders",
+    icon: "receipt-outline",
+    menuIcon: "订",
     visibleForJobRoles: MANAGEMENT_JOB_ROLES,
-    label: { zh: "门店", en: "Stores", fr: "Boutiques" },
+    label: { zh: "下单", en: "Order", fr: "Commande" },
+    compactLabel: { fr: "Achats" },
+  },
+  {
+    id: "store-grade-ranking",
+    icon: "trophy-outline",
+    menuIcon: "评",
+    label: { zh: "评级排行", en: "Grades", fr: "Notes" },
   },
   {
     id: "case-shares",
@@ -50,17 +58,19 @@ export const DASHBOARD_PRIMARY_NAV: DashboardNavItem[] = [
     label: { zh: "案例", en: "Cases", fr: "Cas" },
   },
   {
-    id: "orders",
-    icon: "receipt-outline",
-    menuIcon: "订",
+    id: "stores",
+    icon: "storefront-outline",
+    menuIcon: "店",
     visibleForJobRoles: MANAGEMENT_JOB_ROLES,
-    label: { zh: "下单", en: "Order", fr: "Commande" },
+    label: { zh: "门店", en: "Stores", fr: "Boutiques" },
+    compactLabel: { fr: "Sites" },
   },
   {
     id: "training",
     icon: "school-outline",
     menuIcon: "学",
     label: { zh: "培训", en: "Training", fr: "Formation" },
+    compactLabel: { fr: "Cours" },
   },
   {
     id: "more",
@@ -131,9 +141,16 @@ export const DASHBOARD_COPY = {
     newsNoSearchResult: "当前分类下没有匹配的资讯。",
     readerError: "正文加载失败，可先阅读摘要。",
     newsCategories: {
-      news: "最新动态",
-      congrats: "表彰快讯",
-      issues: "运营提醒",
+      news: "资讯",
+      congrats: "表彰",
+      issues: "批评",
+    },
+    newsPrevious: "上一篇",
+    newsNext: "下一篇",
+    newsPosition: "第 {current} / {total} 篇",
+    newsVisibility: {
+      public: "全员可见",
+      management: "管理层可见",
     },
     loadingNews: "正在加载动态...",
     newsError: "动态加载失败，请稍后重试。",
@@ -171,9 +188,16 @@ export const DASHBOARD_COPY = {
     newsNoSearchResult: "No matching updates in this category.",
     readerError: "Article could not be loaded. You can still read the summary.",
     newsCategories: {
-      news: "Latest news",
+      news: "News",
       congrats: "Recognition",
-      issues: "Operational alerts",
+      issues: "Critique",
+    },
+    newsPrevious: "Previous",
+    newsNext: "Next",
+    newsPosition: "{current} / {total}",
+    newsVisibility: {
+      public: "All staff",
+      management: "Management",
     },
     loadingNews: "Loading updates...",
     newsError: "Updates could not be loaded. Please try again.",
@@ -211,9 +235,16 @@ export const DASHBOARD_COPY = {
     newsNoSearchResult: "Aucune actualité correspondante dans cette catégorie.",
     readerError: "Impossible de charger l'article. Le résumé reste disponible.",
     newsCategories: {
-      news: "Nouvelles",
-      congrats: "Mises à l'honneur",
-      issues: "Alertes opérationnelles",
+      news: "Actualités",
+      congrats: "Félicitations",
+      issues: "Critiques",
+    },
+    newsPrevious: "Précédent",
+    newsNext: "Suivant",
+    newsPosition: "{current} / {total}",
+    newsVisibility: {
+      public: "Tous les employés",
+      management: "Management",
     },
     loadingNews: "Chargement des actualites...",
     newsError: "Les actualites n'ont pas pu charger. Reessayez plus tard.",
@@ -228,3 +259,5 @@ export const DASHBOARD_COPY = {
     unavailable: "Ce module mobile n'est pas encore connecte.",
   },
 };
+
+export type DashboardCopy = (typeof DASHBOARD_COPY)[AuthLanguage];

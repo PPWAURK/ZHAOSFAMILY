@@ -61,6 +61,8 @@ type TrainingCopy = {
   quizTag: string;
   startQuiz: string;
   reviewQuiz: string;
+  videoFeedShowDetails: string;
+  videoFeedHideDetails: string;
   quizGateReady: string;
   quizGateHint: string;
   quiz: string;
@@ -178,6 +180,8 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     quizTag: "需要测验",
     startQuiz: "开始测验",
     reviewQuiz: "重新测验",
+    videoFeedShowDetails: "详情",
+    videoFeedHideDetails: "收起",
     quizGateReady: "学习已达标，现在可以开始测验。",
     quizGateHint: "建议先学完资料，再开始测验。",
     quiz: "测验",
@@ -325,6 +329,8 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     quizTag: "Quiz needed",
     startQuiz: "Start quiz",
     reviewQuiz: "Retake quiz",
+    videoFeedShowDetails: "Details",
+    videoFeedHideDetails: "Hide",
     quizGateReady: "Learning target reached. You can start the quiz now.",
     quizGateHint: "Please study the material first, then take the quiz.",
     quiz: "Quiz",
@@ -473,6 +479,8 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     quizTag: "Quiz à faire",
     startQuiz: "Commencer le quiz",
     reviewQuiz: "Refaire le quiz",
+    videoFeedShowDetails: "Détails",
+    videoFeedHideDetails: "Masquer",
     quizGateReady: "Formation assez avancée. Vous pouvez commencer le quiz.",
     quizGateHint: "Étudiez d’abord le support, puis faites le quiz.",
     quiz: "Quiz",

@@ -80,6 +80,20 @@ export function getTrainingMaterialFileUrl(objectKey: string): string {
   return token ? `${url}&token=${encodeURIComponent(token)}` : url;
 }
 
+type SignedMediaUrl = {
+  url: string;
+};
+
+export async function getTrainingMaterialStreamingUrl(
+  material: TrainingPlanMaterial,
+): Promise<string> {
+  const response = await mobileApiClient.get<SignedMediaUrl>(
+    `/media/sign?objectKey=${encodeURIComponent(material.objectKey)}`,
+  );
+
+  return response.url;
+}
+
 export async function updateTrainingMaterialProgress(
   materialId: number | string,
   input: UpdateTrainingProgressInput,

@@ -8,6 +8,7 @@ import {
   type GestureResponderEvent,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
@@ -24,11 +25,11 @@ import { buildTrainingMapData } from "@/features/training/trainingMapState";
 import { TrainingBadgeUnlockModal } from "@/features/training/TrainingBadgeUnlockModal";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
 import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
+import { TrainingVideoFeedModal } from "@/features/training/TrainingVideoFeedModal";
 import { applyMaterialProgress } from "@/features/training/trainingProgressRules";
 import { trainingStyles } from "@/features/training/trainingStyles";
 import {
   buildPdfViewerHtml,
-  buildVideoPlayerHtml,
   isPdfMaterial,
   isVideoMaterial,
   type PdfWatermarkIdentity,
@@ -156,12 +157,16 @@ function buildPdfWatermarkIdentity(user: AuthUser): PdfWatermarkIdentity {
 export function TrainingModuleScreen({ language, user }: TrainingModuleScreenProps) {
   const copy = TRAINING_COPY[language];
   const pdfWatermarkIdentity = buildPdfWatermarkIdentity(user);
+  const insets = useSafeAreaInsets();
 
   const [localLoading, setLocalLoading] = useState(false);
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const [previewMaterial, setPreviewMaterial] = useState<TrainingPlanMaterial | null>(null);
   const [quizMaterial, setQuizMaterial] = useState<TrainingPlanMaterial | null>(null);
+  const [videoFeedInitialMaterialId, setVideoFeedInitialMaterialId] = useState<number | null>(
+    null,
+  );
   const [newlyEarnedBadges, setNewlyEarnedBadges] = useState<TrainingBadge[]>([]);
   const [pendingBadgeUnlocks, setPendingBadgeUnlocks] = useState<TrainingBadge[]>([]);
   const [previewFileUri, setPreviewFileUri] = useState<string | null>(null);
@@ -192,8 +197,29 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
     return buildTrainingMapData(plan);
   }, [plan]);
 
+  const videoFeedMaterials = useMemo(() => {
+    if (!mapData) return [];
+
+    const unlockedMaterials = [
+      ...mapData.sharedMaterials,
+      ...(mapData.layer2Unlocked
+        ? mapData.positionGates.flatMap((gate) => gate.materials)
+        : []),
+      ...(mapData.layer3Unlocked ? mapData.advancedMaterials : []),
+    ];
+
+    return unlockedMaterials
+      .map((node) => node.material)
+      .filter((material) => isVideoMaterial(material));
+  }, [mapData]);
+
   const handleOpenMaterial = useCallback(
     async (material: TrainingPlanMaterial) => {
+      if (isVideoMaterial(material)) {
+        setVideoFeedInitialMaterialId(material.id);
+        return;
+      }
+
       setPreviewMaterial(material);
       setPreviewFileUri(null);
       setPreviewBaseUri(null);
@@ -202,18 +228,6 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
 
       try {
         const { fileUri, directoryUri } = await downloadTrainingMaterialToCache(material);
-
-        if (isVideoMaterial(material)) {
-          const videoDirectory = new Directory(directoryUri);
-          const playerFile = new File(videoDirectory, "player.html");
-          const resumePct =
-            material.progress.status === "in_progress" ? material.progress.progressPct : 0;
-
-          await playerFile.write(buildVideoPlayerHtml(fileUri, resumePct));
-          setPreviewFileUri(playerFile.uri);
-          setPreviewBaseUri(videoDirectory.uri);
-          return;
-        }
 
         if (isPdfMaterial(material)) {
           const pdfDirectory = new Directory(directoryUri);
@@ -245,6 +259,10 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
     setPreviewFileUri(null);
     setPreviewBaseUri(null);
     setPreviewError(null);
+  }, []);
+
+  const handleCloseVideoFeed = useCallback(() => {
+    setVideoFeedInitialMaterialId(null);
   }, []);
 
   useEffect(() => {
@@ -290,6 +308,7 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
             if (newBadges.length > 0) {
               setPendingBadgeUnlocks(newBadges);
               handleClosePreview();
+              handleCloseVideoFeed();
             }
           } catch {
             // The learning progress remains valid if the reminder lookup fails.
@@ -301,10 +320,11 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
         return null;
       }
     },
-    [handleClosePreview],
+    [handleClosePreview, handleCloseVideoFeed],
   );
 
   const handleStartQuiz = useCallback((material: TrainingPlanMaterial) => {
+    setVideoFeedInitialMaterialId(null);
     setPreviewMaterial(null);
     setQuizMaterial(material);
   }, []);
@@ -332,6 +352,11 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
 
   const handleStudy = useCallback(
     (material: TrainingPlanMaterial) => {
+      if (isVideoMaterial(material)) {
+        setVideoFeedInitialMaterialId(material.id);
+        return;
+      }
+
       void handleOpenMaterial(material);
     },
     [handleOpenMaterial],
@@ -607,6 +632,16 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
         }}
         onStartQuiz={handleStartQuiz}
         syncProgress={syncMaterialProgress}
+      />
+      <TrainingVideoFeedModal
+        bottomInset={insets.bottom}
+        copy={copy}
+        initialMaterialId={videoFeedInitialMaterialId}
+        materials={videoFeedMaterials}
+        onClose={handleCloseVideoFeed}
+        onStartQuiz={handleStartQuiz}
+        syncProgress={syncMaterialProgress}
+        topInset={insets.top}
       />
       <TrainingBadgeUnlockModal
         badges={newlyEarnedBadges}

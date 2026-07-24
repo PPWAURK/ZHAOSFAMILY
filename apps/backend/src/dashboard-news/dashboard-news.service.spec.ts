@@ -101,6 +101,24 @@ describe('DashboardNewsService publish notifications', () => {
     );
   });
 
+  it('uses a plain-text title in push notifications', async () => {
+    const { service, prismaService, notificationsService } = createService();
+    prismaService.dashboardPost.create.mockResolvedValue({
+      ...createdPostRow(),
+      title: '[[zhao-style:size=20;weight=700]]Promo[[/zhao-style]] update',
+    });
+    prismaService.user.findMany.mockResolvedValue([
+      { id: 2, preferredLanguage: 'zh' },
+    ]);
+
+    await service.createPost(holdingActor, createDto);
+
+    expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
+      [2],
+      expect.objectContaining({ body: 'Promo update' }),
+    );
+  });
+
   it('saves management visibility and only notifies management roles', async () => {
     const { service, prismaService, notificationsService } = createService();
     prismaService.dashboardPost.create.mockResolvedValue({

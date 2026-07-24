@@ -34,6 +34,13 @@ const MANAGEMENT_JOB_ROLES = [
   'back-assistant',
 ] as const;
 
+function getNotificationTitle(title: string): string {
+  return title.replace(
+    /\[\[zhao-style:[^\]]+\]\]([\s\S]*?)\[\[\/zhao-style\]\]/g,
+    '$1',
+  );
+}
+
 type DashboardPostWithRelations = Prisma.DashboardPostGetPayload<{
   include: {
     author: { select: { id: true; name: true; email: true } };
@@ -148,7 +155,11 @@ export class DashboardNewsService {
         [...idsByLanguage].map(([language, ids]) =>
           this.notificationsService.sendToUsers(
             ids,
-            dashboardPostNotification(language, post.id, post.title),
+            dashboardPostNotification(
+              language,
+              post.id,
+              getNotificationTitle(post.title),
+            ),
           ),
         ),
       );

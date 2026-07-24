@@ -2,8 +2,6 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { motion } from "motion/react";
-import Link from "next/link";
-import { canSeeNavEntry } from "@zhao/utils";
 
 import { ABC_COPY } from "@/features/abc-scores/constants/abc-copy";
 import {
@@ -18,8 +16,6 @@ import {
   DASHBOARD_COPY,
   DASHBOARD_LANGUAGES,
   DASHBOARD_MENU_LABELS,
-  DASHBOARD_SHORTCUT_HREFS,
-  DASHBOARD_SHORTCUT_RULES,
 } from "@/features/dashboard/constants/dashboard-copy";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/dashboard/dashboard-page.module.css";
@@ -44,9 +40,6 @@ export default function DashboardPage() {
   const [gradeCycles, setGradeCycles] = useState([]);
   const [gradeCycleIndex, setGradeCycleIndex] = useState(0);
   const displayName = resolveDisplayName(user, t.greetingFallback);
-  const visibleShortcuts = t.shortcuts.filter((shortcut) =>
-    canSeeNavEntry(user, DASHBOARD_SHORTCUT_RULES[shortcut.id]),
-  );
 
   const selectedGradeCycle = gradeCycles[gradeCycleIndex] ?? null;
 
@@ -163,41 +156,6 @@ export default function DashboardPage() {
 
         <p className={styles.lede}>{t.lede}</p>
 
-        <p className={styles.shortcutsHeading}>{t.shortcutsHeading}</p>
-
-        <div className={styles.shortcutGrid}>
-          {visibleShortcuts.map((shortcut, index) => (
-            <Link
-              key={shortcut.id}
-              href={DASHBOARD_SHORTCUT_HREFS[shortcut.id] || "#"}
-              className={styles.shortcutCard}
-            >
-              <motion.div
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.5,
-                  delay: 0.1 + index * 0.08,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                <span className={styles.shortcutIndex}>
-                  <span className={styles.shortcutIndexNum}>{shortcut.index}</span>
-                  <span>— {shortcut.label}</span>
-                </span>
-
-                <div className={styles.shortcutBody}>
-                  <h2 className={styles.shortcutTitle}>{shortcut.title}</h2>
-                  <p className={styles.shortcutDetail}>{shortcut.detail}</p>
-                </div>
-
-                <span className={styles.shortcutArrow} aria-hidden="true">
-                  →
-                </span>
-              </motion.div>
-            </Link>
-          ))}
-        </div>
       </motion.section>
 
       <DashboardNewsModule lang={lang} copy={newsCopy} />

@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -48,6 +47,15 @@ import {
   fetchDashboardNewsPosts,
   type DashboardNewsPost,
 } from "@/features/dashboard/dashboardNewsApi";
+import { DashboardNewsBoard } from "@/features/dashboard/DashboardNewsBoard";
+import {
+  formatDashboardNewsDate as formatDate,
+  isDashboardNewsSummaryDistinct,
+  parseDashboardNewsImage as parseMarkdownImageLine,
+  resolveNewsDeskCategory,
+  stripDashboardNewsFormatting,
+  type NewsDeskCategory,
+} from "@/features/dashboard/dashboardNewsPresentation";
 import { CaseSharesModuleScreen } from "@/features/case-shares/CaseSharesModuleScreen";
 import { CASE_SHARES_COPY } from "@/features/case-shares/caseSharesCopy";
 import { OrderModuleScreen } from "@/features/orders/OrderModuleScreen";
@@ -75,9 +83,6 @@ type DashboardHomeScreenProps = {
   onDeleteAccount: (input: DeleteAccountRequest) => Promise<void>;
 };
 
-type NewsDeskCategory = "news" | "congrats" | "issues";
-
-const NEWS_CATEGORY_FILTERS: NewsDeskCategory[] = ["news", "congrats", "issues"];
 const PDF_LOADING_MIN_DURATION_MS = 2000;
 const MAX_NEWS_PER_CATEGORY = 20;
 
@@ -122,18 +127,6 @@ function resolveDashboardUserCard(
   };
 }
 
-function formatDate(value: string): string {
-  if (!value) return "-";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toISOString().slice(0, 10);
-}
-
 function formatAttachmentSize(sizeBytes: number): string {
   if (!sizeBytes) return "-";
   if (sizeBytes < 1024 * 1024) return `${Math.ceil(sizeBytes / 1024)} KB`;
@@ -149,26 +142,6 @@ function postMatchesSearch(post: DashboardNewsPost, searchTerm: string): boolean
     .join(" ")
     .toLowerCase()
     .includes(normalizedSearch);
-}
-
-function resolveNewsDeskCategory(category: string): NewsDeskCategory {
-  if (category === "people") return "congrats";
-  if (category === "quality") return "issues";
-
-  return "news";
-}
-
-function parseMarkdownImageLine(line: string): { alt: string; src: string } | null {
-  const match = line.match(/^!\[([^\]]*)]\((https?:\/\/[^)\s]+)\)$/);
-
-  if (!match) {
-    return null;
-  }
-
-  return {
-    alt: match[1] || "image",
-    src: match[2],
-  };
 }
 
 function isPdfAttachment(post: DashboardNewsPost): boolean {
@@ -196,6 +169,7 @@ function isConnectedDashboardEntry(entryId: string): boolean {
     entryId === "recipes" ||
     entryId === "profile" ||
     entryId === "recruitment-requests" ||
+    entryId === "store-grade-ranking" ||
     entryId === "stores" ||
     entryId === "training" ||
     entryId === "training-records"
@@ -237,7 +211,6 @@ export function DashboardHomeScreen({
   const [actionMessage, setActionMessage] = useState("");
   const [equippedTitle, setEquippedTitle] = useState<TrainingTitle | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-  const newsCarouselRef = useRef<ScrollView>(null);
   const pdfLoadingStartedAtRef = useRef(0);
   const pdfLoadingTokenRef = useRef(0);
   const [newsCarouselIndex, setNewsCarouselIndex] = useState(0);
@@ -310,8 +283,6 @@ export function DashboardHomeScreen({
     };
   }, [isMoreOpen, user.id]);
   const moreNavLabel = DASHBOARD_PRIMARY_NAV.find((item) => item.id === "more")?.label[language];
-  const newsCarouselCardWidth = Math.max(280, Math.min(screenWidth - 80, 360));
-  const newsCarouselSnapInterval = newsCarouselCardWidth + 12;
   const visiblePrimaryNav = useMemo(
     () => DASHBOARD_PRIMARY_NAV.filter((item) => canSeeNavEntry(user, item)),
     [user],
@@ -335,8 +306,6 @@ export function DashboardHomeScreen({
         .slice(0, MAX_NEWS_PER_CATEGORY),
     [newsPosts, newsSearchTerm, selectedNewsCategory],
   );
-  const canGoToPreviousNews = newsCarouselIndex > 0;
-  const canGoToNextNews = newsCarouselIndex < visibleNewsPosts.length - 1;
   useEffect(() => {
     let isCancelled = false;
 
@@ -370,7 +339,6 @@ export function DashboardHomeScreen({
 
   useEffect(() => {
     setNewsCarouselIndex(0);
-    newsCarouselRef.current?.scrollTo({ x: 0, animated: false });
   }, [newsSearchTerm, selectedNewsCategory]);
 
   function handleEntryPress(item: DashboardNavItem): void {
@@ -383,6 +351,7 @@ export function DashboardHomeScreen({
 
     const nextEntry = resolveDashboardEntryId(item.id);
     setActiveEntry(nextEntry);
+    scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
 
     if (!isConnectedDashboardEntry(nextEntry)) {
       setActionMessage(copy.unavailable);
@@ -472,22 +441,14 @@ export function DashboardHomeScreen({
     }, remaining);
   }
 
-  function scrollNewsCarousel(direction: "previous" | "next"): void {
-    const nextIndex =
-      direction === "next"
-        ? Math.min(newsCarouselIndex + 1, visibleNewsPosts.length - 1)
-        : Math.max(newsCarouselIndex - 1, 0);
+  function moveNewsPost(direction: "previous" | "next"): void {
+    setNewsCarouselIndex((currentIndex) => {
+      if (direction === "next") {
+        return Math.min(currentIndex + 1, visibleNewsPosts.length - 1);
+      }
 
-    setNewsCarouselIndex(nextIndex);
-    newsCarouselRef.current?.scrollTo({
-      x: nextIndex * newsCarouselSnapInterval,
-      animated: true,
+      return Math.max(currentIndex - 1, 0);
     });
-  }
-
-  function handleNewsCarouselScrollEnd(offsetX: number): void {
-    const nextIndex = Math.round(offsetX / newsCarouselSnapInterval);
-    setNewsCarouselIndex(Math.max(0, Math.min(nextIndex, visibleNewsPosts.length - 1)));
   }
 
   function renderNewsReaderBody(post: DashboardNewsPost): ReactNode {
@@ -516,7 +477,7 @@ export function DashboardHomeScreen({
 
       return (
         <Text key={key} style={styles.readerBodyText}>
-          {line || " "}
+          {stripDashboardNewsFormatting(line) || " "}
         </Text>
       );
     });
@@ -529,6 +490,7 @@ export function DashboardHomeScreen({
           ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           contentInsetAdjustmentBehavior="never"
+          nestedScrollEnabled
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.top}>
@@ -579,6 +541,8 @@ export function DashboardHomeScreen({
             />
           ) : activeEntry === "stores" ? (
             <StoresModuleScreen language={language} user={user} />
+          ) : activeEntry === "store-grade-ranking" ? (
+            <StoreGradeLeaderboard language={language} />
           ) : activeEntry === "profile" ? (
             <ProfileScreen
               language={language}
@@ -629,157 +593,20 @@ export function DashboardHomeScreen({
                 </Text>
               </View>
 
-              <View style={styles.newsDesk}>
-                <View style={styles.newsHeader}>
-                  <TrackingText color={authControlStyles.colors.red} size={10.5}>
-                    {copy.newsTitle}
-                  </TrackingText>
-                </View>
-
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.newsCategoryScroller}
-                >
-                  {NEWS_CATEGORY_FILTERS.map((category) => {
-                    const isActive = selectedNewsCategory === category;
-
-                    return (
-                      <Pressable
-                        key={category}
-                        style={[
-                          styles.newsCategoryPill,
-                          isActive ? styles.newsCategoryPillActive : null,
-                        ]}
-                        onPress={() => setSelectedNewsCategory(category)}
-                      >
-                        <Text
-                          style={[
-                            styles.newsCategoryText,
-                            isActive ? styles.newsCategoryTextActive : null,
-                          ]}
-                        >
-                          {copy.newsCategories[category]}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-
-                {isLoadingNews ? (
-                  <View style={styles.stateRow}>
-                    <ZhaoLoadingIndicator label={copy.loadingNews} />
-                  </View>
-                ) : null}
-
-                {!isLoadingNews && newsError ? (
-                  <Text style={styles.stateText}>{newsError}</Text>
-                ) : null}
-
-                {!isLoadingNews && !newsError && newsPosts.length === 0 ? (
-                  <Text style={styles.stateText}>{copy.emptyNews}</Text>
-                ) : null}
-
-                {!isLoadingNews && !newsError && newsPosts.length > 0 ? (
-                  <>
-                    <TextInput
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      placeholder={copy.newsSearchPlaceholder}
-                      placeholderTextColor={authControlStyles.colors.ink40}
-                      style={styles.newsSearchInput}
-                      value={newsSearchTerm}
-                      onChangeText={setNewsSearchTerm}
-                    />
-
-                    <View style={styles.newsSectionHeader}>
-                      <Text style={styles.newsSectionTitle}>{copy.newsListLabel}</Text>
-                      <View style={styles.carouselControls}>
-                        <Text style={styles.newsMetaText}>{visibleNewsPosts.length}</Text>
-                        <Pressable
-                          accessibilityRole="button"
-                          disabled={!canGoToPreviousNews}
-                          style={[
-                            styles.carouselControlButton,
-                            !canGoToPreviousNews ? styles.carouselControlButtonDisabled : null,
-                          ]}
-                          onPress={() => scrollNewsCarousel("previous")}
-                        >
-                          <Ionicons
-                            color={authControlStyles.colors.red}
-                            name="arrow-back-outline"
-                            size={16}
-                          />
-                        </Pressable>
-                        <Pressable
-                          accessibilityRole="button"
-                          disabled={!canGoToNextNews}
-                          style={[
-                            styles.carouselControlButton,
-                            !canGoToNextNews ? styles.carouselControlButtonDisabled : null,
-                          ]}
-                          onPress={() => scrollNewsCarousel("next")}
-                        >
-                          <Ionicons
-                            color={authControlStyles.colors.red}
-                            name="arrow-forward-outline"
-                            size={16}
-                          />
-                        </Pressable>
-                      </View>
-                    </View>
-
-                    {visibleNewsPosts.length === 0 ? (
-                      <Text style={styles.stateText}>{copy.newsNoSearchResult}</Text>
-                    ) : (
-                      <View style={styles.newsCarouselFrame}>
-                        <ScrollView
-                          ref={newsCarouselRef}
-                          horizontal
-                          contentContainerStyle={styles.newsCarouselContent}
-                          decelerationRate="fast"
-                          showsHorizontalScrollIndicator={false}
-                          snapToAlignment="start"
-                          snapToInterval={newsCarouselSnapInterval}
-                          style={styles.newsCarousel}
-                          onMomentumScrollEnd={(event) =>
-                            handleNewsCarouselScrollEnd(event.nativeEvent.contentOffset.x)
-                          }
-                        >
-                          {visibleNewsPosts.map((post) => (
-                            <Pressable
-                              key={post.id}
-                              style={[styles.newsCard, { width: newsCarouselCardWidth }]}
-                              onPress={() => void handleOpenNewsPost(post)}
-                            >
-                              <View style={styles.newsMetaRow}>
-                                <Text style={styles.newsMetaText}>
-                                  {formatDate(post.createdAt)}
-                                </Text>
-                                <Text style={styles.newsMetaText}>
-                                  {copy.newsCategories[resolveNewsDeskCategory(post.category)]}
-                                </Text>
-                              </View>
-                              <Text style={styles.newsTitle}>{post.title}</Text>
-                              <Text style={styles.newsSummary} numberOfLines={3}>
-                                {post.summary}
-                              </Text>
-                              <View style={styles.newsCardFooter}>
-                                <Text style={styles.newsAuthor}>
-                                  {post.authorName || "-"} · {post.restaurantName || "-"}
-                                </Text>
-                                <Text style={styles.newsReadMore}>{copy.newsReadMore}</Text>
-                              </View>
-                            </Pressable>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </>
-                ) : null}
-              </View>
-
-              <StoreGradeLeaderboard language={language} />
+              <DashboardNewsBoard
+                activeCategory={selectedNewsCategory}
+                activeIndex={newsCarouselIndex}
+                copy={copy}
+                error={newsError}
+                isLoading={isLoadingNews}
+                posts={newsPosts}
+                searchTerm={newsSearchTerm}
+                visiblePosts={visibleNewsPosts}
+                onMove={moveNewsPost}
+                onOpenPost={(post) => void handleOpenNewsPost(post)}
+                onSearchChange={setNewsSearchTerm}
+                onSelectCategory={setSelectedNewsCategory}
+              />
 
               <Modal
                 animationType="slide"
@@ -818,8 +645,19 @@ export function DashboardHomeScreen({
                           showsVerticalScrollIndicator={false}
                           style={styles.readerScroll}
                         >
-                          <Text style={styles.readerTitle}>{selectedNewsPost.title}</Text>
-                          <Text style={styles.readerSummary}>{selectedNewsPost.summary}</Text>
+                          <Text style={styles.readerTitle}>
+                            {stripDashboardNewsFormatting(selectedNewsPost.title)}
+                          </Text>
+                          {isDashboardNewsSummaryDistinct(
+                            selectedNewsPost.summary,
+                            selectedNewsPost.body,
+                          ) ? (
+                            <Text style={styles.readerSummary}>
+                              {stripDashboardNewsFormatting(
+                                selectedNewsPost.summary,
+                              )}
+                            </Text>
+                          ) : null}
                           <View style={styles.readerMetaGrid}>
                             <Text style={styles.newsMetaText}>
                               {formatDate(selectedNewsPost.createdAt)}
@@ -936,6 +774,7 @@ export function DashboardHomeScreen({
               .map((item) => {
                 const isActive = activeEntry === item.id;
                 const navColor = isActive ? authControlStyles.colors.red : "rgba(12, 12, 12, 0.44)";
+                const navLabel = item.compactLabel?.[language] ?? item.label[language];
 
                 return (
                   <Pressable
@@ -946,7 +785,9 @@ export function DashboardHomeScreen({
                     style={styles.bottomNavItem}
                     onPress={() => handleEntryPress(item)}
                   >
-                    <Ionicons color={navColor} name={item.icon} size={22} />
+                    <View style={styles.bottomNavIconSlot}>
+                      <Ionicons color={navColor} name={item.icon} size={22} />
+                    </View>
                     <Text
                       numberOfLines={1}
                       style={[
@@ -958,7 +799,7 @@ export function DashboardHomeScreen({
                         isActive ? styles.bottomNavLabelActive : null,
                       ]}
                     >
-                      {item.label[language]}
+                      {navLabel}
                     </Text>
                     <View
                       style={[
@@ -1158,7 +999,7 @@ const styles = StyleSheet.create(
       bottom: 0,
       flexDirection: "row",
       overflow: "hidden",
-      paddingHorizontal: 12,
+      paddingHorizontal: 6,
       position: "absolute",
       minHeight: 62,
       borderRadius: 20,
@@ -1181,11 +1022,20 @@ const styles = StyleSheet.create(
     },
     bottomNavItem: {
       alignItems: "center",
-      flex: 1,
+      flexBasis: 0,
+      flexGrow: 1,
+      flexShrink: 1,
       gap: 4,
       justifyContent: "center",
       minHeight: 68,
+      minWidth: 0,
       position: "relative",
+    },
+    bottomNavIconSlot: {
+      alignItems: "center",
+      height: 24,
+      justifyContent: "center",
+      width: 28,
     },
     bottomNavActiveDot: {
       backgroundColor: "transparent",
@@ -1219,8 +1069,8 @@ const styles = StyleSheet.create(
       gap: 12,
     },
     bottomNavLabelZh: {
-      fontSize: 12,
-      letterSpacing: 0.4,
+      fontSize: 11,
+      letterSpacing: 0.2,
       lineHeight: 15,
     },
     bottomNavLabelEn: {
@@ -1334,12 +1184,6 @@ const styles = StyleSheet.create(
       fontFamily: "serif",
       fontSize: 17,
     },
-    newsAuthor: {
-      color: authControlStyles.colors.ink40,
-      fontFamily: "serif",
-      fontSize: 12,
-      lineHeight: 18,
-    },
     attachmentBody: {
       flex: 1,
       gap: 5,
@@ -1362,80 +1206,6 @@ const styles = StyleSheet.create(
       fontWeight: "600",
       lineHeight: 21,
     },
-    carouselControlButton: {
-      alignItems: "center",
-      backgroundColor: "#ffffff",
-      borderColor: "rgba(193, 22, 22, 0.2)",
-      borderWidth: 1,
-      height: 32,
-      justifyContent: "center",
-      width: 36,
-    },
-    carouselControlButtonDisabled: {
-      opacity: 0.32,
-    },
-    carouselControls: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 8,
-    },
-    newsCard: {
-      backgroundColor: "#ffffff",
-      borderColor: "rgba(193, 22, 22, 0.16)",
-      borderWidth: 1,
-      justifyContent: "space-between",
-      marginRight: 12,
-      minHeight: 206,
-      padding: 16,
-    },
-    newsCardFooter: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 10,
-      justifyContent: "space-between",
-      marginTop: 12,
-    },
-    newsCategoryPill: {
-      borderColor: "rgba(10, 10, 10, 0.1)",
-      borderWidth: 1,
-      justifyContent: "center",
-      marginRight: 8,
-      minHeight: 36,
-      paddingHorizontal: 13,
-    },
-    newsCategoryPillActive: {
-      backgroundColor: authControlStyles.colors.red,
-      borderColor: authControlStyles.colors.red,
-    },
-    newsCategoryScroller: {
-      marginTop: 14,
-    },
-    newsCategoryText: {
-      color: authControlStyles.colors.ink60,
-      fontFamily: "serif",
-      fontSize: 14,
-      fontWeight: "600",
-    },
-    newsCategoryTextActive: {
-      color: "#ffffff",
-    },
-    newsDesk: {
-      gap: 14,
-      marginTop: 22,
-    },
-    newsHeader: {
-      gap: 8,
-    },
-    newsCarousel: {
-      marginHorizontal: -20,
-    },
-    newsCarouselContent: {
-      paddingLeft: 20,
-      paddingRight: 8,
-    },
-    newsCarouselFrame: {
-      position: "relative",
-    },
     newsMetaRow: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -1455,40 +1225,10 @@ const styles = StyleSheet.create(
       letterSpacing: 1,
       textTransform: "uppercase",
     },
-    newsSearchInput: {
-      backgroundColor: "#ffffff",
-      borderColor: authControlStyles.colors.ink10,
-      borderWidth: 1,
-      color: authControlStyles.colors.ink,
-      fontFamily: "serif",
-      fontSize: 15,
-      minHeight: 46,
-      paddingHorizontal: 12,
-    },
-    newsSectionHeader: {
-      alignItems: "center",
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    newsSectionTitle: {
-      color: authControlStyles.colors.ink,
-      fontFamily: "serif",
-      fontSize: 19,
-      fontWeight: "700",
-      lineHeight: 24,
-    },
-    newsSummary: {
-      color: authControlStyles.colors.ink60,
-      fontFamily: "serif",
-      fontSize: 14,
-      lineHeight: 22,
-      marginTop: 9,
-    },
     newsTag: {
       borderColor: "rgba(193, 22, 22, 0.18)",
       borderWidth: 1,
       color: authControlStyles.colors.red,
-      fontFamily: "serif",
       fontSize: 12,
       paddingHorizontal: 9,
       paddingVertical: 6,
@@ -1498,14 +1238,6 @@ const styles = StyleSheet.create(
       flexWrap: "wrap",
       gap: 8,
       marginTop: 18,
-    },
-    newsTitle: {
-      color: authControlStyles.colors.ink,
-      fontFamily: "serif",
-      fontSize: 21,
-      fontWeight: "500",
-      lineHeight: 26,
-      marginTop: 10,
     },
     pdfHeader: {
       alignItems: "center",
@@ -1574,7 +1306,6 @@ const styles = StyleSheet.create(
     },
     readerBodyText: {
       color: authControlStyles.colors.ink,
-      fontFamily: "serif",
       fontSize: 16,
       lineHeight: 25,
     },
@@ -1626,14 +1357,12 @@ const styles = StyleSheet.create(
     },
     readerSummary: {
       color: authControlStyles.colors.ink60,
-      fontFamily: "serif",
       fontSize: 16,
       lineHeight: 24,
       marginTop: 10,
     },
     readerTitle: {
       color: authControlStyles.colors.ink,
-      fontFamily: "serif",
       fontSize: 30,
       fontWeight: "600",
       lineHeight: 36,
