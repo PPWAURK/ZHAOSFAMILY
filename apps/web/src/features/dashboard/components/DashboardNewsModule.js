@@ -13,9 +13,10 @@ import {
   DashboardNewsTagInput,
 } from "@/features/dashboard/components/DashboardNewsFormControls";
 import {
+  confirmDashboardNewsRead,
   createDashboardNewsPost,
   deleteDashboardNewsPost,
-  fetchDashboardNewsPost,
+  fetchDashboardNewsReadStatus,
   fetchDashboardNewsPosts,
   getDashboardNewsAttachmentUrl,
   uploadDashboardNewsAttachment,
@@ -24,7 +25,6 @@ import { fetchSignedMediaUrl } from "@/shared/api/api-client";
 import styles from "@/features/dashboard/dashboard-page.module.css";
 
 const HOLDING_JOB_ROLE = "holding";
-const SEEN_AT_STORAGE_PREFIX = "zhao_dashboard_news_seen_at";
 const DRAFT_STORAGE_PREFIX = "zhao_dashboard_news_draft";
 const BOARD_CATEGORY_TO_BACKEND_CATEGORY = {
   news: "operations",
@@ -90,24 +90,15 @@ function groupPostsByColumn(posts) {
   );
 }
 
-function getLatestPostCreatedAt(posts) {
-  return posts.reduce((latest, post) => {
-    const createdAt = Date.parse(post.createdAt);
-
-    if (Number.isNaN(createdAt)) {
-      return latest;
-    }
-
-    return Math.max(latest, createdAt);
-  }, 0);
-}
-
-function getSeenAtStorageKey(userId) {
-  return `${SEEN_AT_STORAGE_PREFIX}_${userId}`;
-}
-
 function getDraftStorageKey(userId) {
   return `${DRAFT_STORAGE_PREFIX}_${userId}`;
+}
+
+function hasJobRole(jobRole, role) {
+  return `${jobRole || ""}`
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .includes(role);
 }
 
 function getBoardCategory(category) {
@@ -341,13 +332,7 @@ function SignedAttachmentMedia({ media }) {
   }
 
   if (media.mediaKind === "pdf") {
-    return (
-      <iframe
-        className={styles.newsFeaturePdf}
-        src={source}
-        title={media.alt}
-      />
-    );
+    return <iframe className={styles.newsFeaturePdf} src={source} title={media.alt} />;
   }
 
   return (
@@ -433,11 +418,7 @@ function renderRichBody(body, styles) {
       flushList(index);
       elements.push(
         <figure key={key} className={styles.readerBodyImage}>
-          <img
-            src={resolveDashboardMediaUrl(imageMatch.src)}
-            alt={imageMatch.alt}
-            loading="lazy"
-          />
+          <img src={resolveDashboardMediaUrl(imageMatch.src)} alt={imageMatch.alt} loading="lazy" />
         </figure>,
       );
       continue;
@@ -484,11 +465,7 @@ function renderRichBody(body, styles) {
     if (calloutMatch) {
       flushList(index);
       elements.push(
-        <aside
-          key={key}
-          className={styles.readerCallout}
-          data-zhao-block="callout"
-        >
+        <aside key={key} className={styles.readerCallout} data-zhao-block="callout">
           {renderInlineMarkdown(calloutMatch[1])}
         </aside>,
       );
@@ -504,9 +481,7 @@ function renderRichBody(body, styles) {
         listItems = [];
       }
 
-      listItems.push(
-        <li key={listItems.length}>{renderInlineMarkdown(olMatch[1])}</li>,
-      );
+      listItems.push(<li key={listItems.length}>{renderInlineMarkdown(olMatch[1])}</li>);
       continue;
     }
 
@@ -519,9 +494,7 @@ function renderRichBody(body, styles) {
         listItems = [];
       }
 
-      listItems.push(
-        <li key={listItems.length}>{renderInlineMarkdown(ulMatch[1])}</li>,
-      );
+      listItems.push(<li key={listItems.length}>{renderInlineMarkdown(ulMatch[1])}</li>);
       continue;
     }
 
@@ -529,7 +502,7 @@ function renderRichBody(body, styles) {
     elements.push(
       <p key={key} className={styles.readerBodyText}>
         {renderInlineMarkdown(line)}
-      </p>
+      </p>,
     );
   }
 
@@ -547,6 +520,7 @@ export default function DashboardNewsModule({ lang, copy }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const draftLoadedRef = useRef(false);
   const previewPanelRef = useRef(null);
+  const mandatoryNewsBodyRef = useRef(null);
   const [attachmentFile, setAttachmentFile] = useState(null);
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const [isUploadingBodyImage, setIsUploadingBodyImage] = useState(false);
@@ -559,16 +533,26 @@ export default function DashboardNewsModule({ lang, copy }) {
   const [selectedTag, setSelectedTag] = useState("all");
   const [activeColumnKey, setActiveColumnKey] = useState("news");
   const [selectedPost, setSelectedPost] = useState(null);
-  const [readerError, setReaderError] = useState("");
+  const [readActionState, setReadActionState] = useState({
+    postId: "",
+    message: "",
+  });
+  const [readStatusState, setReadStatusState] = useState({
+    postId: "",
+    status: null,
+    error: "",
+    isLoading: false,
+  });
+  const [readStatusTab, setReadStatusTab] = useState("read");
   const [deleteState, setDeleteState] = useState({ postId: "", message: "" });
-  const [notificationPosts, setNotificationPosts] = useState([]);
-  const [hasCheckedNotifications, setHasCheckedNotifications] = useState(false);
+  const [hasReachedMandatoryPostEnd, setHasReachedMandatoryPostEnd] = useState(false);
   const [activePostIndexByColumn, setActivePostIndexByColumn] = useState({
     news: 0,
     congrats: 0,
     issues: 0,
   });
   const canPublish = `${user?.jobRole || ""}`.toLowerCase() === HOLDING_JOB_ROLE;
+  const canViewReadStats = hasJobRole(user?.jobRole, HOLDING_JOB_ROLE);
 
   useEffect(() => {
     if (!isPreviewOpen) return undefined;
@@ -655,30 +639,6 @@ export default function DashboardNewsModule({ lang, copy }) {
     };
   }, [copy.loadError, searchTerm, selectedVisibility]);
 
-  useEffect(() => {
-    if (hasCheckedNotifications || isLoading || !user?.id || posts.length === 0) {
-      return;
-    }
-
-    const storageKey = getSeenAtStorageKey(user.id);
-    const lastSeenAt = Number(localStorage.getItem(storageKey) || 0);
-    const unseenPosts = sortPosts(
-      posts.filter((post) => {
-        const createdAt = Date.parse(post.createdAt);
-
-        return !Number.isNaN(createdAt) && createdAt > lastSeenAt;
-      }),
-      lang,
-      "newest",
-    ).slice(0, 5);
-
-    setHasCheckedNotifications(true);
-
-    if (unseenPosts.length > 0) {
-      setNotificationPosts(unseenPosts);
-    }
-  }, [hasCheckedNotifications, isLoading, lang, posts, user?.id]);
-
   const availableTags = useMemo(
     () => [
       "all",
@@ -694,16 +654,37 @@ export default function DashboardNewsModule({ lang, copy }) {
 
   const visiblePosts = useMemo(() => {
     const tagFiltered =
-      selectedTag === "all"
-        ? posts
-        : posts.filter((post) => post.tags.includes(selectedTag));
+      selectedTag === "all" ? posts : posts.filter((post) => post.tags.includes(selectedTag));
     return sortPosts(tagFiltered, lang, selectedSort);
   }, [lang, posts, selectedSort, selectedTag]);
 
-  const postsByColumn = useMemo(
-    () => groupPostsByColumn(visiblePosts),
-    [visiblePosts],
+  const mandatoryPost = useMemo(
+    () =>
+      posts.find(
+        (post) => post.readConfirmation?.isRequired && !post.readConfirmation.confirmedAt,
+      ) ?? null,
+    [posts],
   );
+
+  useEffect(() => {
+    setHasReachedMandatoryPostEnd(false);
+
+    if (!mandatoryPost || !mandatoryNewsBodyRef.current) {
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const body = mandatoryNewsBodyRef.current;
+
+      if (body && body.scrollHeight <= body.clientHeight + 8) {
+        setHasReachedMandatoryPostEnd(true);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [mandatoryPost?.id]);
+
+  const postsByColumn = useMemo(() => groupPostsByColumn(visiblePosts), [visiblePosts]);
 
   useEffect(() => {
     setActivePostIndexByColumn((prev) =>
@@ -725,8 +706,7 @@ export default function DashboardNewsModule({ lang, copy }) {
 
     setActivePostIndexByColumn((prev) => {
       const currentIndex = prev[columnKey] || 0;
-      const nextIndex =
-        (currentIndex + direction + columnPosts.length) % columnPosts.length;
+      const nextIndex = (currentIndex + direction + columnPosts.length) % columnPosts.length;
 
       return {
         ...prev,
@@ -796,10 +776,7 @@ export default function DashboardNewsModule({ lang, copy }) {
       } catch (error) {
         setSubmitState({
           isSubmitting: false,
-          message:
-            error instanceof Error
-              ? error.message
-              : copy.publish.bodyImageError,
+          message: error instanceof Error ? error.message : copy.publish.bodyImageError,
         });
 
         return null;
@@ -833,9 +810,7 @@ export default function DashboardNewsModule({ lang, copy }) {
       JSON.stringify({ form, savedAt: new Date().toISOString() }),
     );
     setDraftStatus(
-      attachmentFile
-        ? copy.publish.draftSavedWithoutAttachment
-        : copy.publish.draftSaved,
+      attachmentFile ? copy.publish.draftSavedWithoutAttachment : copy.publish.draftSaved,
     );
   }
 
@@ -899,12 +874,40 @@ export default function DashboardNewsModule({ lang, copy }) {
     }
   }
 
-  async function handleOpenPost(postId) {
+  async function loadReadStatus(postId) {
     try {
-      setReaderError("");
-      setSelectedPost(await fetchDashboardNewsPost(postId));
+      setReadStatusState({ postId, status: null, error: "", isLoading: true });
+      const status = await fetchDashboardNewsReadStatus(postId);
+      setReadStatusState({ postId, status, error: "", isLoading: false });
     } catch (error) {
-      setReaderError(error instanceof Error ? error.message : copy.loadError);
+      setReadStatusState({
+        postId,
+        status: null,
+        error: error instanceof Error ? error.message : copy.reader.readStatusError,
+        isLoading: false,
+      });
+    }
+  }
+
+  async function handleConfirmRead(postId) {
+    try {
+      setReadActionState({ postId, message: "" });
+      const confirmation = await confirmDashboardNewsRead(postId);
+      const updateConfirmation = (post) =>
+        post?.id === postId ? { ...post, readConfirmation: confirmation } : post;
+
+      setSelectedPost(updateConfirmation);
+      setPosts((previousPosts) => previousPosts.map(updateConfirmation));
+      setReadActionState({ postId: "", message: copy.reader.readConfirmed });
+
+      if (canViewReadStats) {
+        await loadReadStatus(postId);
+      }
+    } catch (error) {
+      setReadActionState({
+        postId: "",
+        message: error instanceof Error ? error.message : copy.reader.readConfirmError,
+      });
     }
   }
 
@@ -917,9 +920,7 @@ export default function DashboardNewsModule({ lang, copy }) {
       setDeleteState({ postId, message: "" });
       await deleteDashboardNewsPost(postId);
       setPosts((prev) => prev.filter((post) => post.id !== String(postId)));
-      setSelectedPost((prev) =>
-        prev?.id === String(postId) ? null : prev,
-      );
+      setSelectedPost((prev) => (prev?.id === String(postId) ? null : prev));
       setDeleteState({ postId: "", message: copy.reader.deleteSuccess });
     } catch (error) {
       setDeleteState({
@@ -929,21 +930,12 @@ export default function DashboardNewsModule({ lang, copy }) {
     }
   }
 
-  function closeNotification() {
-    if (user?.id) {
-      const latestCreatedAt = getLatestPostCreatedAt(posts);
+  function handleMandatoryPostScroll(event) {
+    const { clientHeight, scrollHeight, scrollTop } = event.currentTarget;
 
-      if (latestCreatedAt > 0) {
-        localStorage.setItem(getSeenAtStorageKey(user.id), String(latestCreatedAt));
-      }
+    if (scrollTop + clientHeight >= scrollHeight - 8) {
+      setHasReachedMandatoryPostEnd(true);
     }
-
-    setNotificationPosts([]);
-  }
-
-  async function handleOpenNotificationPost(postId) {
-    closeNotification();
-    await handleOpenPost(postId);
   }
 
   function resetFilters() {
@@ -993,9 +985,7 @@ export default function DashboardNewsModule({ lang, copy }) {
         >
           {isLoading ? <div className={styles.newsEmpty}>{copy.loading}</div> : null}
 
-          {!isLoading && !activePost ? (
-            <div className={styles.newsEmpty}>{copy.empty}</div>
-          ) : null}
+          {!isLoading && !activePost ? <div className={styles.newsEmpty}>{copy.empty}</div> : null}
 
           {!isLoading && activePost ? (
             <article key={activePost.id} className={styles.newsFeatureArticle}>
@@ -1006,7 +996,7 @@ export default function DashboardNewsModule({ lang, copy }) {
                     {renderInlineMarkdown(activePost.title)}
                   </h2>
                   <p className={styles.newsFeatureMeta}>
-                    {copy.dateLabel} · {formatDate(activePost.createdAt)} · {copy.byLabel} · {" "}
+                    {copy.dateLabel} · {formatDate(activePost.createdAt)} · {copy.byLabel} ·{" "}
                     {activePost.author.name}
                   </p>
                 </div>
@@ -1073,6 +1063,107 @@ export default function DashboardNewsModule({ lang, copy }) {
                     </div>
                   ) : null}
 
+                  {activePost.readConfirmation?.isRequired ? (
+                    <div className={styles.readConfirmation}>
+                      {activePost.readConfirmation.confirmedAt ? (
+                        <p>
+                          {copy.reader.readConfirmedAt} ·{" "}
+                          {formatDate(activePost.readConfirmation.confirmedAt)}
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.readConfirmationButton}
+                          disabled={readActionState.postId === activePost.id}
+                          onClick={() => handleConfirmRead(activePost.id)}
+                        >
+                          {copy.reader.confirmRead}
+                        </button>
+                      )}
+                      {readActionState.message ? (
+                        <p role="status">{readActionState.message}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {canViewReadStats ? (
+                    <section className={styles.readStatus}>
+                      {activePost.readSummary ? (
+                        <p>
+                          {copy.reader.readProgress(
+                            activePost.readSummary.readCount,
+                            activePost.readSummary.totalRecipients,
+                            activePost.readSummary.readRate,
+                          )}
+                        </p>
+                      ) : (
+                        <p>{copy.reader.readTrackingUnavailable}</p>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.readStatusButton}
+                        onClick={() => void loadReadStatus(activePost.id)}
+                      >
+                        {copy.reader.viewReadDetails}
+                      </button>
+
+                      {readStatusState.postId === activePost.id ? (
+                        <div className={styles.readStatusPanel}>
+                          {readStatusState.isLoading ? (
+                            <p>{copy.reader.readStatusLoading}</p>
+                          ) : null}
+                          {readStatusState.error ? (
+                            <p role="alert">{readStatusState.error}</p>
+                          ) : null}
+                          {!readStatusState.isLoading && readStatusState.status?.isTracked ? (
+                            <>
+                              <div className={styles.readStatusTabs} role="tablist">
+                                {[
+                                  ["read", copy.reader.readList],
+                                  ["unread", copy.reader.unreadList],
+                                ].map(([key, label]) => (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={readStatusTab === key}
+                                    className={
+                                      readStatusTab === key ? styles.readStatusTabActive : ""
+                                    }
+                                    onClick={() => setReadStatusTab(key)}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                              <ul className={styles.readStatusList}>
+                                {(readStatusTab === "read"
+                                  ? readStatusState.status.read
+                                  : readStatusState.status.unread
+                                ).map((item) => (
+                                  <li key={item.userId}>
+                                    <strong>{item.name || "-"}</strong>
+                                    <span>{item.restaurantName || "-"}</span>
+                                    <small>
+                                      {item.confirmedAt
+                                        ? formatDate(item.confirmedAt)
+                                        : copy.reader.notRead}
+                                    </small>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : null}
+                          {!readStatusState.isLoading &&
+                          readStatusState.status &&
+                          !readStatusState.status.isTracked ? (
+                            <p>{copy.reader.readTrackingUnavailable}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </section>
+                  ) : null}
+
                   {activePost.canDelete ? (
                     <button
                       type="button"
@@ -1094,43 +1185,50 @@ export default function DashboardNewsModule({ lang, copy }) {
 
   return (
     <section className={styles.newsModule}>
-      {notificationPosts.length > 0 ? (
+      {mandatoryPost ? (
         <div
-          className={styles.notificationOverlay}
+          className={styles.mandatoryNewsOverlay}
           role="dialog"
-          aria-label={copy.notification.title}
+          aria-modal="true"
+          aria-label={copy.reader.mandatoryTitle}
         >
-          <button
-            type="button"
-            className={styles.readerBackdrop}
-            aria-label={copy.notification.close}
-            onClick={closeNotification}
-          />
-          <section className={styles.notificationPanel}>
-            <p className={styles.newsMiniMeta}>{copy.notification.latestLabel}</p>
-            <h3>{copy.notification.title}</h3>
-            <p>{copy.notification.subtitle}</p>
-
-            <div className={styles.notificationList}>
-              {notificationPosts.map((post) => (
-                <button
-                  key={post.id}
-                  type="button"
-                  className={styles.notificationItem}
-                  onClick={() => handleOpenNotificationPost(post.id)}
+          <section className={styles.mandatoryNewsPanel}>
+            <header>
+              <p className={styles.newsMiniMeta}>{copy.reader.mandatoryTitle}</p>
+              <h2>{renderInlineMarkdown(mandatoryPost.title)}</h2>
+              <p>{copy.reader.mandatoryHint}</p>
+            </header>
+            <div
+              ref={mandatoryNewsBodyRef}
+              className={styles.mandatoryNewsBody}
+              onScroll={handleMandatoryPostScroll}
+            >
+              {renderRichBody(mandatoryPost.body, styles)}
+              {mandatoryPost.attachment ? (
+                <a
+                  href={resolveAttachmentHref(mandatoryPost.attachment)}
+                  className={styles.attachmentCard}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => handleAttachmentClick(event, mandatoryPost.attachment)}
                 >
-                  <span>{formatDate(post.createdAt)}</span>
-                  <strong>{renderInlineMarkdown(post.title)}</strong>
-                  <small>{renderInlineMarkdown(post.summary)}</small>
-                </button>
-              ))}
+                  <div>
+                    <strong>{mandatoryPost.attachment.name}</strong>
+                    <small>{Math.ceil(mandatoryPost.attachment.sizeBytes / 1024)} KB</small>
+                  </div>
+                  <span aria-hidden="true">→</span>
+                </a>
+              ) : null}
             </div>
-
-            <div className={styles.notificationActions}>
-              <button type="button" onClick={closeNotification}>
-                {copy.notification.close}
-              </button>
-            </div>
+            <button
+              type="button"
+              className={styles.mandatoryNewsConfirmButton}
+              disabled={!hasReachedMandatoryPostEnd || readActionState.postId === mandatoryPost.id}
+              onClick={() => handleConfirmRead(mandatoryPost.id)}
+            >
+              {copy.reader.confirmRead}
+            </button>
+            {readActionState.message ? <p role="status">{readActionState.message}</p> : null}
           </section>
         </div>
       ) : null}
@@ -1159,9 +1257,7 @@ export default function DashboardNewsModule({ lang, copy }) {
                 maxLength={120}
                 warningThreshold={100}
                 ariaLabel={copy.publish.titleLabel}
-                previewRenderer={(value) => (
-                  <p>{renderInlineMarkdown(value)}</p>
-                )}
+                previewRenderer={(value) => <p>{renderInlineMarkdown(value)}</p>}
               />
             </div>
 
@@ -1196,9 +1292,7 @@ export default function DashboardNewsModule({ lang, copy }) {
                 <span className={styles.visibilityControlBody}>
                   <select
                     value={form.visibility}
-                    onChange={(event) =>
-                      updateForm("visibility", event.target.value)
-                    }
+                    onChange={(event) => updateForm("visibility", event.target.value)}
                   >
                     {Object.entries(copy.visibility)
                       .filter(([value]) => value !== "all")
@@ -1208,9 +1302,7 @@ export default function DashboardNewsModule({ lang, copy }) {
                         </option>
                       ))}
                   </select>
-                  <small>
-                    {copy.publish.visibilityDescriptions[form.visibility]}
-                  </small>
+                  <small>{copy.publish.visibilityDescriptions[form.visibility]}</small>
                 </span>
               </span>
             </label>
@@ -1226,9 +1318,7 @@ export default function DashboardNewsModule({ lang, copy }) {
                 placeholder={copy.publish.summaryPlaceholder}
                 maxLength={240}
                 ariaLabel={copy.publish.summaryLabel}
-                previewRenderer={(value) => (
-                  <p>{renderInlineMarkdown(value)}</p>
-                )}
+                previewRenderer={(value) => <p>{renderInlineMarkdown(value)}</p>}
               />
             </div>
 
@@ -1284,9 +1374,7 @@ export default function DashboardNewsModule({ lang, copy }) {
                 onChange={updateAttachmentFile}
                 inputKey={attachmentInputKey}
                 disabled={submitState.isSubmitting}
-                onError={(message) =>
-                  setSubmitState({ isSubmitting: false, message })
-                }
+                onError={(message) => setSubmitState({ isSubmitting: false, message })}
                 labels={{
                   title: copy.publish.attachmentDropTitle,
                   hint: copy.publish.attachmentHint,
@@ -1328,10 +1416,7 @@ export default function DashboardNewsModule({ lang, copy }) {
               >
                 {copy.publish.preview}
               </button>
-              <button
-                type="submit"
-                disabled={submitState.isSubmitting || isUploadingBodyImage}
-              >
+              <button type="submit" disabled={submitState.isSubmitting || isUploadingBodyImage}>
                 {copy.publish.submit}
               </button>
             </div>
@@ -1359,8 +1444,7 @@ export default function DashboardNewsModule({ lang, copy }) {
               <div>
                 <p className={styles.newsMiniMeta}>{copy.publish.previewLabel}</p>
                 <p className={styles.publishPreviewAudience}>
-                  {copy.publish.previewVisibility} ·{" "}
-                  {copy.visibility[form.visibility]}
+                  {copy.publish.previewVisibility} · {copy.visibility[form.visibility]}
                 </p>
               </div>
               <button type="button" onClick={() => setIsPreviewOpen(false)}>
@@ -1370,9 +1454,7 @@ export default function DashboardNewsModule({ lang, copy }) {
             <h3 id="dashboard-news-preview-title" className={styles.readerTitle}>
               {renderInlineMarkdown(form.title)}
             </h3>
-            <p className={styles.readerSummary}>
-              {renderInlineMarkdown(form.summary)}
-            </p>
+            <p className={styles.readerSummary}>{renderInlineMarkdown(form.summary)}</p>
             <div className={styles.readerMeta}>
               <span>{getPostCategoryLabel(copy, getBackendCategory(form.category))}</span>
               <span>{copy.visibility[form.visibility]}</span>
@@ -1380,9 +1462,7 @@ export default function DashboardNewsModule({ lang, copy }) {
                 <span key={tag}>#{tag}</span>
               ))}
             </div>
-            <div className={styles.readerBody}>
-              {renderRichBody(form.body, styles)}
-            </div>
+            <div className={styles.readerBody}>{renderRichBody(form.body, styles)}</div>
             {attachmentFile ? (
               <div className={styles.publishPreviewAttachment}>
                 <strong>{attachmentFile.name}</strong>
@@ -1398,14 +1478,8 @@ export default function DashboardNewsModule({ lang, copy }) {
               >
                 {copy.publish.returnToEdit}
               </button>
-              <button
-                type="button"
-                onClick={handlePublish}
-                disabled={submitState.isSubmitting}
-              >
-                {submitState.isSubmitting
-                  ? copy.publish.submitting
-                  : copy.publish.confirmPublish}
+              <button type="button" onClick={handlePublish} disabled={submitState.isSubmitting}>
+                {submitState.isSubmitting ? copy.publish.submitting : copy.publish.confirmPublish}
               </button>
             </div>
           </article>
@@ -1460,10 +1534,7 @@ export default function DashboardNewsModule({ lang, copy }) {
 
         <label className={styles.newsField}>
           <span className={styles.newsFieldLabel}>{copy.filters.sort}</span>
-          <select
-            value={selectedSort}
-            onChange={(event) => setSelectedSort(event.target.value)}
-          >
+          <select value={selectedSort} onChange={(event) => setSelectedSort(event.target.value)}>
             {Object.entries(copy.sort).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -1482,9 +1553,7 @@ export default function DashboardNewsModule({ lang, copy }) {
           <button
             key={tag}
             type="button"
-            className={`${styles.tagChip} ${
-              selectedTag === tag ? styles.tagChipActive : ""
-            }`}
+            className={`${styles.tagChip} ${selectedTag === tag ? styles.tagChipActive : ""}`}
             onClick={() => setSelectedTag(tag)}
           >
             {tag === "all" ? copy.categories.all : `#${tag}`}
@@ -1495,12 +1564,6 @@ export default function DashboardNewsModule({ lang, copy }) {
       {loadError ? (
         <div className={styles.newsEmpty} role="alert">
           {loadError}
-        </div>
-      ) : null}
-
-      {readerError ? (
-        <div className={styles.newsEmpty} role="alert">
-          {readerError}
         </div>
       ) : null}
 
@@ -1539,12 +1602,8 @@ export default function DashboardNewsModule({ lang, copy }) {
                 </button>
               </div>
             </div>
-            <h3 className={styles.readerTitle}>
-              {renderInlineMarkdown(selectedPost.title)}
-            </h3>
-            <p className={styles.readerSummary}>
-              {renderInlineMarkdown(selectedPost.summary)}
-            </p>
+            <h3 className={styles.readerTitle}>{renderInlineMarkdown(selectedPost.title)}</h3>
+            <p className={styles.readerSummary}>{renderInlineMarkdown(selectedPost.summary)}</p>
             <div className={styles.readerMeta}>
               <span>
                 {copy.byLabel} · {selectedPost.author.name}
@@ -1554,24 +1613,18 @@ export default function DashboardNewsModule({ lang, copy }) {
               </span>
               <span>{copy.visibility[selectedPost.visibility]}</span>
             </div>
-            <div className={styles.readerBody}>
-              {renderRichBody(selectedPost.body, styles)}
-            </div>
+            <div className={styles.readerBody}>{renderRichBody(selectedPost.body, styles)}</div>
             {selectedPost.attachment ? (
               <a
                 href={resolveAttachmentHref(selectedPost.attachment)}
                 className={styles.attachmentCard}
                 target="_blank"
                 rel="noreferrer"
-                onClick={(event) =>
-                  handleAttachmentClick(event, selectedPost.attachment)
-                }
+                onClick={(event) => handleAttachmentClick(event, selectedPost.attachment)}
               >
                 <div>
                   <strong>{selectedPost.attachment.name}</strong>
-                  <small>
-                    {Math.ceil(selectedPost.attachment.sizeBytes / 1024)} KB
-                  </small>
+                  <small>{Math.ceil(selectedPost.attachment.sizeBytes / 1024)} KB</small>
                 </div>
                 <span aria-hidden="true">→</span>
               </a>

@@ -19,6 +19,9 @@ export const dashboardNewsBoardStyles = StyleSheet.create(
       paddingHorizontal: 4,
       paddingVertical: 22,
     },
+    articleOpenArea: {
+      gap: 0,
+    },
     articleControls: {
       alignItems: "center",
       flexDirection: "row",
@@ -61,6 +64,19 @@ export const dashboardNewsBoardStyles = StyleSheet.create(
       color: authControlStyles.colors.ink40,
       fontFamily: "serif",
       fontSize: 13,
+    },
+    readConfirmationButton: {
+      backgroundColor: authControlStyles.colors.red,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+    },
+    readConfirmationButtonDisabled: {
+      opacity: 0.55,
+    },
+    readConfirmationButtonText: {
+      color: "#ffffff",
+      fontSize: 12,
+      fontWeight: "700",
     },
     articleSummary: {
       color: authControlStyles.colors.ink,

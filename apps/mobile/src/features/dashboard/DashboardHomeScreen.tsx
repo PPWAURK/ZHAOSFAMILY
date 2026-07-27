@@ -51,7 +51,9 @@ import {
   type DashboardNavItem,
 } from "@/features/dashboard/dashboardCopy";
 import {
+  confirmDashboardNewsRead,
   fetchDashboardNewsPost,
+  fetchDashboardNewsReadStatus,
   fetchDashboardNewsPosts,
   type DashboardNewsPost,
 } from "@/features/dashboard/dashboardNewsApi";
@@ -160,6 +162,13 @@ function formatAttachmentSize(sizeBytes: number): string {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function hasDashboardJobRole(user: AuthUser, role: string): boolean {
+  return `${user.jobRole || user.position || user.role || ""}`
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .includes(role);
+}
+
 function postMatchesSearch(post: DashboardNewsPost, searchTerm: string): boolean {
   const normalizedSearch = searchTerm.trim().toLowerCase();
   if (!normalizedSearch) return true;
@@ -179,6 +188,19 @@ function isPdfAttachment(post: DashboardNewsPost): boolean {
 
   return (
     attachment.mimeType === "application/pdf" || attachment.name.toLowerCase().endsWith(".pdf")
+  );
+}
+
+function isImageAttachment(post: DashboardNewsPost): boolean {
+  const attachment = post.attachment;
+
+  if (!attachment) {
+    return false;
+  }
+
+  return (
+    attachment.mimeType.toLowerCase().startsWith("image/") ||
+    /\.(avif|gif|jpe?g|png|webp)$/i.test(attachment.name)
   );
 }
 
@@ -220,9 +242,8 @@ export function DashboardHomeScreen({
   const [isOnboardingReplay, setIsOnboardingReplay] = useState(false);
   const [isOnboardingVisible, setIsOnboardingVisible] = useState(false);
   const [isOnboardingReplayPending, setIsOnboardingReplayPending] = useState(false);
-  const [onboardingTargets, setOnboardingTargets] = useState<MobileOnboardingTargets>(
-    EMPTY_ONBOARDING_TARGETS,
-  );
+  const [onboardingTargets, setOnboardingTargets] =
+    useState<MobileOnboardingTargets>(EMPTY_ONBOARDING_TARGETS);
 
   // Route to the relevant module when the app is opened from a push tap.
   useNotificationNavigation((entry) => setActiveEntry(entry));
@@ -242,6 +263,20 @@ export function DashboardHomeScreen({
   const [pdfPreviewError, setPdfPreviewError] = useState("");
   const [isLoadingSelectedNews, setIsLoadingSelectedNews] = useState(false);
   const [readerError, setReaderError] = useState("");
+  const [readConfirmationState, setReadConfirmationState] = useState({
+    postId: "",
+    message: "",
+  });
+  const [readStatusState, setReadStatusState] = useState<{
+    postId: string;
+    status: Awaited<ReturnType<typeof fetchDashboardNewsReadStatus>> | null;
+    error: string;
+    isLoading: boolean;
+  }>({ postId: "", status: null, error: "", isLoading: false });
+  const [readStatusTab, setReadStatusTab] = useState<"read" | "unread">("read");
+  const [hasReachedMandatoryNewsEnd, setHasReachedMandatoryNewsEnd] = useState(false);
+  const [mandatoryNewsContentHeight, setMandatoryNewsContentHeight] = useState(0);
+  const [mandatoryNewsViewportHeight, setMandatoryNewsViewportHeight] = useState(0);
   const [actionMessage, setActionMessage] = useState("");
   const [equippedTitle, setEquippedTitle] = useState<TrainingTitle | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -249,6 +284,7 @@ export function DashboardHomeScreen({
   const pdfLoadingTokenRef = useRef(0);
   const [newsCarouselIndex, setNewsCarouselIndex] = useState(0);
   const { width: screenWidth } = useWindowDimensions();
+  const canViewNewsReadStats = hasDashboardJobRole(user, "holding");
   // Safe-area insets read here (outside the Modal) — RN Modal renders in a
   // separate native window where SafeAreaView resolves insets to 0.
   const insets = useSafeAreaInsets();
@@ -352,6 +388,29 @@ export function DashboardHomeScreen({
         .slice(0, MAX_NEWS_PER_CATEGORY),
     [newsPosts, newsSearchTerm, selectedNewsCategory],
   );
+  const mandatoryNewsPost = useMemo(
+    () =>
+      newsPosts.find(
+        (post) => post.readConfirmation?.isRequired && !post.readConfirmation.confirmedAt,
+      ) ?? null,
+    [newsPosts],
+  );
+
+  useEffect(() => {
+    setHasReachedMandatoryNewsEnd(false);
+    setMandatoryNewsContentHeight(0);
+    setMandatoryNewsViewportHeight(0);
+  }, [mandatoryNewsPost?.id]);
+
+  useEffect(() => {
+    if (
+      mandatoryNewsContentHeight > 0 &&
+      mandatoryNewsViewportHeight > 0 &&
+      mandatoryNewsContentHeight <= mandatoryNewsViewportHeight + 24
+    ) {
+      setHasReachedMandatoryNewsEnd(true);
+    }
+  }, [mandatoryNewsContentHeight, mandatoryNewsViewportHeight]);
   useEffect(() => {
     let isCancelled = false;
 
@@ -529,14 +588,33 @@ export function DashboardHomeScreen({
     await onLogout();
   }
 
+  async function loadNewsReadStatus(postId: string): Promise<void> {
+    try {
+      setReadStatusState({ postId, status: null, error: "", isLoading: true });
+      const status = await fetchDashboardNewsReadStatus(postId);
+      setReadStatusState({ postId, status, error: "", isLoading: false });
+    } catch {
+      setReadStatusState({
+        postId,
+        status: null,
+        error: copy.newsReadStatusError,
+        isLoading: false,
+      });
+    }
+  }
+
   async function handleOpenNewsPost(post: DashboardNewsPost): Promise<void> {
     setReaderError("");
     setSelectedNewsPost(post);
     setIsLoadingSelectedNews(true);
 
     try {
-      const nextPost = await fetchDashboardNewsPost(post.id);
-      setSelectedNewsPost(nextPost ?? post);
+      const nextPost = (await fetchDashboardNewsPost(post.id)) ?? post;
+      setSelectedNewsPost(nextPost);
+
+      if (canViewNewsReadStats) {
+        await loadNewsReadStatus(nextPost.id);
+      }
     } catch {
       setReaderError(copy.readerError);
     } finally {
@@ -548,6 +626,44 @@ export function DashboardHomeScreen({
     setSelectedNewsPost(null);
     setReaderError("");
     setIsLoadingSelectedNews(false);
+    setReadConfirmationState({ postId: "", message: "" });
+    setReadStatusState({ postId: "", status: null, error: "", isLoading: false });
+  }
+
+  async function handleConfirmNewsRead(postId: string): Promise<void> {
+    try {
+      setReadConfirmationState({ postId, message: "" });
+      const confirmation = await confirmDashboardNewsRead(postId);
+
+      const updateReadConfirmation = (post: DashboardNewsPost): DashboardNewsPost =>
+        post.id === postId ? { ...post, readConfirmation: confirmation } : post;
+
+      setSelectedNewsPost((currentPost) =>
+        currentPost ? updateReadConfirmation(currentPost) : currentPost,
+      );
+      setNewsPosts((currentPosts) => currentPosts.map(updateReadConfirmation));
+      setReadConfirmationState({ postId: "", message: copy.newsReadConfirmed });
+
+      if (canViewNewsReadStats) {
+        await loadNewsReadStatus(postId);
+      }
+    } catch {
+      setReadConfirmationState({ postId: "", message: copy.newsReadConfirmError });
+    }
+  }
+
+  function handleMandatoryNewsScroll(event: {
+    nativeEvent: {
+      contentOffset: { y: number };
+      contentSize: { height: number };
+      layoutMeasurement: { height: number };
+    };
+  }): void {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+
+    if (contentOffset.y + layoutMeasurement.height >= contentSize.height - 24) {
+      setHasReachedMandatoryNewsEnd(true);
+    }
   }
 
   async function handleOpenAttachment(post: DashboardNewsPost): Promise<void> {
@@ -757,11 +873,13 @@ export function DashboardHomeScreen({
                 activeIndex={newsCarouselIndex}
                 copy={copy}
                 error={newsError}
+                isConfirmingRead={readConfirmationState.postId !== ""}
                 isLoading={isLoadingNews}
                 posts={newsPosts}
                 searchTerm={newsSearchTerm}
                 visiblePosts={visibleNewsPosts}
                 onMove={moveNewsPost}
+                onConfirmRead={(postId) => void handleConfirmNewsRead(postId)}
                 onOpenPost={(post) => void handleOpenNewsPost(post)}
                 onCategoryTargetMeasure={(category, bounds) =>
                   updateOnboardingTarget(category, bounds)
@@ -769,6 +887,117 @@ export function DashboardHomeScreen({
                 onSearchChange={setNewsSearchTerm}
                 onSelectCategory={setSelectedNewsCategory}
               />
+
+              <Modal
+                animationType="slide"
+                presentationStyle="overFullScreen"
+                transparent={false}
+                visible={!!mandatoryNewsPost}
+                onRequestClose={() => undefined}
+              >
+                {mandatoryNewsPost ? (
+                  <View style={[styles.mandatoryNewsSafeArea, { paddingTop: insets.top }]}>
+                    <View style={styles.mandatoryNewsHeader}>
+                      <Text style={styles.mandatoryNewsKicker}>{copy.newsMandatoryTitle}</Text>
+                      <Text style={styles.mandatoryNewsHint}>{copy.newsMandatoryHint}</Text>
+                    </View>
+                    <ScrollView
+                      scrollEventThrottle={16}
+                      showsVerticalScrollIndicator={false}
+                      style={styles.mandatoryNewsScroll}
+                      contentContainerStyle={styles.mandatoryNewsContent}
+                      onContentSizeChange={(_width, height) =>
+                        setMandatoryNewsContentHeight(height)
+                      }
+                      onLayout={(event) =>
+                        setMandatoryNewsViewportHeight(event.nativeEvent.layout.height)
+                      }
+                      onScroll={handleMandatoryNewsScroll}
+                    >
+                      <Text style={styles.readerTitle}>
+                        {stripDashboardNewsFormatting(mandatoryNewsPost.title)}
+                      </Text>
+                      {mandatoryNewsPost.attachment?.href &&
+                      isImageAttachment(mandatoryNewsPost) ? (
+                        <Image
+                          source={{ uri: mandatoryNewsPost.attachment.href }}
+                          resizeMode="contain"
+                          style={styles.mandatoryNewsAttachmentImage}
+                        />
+                      ) : null}
+                      {mandatoryNewsPost.attachment?.href &&
+                      !isImageAttachment(mandatoryNewsPost) ? (
+                        <Pressable
+                          style={styles.attachmentCard}
+                          onPress={() => void handleOpenAttachment(mandatoryNewsPost)}
+                        >
+                          <View style={styles.attachmentBody}>
+                            <Text style={styles.newsMetaText}>{copy.newsAttachment}</Text>
+                            <Text style={styles.attachmentName}>
+                              {mandatoryNewsPost.attachment.name || "-"}
+                            </Text>
+                            <Text style={styles.stateText}>
+                              {formatAttachmentSize(mandatoryNewsPost.attachment.sizeBytes)}
+                            </Text>
+                          </View>
+                          <Text style={styles.newsReadMore}>{copy.newsOpenAttachment}</Text>
+                        </Pressable>
+                      ) : null}
+                      {isDashboardNewsSummaryDistinct(
+                        mandatoryNewsPost.summary,
+                        mandatoryNewsPost.body,
+                      ) ? (
+                        <Text style={styles.readerSummary}>
+                          {stripDashboardNewsFormatting(mandatoryNewsPost.summary)}
+                        </Text>
+                      ) : null}
+                      <View style={styles.readerBody}>
+                        {renderNewsReaderBody(mandatoryNewsPost)}
+                      </View>
+                      <View style={styles.readerMetaGrid}>
+                        <Text style={styles.newsMetaText}>
+                          {formatDate(mandatoryNewsPost.createdAt)}
+                        </Text>
+                        <Text style={styles.newsMetaText}>
+                          {mandatoryNewsPost.authorName || "-"} ·{" "}
+                          {mandatoryNewsPost.restaurantName || "-"}
+                        </Text>
+                      </View>
+                    </ScrollView>
+                    <View
+                      style={[
+                        styles.mandatoryNewsActions,
+                        { paddingBottom: Math.max(16, insets.bottom) },
+                      ]}
+                    >
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={
+                          !hasReachedMandatoryNewsEnd ||
+                          readConfirmationState.postId === mandatoryNewsPost.id
+                        }
+                        style={[
+                          styles.mandatoryNewsConfirmButton,
+                          !hasReachedMandatoryNewsEnd ||
+                          readConfirmationState.postId === mandatoryNewsPost.id
+                            ? styles.mandatoryNewsConfirmButtonDisabled
+                            : null,
+                        ]}
+                        onPress={() => void handleConfirmNewsRead(mandatoryNewsPost.id)}
+                      >
+                        <Text style={styles.mandatoryNewsConfirmButtonText}>
+                          {copy.newsConfirmRead}
+                        </Text>
+                      </Pressable>
+                      {readConfirmationState.message ? (
+                        <Text style={styles.mandatoryNewsHint}>
+                          {readConfirmationState.message}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
+              </Modal>
 
               <Modal
                 animationType="slide"
@@ -815,9 +1044,7 @@ export function DashboardHomeScreen({
                             selectedNewsPost.body,
                           ) ? (
                             <Text style={styles.readerSummary}>
-                              {stripDashboardNewsFormatting(
-                                selectedNewsPost.summary,
-                              )}
+                              {stripDashboardNewsFormatting(selectedNewsPost.summary)}
                             </Text>
                           ) : null}
                           <View style={styles.readerMetaGrid}>
@@ -862,6 +1089,132 @@ export function DashboardHomeScreen({
                                   #{tag}
                                 </Text>
                               ))}
+                            </View>
+                          ) : null}
+                          {selectedNewsPost.readConfirmation?.isRequired ? (
+                            <View style={styles.readConfirmationCard}>
+                              {selectedNewsPost.readConfirmation.confirmedAt ? (
+                                <Text style={styles.readConfirmationText}>
+                                  {copy.newsReadConfirmedAt} ·{" "}
+                                  {formatDate(selectedNewsPost.readConfirmation.confirmedAt)}
+                                </Text>
+                              ) : (
+                                <Pressable
+                                  accessibilityRole="button"
+                                  disabled={readConfirmationState.postId === selectedNewsPost.id}
+                                  style={styles.readConfirmationButton}
+                                  onPress={() => void handleConfirmNewsRead(selectedNewsPost.id)}
+                                >
+                                  <Text style={styles.readConfirmationButtonText}>
+                                    {copy.newsConfirmRead}
+                                  </Text>
+                                </Pressable>
+                              )}
+                              {readConfirmationState.message ? (
+                                <Text style={styles.readConfirmationText}>
+                                  {readConfirmationState.message}
+                                </Text>
+                              ) : null}
+                            </View>
+                          ) : null}
+                          {canViewNewsReadStats ? (
+                            <View style={styles.readStatusCard}>
+                              {selectedNewsPost.readSummary ? (
+                                <Text style={styles.readConfirmationText}>
+                                  {copy.newsReadProgress(
+                                    selectedNewsPost.readSummary.readCount,
+                                    selectedNewsPost.readSummary.totalRecipients,
+                                    selectedNewsPost.readSummary.readRate,
+                                  )}
+                                </Text>
+                              ) : (
+                                <Text style={styles.readConfirmationText}>
+                                  {copy.newsReadTrackingUnavailable}
+                                </Text>
+                              )}
+                              <Pressable
+                                accessibilityRole="button"
+                                style={styles.readStatusButton}
+                                onPress={() => void loadNewsReadStatus(selectedNewsPost.id)}
+                              >
+                                <Text style={styles.readStatusButtonText}>
+                                  {copy.newsViewReadDetails}
+                                </Text>
+                              </Pressable>
+                              {readStatusState.postId === selectedNewsPost.id ? (
+                                <View style={styles.readStatusDetails}>
+                                  {readStatusState.isLoading ? (
+                                    <Text style={styles.readConfirmationText}>
+                                      {copy.newsReadStatusLoading}
+                                    </Text>
+                                  ) : null}
+                                  {readStatusState.error ? (
+                                    <Text style={styles.readConfirmationText}>
+                                      {readStatusState.error}
+                                    </Text>
+                                  ) : null}
+                                  {!readStatusState.isLoading &&
+                                  readStatusState.status?.isTracked ? (
+                                    <>
+                                      <View style={styles.readStatusTabs}>
+                                        {(
+                                          [
+                                            ["read", copy.newsReadList],
+                                            ["unread", copy.newsUnreadList],
+                                          ] as const
+                                        ).map(([key, label]) => (
+                                          <Pressable
+                                            key={key}
+                                            accessibilityRole="tab"
+                                            accessibilityState={{ selected: readStatusTab === key }}
+                                            style={[
+                                              styles.readStatusTab,
+                                              readStatusTab === key
+                                                ? styles.readStatusTabActive
+                                                : null,
+                                            ]}
+                                            onPress={() => setReadStatusTab(key)}
+                                          >
+                                            <Text
+                                              style={[
+                                                styles.readStatusTabText,
+                                                readStatusTab === key
+                                                  ? styles.readStatusTabTextActive
+                                                  : null,
+                                              ]}
+                                            >
+                                              {label}
+                                            </Text>
+                                          </Pressable>
+                                        ))}
+                                      </View>
+                                      {(readStatusTab === "read"
+                                        ? readStatusState.status.read
+                                        : readStatusState.status.unread
+                                      ).map((item) => (
+                                        <View key={item.userId} style={styles.readStatusPerson}>
+                                          <Text style={styles.readStatusPersonName}>
+                                            {item.name || "-"}
+                                          </Text>
+                                          <Text style={styles.readStatusPersonMeta}>
+                                            {item.restaurantName || "-"} ·{" "}
+                                            {item.confirmedAt
+                                              ? formatDate(item.confirmedAt)
+                                              : copy.newsNotRead}
+                                          </Text>
+                                        </View>
+                                      ))}
+                                    </>
+                                  ) : null}
+                                  {!readStatusState.isLoading &&
+                                  readStatusState.status &&
+                                  !readStatusState.status.isTracked ? (
+                                    <Text style={styles.readConfirmationText}>
+                                      {copy.newsReadTrackingUnavailable}
+                                    </Text>
+                                  ) : null}
+                                </View>
+                              ) : null}
                             </View>
                           ) : null}
                         </ScrollView>
@@ -1426,6 +1779,68 @@ const styles = StyleSheet.create(
       gap: 8,
       marginTop: 18,
     },
+    mandatoryNewsActions: {
+      borderTopColor: "rgba(193, 22, 22, 0.16)",
+      borderTopWidth: 1,
+      gap: 10,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    mandatoryNewsAttachmentImage: {
+      backgroundColor: "rgba(255, 255, 255, 0.72)",
+      borderColor: "rgba(193, 22, 22, 0.16)",
+      borderWidth: 1,
+      height: 220,
+      width: "100%",
+    },
+    mandatoryNewsConfirmButton: {
+      alignItems: "center",
+      backgroundColor: authControlStyles.colors.red,
+      justifyContent: "center",
+      minHeight: 48,
+      paddingHorizontal: 16,
+    },
+    mandatoryNewsConfirmButtonDisabled: {
+      opacity: 0.45,
+    },
+    mandatoryNewsConfirmButtonText: {
+      color: "#ffffff",
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    mandatoryNewsContent: {
+      gap: 12,
+      paddingBottom: 32,
+      paddingHorizontal: 20,
+      paddingTop: 18,
+    },
+    mandatoryNewsHeader: {
+      borderBottomColor: "rgba(193, 22, 22, 0.16)",
+      borderBottomWidth: 1,
+      gap: 6,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    mandatoryNewsHint: {
+      color: authControlStyles.colors.ink40,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    mandatoryNewsKicker: {
+      color: authControlStyles.colors.red,
+      fontFamily: "monospace",
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+    },
+    mandatoryNewsSafeArea: {
+      backgroundColor: "#ffffff",
+      flex: 1,
+    },
+    mandatoryNewsScroll: {
+      flex: 1,
+    },
     pdfHeader: {
       alignItems: "center",
       borderBottomColor: "rgba(193, 22, 22, 0.14)",
@@ -1502,6 +1917,89 @@ const styles = StyleSheet.create(
       gap: 8,
       marginTop: 16,
       padding: 12,
+    },
+    readConfirmationButton: {
+      alignItems: "center",
+      backgroundColor: authControlStyles.colors.red,
+      minHeight: 44,
+      paddingHorizontal: 14,
+      justifyContent: "center",
+    },
+    readConfirmationButtonText: {
+      color: "#ffffff",
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    readConfirmationCard: {
+      borderColor: "rgba(193, 22, 22, 0.18)",
+      borderTopWidth: 1,
+      gap: 10,
+      marginTop: 18,
+      paddingTop: 16,
+    },
+    readConfirmationText: {
+      color: authControlStyles.colors.ink40,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    readStatusButton: {
+      alignItems: "center",
+      borderColor: "rgba(193, 22, 22, 0.28)",
+      borderWidth: 1,
+      minHeight: 40,
+      paddingHorizontal: 12,
+      justifyContent: "center",
+    },
+    readStatusButtonText: {
+      color: authControlStyles.colors.red,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    readStatusCard: {
+      borderColor: "rgba(193, 22, 22, 0.18)",
+      borderTopWidth: 1,
+      gap: 10,
+      marginTop: 18,
+      paddingTop: 16,
+    },
+    readStatusDetails: {
+      gap: 8,
+    },
+    readStatusPerson: {
+      borderBottomColor: "rgba(193, 22, 22, 0.1)",
+      borderBottomWidth: 1,
+      gap: 3,
+      paddingVertical: 9,
+    },
+    readStatusPersonMeta: {
+      color: authControlStyles.colors.ink40,
+      fontSize: 12,
+    },
+    readStatusPersonName: {
+      color: authControlStyles.colors.ink,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    readStatusTab: {
+      borderColor: "rgba(193, 22, 22, 0.2)",
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    readStatusTabActive: {
+      backgroundColor: authControlStyles.colors.red,
+    },
+    readStatusTabText: {
+      color: authControlStyles.colors.ink,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    readStatusTabTextActive: {
+      color: "#ffffff",
+    },
+    readStatusTabs: {
+      flexDirection: "row",
+      gap: 8,
     },
     readerModalRoot: {
       ...StyleSheet.absoluteFillObject,

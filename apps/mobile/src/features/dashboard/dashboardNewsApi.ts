@@ -11,6 +11,11 @@ export type DashboardNewsAttachment = {
   href: string;
 };
 
+export type DashboardNewsReadConfirmation = {
+  isRequired: boolean;
+  confirmedAt: string | null;
+};
+
 export type DashboardNewsPost = {
   id: string;
   title: string;
@@ -21,10 +26,31 @@ export type DashboardNewsPost = {
   tags: string[];
   attachment: DashboardNewsAttachment | null;
   canDelete: boolean;
+  readConfirmation: DashboardNewsReadConfirmation | null;
+  readSummary: {
+    totalRecipients: number;
+    readCount: number;
+    unreadCount: number;
+    readRate: number;
+  } | null;
   authorName: string;
   restaurantName: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type DashboardNewsReadStatus = {
+  isTracked: boolean;
+  summary: DashboardNewsPost["readSummary"];
+  read: DashboardNewsReadStatusItem[];
+  unread: DashboardNewsReadStatusItem[];
+};
+
+type DashboardNewsReadStatusItem = {
+  userId: string;
+  name: string;
+  restaurantName: string;
+  confirmedAt: string | null;
 };
 
 type DashboardNewsPostApiRecord = {
@@ -43,6 +69,16 @@ type DashboardNewsPostApiRecord = {
     objectKey?: string | null;
   } | null;
   canDelete?: boolean | null;
+  readConfirmation?: {
+    isRequired?: boolean | null;
+    confirmedAt?: string | null;
+  } | null;
+  readSummary?: {
+    totalRecipients?: number | null;
+    readCount?: number | null;
+    unreadCount?: number | null;
+    readRate?: number | null;
+  } | null;
   restaurantName?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -72,8 +108,7 @@ function getDashboardNewsAttachmentUrl(objectKey: string): string {
 function normalizeDashboardNewsBody(body: string): string {
   return body.replace(
     /https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\/media\/file\?objectKey=([^"'\s<>]+)/g,
-    (_match, key: string) =>
-      `${getApiOrigin()}/api/media/file?objectKey=${key}${getMediaToken()}`,
+    (_match, key: string) => `${getApiOrigin()}/api/media/file?objectKey=${key}${getMediaToken()}`,
   );
 }
 
@@ -102,12 +137,24 @@ function normalizeNewsPost(raw: DashboardNewsPostApiRecord): DashboardNewsPost {
           sizeBytes: Number(raw.attachment.sizeBytes) || 0,
           bucket: raw.attachment.bucket ?? "",
           objectKey: attachmentObjectKey,
-          href: attachmentObjectKey
-            ? getDashboardNewsAttachmentUrl(attachmentObjectKey)
-            : "",
+          href: attachmentObjectKey ? getDashboardNewsAttachmentUrl(attachmentObjectKey) : "",
         }
       : null,
     canDelete: !!raw.canDelete,
+    readConfirmation: raw.readConfirmation
+      ? {
+          isRequired: !!raw.readConfirmation.isRequired,
+          confirmedAt: raw.readConfirmation.confirmedAt ?? null,
+        }
+      : null,
+    readSummary: raw.readSummary
+      ? {
+          totalRecipients: Number(raw.readSummary.totalRecipients) || 0,
+          readCount: Number(raw.readSummary.readCount) || 0,
+          unreadCount: Number(raw.readSummary.unreadCount) || 0,
+          readRate: Number(raw.readSummary.readRate) || 0,
+        }
+      : null,
     authorName: raw.author?.name ?? raw.author?.email ?? "",
     restaurantName: raw.restaurantName ?? "",
     createdAt: raw.createdAt ?? "",
@@ -116,21 +163,63 @@ function normalizeNewsPost(raw: DashboardNewsPostApiRecord): DashboardNewsPost {
 }
 
 export async function fetchDashboardNewsPosts(): Promise<DashboardNewsPost[]> {
-  const posts = await mobileApiClient.get<DashboardNewsPostApiRecord[]>(
-    "/dashboard-news",
-  );
+  const posts = await mobileApiClient.get<DashboardNewsPostApiRecord[]>("/dashboard-news");
 
   return Array.isArray(posts)
     ? posts.map(normalizeNewsPost).filter((post) => post.id && post.title)
     : [];
 }
 
-export async function fetchDashboardNewsPost(
-  id: string,
-): Promise<DashboardNewsPost | null> {
+export async function fetchDashboardNewsPost(id: string): Promise<DashboardNewsPost | null> {
   const post = await mobileApiClient.get<DashboardNewsPostApiRecord>(
     `/dashboard-news/${encodeURIComponent(id)}`,
   );
 
   return post ? normalizeNewsPost(post) : null;
+}
+
+export async function confirmDashboardNewsRead(id: string): Promise<DashboardNewsReadConfirmation> {
+  return mobileApiClient.post<DashboardNewsReadConfirmation>(
+    `/dashboard-news/${encodeURIComponent(id)}/read-confirmation`,
+  );
+}
+
+export async function fetchDashboardNewsReadStatus(id: string): Promise<DashboardNewsReadStatus> {
+  const raw = await mobileApiClient.get<{
+    isTracked?: boolean | null;
+    summary?: DashboardNewsPost["readSummary"];
+    read?: Array<{
+      userId?: number | string | null;
+      name?: string | null;
+      restaurantName?: string | null;
+      confirmedAt?: string | null;
+    }>;
+    unread?: Array<{
+      userId?: number | string | null;
+      name?: string | null;
+      restaurantName?: string | null;
+      confirmedAt?: string | null;
+    }>;
+  }>(`/dashboard-news/${encodeURIComponent(id)}/read-status`);
+  const normalizeItems = (items: typeof raw.read): DashboardNewsReadStatusItem[] =>
+    (Array.isArray(items) ? items : []).map((item) => ({
+      userId: String(item.userId ?? ""),
+      name: item.name ?? "",
+      restaurantName: item.restaurantName ?? "",
+      confirmedAt: item.confirmedAt ?? null,
+    }));
+
+  return {
+    isTracked: !!raw.isTracked,
+    summary: raw.summary
+      ? {
+          totalRecipients: Number(raw.summary.totalRecipients) || 0,
+          readCount: Number(raw.summary.readCount) || 0,
+          unreadCount: Number(raw.summary.unreadCount) || 0,
+          readRate: Number(raw.summary.readRate) || 0,
+        }
+      : null,
+    read: normalizeItems(raw.read),
+    unread: normalizeItems(raw.unread),
+  };
 }

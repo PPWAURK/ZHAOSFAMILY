@@ -46,6 +46,7 @@ model User {
   equippedTrainingTitle      TrainingTitle?             @relation("EquippedTrainingTitle", fields: [equippedTrainingTitleCode], references: [code], onDelete: SetNull)
   trainingBadges             UserTrainingBadge[]
   dashboardPosts             DashboardPost[]            @relation("DashboardPostAuthor")
+  dashboardPostReadReceipts  DashboardPostReadReceipt[]
   refreshSessions            RefreshSession[]
   pushTokens                 PushToken[]
   notifications              Notification[]
@@ -639,6 +640,8 @@ model DashboardPost {
   author              User       @relation("DashboardPostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
   restaurantId        Int        @map("restaurant_id")
   restaurant          Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  readTrackingStartedAt DateTime? @map("read_tracking_started_at")
+  readReceipts        DashboardPostReadReceipt[]
   createdAt           DateTime   @default(now()) @map("created_at")
   updatedAt           DateTime   @updatedAt @map("updated_at")
 
@@ -647,6 +650,21 @@ model DashboardPost {
   @@index([restaurantId, createdAt])
   @@index([authorId])
   @@map("dashboard_posts")
+}
+
+model DashboardPostReadReceipt {
+  id        Int           @id @default(autoincrement())
+  postId    Int           @map("post_id")
+  userId    Int           @map("user_id")
+  readAt    DateTime?     @map("read_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+  post      DashboardPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId, readAt])
+  @@index([userId, readAt])
+  @@map("dashboard_post_read_receipts")
 }
 
 model RecruitmentRequest {

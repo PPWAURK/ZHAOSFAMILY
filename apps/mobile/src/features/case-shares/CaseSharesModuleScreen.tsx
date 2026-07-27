@@ -13,7 +13,7 @@ import {
   View,
   type AppStateStatus,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import type {
@@ -60,9 +60,7 @@ function formatDate(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10);
 }
 
-function assetToUpload(
-  asset: ImagePicker.ImagePickerAsset,
-): CaseImageUpload | null {
+function assetToUpload(asset: ImagePicker.ImagePickerAsset): CaseImageUpload | null {
   if (!asset.uri) {
     return null;
   }
@@ -86,6 +84,7 @@ export function CaseSharesModuleScreen({
   const copy = CASE_SHARES_COPY[language];
   const confirm = useConfirm();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
 
   const [feed, setFeed] = useState<CaseShareItem[]>([]);
   const [mine, setMine] = useState<CaseShareItem[]>([]);
@@ -95,9 +94,7 @@ export function CaseSharesModuleScreen({
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerType, setComposerType] = useState<CaseShareType>("personal");
   const [composerContent, setComposerContent] = useState("");
-  const [composerImage, setComposerImage] = useState<CaseImageUpload | null>(
-    null,
-  );
+  const [composerImage, setComposerImage] = useState<CaseImageUpload | null>(null);
   const [composerError, setComposerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPickingImage, setIsPickingImage] = useState(false);
@@ -175,10 +172,7 @@ export function CaseSharesModuleScreen({
       }
     }
 
-    const subscription = AppState.addEventListener(
-      "change",
-      handleAppStateChange,
-    );
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
 
     return () => {
       subscription.remove();
@@ -194,8 +188,7 @@ export function CaseSharesModuleScreen({
     setComposerError("");
 
     try {
-      const currentPermission =
-        await ImagePicker.getMediaLibraryPermissionsAsync();
+      const currentPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
       const permission = currentPermission.granted
         ? currentPermission
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -237,9 +230,7 @@ export function CaseSharesModuleScreen({
     setComposerError("");
 
     try {
-      const uploaded = composerImage
-        ? await uploadCaseImage(composerImage)
-        : null;
+      const uploaded = composerImage ? await uploadCaseImage(composerImage) : null;
 
       const created = await createCaseShare({
         type: composerType,
@@ -298,9 +289,7 @@ export function CaseSharesModuleScreen({
       list.map((entry) => (entry.id === updated.id ? updated : entry));
     setFeed(replace);
     setMine(replace);
-    setCommentsCase((current) =>
-      current && current.id === updated.id ? updated : current,
-    );
+    setCommentsCase((current) => (current && current.id === updated.id ? updated : current));
   }
 
   async function handleToggleLike(item: CaseShareItem): Promise<void> {
@@ -430,10 +419,7 @@ export function CaseSharesModuleScreen({
                 {copy.like} · {item.likeCount}
               </Text>
             </Pressable>
-            <Pressable
-              style={styles.interactionButton}
-              onPress={() => void openComments(item)}
-            >
+            <Pressable style={styles.interactionButton} onPress={() => void openComments(item)}>
               <Ionicons
                 color={authControlStyles.colors.ink60}
                 name="chatbubble-outline"
@@ -497,27 +483,19 @@ export function CaseSharesModuleScreen({
 
       {isLoading ? <ZhaoLoadingIndicator label={copy.loading} /> : null}
 
-      {!isLoading && loadError ? (
-        <Text style={shared.message}>{loadError}</Text>
-      ) : null}
+      {!isLoading && loadError ? <Text style={shared.message}>{loadError}</Text> : null}
 
       {!isLoading && !loadError && visibleList.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconFrame}>
-            <Ionicons
-              color={authControlStyles.colors.red}
-              name="reader-outline"
-              size={24}
-            />
+            <Ionicons color={authControlStyles.colors.red} name="reader-outline" size={24} />
           </View>
           <Text style={styles.emptyText}>{emptyText}</Text>
         </View>
       ) : null}
 
       {!isLoading && !loadError && visibleList.length > 0 ? (
-        <View style={shared.list}>
-          {visibleList.map((item) => renderCard(item, isMineMode))}
-        </View>
+        <View style={shared.list}>{visibleList.map((item) => renderCard(item, isMineMode))}</View>
       ) : null}
 
       {!onRegisterPublishAction ? (
@@ -537,7 +515,7 @@ export function CaseSharesModuleScreen({
         visible={composerOpen}
         onRequestClose={() => setComposerOpen(false)}
       >
-        <SafeAreaView style={styles.composerPage}>
+        <View style={[styles.composerPage, { paddingTop: insets.top }]}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             style={styles.composerKeyboardView}
@@ -552,11 +530,7 @@ export function CaseSharesModuleScreen({
                 ]}
                 onPress={() => setComposerOpen(false)}
               >
-                <Ionicons
-                  color={authControlStyles.colors.red}
-                  name="close"
-                  size={22}
-                />
+                <Ionicons color={authControlStyles.colors.red} name="close" size={22} />
               </Pressable>
               <Text style={styles.composerNavTitle}>{copy.publish}</Text>
               <View style={styles.composerNavSpacer} />
@@ -586,10 +560,7 @@ export function CaseSharesModuleScreen({
                         key={type}
                         accessibilityRole="button"
                         accessibilityState={{ selected: isActive }}
-                        style={[
-                          styles.typeChoice,
-                          isActive ? styles.typeChoiceActive : null,
-                        ]}
+                        style={[styles.typeChoice, isActive ? styles.typeChoiceActive : null]}
                         onPress={() => setComposerType(type)}
                       >
                         <View
@@ -599,16 +570,8 @@ export function CaseSharesModuleScreen({
                           ]}
                         >
                           <Ionicons
-                            color={
-                              isActive
-                                ? "#ffffff"
-                                : authControlStyles.colors.red
-                            }
-                            name={
-                              type === "personal"
-                                ? "person-outline"
-                                : "people-outline"
-                            }
+                            color={isActive ? "#ffffff" : authControlStyles.colors.red}
+                            name={type === "personal" ? "person-outline" : "people-outline"}
                             size={20}
                           />
                         </View>
@@ -629,9 +592,7 @@ export function CaseSharesModuleScreen({
               <View style={styles.composerSection}>
                 <View style={styles.composerFieldHeader}>
                   <Text style={styles.composerLabel}>{copy.contentLabel}</Text>
-                  <Text style={styles.contentCounter}>
-                    {composerContent.trim().length}
-                  </Text>
+                  <Text style={styles.contentCounter}>{composerContent.trim().length}</Text>
                 </View>
                 <TextInput
                   multiline
@@ -680,9 +641,7 @@ export function CaseSharesModuleScreen({
                           name="trash-outline"
                           size={16}
                         />
-                        <Text style={styles.imageActionText}>
-                          {copy.imageRemove}
-                        </Text>
+                        <Text style={styles.imageActionText}>{copy.imageRemove}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -706,9 +665,7 @@ export function CaseSharesModuleScreen({
                     <Text style={styles.imageEmptyTitle}>
                       {isPickingImage ? copy.loading : copy.imagePick}
                     </Text>
-                    <Text style={styles.imageEmptyHint}>
-                      {copy.imageEmptyHint}
-                    </Text>
+                    <Text style={styles.imageEmptyHint}>{copy.imageEmptyHint}</Text>
                   </Pressable>
                 )}
               </View>
@@ -725,7 +682,7 @@ export function CaseSharesModuleScreen({
               ) : null}
             </ScrollView>
 
-            <View style={styles.composerFooter}>
+            <View style={[styles.composerFooter, { paddingBottom: Math.max(16, insets.bottom) }]}>
               <Pressable
                 disabled={isSubmitting}
                 style={[
@@ -740,7 +697,7 @@ export function CaseSharesModuleScreen({
               </Pressable>
             </View>
           </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
       </Modal>
 
       <Modal
@@ -751,10 +708,7 @@ export function CaseSharesModuleScreen({
         onRequestClose={() => setCommentsCase(null)}
       >
         <View style={styles.modalRoot}>
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => setCommentsCase(null)}
-          />
+          <Pressable style={styles.modalBackdrop} onPress={() => setCommentsCase(null)} />
           <View style={styles.modalSheet}>
             <View style={shared.sectionHeader}>
               <Text style={shared.sectionTitle}>{copy.commentsTitle}</Text>
@@ -766,31 +720,22 @@ export function CaseSharesModuleScreen({
             {commentsLoading ? (
               <ZhaoLoadingIndicator label={copy.loading} />
             ) : (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={styles.commentsScroll}
-              >
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.commentsScroll}>
                 {comments.length === 0 ? (
                   <Text style={shared.emptyText}>{copy.commentsEmpty}</Text>
                 ) : (
                   comments.map((entry) => (
                     <View key={entry.id} style={styles.commentRow}>
-                      <Text style={styles.commentAuthor}>
-                        {entry.author.name}
-                      </Text>
+                      <Text style={styles.commentAuthor}>{entry.author.name}</Text>
                       <Text style={styles.commentContent}>{entry.content}</Text>
-                      <Text style={shared.statLabel}>
-                        {formatDate(entry.createdAt)}
-                      </Text>
+                      <Text style={shared.statLabel}>{formatDate(entry.createdAt)}</Text>
                     </View>
                   ))
                 )}
               </ScrollView>
             )}
 
-            {commentsError ? (
-              <Text style={shared.message}>{commentsError}</Text>
-            ) : null}
+            {commentsError ? <Text style={shared.message}>{commentsError}</Text> : null}
 
             <View style={styles.commentComposer}>
               <TextInput
@@ -806,19 +751,10 @@ export function CaseSharesModuleScreen({
               />
               <Pressable
                 disabled={isSendingComment}
-                style={[
-                  shared.actionButton,
-                  shared.actionButtonPrimary,
-                  styles.commentSend,
-                ]}
+                style={[shared.actionButton, shared.actionButtonPrimary, styles.commentSend]}
                 onPress={() => void handleSendComment()}
               >
-                <Text
-                  style={[
-                    shared.actionButtonText,
-                    shared.actionButtonTextPrimary,
-                  ]}
-                >
+                <Text style={[shared.actionButtonText, shared.actionButtonTextPrimary]}>
                   {isSendingComment ? copy.commentSending : copy.commentSend}
                 </Text>
               </Pressable>

@@ -20,6 +20,10 @@ import type {
   DashboardNewsActor,
   DashboardNewsCategory,
   DashboardNewsPost,
+  DashboardNewsReadConfirmation,
+  DashboardNewsReadStatus,
+  DashboardNewsReadStatusItem,
+  DashboardNewsReadSummary,
   DashboardNewsVisibility,
 } from './dashboard-news.types';
 
@@ -48,6 +52,16 @@ type DashboardPostWithRelations = Prisma.DashboardPostGetPayload<{
   };
 }>;
 
+type DashboardPostAudienceMember = {
+  id: number;
+  preferredLanguage: string | null;
+};
+
+type DashboardPostReadReceipt = {
+  postId: number;
+  readAt: Date | null;
+};
+
 @Injectable()
 export class DashboardNewsService {
   private readonly logger = new Logger(DashboardNewsService.name);
@@ -72,7 +86,22 @@ export class DashboardNewsService {
       take: 80,
     });
 
-    return posts.map((post) => this.mapPost(post, actor));
+    const readConfirmations = await this.findReadConfirmations(
+      posts.map((post) => post.id),
+      actor.id,
+    );
+    const readSummaries = this.isHoldingActor(actor)
+      ? await this.findReadSummaries(posts.map((post) => post.id))
+      : new Map<number, DashboardNewsReadSummary>();
+
+    return posts.map((post) =>
+      this.mapPost(
+        post,
+        actor,
+        readConfirmations.get(post.id),
+        readSummaries.get(post.id),
+      ),
+    );
   }
 
   async getPost(
@@ -90,7 +119,14 @@ export class DashboardNewsService {
       throw new NotFoundException('DASHBOARD_NEWS_POST_NOT_FOUND');
     }
 
-    return this.mapPost(post, actor);
+    const [readConfirmation, readSummary] = await Promise.all([
+      this.findReadConfirmation(post.id, actor.id),
+      this.isHoldingActor(actor)
+        ? this.findReadSummary(post.id)
+        : Promise.resolve(undefined),
+    ]);
+
+    return this.mapPost(post, actor, readConfirmation, readSummary);
   }
 
   async createPost(
@@ -99,30 +135,56 @@ export class DashboardNewsService {
   ): Promise<DashboardNewsPost> {
     this.assertHoldingPublisher(actor);
 
-    const post = await this.prismaService.dashboardPost.create({
-      data: {
-        title: dto.title.trim(),
-        summary: dto.summary.trim(),
-        body: dto.body.trim(),
-        category: dto.category,
-        visibility: dto.visibility,
-        tagsJson: JSON.stringify(this.normalizeTags(dto.tags ?? [])),
-        attachmentName: dto.attachmentName?.trim() || null,
-        attachmentMimeType: dto.attachmentMimeType?.trim() || null,
-        attachmentSizeBytes:
-          dto.attachmentSizeBytes === undefined
-            ? null
-            : BigInt(dto.attachmentSizeBytes),
-        attachmentBucket: dto.attachmentBucket?.trim() || null,
-        attachmentObjectKey: dto.attachmentObjectKey?.trim() || null,
-        authorId: actor.id,
-        restaurantId: actor.restaurantId,
-      },
-      include: this.getPostIncludes(),
-    });
+    const { audience, post } = await this.prismaService.$transaction(
+      async (transaction) => {
+        const audience = await this.findPostAudience(
+          transaction,
+          dto.visibility,
+          actor.id,
+        );
+        const post = await transaction.dashboardPost.create({
+          data: {
+            title: dto.title.trim(),
+            summary: dto.summary.trim(),
+            body: dto.body.trim(),
+            category: dto.category,
+            visibility: dto.visibility,
+            tagsJson: JSON.stringify(this.normalizeTags(dto.tags ?? [])),
+            attachmentName: dto.attachmentName?.trim() || null,
+            attachmentMimeType: dto.attachmentMimeType?.trim() || null,
+            attachmentSizeBytes:
+              dto.attachmentSizeBytes === undefined
+                ? null
+                : BigInt(dto.attachmentSizeBytes),
+            attachmentBucket: dto.attachmentBucket?.trim() || null,
+            attachmentObjectKey: dto.attachmentObjectKey?.trim() || null,
+            authorId: actor.id,
+            restaurantId: actor.restaurantId,
+            readTrackingStartedAt: new Date(),
+          },
+          include: this.getPostIncludes(),
+        });
 
-    const mapped = this.mapPost(post, actor);
-    await this.notifyPostPublished(actor, mapped);
+        if (audience.length > 0) {
+          await transaction.dashboardPostReadReceipt.createMany({
+            data: audience.map((user) => ({
+              postId: post.id,
+              userId: user.id,
+            })),
+          });
+        }
+
+        return { audience, post };
+      },
+    );
+
+    const mapped = this.mapPost(post, actor, undefined, {
+      totalRecipients: audience.length,
+      readCount: 0,
+      unreadCount: audience.length,
+      readRate: 0,
+    });
+    await this.notifyPostPublished(audience, mapped);
 
     return mapped;
   }
@@ -134,11 +196,10 @@ export class DashboardNewsService {
    * failures must not fail publishing, so errors are swallowed after logging.
    */
   private async notifyPostPublished(
-    actor: DashboardNewsActor,
+    audience: DashboardPostAudienceMember[],
     post: DashboardNewsPost,
   ): Promise<void> {
     try {
-      const audience = await this.findPostAudience(post.visibility, actor.id);
       if (audience.length === 0) {
         return;
       }
@@ -173,10 +234,11 @@ export class DashboardNewsService {
   }
 
   private async findPostAudience(
-    visibility: DashboardNewsVisibility,
+    prisma: Prisma.TransactionClient | PrismaService,
+    visibility: string,
     authorId: number,
-  ): Promise<{ id: number; preferredLanguage: string | null }[]> {
-    const users = await this.prismaService.user.findMany({
+  ): Promise<DashboardPostAudienceMember[]> {
+    const users = await prisma.user.findMany({
       where: {
         accountStatus: ACCOUNT_STATUS.approved,
         id: { not: authorId },
@@ -197,6 +259,101 @@ export class DashboardNewsService {
       id: user.id,
       preferredLanguage: user.preferredLanguage,
     }));
+  }
+
+  async confirmRead(
+    actor: DashboardNewsActor,
+    id: number,
+  ): Promise<DashboardNewsReadConfirmation> {
+    const post = await this.prismaService.dashboardPost.findFirst({
+      where: {
+        AND: [{ id }, this.buildVisibilityWhere(actor)],
+      },
+      select: { id: true, readTrackingStartedAt: true },
+    });
+
+    if (!post) {
+      throw new NotFoundException('DASHBOARD_NEWS_POST_NOT_FOUND');
+    }
+
+    if (!post.readTrackingStartedAt) {
+      return { isRequired: false, confirmedAt: null };
+    }
+
+    const receipt = await this.prismaService.dashboardPostReadReceipt.findFirst(
+      {
+        where: { postId: id, userId: actor.id },
+        select: { readAt: true },
+      },
+    );
+
+    if (!receipt) {
+      throw new ForbiddenException(
+        'DASHBOARD_NEWS_READ_CONFIRMATION_FORBIDDEN',
+      );
+    }
+
+    if (receipt.readAt) {
+      return { isRequired: true, confirmedAt: receipt.readAt.toISOString() };
+    }
+
+    const confirmedAt = new Date();
+    await this.prismaService.dashboardPostReadReceipt.updateMany({
+      where: { postId: id, userId: actor.id, readAt: null },
+      data: { readAt: confirmedAt },
+    });
+
+    return { isRequired: true, confirmedAt: confirmedAt.toISOString() };
+  }
+
+  async getReadStatus(
+    actor: DashboardNewsActor,
+    id: number,
+  ): Promise<DashboardNewsReadStatus> {
+    this.assertHoldingPublisher(actor);
+
+    const post = await this.prismaService.dashboardPost.findUnique({
+      where: { id },
+      select: { readTrackingStartedAt: true },
+    });
+
+    if (!post) {
+      throw new NotFoundException('DASHBOARD_NEWS_POST_NOT_FOUND');
+    }
+
+    if (!post.readTrackingStartedAt) {
+      return { isTracked: false, summary: null, read: [], unread: [] };
+    }
+
+    const receipts = await this.prismaService.dashboardPostReadReceipt.findMany(
+      {
+        where: { postId: id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              restaurant: { select: { name: true } },
+            },
+          },
+        },
+        orderBy: [{ readAt: 'desc' }, { user: { name: 'asc' } }],
+      },
+    );
+    const summary = this.buildReadSummary(receipts);
+    const items = receipts.map<DashboardNewsReadStatusItem>((receipt) => ({
+      userId: receipt.user.id,
+      name: receipt.user.name,
+      restaurantName: receipt.user.restaurant.name,
+      confirmedAt: receipt.readAt?.toISOString() ?? null,
+    }));
+
+    return {
+      isTracked: true,
+      summary,
+      read: items.filter((item) => item.confirmedAt !== null),
+      unread: items.filter((item) => item.confirmedAt === null),
+    };
   }
 
   async deletePost(actor: DashboardNewsActor, id: number): Promise<void> {
@@ -350,6 +507,8 @@ export class DashboardNewsService {
   private mapPost(
     post: DashboardPostWithRelations,
     actor: DashboardNewsActor,
+    readConfirmation?: Date | null,
+    readSummary?: DashboardNewsReadSummary,
   ): DashboardNewsPost {
     return {
       id: post.id,
@@ -368,8 +527,123 @@ export class DashboardNewsService {
         email: post.author.email,
       },
       canDelete: this.canDeletePost(actor),
+      readConfirmation: this.mapReadConfirmation(post, readConfirmation),
+      readSummary:
+        this.isHoldingActor(actor) && post.readTrackingStartedAt
+          ? (readSummary ?? null)
+          : null,
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
+    };
+  }
+
+  private mapReadConfirmation(
+    post: DashboardPostWithRelations,
+    readConfirmation: Date | null | undefined,
+  ): DashboardNewsReadConfirmation | null {
+    if (!post.readTrackingStartedAt || readConfirmation === undefined) {
+      return null;
+    }
+
+    return {
+      isRequired: true,
+      confirmedAt: readConfirmation?.toISOString() ?? null,
+    };
+  }
+
+  private async findReadConfirmation(
+    postId: number,
+    userId: number,
+  ): Promise<Date | null | undefined> {
+    const receipt = await this.prismaService.dashboardPostReadReceipt.findFirst(
+      {
+        where: { postId, userId },
+        select: { readAt: true },
+      },
+    );
+
+    return receipt?.readAt;
+  }
+
+  private async findReadConfirmations(
+    postIds: number[],
+    userId: number,
+  ): Promise<Map<number, Date | null>> {
+    if (postIds.length === 0) {
+      return new Map();
+    }
+
+    const receipts = await this.prismaService.dashboardPostReadReceipt.findMany(
+      {
+        where: { postId: { in: postIds }, userId },
+        select: { postId: true, readAt: true },
+      },
+    );
+
+    return new Map(
+      (receipts as DashboardPostReadReceipt[]).map((receipt) => [
+        receipt.postId,
+        receipt.readAt,
+      ]),
+    );
+  }
+
+  private async findReadSummary(
+    postId: number,
+  ): Promise<DashboardNewsReadSummary> {
+    const receipts = await this.prismaService.dashboardPostReadReceipt.findMany(
+      {
+        where: { postId },
+        select: { postId: true, readAt: true },
+      },
+    );
+
+    return this.buildReadSummary(receipts);
+  }
+
+  private async findReadSummaries(
+    postIds: number[],
+  ): Promise<Map<number, DashboardNewsReadSummary>> {
+    if (postIds.length === 0) {
+      return new Map();
+    }
+
+    const receipts = await this.prismaService.dashboardPostReadReceipt.findMany(
+      {
+        where: { postId: { in: postIds } },
+        select: { postId: true, readAt: true },
+      },
+    );
+    const receiptsByPostId = new Map<number, DashboardPostReadReceipt[]>();
+
+    for (const receipt of receipts as DashboardPostReadReceipt[]) {
+      const postReceipts = receiptsByPostId.get(receipt.postId) ?? [];
+      postReceipts.push(receipt);
+      receiptsByPostId.set(receipt.postId, postReceipts);
+    }
+
+    return new Map(
+      postIds.map((postId) => [
+        postId,
+        this.buildReadSummary(receiptsByPostId.get(postId) ?? []),
+      ]),
+    );
+  }
+
+  private buildReadSummary(
+    receipts: { readAt: Date | null }[],
+  ): DashboardNewsReadSummary {
+    const totalRecipients = receipts.length;
+    const readCount = receipts.filter((receipt) => receipt.readAt).length;
+
+    return {
+      totalRecipients,
+      readCount,
+      unreadCount: totalRecipients - readCount,
+      readRate:
+        totalRecipients === 0
+          ? 0
+          : Math.round((readCount / totalRecipients) * 100),
     };
   }
 

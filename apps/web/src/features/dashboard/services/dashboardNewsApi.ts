@@ -5,6 +5,9 @@ import type {
   DashboardNewsFilters,
   DashboardNewsPost,
   DashboardNewsPostApiRecord,
+  DashboardNewsReadConfirmation,
+  DashboardNewsReadStatus,
+  DashboardNewsReadStatusApiRecord,
   UploadedDashboardNewsAttachment,
 } from "@/features/dashboard/types/dashboardNews";
 
@@ -46,6 +49,20 @@ function normalizePost(
       email: raw.author?.email ?? "",
     },
     canDelete: !!raw.canDelete,
+    readConfirmation: raw.readConfirmation
+      ? {
+          isRequired: !!raw.readConfirmation.isRequired,
+          confirmedAt: raw.readConfirmation.confirmedAt ?? null,
+        }
+      : null,
+    readSummary: raw.readSummary
+      ? {
+          totalRecipients: Number(raw.readSummary.totalRecipients) || 0,
+          readCount: Number(raw.readSummary.readCount) || 0,
+          unreadCount: Number(raw.readSummary.unreadCount) || 0,
+          readRate: Number(raw.readSummary.readRate) || 0,
+        }
+      : null,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };
@@ -132,6 +149,44 @@ export async function uploadDashboardNewsAttachment(
 
 export async function deleteDashboardNewsPost(id: string): Promise<void> {
   await apiClient.delete(`/dashboard-news/${encodeURIComponent(id)}`);
+}
+
+export async function confirmDashboardNewsRead(
+  id: string,
+): Promise<DashboardNewsReadConfirmation> {
+  return apiClient.post<DashboardNewsReadConfirmation>(
+    `/dashboard-news/${encodeURIComponent(id)}/read-confirmation`,
+  );
+}
+
+export async function fetchDashboardNewsReadStatus(
+  id: string,
+): Promise<DashboardNewsReadStatus> {
+  const raw = await apiClient.get<DashboardNewsReadStatusApiRecord>(
+    `/dashboard-news/${encodeURIComponent(id)}/read-status`,
+  );
+
+  const normalizeItems = (items: DashboardNewsReadStatusApiRecord["read"]) =>
+    (Array.isArray(items) ? items : []).map((item) => ({
+      userId: String(item.userId ?? ""),
+      name: item.name ?? "",
+      restaurantName: item.restaurantName ?? "",
+      confirmedAt: item.confirmedAt ?? null,
+    }));
+
+  return {
+    isTracked: !!raw?.isTracked,
+    summary: raw?.summary
+      ? {
+          totalRecipients: Number(raw.summary.totalRecipients) || 0,
+          readCount: Number(raw.summary.readCount) || 0,
+          unreadCount: Number(raw.summary.unreadCount) || 0,
+          readRate: Number(raw.summary.readRate) || 0,
+        }
+      : null,
+    read: normalizeItems(raw?.read),
+    unread: normalizeItems(raw?.unread),
+  };
 }
 
 export function getDashboardNewsAttachmentUrl(objectKey: string): string {

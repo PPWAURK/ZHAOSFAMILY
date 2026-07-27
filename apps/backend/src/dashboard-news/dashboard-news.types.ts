@@ -33,6 +33,32 @@ export type DashboardNewsAttachment = {
   objectKey: string;
 };
 
+export type DashboardNewsReadConfirmation = {
+  isRequired: boolean;
+  confirmedAt: string | null;
+};
+
+export type DashboardNewsReadSummary = {
+  totalRecipients: number;
+  readCount: number;
+  unreadCount: number;
+  readRate: number;
+};
+
+export type DashboardNewsReadStatusItem = {
+  userId: number;
+  name: string;
+  restaurantName: string;
+  confirmedAt: string | null;
+};
+
+export type DashboardNewsReadStatus = {
+  isTracked: boolean;
+  summary: DashboardNewsReadSummary | null;
+  read: DashboardNewsReadStatusItem[];
+  unread: DashboardNewsReadStatusItem[];
+};
+
 export type DashboardNewsPost = {
   id: number;
   title: string;
@@ -46,6 +72,8 @@ export type DashboardNewsPost = {
   restaurantName: string;
   author: DashboardNewsAuthor;
   canDelete: boolean;
+  readConfirmation: DashboardNewsReadConfirmation | null;
+  readSummary: DashboardNewsReadSummary | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -17,6 +17,8 @@ import { DashboardNewsService } from './dashboard-news.service';
 import type {
   DashboardNewsActor,
   DashboardNewsPost,
+  DashboardNewsReadConfirmation,
+  DashboardNewsReadStatus,
 } from './dashboard-news.types';
 
 @Controller('dashboard-news')
@@ -43,6 +45,28 @@ export class DashboardNewsController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<DashboardNewsPost> {
     return this.dashboardNewsService.getPost(
+      await this.getActor(authorization),
+      id,
+    );
+  }
+
+  @Post(':id/read-confirmation')
+  async confirmRead(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<DashboardNewsReadConfirmation> {
+    return this.dashboardNewsService.confirmRead(
+      await this.getActor(authorization),
+      id,
+    );
+  }
+
+  @Get(':id/read-status')
+  async getReadStatus(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<DashboardNewsReadStatus> {
+    return this.dashboardNewsService.getReadStatus(
       await this.getActor(authorization),
       id,
     );

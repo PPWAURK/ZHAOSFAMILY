@@ -102,7 +102,9 @@
   display: block;
   height: 1.5px;
   background: currentColor;
-  transition: transform 0.25s ease, opacity 0.2s ease;
+  transition:
+    transform 0.25s ease,
+    opacity 0.2s ease;
 }
 
 .menuToggleOpen .menuToggleIcon span:nth-child(1) {
@@ -948,8 +950,7 @@
   margin-bottom: 20px;
   border-top: 1px solid var(--red-soft-2);
   border-bottom: 1px solid var(--red-soft-2);
-  background:
-    linear-gradient(180deg, rgba(193, 22, 22, 0.03), rgba(255, 255, 255, 0.95));
+  background: linear-gradient(180deg, rgba(193, 22, 22, 0.03), rgba(255, 255, 255, 0.95));
 }
 
 .newsStat {
@@ -1092,8 +1093,7 @@
   min-width: 0;
   padding: 0 0 14px;
   border: 1px solid var(--red-soft-2);
-  background:
-    linear-gradient(180deg, rgba(193, 22, 22, 0.04), rgba(255, 255, 255, 0.92));
+  background: linear-gradient(180deg, rgba(193, 22, 22, 0.04), rgba(255, 255, 255, 0.92));
 }
 
 .newsColumnHead {
@@ -2008,7 +2008,6 @@
   flex: 1;
 }
 
-
 .navGroups {
   display: flex;
   flex-direction: column;
@@ -2128,7 +2127,9 @@
   font-size: 16px;
   color: var(--red);
   font-weight: 700;
-  transition: color 0.18s ease, transform 0.18s ease;
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .navItem:hover .navItemArrow {
@@ -2154,7 +2155,9 @@
   flex-direction: column;
   border: 1px solid var(--control-border);
   background: var(--paper);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .editorWrapper:focus-within {
@@ -2370,7 +2373,9 @@
 .editorInlineWrapper {
   border: 1px solid var(--control-border);
   background: var(--paper);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .editorInlineWrapper:focus-within {
@@ -2681,7 +2686,9 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   text-align: left;
-  transition: background 0.18s ease, color 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
 }
 
 .newsCategoryTab::after {
@@ -2894,6 +2901,134 @@
   padding: 0 14px;
 }
 
+.readConfirmation,
+.readStatus {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(47, 43, 39, 0.12);
+}
+
+.readConfirmation p,
+.readStatus p {
+  margin: 0;
+}
+
+.readConfirmationButton,
+.readStatusButton,
+.readStatusTabs button {
+  width: fit-content;
+  border: 1px solid rgba(47, 43, 39, 0.24);
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.readConfirmationButton,
+.readStatusButton {
+  padding: 8px 12px;
+}
+
+.readStatusPanel {
+  display: grid;
+  gap: 10px;
+}
+
+.readStatusTabs {
+  display: flex;
+  gap: 8px;
+}
+
+.readStatusTabs button {
+  padding: 6px 10px;
+}
+
+.readStatusTabs .readStatusTabActive {
+  background: #2f2b27;
+  color: #fff;
+}
+
+.readStatusList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.readStatusList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(47, 43, 39, 0.08);
+}
+
+.mandatoryNewsOverlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(26, 22, 18, 0.6);
+}
+
+.mandatoryNewsPanel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 16px;
+  width: min(760px, 100%);
+  max-height: min(820px, calc(100dvh - 48px));
+  padding: 28px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(26, 22, 18, 0.28);
+}
+
+.mandatoryNewsPanel header h2,
+.mandatoryNewsPanel header p {
+  margin: 0;
+}
+
+.mandatoryNewsPanel header h2 {
+  margin-top: 8px;
+  color: var(--ink);
+  font-size: clamp(24px, 4vw, 36px);
+}
+
+.mandatoryNewsPanel header > p:last-child {
+  margin-top: 8px;
+  color: var(--ink-60);
+}
+
+.mandatoryNewsBody {
+  min-height: 180px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.mandatoryNewsConfirmButton {
+  min-height: 46px;
+  border: 0;
+  background: var(--red);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.mandatoryNewsConfirmButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.readStatusList span,
+.readStatusList small {
+  color: rgba(47, 43, 39, 0.68);
+}
+
 .newsFilters {
   grid-template-columns: 1.5fr repeat(2, minmax(0, 1fr)) auto;
 }
@@ -3006,7 +3141,6 @@
   .newsFeatureContent .newsMetaGrid {
     grid-template-columns: 1fr;
   }
-
 }
 
 @media (prefers-reduced-motion: reduce) {

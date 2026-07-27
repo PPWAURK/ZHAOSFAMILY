@@ -1,14 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Image,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Image, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { WebView } from "react-native-webview";
 
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
@@ -37,7 +30,9 @@ type DashboardNewsBoardProps = {
   activeIndex: number;
   copy: DashboardCopy;
   error: string;
+  isConfirmingRead: boolean;
   isLoading: boolean;
+  onConfirmRead: (postId: string) => void;
   onMove: (direction: "previous" | "next") => void;
   onOpenPost: (post: DashboardNewsPost) => void;
   onSearchChange: (value: string) => void;
@@ -91,9 +86,7 @@ function getFeaturedMedia(post: DashboardNewsPost): FeaturedMedia {
 
   const bodyImage = findDashboardNewsBodyImage(post.body);
 
-  return bodyImage
-    ? { kind: "image", src: bodyImage.src, alt: bodyImage.alt || post.title }
-    : null;
+  return bodyImage ? { kind: "image", src: bodyImage.src, alt: bodyImage.alt || post.title } : null;
 }
 
 function NewsVideo({ uri }: { uri: string }) {
@@ -117,11 +110,7 @@ function NewsVideo({ uri }: { uri: string }) {
   );
 }
 
-function NewsFeaturedMedia({
-  media,
-}: {
-  media: FeaturedMedia;
-}) {
+function NewsFeaturedMedia({ media }: { media: FeaturedMedia }) {
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => setHasError(false), [media?.src]);
@@ -129,11 +118,7 @@ function NewsFeaturedMedia({
   if (!media || hasError) {
     return (
       <View style={styles.featureFallback}>
-        <Image
-          source={zhaoSealSource}
-          style={styles.featureFallbackSeal}
-          resizeMode="contain"
-        />
+        <Image source={zhaoSealSource} style={styles.featureFallbackSeal} resizeMode="contain" />
         <Text style={styles.featureFallbackText}>ZHAO&apos;S FAMILY</Text>
       </View>
     );
@@ -190,9 +175,7 @@ function NewsFeaturedMedia({
 }
 
 function replacePositionTokens(template: string, current: number, total: number): string {
-  return template
-    .replace("{current}", String(current))
-    .replace("{total}", String(total));
+  return template.replace("{current}", String(current)).replace("{total}", String(total));
 }
 
 export function DashboardNewsBoard({
@@ -200,7 +183,9 @@ export function DashboardNewsBoard({
   activeIndex,
   copy,
   error,
+  isConfirmingRead,
   isLoading,
+  onConfirmRead,
   onMove,
   onOpenPost,
   onSearchChange,
@@ -216,9 +201,8 @@ export function DashboardNewsBoard({
       NEWS_CATEGORY_FILTERS.reduce<Record<NewsDeskCategory, number>>(
         (counts, category) => ({
           ...counts,
-          [category]: posts.filter(
-            (post) => resolveNewsDeskCategory(post.category) === category,
-          ).length,
+          [category]: posts.filter((post) => resolveNewsDeskCategory(post.category) === category)
+            .length,
         }),
         { news: 0, congrats: 0, issues: 0 },
       ),
@@ -226,9 +210,7 @@ export function DashboardNewsBoard({
   );
   const activePost = visiblePosts[activeIndex] ?? null;
   const featuredMedia = activePost ? getFeaturedMedia(activePost) : null;
-  const summaryPreview = activePost
-    ? stripDashboardNewsFormatting(activePost.summary)
-    : "";
+  const summaryPreview = activePost ? stripDashboardNewsFormatting(activePost.summary) : "";
   const bodyPreview = activePost ? stripDashboardNewsFormatting(activePost.body) : "";
   const articlePreview = bodyPreview || summaryPreview;
   const showDistinctSummary = activePost
@@ -236,6 +218,8 @@ export function DashboardNewsBoard({
     : false;
   const canGoPrevious = activeIndex > 0;
   const canGoNext = activeIndex < visiblePosts.length - 1;
+  const needsReadConfirmation =
+    activePost?.readConfirmation?.isRequired && !activePost.readConfirmation.confirmedAt;
 
   function measureCategoryTarget(category: NewsDeskCategory): void {
     const target = categoryTargetRefs.current[category];
@@ -278,11 +262,7 @@ export function DashboardNewsBoard({
 
       {!isLoading && posts.length > 0 ? (
         <View style={styles.search}>
-          <Ionicons
-            color={authControlStyles.colors.ink40}
-            name="search-outline"
-            size={18}
-          />
+          <Ionicons color={authControlStyles.colors.ink40} name="search-outline" size={18} />
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
@@ -317,17 +297,18 @@ export function DashboardNewsBoard({
             <View style={styles.articleKickerRow}>
               <Text style={styles.articleKicker}>{copy.newsCategories[activeCategory]}</Text>
               <Text style={styles.visibility}>
-                {copy.newsVisibility[
-                  activePost.visibility === "management" ? "management" : "public"
-                ]}
+                {
+                  copy.newsVisibility[
+                    activePost.visibility === "management" ? "management" : "public"
+                  ]
+                }
               </Text>
             </View>
             <Text style={styles.articleTitle}>
               {stripDashboardNewsFormatting(activePost.title)}
             </Text>
             <Text style={styles.articleMeta}>
-              {formatDashboardNewsDate(activePost.createdAt)} ·{" "}
-              {activePost.authorName || "-"}
+              {formatDashboardNewsDate(activePost.createdAt)} · {activePost.authorName || "-"}
             </Text>
             <View style={styles.articleControls}>
               {activePost.tags.length > 0 ? (
@@ -344,10 +325,7 @@ export function DashboardNewsBoard({
                   accessibilityLabel={copy.newsPrevious}
                   accessibilityRole="button"
                   disabled={!canGoPrevious}
-                  style={[
-                    styles.pagerButton,
-                    !canGoPrevious ? styles.pagerDisabled : null,
-                  ]}
+                  style={[styles.pagerButton, !canGoPrevious ? styles.pagerDisabled : null]}
                   onPress={() => onMove("previous")}
                 >
                   <Ionicons
@@ -357,20 +335,13 @@ export function DashboardNewsBoard({
                   />
                 </Pressable>
                 <Text style={styles.pagerPosition}>
-                  {replacePositionTokens(
-                    copy.newsPosition,
-                    activeIndex + 1,
-                    visiblePosts.length,
-                  )}
+                  {replacePositionTokens(copy.newsPosition, activeIndex + 1, visiblePosts.length)}
                 </Text>
                 <Pressable
                   accessibilityLabel={copy.newsNext}
                   accessibilityRole="button"
                   disabled={!canGoNext}
-                  style={[
-                    styles.pagerButton,
-                    !canGoNext ? styles.pagerDisabled : null,
-                  ]}
+                  style={[styles.pagerButton, !canGoNext ? styles.pagerDisabled : null]}
                   onPress={() => onMove("next")}
                 >
                   <Ionicons
@@ -390,38 +361,45 @@ export function DashboardNewsBoard({
             />
           </View>
 
-          <Pressable
-            accessibilityHint={copy.newsReadMore}
-            accessibilityRole="button"
-            style={styles.articleContent}
-            onPress={() => onOpenPost(activePost)}
-          >
-            {showDistinctSummary ? (
-              <Text style={styles.articleSummary}>{summaryPreview}</Text>
-            ) : null}
-            <Text
-              style={[
-                styles.articleBody,
-                showDistinctSummary ? styles.articleBodyWithSummary : null,
-              ]}
+          <View style={styles.articleContent}>
+            <Pressable
+              accessibilityHint={copy.newsReadMore}
+              accessibilityRole="button"
+              style={styles.articleOpenArea}
+              onPress={() => onOpenPost(activePost)}
             >
-              {articlePreview}
-            </Text>
-            <View style={styles.articleFooter}>
-              <Text style={styles.articleStore}>
-                {activePost.restaurantName || "-"}
+              {showDistinctSummary ? (
+                <Text style={styles.articleSummary}>{summaryPreview}</Text>
+              ) : null}
+              <Text
+                style={[
+                  styles.articleBody,
+                  showDistinctSummary ? styles.articleBodyWithSummary : null,
+                ]}
+              >
+                {articlePreview}
               </Text>
-              <Ionicons
-                color={authControlStyles.colors.red}
-                name="arrow-forward-outline"
-                size={18}
-              />
+            </Pressable>
+            <View style={styles.articleFooter}>
+              <Text style={styles.articleStore}>{activePost.restaurantName || "-"}</Text>
+              {needsReadConfirmation ? (
+                <Pressable
+                  accessibilityLabel={copy.newsConfirmRead}
+                  accessibilityRole="button"
+                  disabled={isConfirmingRead}
+                  style={[
+                    styles.readConfirmationButton,
+                    isConfirmingRead ? styles.readConfirmationButtonDisabled : null,
+                  ]}
+                  onPress={() => onConfirmRead(activePost.id)}
+                >
+                  <Text style={styles.readConfirmationButtonText}>{copy.newsConfirmRead}</Text>
+                </Pressable>
+              ) : null}
             </View>
-          </Pressable>
-
+          </View>
         </>
       ) : null}
-
     </View>
   );
 }

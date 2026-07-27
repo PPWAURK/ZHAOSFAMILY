@@ -10,6 +10,32 @@ export type DashboardNewsAttachmentApiRecord = {
   objectKey?: string | null;
 };
 
+export type DashboardNewsReadConfirmation = {
+  isRequired?: boolean | null;
+  confirmedAt?: string | null;
+};
+
+export type DashboardNewsReadSummary = {
+  totalRecipients?: number | null;
+  readCount?: number | null;
+  unreadCount?: number | null;
+  readRate?: number | null;
+};
+
+export type DashboardNewsReadStatusItem = {
+  userId?: number | string | null;
+  name?: string | null;
+  restaurantName?: string | null;
+  confirmedAt?: string | null;
+};
+
+export type DashboardNewsReadStatusApiRecord = {
+  isTracked?: boolean | null;
+  summary?: DashboardNewsReadSummary | null;
+  read?: DashboardNewsReadStatusItem[] | null;
+  unread?: DashboardNewsReadStatusItem[] | null;
+};
+
 export type DashboardNewsPostApiRecord = {
   id: number | string;
   title?: string | null;
@@ -27,6 +53,8 @@ export type DashboardNewsPostApiRecord = {
     email?: string | null;
   } | null;
   canDelete?: boolean | null;
+  readConfirmation?: DashboardNewsReadConfirmation | null;
+  readSummary?: DashboardNewsReadSummary | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 };
@@ -57,8 +85,35 @@ export type DashboardNewsPost = {
     email: string;
   };
   canDelete: boolean;
+  readConfirmation: {
+    isRequired: boolean;
+    confirmedAt: string | null;
+  } | null;
+  readSummary: {
+    totalRecipients: number;
+    readCount: number;
+    unreadCount: number;
+    readRate: number;
+  } | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+};
+
+export type DashboardNewsReadStatus = {
+  isTracked: boolean;
+  summary: DashboardNewsPost["readSummary"];
+  read: {
+    userId: string;
+    name: string;
+    restaurantName: string;
+    confirmedAt: string | null;
+  }[];
+  unread: {
+    userId: string;
+    name: string;
+    restaurantName: string;
+    confirmedAt: string | null;
+  }[];
 };
 
 export type DashboardNewsFilters = {

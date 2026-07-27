@@ -8,11 +8,23 @@ describe('DashboardNewsService publish notifications', () => {
       dashboardPost: {
         create: jest.fn(),
         findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      dashboardPostReadReceipt: {
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       user: {
         findMany: jest.fn().mockResolvedValue([]),
       },
     };
+    const executeTransaction = <T>(
+      callback: (transaction: typeof prismaService) => Promise<T>,
+    ): Promise<T> => callback(prismaService);
+    prismaService.$transaction = jest.fn(executeTransaction);
     const mediaService = { deleteFile: jest.fn() };
     const notificationsService = {
       sendToUsers: jest.fn().mockResolvedValue(undefined),
@@ -86,6 +98,15 @@ describe('DashboardNewsService publish notifications', () => {
         id: { not: 1 },
       },
       select: { id: true, jobRole: true, preferredLanguage: true },
+    });
+    expect(
+      prismaService.dashboardPostReadReceipt.createMany,
+    ).toHaveBeenCalledWith({
+      data: [
+        { postId: 7, userId: 2 },
+        { postId: 7, userId: 3 },
+        { postId: 7, userId: 4 },
+      ],
     });
     expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
@@ -231,5 +252,61 @@ describe('DashboardNewsService publish notifications', () => {
         },
       }),
     );
+  });
+
+  it('records a first read confirmation and keeps repeated confirmations idempotent', async () => {
+    const { service, prismaService } = createService();
+    const confirmedAt = new Date('2026-07-27T10:00:00.000Z');
+    prismaService.dashboardPost.findFirst.mockResolvedValue({
+      id: 7,
+      readTrackingStartedAt: new Date('2026-07-27T09:00:00.000Z'),
+    });
+    prismaService.dashboardPostReadReceipt.findFirst
+      .mockResolvedValueOnce({ readAt: null })
+      .mockResolvedValueOnce({ readAt: confirmedAt });
+
+    const first = await service.confirmRead(
+      { ...holdingActor, id: 2, jobRole: 'front-server' },
+      7,
+    );
+    const second = await service.confirmRead(
+      { ...holdingActor, id: 2, jobRole: 'front-server' },
+      7,
+    );
+
+    expect(first.isRequired).toBe(true);
+    expect(first.confirmedAt).not.toBeNull();
+    expect(second).toEqual({
+      isRequired: true,
+      confirmedAt: confirmedAt.toISOString(),
+    });
+    expect(
+      prismaService.dashboardPostReadReceipt.updateMany,
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects confirmation by a user outside the fixed audience', async () => {
+    const { service, prismaService } = createService();
+    prismaService.dashboardPost.findFirst.mockResolvedValue({
+      id: 7,
+      readTrackingStartedAt: new Date('2026-07-27T09:00:00.000Z'),
+    });
+    prismaService.dashboardPostReadReceipt.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.confirmRead(
+        { ...holdingActor, id: 8, jobRole: 'front-server' },
+        7,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('restricts reading-status details to holding users', async () => {
+    const { service, prismaService } = createService();
+
+    await expect(
+      service.getReadStatus({ ...holdingActor, jobRole: 'store-manager' }, 7),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prismaService.dashboardPost.findUnique).not.toHaveBeenCalled();
   });
 });
