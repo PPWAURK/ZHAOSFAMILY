@@ -133,11 +133,21 @@ describe('RestaurantsService', () => {
 
     await restaurantsService.updateRestaurant(4, { photoObjectKey: null });
 
-    expect(prismaService.restaurant.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ photoObjectKey: null }),
-      }),
-    );
+    expect(prismaService.restaurant.update).toHaveBeenCalledWith({
+      where: {
+        id: 4,
+      },
+      data: {
+        photoObjectKey: null,
+        updatedAt: expect.any(Date) as Date,
+      },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        photoObjectKey: true,
+      },
+    });
   });
 
   it('deletes a restaurant by id', async () => {
