@@ -2,6 +2,8 @@ import React from "react";
 import ReactTestRenderer from "react-test-renderer";
 import { MobileOnboardingModal } from "@/features/onboarding/MobileOnboardingModal";
 
+const renderers: ReactTestRenderer.ReactTestRenderer[] = [];
+
 async function renderModal(options?: {
   isReplay?: boolean;
   onComplete?: (destination: "home" | "training" | null) => Promise<void>;
@@ -14,6 +16,7 @@ async function renderModal(options?: {
       <MobileOnboardingModal
         isReplay={options?.isReplay ?? false}
         language="zh"
+        reduceMotionOverride
         showOrderStep={options?.showOrderStep ?? false}
         targets={{
           congrats: { height: 52, width: 100, x: 132, y: 108 },
@@ -32,6 +35,8 @@ async function renderModal(options?: {
 
   if (!renderer) throw new Error("ONBOARDING_RENDER_FAILED");
 
+  renderers.push(renderer);
+
   return renderer;
 }
 
@@ -48,6 +53,12 @@ async function press(
 }
 
 describe("MobileOnboardingModal", () => {
+  afterEach(() => {
+    ReactTestRenderer.act(() => {
+      renderers.splice(0).forEach((renderer) => renderer.unmount());
+    });
+  });
+
   it("persists a skipped first-run guide as staying on the home screen", async () => {
     const onComplete = jest.fn().mockResolvedValue(undefined);
     const renderer = await renderModal({ onComplete });
@@ -81,8 +92,7 @@ describe("MobileOnboardingModal", () => {
     expect(
       renderer.root.findAll(
         (node) =>
-          typeof node.props.children === "string" &&
-          node.props.children.includes("选择供应商"),
+          typeof node.props.children === "string" && node.props.children.includes("选择供应商"),
       ),
     ).not.toHaveLength(0);
   });
@@ -93,9 +103,9 @@ describe("MobileOnboardingModal", () => {
 
     await press(renderer, "跳过引导");
 
-    expect(
-      renderer.root.findByProps({ accessibilityRole: "alert" }).props.children,
-    ).toContain("暂时无法保存引导状态");
+    expect(renderer.root.findByProps({ accessibilityRole: "alert" }).props.children).toContain(
+      "暂时无法保存引导状态",
+    );
   });
 
   it("reports a replay completion without a persistence destination", async () => {

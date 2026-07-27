@@ -24,12 +24,11 @@ import {
 type MobileOnboardingModalProps = {
   isReplay: boolean;
   language: AuthLanguage;
+  reduceMotionOverride?: boolean;
   showOrderStep: boolean;
   targets: MobileOnboardingTargets;
   visible: boolean;
-  onComplete: (
-    destination: MobileOnboardingCompletionDestination | null,
-  ) => Promise<void>;
+  onComplete: (destination: MobileOnboardingCompletionDestination | null) => Promise<void>;
 };
 
 type MobileOnboardingCopy = {
@@ -80,18 +79,23 @@ const ONBOARDING_COPY: Record<AuthLanguage, MobileOnboardingCopy> = {
   },
   en: {
     back: "Back",
-    congratsBody: "Find team and store achievements here, and learn from the practices worth repeating.",
+    congratsBody:
+      "Find team and store achievements here, and learn from the practices worth repeating.",
     congratsTitle: "Recognition",
     close: "Close",
     finish: "Done",
-    issuesBody: "This is where improvement items are published, so you can adjust store work promptly.",
+    issuesBody:
+      "This is where improvement items are published, so you can adjust store work promptly.",
     issuesTitle: "Improvements",
-    moreBody: "Use the More menu in the top right for your profile, training history, and other work modules.",
+    moreBody:
+      "Use the More menu in the top right for your profile, training history, and other work modules.",
     moreTitle: "More features",
     next: "Next",
-    newsBody: "Head office and store updates appear here. Start your day by checking what matters now.",
+    newsBody:
+      "Head office and store updates appear here. Start your day by checking what matters now.",
     newsTitle: "Updates",
-    ordersBody: "1. Choose a supplier. 2. Set the delivery time and quantities. 3. Review and submit the order.",
+    ordersBody:
+      "1. Choose a supplier. 2. Set the delivery time and quantities. 3. Review and submit the order.",
     ordersTitle: "Ordering steps",
     saveError: "We could not save this guide. Check your connection and try again.",
     skip: "Skip guide",
@@ -102,38 +106,39 @@ const ONBOARDING_COPY: Record<AuthLanguage, MobileOnboardingCopy> = {
   },
   fr: {
     back: "Retour",
-    congratsBody: "Retrouvez ici les réussites des équipes et des boutiques, et les pratiques à reproduire.",
+    congratsBody:
+      "Retrouvez ici les réussites des équipes et des boutiques, et les pratiques à reproduire.",
     congratsTitle: "Félicitations",
     close: "Fermer",
     finish: "Terminer",
-    issuesBody: "Les points à améliorer sont publiés ici pour ajuster rapidement le travail en boutique.",
+    issuesBody:
+      "Les points à améliorer sont publiés ici pour ajuster rapidement le travail en boutique.",
     issuesTitle: "Points à améliorer",
-    moreBody: "Le menu Plus en haut à droite donne accès à votre profil, votre historique de formation et aux autres modules.",
+    moreBody:
+      "Le menu Plus en haut à droite donne accès à votre profil, votre historique de formation et aux autres modules.",
     moreTitle: "Plus de fonctions",
     next: "Suivant",
-    newsBody: "Les actualités du siège et des boutiques sont publiées ici. Commencez par les consulter.",
+    newsBody:
+      "Les actualités du siège et des boutiques sont publiées ici. Commencez par les consulter.",
     newsTitle: "Actualités",
-    ordersBody: "1. Choisissez un fournisseur. 2. Réglez la livraison et les quantités. 3. Vérifiez puis envoyez la commande.",
+    ordersBody:
+      "1. Choisissez un fournisseur. 2. Réglez la livraison et les quantités. 3. Vérifiez puis envoyez la commande.",
     ordersTitle: "Étapes de commande",
     saveError: "Impossible d’enregistrer ce guide. Vérifiez votre connexion et réessayez.",
     skip: "Passer le guide",
     startTraining: "Commencer ma formation",
     stepLabel: (step, total) => `Étape ${step} sur ${total}`,
-    trainingBody: "Commencez ici pour consulter les contenus requis pour votre poste et votre progression.",
+    trainingBody:
+      "Commencez ici pour consulter les contenus requis pour votre poste et votre progression.",
     trainingTitle: "Ouvrir la formation",
   },
 };
 
-const BASE_STEPS: MobileOnboardingTargetId[] = [
-  "news",
-  "congrats",
-  "issues",
-  "training",
-  "more",
-];
+const BASE_STEPS: MobileOnboardingTargetId[] = ["news", "congrats", "issues", "training", "more"];
 export function MobileOnboardingModal({
   isReplay,
   language,
+  reduceMotionOverride,
   showOrderStep,
   targets,
   visible,
@@ -144,19 +149,25 @@ export function MobileOnboardingModal({
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(
+    typeof reduceMotionOverride === "boolean" ? reduceMotionOverride : false,
+  );
   const revealProgress = useRef(new Animated.Value(0)).current;
   const steps = showOrderStep
     ? [...BASE_STEPS.slice(0, 3), "orders" as const, ...BASE_STEPS.slice(3)]
     : BASE_STEPS;
   const activeTargetId = steps[step] ?? "more";
-  const isBottomNavigationTarget =
-    activeTargetId === "orders" || activeTargetId === "training";
+  const isBottomNavigationTarget = activeTargetId === "orders" || activeTargetId === "training";
   const isFinalStep = step === steps.length - 1;
   const target = targets[activeTargetId];
   const targetCenterX = target ? target.x + target.width / 2 : 0;
 
   useEffect(() => {
+    if (typeof reduceMotionOverride === "boolean") {
+      setReduceMotion(reduceMotionOverride);
+      return;
+    }
+
     let isMounted = true;
 
     void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
@@ -169,7 +180,7 @@ export function MobileOnboardingModal({
       isMounted = false;
       subscription.remove();
     };
-  }, []);
+  }, [reduceMotionOverride]);
 
   useEffect(() => {
     if (!visible) return;
@@ -247,8 +258,14 @@ export function MobileOnboardingModal({
           style={[
             styles.pointer,
             isBottomNavigationTarget
-              ? [styles.trainingPointer, { left: targetCenterX - 10, top: target ? target.y - 12 : 0 }]
-              : [styles.morePointer, { left: targetCenterX - 10, top: target ? target.y + target.height : 0 }],
+              ? [
+                  styles.trainingPointer,
+                  { left: targetCenterX - 10, top: target ? target.y - 12 : 0 },
+                ]
+              : [
+                  styles.morePointer,
+                  { left: targetCenterX - 10, top: target ? target.y + target.height : 0 },
+                ],
           ]}
         />
 
@@ -286,7 +303,11 @@ export function MobileOnboardingModal({
           </View>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.body}>{body}</Text>
-          {saveError ? <Text accessibilityRole="alert" style={styles.error}>{saveError}</Text> : null}
+          {saveError ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {saveError}
+            </Text>
+          ) : null}
           <View style={styles.actions}>
             {step > 0 ? (
               <Pressable
@@ -301,9 +322,13 @@ export function MobileOnboardingModal({
               >
                 <Text style={styles.backButtonText}>{copy.back}</Text>
               </Pressable>
-            ) : <View />}
+            ) : (
+              <View />
+            )}
             <Pressable
-              accessibilityLabel={isFinalStep ? (isReplay ? copy.finish : copy.startTraining) : copy.next}
+              accessibilityLabel={
+                isFinalStep ? (isReplay ? copy.finish : copy.startTraining) : copy.next
+              }
               accessibilityRole="button"
               disabled={isSubmitting}
               style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}
@@ -320,9 +345,12 @@ export function MobileOnboardingModal({
   );
 }
 
-function buildSpotlightStyle(
-  target: MobileOnboardingTargetBounds,
-): { height: number; left: number; top: number; width: number } {
+function buildSpotlightStyle(target: MobileOnboardingTargetBounds): {
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+} {
   const padding = 6;
 
   return {
@@ -346,117 +374,119 @@ function getStepContent(
   return { body: copy.moreBody, title: copy.moreTitle };
 }
 
-const styles = StyleSheet.create(scaleStyles({
-  actions: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 24,
-  },
-  backButton: {
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  backButtonText: {
-    color: "rgba(10, 10, 10, 0.62)",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(10, 10, 10, 0.48)",
-  },
-  body: {
-    color: "rgba(10, 10, 10, 0.7)",
-    fontSize: 15,
-    lineHeight: 23,
-  },
-  coachmark: {
-    backgroundColor: "#ffffff",
-    left: 20,
-    padding: 22,
-    position: "absolute",
-    right: 20,
-  },
-  coachmarkHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  error: {
-    color: authControlStyles.colors.redDeep,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 12,
-  },
-  moreCoachmark: {},
-  hiddenTarget: {
-    opacity: 0,
-  },
-  morePointer: {
-    borderBottomColor: "#ffffff",
-    borderBottomWidth: 12,
-    borderLeftColor: "transparent",
-    borderLeftWidth: 10,
-    borderRightColor: "transparent",
-    borderRightWidth: 10,
-    position: "absolute",
-  },
-  nextButton: {
-    alignItems: "center",
-    backgroundColor: authControlStyles.colors.red,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 18,
-  },
-  nextButtonDisabled: {
-    opacity: 0.55,
-  },
-  nextButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  overlay: {
-    flex: 1,
-  },
-  pointer: {
-    zIndex: 2,
-  },
-  skip: {
-    color: "rgba(10, 10, 10, 0.55)",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  spotlight: {
-    borderColor: "#ffffff",
-    borderWidth: 2,
-    height: 68,
-    position: "absolute",
-    width: 68,
-    zIndex: 1,
-  },
-  step: {
-    color: authControlStyles.colors.red,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-  title: {
-    color: authControlStyles.colors.ink,
-    fontSize: 23,
-    fontWeight: "800",
-    lineHeight: 30,
-  },
-  trainingCoachmark: {},
-  trainingPointer: {
-    borderLeftColor: "transparent",
-    borderLeftWidth: 10,
-    borderRightColor: "transparent",
-    borderRightWidth: 10,
-    borderTopColor: "#ffffff",
-    borderTopWidth: 12,
-    position: "absolute",
-  },
-}));
+const styles = StyleSheet.create(
+  scaleStyles({
+    actions: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 24,
+    },
+    backButton: {
+      minHeight: 44,
+      justifyContent: "center",
+    },
+    backButtonText: {
+      color: "rgba(10, 10, 10, 0.62)",
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(10, 10, 10, 0.48)",
+    },
+    body: {
+      color: "rgba(10, 10, 10, 0.7)",
+      fontSize: 15,
+      lineHeight: 23,
+    },
+    coachmark: {
+      backgroundColor: "#ffffff",
+      left: 20,
+      padding: 22,
+      position: "absolute",
+      right: 20,
+    },
+    coachmarkHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 14,
+    },
+    error: {
+      color: authControlStyles.colors.redDeep,
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: 12,
+    },
+    moreCoachmark: {},
+    hiddenTarget: {
+      opacity: 0,
+    },
+    morePointer: {
+      borderBottomColor: "#ffffff",
+      borderBottomWidth: 12,
+      borderLeftColor: "transparent",
+      borderLeftWidth: 10,
+      borderRightColor: "transparent",
+      borderRightWidth: 10,
+      position: "absolute",
+    },
+    nextButton: {
+      alignItems: "center",
+      backgroundColor: authControlStyles.colors.red,
+      justifyContent: "center",
+      minHeight: 44,
+      paddingHorizontal: 18,
+    },
+    nextButtonDisabled: {
+      opacity: 0.55,
+    },
+    nextButtonText: {
+      color: "#ffffff",
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    overlay: {
+      flex: 1,
+    },
+    pointer: {
+      zIndex: 2,
+    },
+    skip: {
+      color: "rgba(10, 10, 10, 0.55)",
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    spotlight: {
+      borderColor: "#ffffff",
+      borderWidth: 2,
+      height: 68,
+      position: "absolute",
+      width: 68,
+      zIndex: 1,
+    },
+    step: {
+      color: authControlStyles.colors.red,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 1,
+    },
+    title: {
+      color: authControlStyles.colors.ink,
+      fontSize: 23,
+      fontWeight: "800",
+      lineHeight: 30,
+    },
+    trainingCoachmark: {},
+    trainingPointer: {
+      borderLeftColor: "transparent",
+      borderLeftWidth: 10,
+      borderRightColor: "transparent",
+      borderRightWidth: 10,
+      borderTopColor: "#ffffff",
+      borderTopWidth: 12,
+      position: "absolute",
+    },
+  }),
+);
