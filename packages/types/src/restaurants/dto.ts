@@ -1,7 +1,9 @@
 export type CreateRestaurantRequest = {
   name: string;
   address: string;
-  photoUrl?: string;
+  photoObjectKey?: string;
 };
 
-export type UpdateRestaurantRequest = Partial<CreateRestaurantRequest>;
+export type UpdateRestaurantRequest = Omit<Partial<CreateRestaurantRequest>, "photoObjectKey"> & {
+  photoObjectKey?: string | null;
+};

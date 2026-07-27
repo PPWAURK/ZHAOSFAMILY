@@ -2,7 +2,7 @@ export type RestaurantSummary = {
   id: number;
   name: string;
   address: string;
-  photoUrl: string | null;
+  photoObjectKey: string | null;
 };
 
 export type RestaurantDetail = RestaurantSummary;

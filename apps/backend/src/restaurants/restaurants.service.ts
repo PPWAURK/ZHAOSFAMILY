@@ -12,7 +12,7 @@ export type RestaurantListItem = {
   id: number;
   name: string;
   address: string;
-  photoUrl: string | null;
+  photoObjectKey: string | null;
 };
 
 @Injectable()
@@ -40,7 +40,7 @@ export class RestaurantsService {
         id: true,
         name: true,
         address: true,
-        photoUrl: true,
+        photoObjectKey: true,
       },
       orderBy: {
         id: 'asc',
@@ -51,7 +51,7 @@ export class RestaurantsService {
       id: restaurant.id,
       name: restaurant.name,
       address: restaurant.address,
-      photoUrl: restaurant.photoUrl,
+      photoObjectKey: restaurant.photoObjectKey,
     }));
   }
 
@@ -64,7 +64,7 @@ export class RestaurantsService {
         id: true,
         name: true,
         address: true,
-        photoUrl: true,
+        photoObjectKey: true,
       },
     });
 
@@ -83,14 +83,14 @@ export class RestaurantsService {
         data: {
           name: dto.name.trim(),
           address: dto.address.trim(),
-          photoUrl: this.normalizePhotoUrl(dto.photoUrl),
+          photoObjectKey: this.normalizePhotoObjectKey(dto.photoObjectKey),
           updatedAt: new Date(),
         },
         select: {
           id: true,
           name: true,
           address: true,
-          photoUrl: true,
+          photoObjectKey: true,
         },
       });
     } catch (error) {
@@ -110,8 +110,12 @@ export class RestaurantsService {
         data: {
           ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
           ...(dto.address !== undefined ? { address: dto.address.trim() } : {}),
-          ...(dto.photoUrl !== undefined
-            ? { photoUrl: this.normalizePhotoUrl(dto.photoUrl) }
+          ...(dto.photoObjectKey !== undefined
+            ? {
+                photoObjectKey: this.normalizePhotoObjectKey(
+                  dto.photoObjectKey,
+                ),
+              }
             : {}),
           updatedAt: new Date(),
         },
@@ -119,7 +123,7 @@ export class RestaurantsService {
           id: true,
           name: true,
           address: true,
-          photoUrl: true,
+          photoObjectKey: true,
         },
       });
     } catch (error) {
@@ -139,12 +143,14 @@ export class RestaurantsService {
     }
   }
 
-  private normalizePhotoUrl(photoUrl: string | undefined): string | null {
-    if (photoUrl === undefined) {
+  private normalizePhotoObjectKey(
+    photoObjectKey: string | null | undefined,
+  ): string | null {
+    if (photoObjectKey === undefined || photoObjectKey === null) {
       return null;
     }
 
-    return photoUrl.trim() || null;
+    return photoObjectKey.trim() || null;
   }
 
   private handleRestaurantWriteError(error: unknown): never {

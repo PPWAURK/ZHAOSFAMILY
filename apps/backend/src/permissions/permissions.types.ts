@@ -35,5 +35,5 @@ export type ManageableRestaurantItem = {
   id: number;
   name: string;
   address: string;
-  photoUrl: string | null;
+  photoObjectKey: string | null;
 };

@@ -11,9 +11,7 @@ import {
   DASHBOARD_MENU_LABELS,
 } from "@/features/dashboard/constants/dashboard-copy";
 import StoreCard from "@/features/stores/components/StoreCard";
-import {
-  STORES_COPY,
-} from "@/features/stores/constants/stores-copy";
+import { STORES_COPY } from "@/features/stores/constants/stores-copy";
 import {
   createRestaurant,
   deleteRestaurant,
@@ -29,7 +27,7 @@ import styles from "@/features/stores/stores-page.module.css";
 const EMPTY_STORE_FORM = {
   name: "",
   address: "",
-  photoUrl: "",
+  photoObjectKey: "",
 };
 
 function getJobRoleValues(user) {
@@ -43,8 +41,7 @@ function canManageStoreRecords(user) {
   const roleValues = getJobRoleValues(user);
 
   return (
-    roleValues.includes("holding") ||
-    (user?.permissions || []).includes("system.permission.manage")
+    roleValues.includes("holding") || (user?.permissions || []).includes("system.permission.manage")
   );
 }
 
@@ -169,7 +166,7 @@ export default function StoresPage() {
     setDraft({
       name: store.name,
       address: store.address,
-      photoUrl: store.photoUrl || "",
+      photoObjectKey: store.photoObjectKey || "",
     });
     setPhotoFile(null);
     setPhotoPreviewUrl("");
@@ -208,7 +205,7 @@ export default function StoresPage() {
   function clearStorePhoto() {
     setPhotoFile(null);
     setPhotoPreviewUrl("");
-    patchDraft("photoUrl", "");
+    patchDraft("photoObjectKey", "");
 
     if (photoInputRef.current) {
       photoInputRef.current.value = "";
@@ -222,7 +219,7 @@ export default function StoresPage() {
     const input = {
       name: draft.name.trim(),
       address: draft.address.trim(),
-      photoUrl: draft.photoUrl.trim(),
+      photoObjectKey: draft.photoObjectKey.trim(),
     };
 
     if (!input.name || !input.address) {
@@ -233,11 +230,11 @@ export default function StoresPage() {
     setIsSavingStore(true);
 
     try {
-      let photoUrl = input.photoUrl;
+      let photoObjectKey = input.photoObjectKey;
 
       if (photoFile) {
         try {
-          photoUrl = await uploadStorePhoto(photoFile);
+          photoObjectKey = await uploadStorePhoto(photoFile);
         } catch {
           setFormError(t.photoUploadError);
           return;
@@ -245,17 +242,15 @@ export default function StoresPage() {
       }
 
       const savedStore = editingStoreId
-        ? await updateRestaurant(editingStoreId, { ...input, photoUrl })
-        : await createRestaurant({ ...input, photoUrl });
+        ? await updateRestaurant(editingStoreId, { ...input, photoObjectKey })
+        : await createRestaurant({ ...input, photoObjectKey });
 
       setStores((current) => {
         if (!editingStoreId) {
           return [...current, savedStore];
         }
 
-        return current.map((store) =>
-          store.id === savedStore.id ? savedStore : store,
-        );
+        return current.map((store) => (store.id === savedStore.id ? savedStore : store));
       });
       resetStoreForm();
     } catch (error) {
@@ -379,9 +374,7 @@ export default function StoresPage() {
           ) : null}
         </div>
 
-        {isLoadingStores ? (
-          <div className={styles.statePanel}>{t.loading}</div>
-        ) : null}
+        {isLoadingStores ? <div className={styles.statePanel}>{t.loading}</div> : null}
 
         {!isLoadingStores && storesError ? (
           <div className={styles.statePanel} role="alert">
@@ -433,10 +426,7 @@ export default function StoresPage() {
             aria-modal="true"
             aria-labelledby="store-form-title"
           >
-            <form
-              className={`${styles.formPanel} ${styles.modalForm}`}
-              onSubmit={handleSaveStore}
-            >
+            <form className={`${styles.formPanel} ${styles.modalForm}`} onSubmit={handleSaveStore}>
               <div className={styles.modalFormHeader}>
                 <div className={styles.modalTitleGroup}>
                   <span className={styles.modalEyebrow}>{t.modalEyebrow}</span>
@@ -462,9 +452,7 @@ export default function StoresPage() {
                     <span>{t.nameLabel}</span>
                     <input
                       value={draft.name}
-                      onChange={(event) =>
-                        patchDraft("name", event.target.value)
-                      }
+                      onChange={(event) => patchDraft("name", event.target.value)}
                       placeholder={t.namePlaceholder}
                       disabled={isSavingStore}
                     />
@@ -474,9 +462,7 @@ export default function StoresPage() {
                     <span>{t.addressLabel}</span>
                     <input
                       value={draft.address}
-                      onChange={(event) =>
-                        patchDraft("address", event.target.value)
-                      }
+                      onChange={(event) => patchDraft("address", event.target.value)}
                       placeholder={t.addressLabel}
                       disabled={isSavingStore}
                     />
@@ -487,12 +473,9 @@ export default function StoresPage() {
                   <span>{t.photoLabel}</span>
                   <div className={styles.photoUpload}>
                     <div className={styles.photoPreview}>
-                      {photoPreviewUrl || draft.photoUrl ? (
+                      {photoPreviewUrl || draft.photoObjectKey ? (
                         <img
-                          src={
-                            photoPreviewUrl ||
-                            resolveStorePhotoPath(draft.photoUrl)
-                          }
+                          src={photoPreviewUrl || resolveStorePhotoPath(draft.photoObjectKey)}
                           alt=""
                         />
                       ) : (
@@ -510,7 +493,7 @@ export default function StoresPage() {
                         />
                         {photoFile ? t.photoChange : t.photoUpload}
                       </label>
-                      {photoFile || draft.photoUrl ? (
+                      {photoFile || draft.photoObjectKey ? (
                         <button
                           type="button"
                           className={styles.photoClearButton}
@@ -543,11 +526,7 @@ export default function StoresPage() {
                 >
                   {t.cancel}
                 </button>
-                <button
-                  type="submit"
-                  className={styles.formPrimaryButton}
-                  disabled={isSavingStore}
-                >
+                <button type="submit" className={styles.formPrimaryButton} disabled={isSavingStore}>
                   {editingStoreId ? t.saveEdit : t.saveCreate}
                 </button>
               </div>

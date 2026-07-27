@@ -59,9 +59,7 @@ function isInvalidProductImageUrl(image: string): boolean {
   return isProductImagePath && !PRODUCT_IMAGE_FILE_NAME_PATTERN.test(path);
 }
 
-export function resolveProductImageUrl(
-  image: string | null | undefined,
-): string {
+export function resolveProductImageUrl(image: string | null | undefined): string {
   if (!image) return "";
 
   const normalizedImage = image.trim();
@@ -131,13 +129,7 @@ export const apiClient = createApiClient({
   setRefreshToken: syncRefreshToken,
 });
 
-export {
-  ApiClientError,
-  getAccessToken,
-  setAccessToken,
-  getRefreshToken,
-  setRefreshToken,
-};
+export { ApiClientError, getAccessToken, setAccessToken, getRefreshToken, setRefreshToken };
 
 export type SignedMediaUrl = {
   url: string;
@@ -148,12 +140,16 @@ export type SignedMediaUrl = {
 // from the private bucket (R2). The request is authenticated with the normal
 // Bearer header via apiClient, so the session token never enters the media URL.
 // Prefer this (or the useMediaUrl hook) over buildMediaFileUrl.
-export async function fetchSignedMediaUrl(
-  objectKey: string,
-): Promise<SignedMediaUrl> {
-  return apiClient.get<SignedMediaUrl>(
-    `/media/sign?objectKey=${encodeURIComponent(objectKey)}`,
-  );
+export async function fetchSignedMediaUrl(objectKey: string): Promise<SignedMediaUrl> {
+  return apiClient.get<SignedMediaUrl>(`/media/sign?objectKey=${encodeURIComponent(objectKey)}`);
+}
+
+/**
+ * Builds the runtime URL for a public store photo. Only object keys from the
+ * dedicated stores/photos folder are accepted by the backend route.
+ */
+export function buildPublicStorePhotoUrl(objectKey: string): string {
+  return `${API_URL}/media/public-file?objectKey=${encodeURIComponent(objectKey)}`;
 }
 
 // @deprecated Legacy media URL that embeds the full access token as a query

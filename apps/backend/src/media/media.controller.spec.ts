@@ -83,6 +83,44 @@ describe('MediaController', () => {
     expect(stream.pipe).toHaveBeenCalledWith(response);
   });
 
+  it('serves store photos without requiring a session', async () => {
+    const { controller, mediaService } = createController();
+    const response = createResponseMock();
+    const stream = createStreamMock();
+
+    mediaService.getFileMetadata.mockResolvedValue({
+      mimeType: 'image/jpeg',
+      size: 123,
+    });
+    mediaService.getFile.mockResolvedValue({
+      mimeType: 'image/jpeg',
+      size: 123,
+      stream,
+    });
+
+    await controller.getPublicStorePhoto(
+      { objectKey: 'stores/photos/2026/07/store.jpg' },
+      { headers: {} } as Request,
+      response,
+    );
+
+    expect(stream.pipe).toHaveBeenCalledWith(response);
+  });
+
+  it('does not expose non-store objects through the public media route', async () => {
+    const { controller, mediaService } = createController();
+    const response = createResponseMock();
+
+    await expect(
+      controller.getPublicStorePhoto(
+        { objectKey: 'training/2026/07/video.mp4' },
+        { headers: {} } as Request,
+        response,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(mediaService.getFileMetadata).not.toHaveBeenCalled();
+  });
+
   it('returns a presigned URL and its expiry without exposing the session token', async () => {
     const { controller, mediaService } = createController();
     mediaService.getSignedUrl.mockResolvedValue(

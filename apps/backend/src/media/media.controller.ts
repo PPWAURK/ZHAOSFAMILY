@@ -201,6 +201,31 @@ export class MediaController {
     const user = await this.authService.getCurrentUser(accessToken);
     this.assertInspectionReportPermission(objectKey, user.permissions);
 
+    await this.streamFile(objectKey, request, response);
+  }
+
+  // Store photos are intentionally public because they appear in the
+  // unauthenticated registration flow. Restrict this route to the dedicated
+  // upload folder so it cannot expose arbitrary private media.
+  @Public()
+  @Get('public-file')
+  async getPublicStorePhoto(
+    @Query() query: SignMediaQueryDto,
+    @Req() request: Request,
+    @Res() response: Response,
+  ): Promise<void> {
+    if (!this.isStorePhoto(query.objectKey)) {
+      throw new ForbiddenException('PUBLIC_MEDIA_ACCESS_DENIED');
+    }
+
+    await this.streamFile(query.objectKey, request, response);
+  }
+
+  private async streamFile(
+    objectKey: string,
+    request: Request,
+    response: Response,
+  ): Promise<void> {
     const metadata = await this.mediaService.getFileMetadata(objectKey);
     const range = parseRangeHeader(request.headers.range, metadata.size);
 
@@ -269,5 +294,9 @@ export class MediaController {
     return ABC_INSPECTION_REPORT_FOLDERS.some((folder) =>
       objectKey.startsWith(folder),
     );
+  }
+
+  private isStorePhoto(objectKey: string): boolean {
+    return objectKey.startsWith('stores/photos/');
   }
 }

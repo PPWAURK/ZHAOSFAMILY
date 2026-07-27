@@ -1,15 +1,12 @@
-import { MOBILE_API_URL } from "@/lib/env";
 import { mobileApiClient } from "@/lib/api";
-import type {
-  MobilePermissionUser,
-  MobileStore,
-} from "@/features/stores/storeTypes";
+import { buildPublicStorePhotoUrl } from "@/lib/media";
+import type { MobilePermissionUser, MobileStore } from "@/features/stores/storeTypes";
 
 type ManageableRestaurantResponse = {
   id: number | string;
   name?: string | null;
   address?: string | null;
-  photoUrl?: string | null;
+  photoObjectKey?: string | null;
 };
 
 type PermissionUserResponse = {
@@ -28,25 +25,8 @@ function formatStoreCode(restaurantId: number | string): string {
   return `STORE ${String(restaurantId).padStart(3, "0")}`;
 }
 
-function resolveApiOrigin(): string {
-  try {
-    return new URL(MOBILE_API_URL).origin;
-  } catch {
-    return "";
-  }
-}
-
-function resolvePhotoUri(photoUrl?: string | null): string | null {
-  if (!photoUrl) return null;
-  if (/^(https?:)?\/\//i.test(photoUrl) || photoUrl.startsWith("data:")) {
-    return photoUrl;
-  }
-
-  const apiOrigin = resolveApiOrigin();
-  if (!apiOrigin) return photoUrl;
-  if (photoUrl.startsWith("/")) return `${apiOrigin}${photoUrl}`;
-
-  return `${apiOrigin}/${photoUrl.replace(/^\/+/, "")}`;
+function resolvePhotoUri(photoObjectKey?: string | null): string | null {
+  return photoObjectKey ? buildPublicStorePhotoUrl(photoObjectKey) : null;
 }
 
 function toNumberId(value: number | string): number {
@@ -60,8 +40,8 @@ function mapRestaurant(restaurant: ManageableRestaurantResponse): MobileStore {
     id,
     name: restaurant.name || "",
     address: restaurant.address || "",
-    photoUrl: restaurant.photoUrl || null,
-    photoUri: resolvePhotoUri(restaurant.photoUrl),
+    photoObjectKey: restaurant.photoObjectKey || null,
+    photoUri: resolvePhotoUri(restaurant.photoObjectKey),
     storeCode: formatStoreCode(id),
   };
 }
@@ -91,9 +71,7 @@ export async function fetchManageableStores(): Promise<MobileStore[]> {
 }
 
 export async function fetchApprovableUsers(): Promise<MobilePermissionUser[]> {
-  const users = await mobileApiClient.get<PermissionUserResponse[]>(
-    "/permissions/users/approvals",
-  );
+  const users = await mobileApiClient.get<PermissionUserResponse[]>("/permissions/users/approvals");
 
   return Array.isArray(users) ? users.map(mapPermissionUser) : [];
 }

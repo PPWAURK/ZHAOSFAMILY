@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { MediaLink } from "@/shared/components/media/MediaLink";
+import { buildPublicStorePhotoUrl } from "@/shared/api/api-client";
 
 const GRADES = ["A", "B", "C"];
 
@@ -7,17 +8,17 @@ function getStoreInitial(storeName) {
   return storeName.trim().slice(0, 1).toUpperCase();
 }
 
-function StorePhoto({ storeName, photoUrl, styles }) {
+function StorePhoto({ storeName, photoObjectKey, styles }) {
   const [imageFailed, setImageFailed] = useState(false);
 
-  if (!photoUrl || imageFailed) {
+  if (!photoObjectKey || imageFailed) {
     return <span className={styles.storePhotoFallback}>{getStoreInitial(storeName)}</span>;
   }
 
   return (
     <img
       className={styles.storePhoto}
-      src={photoUrl}
+      src={buildPublicStorePhotoUrl(photoObjectKey)}
       alt=""
       loading="lazy"
       onError={() => setImageFailed(true)}
@@ -77,7 +78,11 @@ function StoreGradeCard({
   return (
     <article className={`${styles.gradeStoreCard} ${gradeClass}`}>
       <div className={styles.gradeStoreTop}>
-        <StorePhoto storeName={store.storeName} photoUrl={store.photoUrl} styles={styles} />
+        <StorePhoto
+          storeName={store.storeName}
+          photoObjectKey={store.photoObjectKey}
+          styles={styles}
+        />
         <div className={styles.gradeStoreHeader}>
           <div>
             <h3 className={styles.storeName}>{store.storeName}</h3>

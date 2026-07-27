@@ -27,6 +27,7 @@ export type AuthUser = {
   avatar?: string | null;
   avatarUrl?: string | null;
   preferredLanguage?: "zh" | "en" | "fr" | (string & {}) | null;
+  mobileOnboardingCompletedAt?: string | null;
   permissions?: string[];
   store?: AuthStoreRef | null;
 };

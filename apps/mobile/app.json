@@ -3,7 +3,7 @@
     "name": "ZHAO's Family",
     "slug": "zhao-family-mobile",
     "scheme": "zhaofamily",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/play-store/app-icon-1024.png",

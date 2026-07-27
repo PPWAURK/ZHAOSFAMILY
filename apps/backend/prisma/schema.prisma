@@ -29,6 +29,7 @@ model User {
   userLevel                  Int                        @default(0) @map("user_level") @db.UnsignedTinyInt
   acceptedTerms              Boolean                    @default(false) @map("accepted_terms")
   preferredLanguage          String                     @default("fr") @map("preferred_language")
+  mobileOnboardingCompletedAt DateTime?                 @map("mobile_onboarding_completed_at")
   invitationTokenHash        String?                    @map("invitation_token_hash") @db.VarChar(64)
   invitationExpiresAt        DateTime?                  @map("invitation_expires_at")
   passwordResetTokenHash     String?                    @map("password_reset_token_hash") @db.VarChar(64)
@@ -165,7 +166,7 @@ model Restaurant {
   id                  Int                  @id @default(autoincrement())
   name                String               @unique
   address             String
-  photoUrl            String?              @map("photo_url")
+  photoObjectKey      String?              @map("photo_object_key") @db.VarChar(191)
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @map("updated_at")
   users               User[]

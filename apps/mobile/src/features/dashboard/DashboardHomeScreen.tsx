@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   Animated,
   Easing,
@@ -72,6 +80,14 @@ import { fetchTrainingMyTitles } from "@/features/training/trainingApi";
 import type { TrainingTitle } from "@/features/training/trainingTypes";
 import { WaitingQueueModuleScreen } from "@/features/waiting-queue/WaitingQueueModuleScreen";
 import { NotificationCenter } from "@/features/notifications/NotificationCenter";
+import { MobileOnboardingModal } from "@/features/onboarding/MobileOnboardingModal";
+import {
+  shouldShowMobileOnboarding,
+  type MobileOnboardingTargetBounds,
+  type MobileOnboardingTargetId,
+  type MobileOnboardingTargets,
+} from "@/features/onboarding/mobileOnboardingState";
+import { useSplashCompletion } from "@/features/splash/SplashCompletionProvider";
 
 type DashboardHomeScreenProps = {
   language: AuthLanguage;
@@ -80,7 +96,17 @@ type DashboardHomeScreenProps = {
   onLogout: () => Promise<void>;
   onChangePassword: (input: ChangePasswordRequest) => Promise<void>;
   onUpdateProfile: (input: UpdateMeRequest) => Promise<void>;
+  onCompleteMobileOnboarding: () => Promise<void>;
   onDeleteAccount: (input: DeleteAccountRequest) => Promise<void>;
+};
+
+const EMPTY_ONBOARDING_TARGETS: MobileOnboardingTargets = {
+  congrats: null,
+  issues: null,
+  more: null,
+  news: null,
+  orders: null,
+  training: null,
 };
 
 const PDF_LOADING_MIN_DURATION_MS = 2000;
@@ -183,12 +209,20 @@ export function DashboardHomeScreen({
   onLogout,
   onChangePassword,
   onUpdateProfile,
+  onCompleteMobileOnboarding,
   onDeleteAccount,
 }: DashboardHomeScreenProps) {
   useScreenName("dashboard");
   const copy = DASHBOARD_COPY[language];
   const orderCopy = ORDER_COPY[language];
+  const isSplashComplete = useSplashCompletion();
   const [activeEntry, setActiveEntry] = useState("home");
+  const [isOnboardingReplay, setIsOnboardingReplay] = useState(false);
+  const [isOnboardingVisible, setIsOnboardingVisible] = useState(false);
+  const [isOnboardingReplayPending, setIsOnboardingReplayPending] = useState(false);
+  const [onboardingTargets, setOnboardingTargets] = useState<MobileOnboardingTargets>(
+    EMPTY_ONBOARDING_TARGETS,
+  );
 
   // Route to the relevant module when the app is opened from a push tap.
   useNotificationNavigation((entry) => setActiveEntry(entry));
@@ -226,6 +260,10 @@ export function DashboardHomeScreen({
   // Keep the mobile trigger on the right while matching the Web drawer styling.
   const [isMoreRendered, setIsMoreRendered] = useState(false);
   const moreDrawerProgress = useRef(new Animated.Value(0)).current;
+  const lastOnboardingUserIdRef = useRef<string | null>(null);
+  const moreNavigationRef = useRef<View>(null);
+  const orderNavigationRef = useRef<View>(null);
+  const trainingNavigationRef = useRef<View>(null);
   const moreDrawerWidth = Math.min(360, Math.round(screenWidth * 0.88));
   const moreDrawerTranslateX = moreDrawerProgress.interpolate({
     inputRange: [0, 1],
@@ -255,6 +293,14 @@ export function DashboardHomeScreen({
       }
     });
   }, [isMoreOpen, moreDrawerProgress]);
+
+  useEffect(() => {
+    if (!isOnboardingReplayPending || isMoreRendered) return;
+
+    setIsOnboardingReplayPending(false);
+    setIsOnboardingReplay(true);
+    setIsOnboardingVisible(true);
+  }, [isMoreRendered, isOnboardingReplayPending]);
 
   const displayName = resolveDisplayName(user, copy.greetingFallback);
   const userCard = useMemo(
@@ -341,6 +387,94 @@ export function DashboardHomeScreen({
     setNewsCarouselIndex(0);
   }, [newsSearchTerm, selectedNewsCategory]);
 
+  useEffect(() => {
+    if (!isSplashComplete) return;
+
+    const userId = String(user.id);
+
+    if (!shouldShowMobileOnboarding(user.mobileOnboardingCompletedAt)) {
+      lastOnboardingUserIdRef.current = userId;
+      return;
+    }
+
+    if (lastOnboardingUserIdRef.current !== userId) {
+      lastOnboardingUserIdRef.current = userId;
+      setIsOnboardingReplay(false);
+      setIsOnboardingVisible(true);
+    }
+  }, [isSplashComplete, user.id, user.mobileOnboardingCompletedAt]);
+
+  const updateOnboardingTarget = useCallback(
+    (target: MobileOnboardingTargetId, nextBounds: MobileOnboardingTargetBounds): void => {
+      setOnboardingTargets((current) => {
+        const currentBounds = current[target];
+
+        if (
+          currentBounds &&
+          currentBounds.x === nextBounds.x &&
+          currentBounds.y === nextBounds.y &&
+          currentBounds.width === nextBounds.width &&
+          currentBounds.height === nextBounds.height
+        ) {
+          return current;
+        }
+
+        return { ...current, [target]: nextBounds };
+      });
+    },
+    [],
+  );
+
+  const measureOnboardingTargets = useCallback((): void => {
+    const targets: Partial<MobileOnboardingTargets> = {};
+    const targetRefs: Array<{
+      ref: RefObject<View | null>;
+      target: "more" | "orders" | "training";
+    }> = [
+      { ref: moreNavigationRef, target: "more" },
+      { ref: orderNavigationRef, target: "orders" },
+      { ref: trainingNavigationRef, target: "training" },
+    ];
+    const targetsToMeasure = targetRefs.filter(({ ref }) => ref.current !== null);
+    let pendingMeasurements = targetsToMeasure.length;
+
+    if (pendingMeasurements === 0) return;
+
+    function storeMeasurement(
+      target: "more" | "orders" | "training",
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+    ): void {
+      targets[target] = { height, width, x, y };
+      pendingMeasurements -= 1;
+
+      if (pendingMeasurements === 0) {
+        setOnboardingTargets((current) => ({
+          ...current,
+          more: targets.more ?? current.more,
+          orders: targets.orders ?? current.orders,
+          training: targets.training ?? current.training,
+        }));
+      }
+    }
+
+    targetsToMeasure.forEach(({ ref, target }) => {
+      ref.current?.measureInWindow((x, y, width, height) => {
+        storeMeasurement(target, x, y, width, height);
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isOnboardingVisible) return undefined;
+
+    const animationFrame = requestAnimationFrame(measureOnboardingTargets);
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [isOnboardingVisible, measureOnboardingTargets, screenWidth]);
+
   function handleEntryPress(item: DashboardNavItem): void {
     setActionMessage("");
 
@@ -364,6 +498,30 @@ export function DashboardHomeScreen({
     setIsMoreOpen(false);
     setActiveEntry(nextEntry);
     setActionMessage(isConnectedDashboardEntry(nextEntry) ? "" : copy.unavailable);
+  }
+
+  function openOnboardingReplay(): void {
+    setActiveEntry("home");
+    scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
+    setIsMoreOpen(false);
+    setIsOnboardingReplayPending(true);
+  }
+
+  async function completeOnboarding(destination: "home" | "training" | null): Promise<void> {
+    if (destination === null) {
+      setIsOnboardingVisible(false);
+      setIsOnboardingReplay(false);
+      return;
+    }
+
+    await onCompleteMobileOnboarding();
+    setIsOnboardingVisible(false);
+    setIsOnboardingReplay(false);
+
+    if (destination === "training") {
+      setActiveEntry("training");
+      scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
+    }
   }
 
   async function handleLogoutPress(): Promise<void> {
@@ -524,6 +682,7 @@ export function DashboardHomeScreen({
                 <Pressable
                   accessibilityLabel={moreNavLabel}
                   accessibilityRole="button"
+                  ref={moreNavigationRef}
                   style={styles.topMenuButton}
                   onPress={() => setIsMoreOpen(true)}
                 >
@@ -604,6 +763,9 @@ export function DashboardHomeScreen({
                 visiblePosts={visibleNewsPosts}
                 onMove={moveNewsPost}
                 onOpenPost={(post) => void handleOpenNewsPost(post)}
+                onCategoryTargetMeasure={(category, bounds) =>
+                  updateOnboardingTarget(category, bounds)
+                }
                 onSearchChange={setNewsSearchTerm}
                 onSelectCategory={setSelectedNewsCategory}
               />
@@ -782,6 +944,13 @@ export function DashboardHomeScreen({
                     accessibilityLabel={item.label[language]}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: isActive }}
+                    ref={
+                      item.id === "orders"
+                        ? orderNavigationRef
+                        : item.id === "training"
+                          ? trainingNavigationRef
+                          : undefined
+                    }
                     style={styles.bottomNavItem}
                     onPress={() => handleEntryPress(item)}
                   >
@@ -956,6 +1125,16 @@ export function DashboardHomeScreen({
                         </View>
                       </View>
                     ))}
+                    <Pressable
+                      accessibilityLabel={copy.onboarding}
+                      accessibilityRole="button"
+                      style={styles.moreItem}
+                      onPress={openOnboardingReplay}
+                    >
+                      <Text style={styles.moreIndex}>+</Text>
+                      <Text style={styles.moreText}>{copy.onboarding}</Text>
+                      <Text style={styles.moreArrow}>→</Text>
+                    </Pressable>
                   </ScrollView>
 
                   <Pressable
@@ -975,6 +1154,14 @@ export function DashboardHomeScreen({
             </Animated.View>
           </View>
         </Modal>
+        <MobileOnboardingModal
+          isReplay={isOnboardingReplay}
+          language={language}
+          showOrderStep={visiblePrimaryNav.some((item) => item.id === "orders")}
+          targets={onboardingTargets}
+          visible={isOnboardingVisible}
+          onComplete={completeOnboarding}
+        />
       </View>
     </SafeAreaView>
   );

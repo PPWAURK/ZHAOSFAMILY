@@ -2,7 +2,7 @@ export type MobileStore = {
   id: number;
   name: string;
   address: string;
-  photoUrl: string | null;
+  photoObjectKey: string | null;
   storeCode: string;
   photoUri: string | null;
 };

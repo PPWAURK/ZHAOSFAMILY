@@ -255,6 +255,10 @@ export function LoginScreen() {
     await mobileAuthActions.updateMe(input);
   }
 
+  async function completeMobileOnboarding(): Promise<void> {
+    await mobileAuthActions.updateMe({ completedMobileOnboarding: true });
+  }
+
   // Persists the chosen display language to the account so notifications (built
   // from `preferredLanguage` on the server) follow it. Best-effort: a failed
   // write only means the badge language lags, never a broken UI.
@@ -353,6 +357,7 @@ export function LoginScreen() {
         onLogout={submitLogout}
         onChangePassword={submitPasswordChange}
         onUpdateProfile={submitProfileUpdate}
+        onCompleteMobileOnboarding={completeMobileOnboarding}
         onDeleteAccount={submitDeleteAccount}
       />
     );

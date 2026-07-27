@@ -275,7 +275,7 @@ export class PermissionsService {
         id: true,
         name: true,
         address: true,
-        photoUrl: true,
+        photoObjectKey: true,
       },
       orderBy: {
         id: 'asc',

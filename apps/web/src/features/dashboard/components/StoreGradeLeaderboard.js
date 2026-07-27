@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 
+import { buildPublicStorePhotoUrl } from "@/shared/api/api-client";
 import styles from "@/features/dashboard/components/store-grade-leaderboard.module.css";
 
 const GRADES = ["A", "B", "C"];
@@ -11,11 +12,11 @@ function getStoreInitial(storeName) {
 }
 
 function StorePhoto({ entry }) {
-  if (!entry.photoUrl) {
+  if (!entry.photoObjectKey) {
     return <span className={styles.storePhotoFallback}>{getStoreInitial(entry.storeName)}</span>;
   }
 
-  return <img src={entry.photoUrl} alt="" loading="lazy" />;
+  return <img src={buildPublicStorePhotoUrl(entry.photoObjectKey)} alt="" loading="lazy" />;
 }
 
 export default function StoreGradeLeaderboard({

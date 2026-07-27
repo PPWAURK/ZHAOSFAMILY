@@ -70,7 +70,7 @@ type CreateUserArgs = {
         id: true;
         name: true;
         address: true;
-        photoUrl: true;
+        photoObjectKey: true;
       };
     };
   };
@@ -133,7 +133,7 @@ describe('AuthService', () => {
         id: 3,
         name: 'ZHAO Test',
         address: '1 Rue Test',
-        photoUrl: null,
+        photoObjectKey: null,
       },
       birthday: new Date('1995-03-01T00:00:00.000Z'),
       jobRole: 'front-of-house',
@@ -250,7 +250,7 @@ describe('AuthService', () => {
           id: true,
           name: true,
           address: true,
-          photoUrl: true,
+          photoObjectKey: true,
         },
       },
     });
@@ -374,6 +374,86 @@ describe('AuthService', () => {
     );
   });
 
+  it('records the mobile onboarding completion timestamp for the current user', async () => {
+    const { authService, prismaService } = createService();
+    const completedAt = new Date('2026-07-27T12:00:00.000Z');
+
+    prismaService.user.update.mockResolvedValueOnce({
+      id: 7,
+      familyName: 'Zhao',
+      givenName: 'Lina',
+      name: 'Zhao Lina',
+      email: 'lina@example.com',
+      emailVerified: true,
+      accountStatus: 'approved',
+      restaurantId: 3,
+      restaurant: {
+        id: 3,
+        name: 'ZHAO Test',
+        address: '1 Rue Test',
+        photoObjectKey: null,
+      },
+      birthday: null,
+      jobRole: 'front-of-house',
+      phone: null,
+      address: null,
+      profilePhoto: null,
+      userLevel: 0,
+      preferredLanguage: 'fr',
+      mobileOnboardingCompletedAt: completedAt,
+    });
+
+    const result = await authService.updateCurrentUser(signTestAccessToken(7), {
+      completedMobileOnboarding: true,
+    });
+
+    const [updateCall] = prismaService.user.update.mock.calls[0] as [
+      UpdateUserCall,
+    ];
+    expect(updateCall.where).toEqual({ id: 7 });
+    expect(updateCall.data.mobileOnboardingCompletedAt).toBeInstanceOf(Date);
+    expect(result.mobileOnboardingCompletedAt).toBe(completedAt.toISOString());
+  });
+
+  it('does not alter mobile onboarding completion for other profile updates', async () => {
+    const { authService, prismaService } = createService();
+
+    prismaService.user.update.mockResolvedValueOnce({
+      id: 7,
+      familyName: 'Zhao',
+      givenName: 'Lina',
+      name: 'Zhao Lina',
+      email: 'lina@example.com',
+      emailVerified: true,
+      accountStatus: 'approved',
+      restaurantId: 3,
+      restaurant: {
+        id: 3,
+        name: 'ZHAO Test',
+        address: '1 Rue Test',
+        photoObjectKey: null,
+      },
+      birthday: null,
+      jobRole: 'front-of-house',
+      phone: '0600000000',
+      address: null,
+      profilePhoto: null,
+      userLevel: 0,
+      preferredLanguage: 'fr',
+      mobileOnboardingCompletedAt: null,
+    });
+
+    await authService.updateCurrentUser(signTestAccessToken(7), {
+      phone: '0600000000',
+    });
+
+    const [updateCall] = prismaService.user.update.mock.calls[0] as [
+      UpdateUserCall,
+    ];
+    expect(updateCall.data).not.toHaveProperty('mobileOnboardingCompletedAt');
+    expect(updateCall.data).toMatchObject({ phone: '0600000000' });
+  });
+
   it('can expose reset URL when local password reset debug is enabled', async () => {
     const { authService, prismaService } = createService({
       passwordResetDebug: true,
@@ -476,7 +556,7 @@ describe('AuthService', () => {
         id: 3,
         name: 'ZHAO Test',
         address: '1 Rue Test',
-        photoUrl: null,
+        photoObjectKey: null,
       },
       birthday: null,
       jobRole: null,
@@ -633,7 +713,7 @@ describe('AuthService', () => {
       emailVerified: true,
       accountStatus: 'approved',
       restaurantId: 1,
-      restaurant: { id: 1, name: 'S', address: 'x', photoUrl: null },
+      restaurant: { id: 1, name: 'S', address: 'x', photoObjectKey: null },
       jobRole: null,
       birthday: null,
       profilePhoto: null,

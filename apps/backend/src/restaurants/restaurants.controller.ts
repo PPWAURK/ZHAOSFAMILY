@@ -26,7 +26,7 @@ export class RestaurantsController {
   constructor(private readonly restaurantsService: RestaurantsService) {}
 
   // Public: web/mobile registration flows populate the store picker before
-  // login. RestaurantListItem only exposes id/name/address/photoUrl — no
+  // login. RestaurantListItem only exposes id/name/address/photoObjectKey — no
   // sensitive data.
   @Public()
   @Get()

@@ -2,7 +2,7 @@ export type RestaurantApiRecord = {
   id: number | string;
   name?: string | null;
   address?: string | null;
-  photoUrl?: string | null;
+  photoObjectKey?: string | null;
 };
 
 export type StoreOption = {
@@ -11,7 +11,7 @@ export type StoreOption = {
   address: string;
   storeCode: string;
   photoPath: string;
-  photoUrl: string;
+  photoObjectKey: string;
 };
 
 export type StoreCardModel = StoreOption & {
@@ -21,5 +21,5 @@ export type StoreCardModel = StoreOption & {
 export type StoreFormInput = {
   name: string;
   address: string;
-  photoUrl: string;
+  photoObjectKey: string;
 };

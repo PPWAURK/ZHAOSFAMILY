@@ -56,7 +56,7 @@ export type AuthUser = {
     id: number;
     name: string;
     address: string;
-    photoUrl: string | null;
+    photoObjectKey: string | null;
   };
   storeName: string;
   jobRole: string | null;
@@ -69,6 +69,7 @@ export type AuthUser = {
   address: string | null;
   userLevel: number;
   preferredLanguage: string;
+  mobileOnboardingCompletedAt: string | null;
   permissions: string[];
 };
 
@@ -107,7 +108,7 @@ type AuthUserRecord = {
     id: number;
     name: string;
     address: string;
-    photoUrl: string | null;
+    photoObjectKey: string | null;
   };
   birthday: Date | null;
   jobRole: string | null;
@@ -116,6 +117,7 @@ type AuthUserRecord = {
   profilePhoto: string | null;
   userLevel: number;
   preferredLanguage: string;
+  mobileOnboardingCompletedAt: Date | null;
 };
 
 type UserPermissionRecord = {
@@ -311,7 +313,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
             id: true,
             name: true,
             address: true,
-            photoUrl: true,
+            photoObjectKey: true,
           },
         },
       },
@@ -333,7 +335,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
             id: true,
             name: true,
             address: true,
-            photoUrl: true,
+            photoObjectKey: true,
           },
         },
       },
@@ -401,7 +403,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
             id: true,
             name: true,
             address: true,
-            photoUrl: true,
+            photoObjectKey: true,
           },
         },
       },
@@ -433,7 +435,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
             id: true,
             name: true,
             address: true,
-            photoUrl: true,
+            photoObjectKey: true,
           },
         },
       },
@@ -552,6 +554,9 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     const user = await this.prismaService.user.update({
       where: { id: payload.sub },
       data: {
+        ...(dto.completedMobileOnboarding === true
+          ? { mobileOnboardingCompletedAt: new Date() }
+          : {}),
         ...(dto.language !== undefined
           ? { preferredLanguage: dto.language }
           : {}),
@@ -569,7 +574,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
             id: true,
             name: true,
             address: true,
-            photoUrl: true,
+            photoObjectKey: true,
           },
         },
       },
@@ -808,7 +813,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
             id: true,
             name: true,
             address: true,
-            photoUrl: true,
+            photoObjectKey: true,
           },
         },
       },
@@ -921,6 +926,8 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       address: user.address,
       userLevel: user.userLevel,
       preferredLanguage: user.preferredLanguage,
+      mobileOnboardingCompletedAt:
+        user.mobileOnboardingCompletedAt?.toISOString() ?? null,
       permissions,
     };
   }

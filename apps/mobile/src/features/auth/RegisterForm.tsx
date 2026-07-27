@@ -12,20 +12,10 @@ import {
 } from "@/features/auth/AuthFormControls";
 import type { AuthCopy, RoleOption } from "@/features/auth/authCopy";
 import zhaoLogo from "@/features/auth/assets/zhao-logo.png";
-import { MOBILE_API_URL } from "@/lib/env";
+import { buildPublicStorePhotoUrl } from "@/lib/media";
 
 const ZHAO_GROUPE_ORIGIN = "https://www.zhaogroupe.com";
 const BIRTHDAY_START_YEAR = 1950;
-
-function resolveApiOrigin(): string {
-  try {
-    return new URL(MOBILE_API_URL).origin;
-  } catch {
-    return "";
-  }
-}
-
-const API_ORIGIN = resolveApiOrigin();
 
 function getCurrentYear(): number {
   return new Date().getFullYear();
@@ -55,28 +45,12 @@ function buildBirthdayValue(year: number, month: number, day: number): string {
   return `${year}-${padDatePart(month)}-${padDatePart(safeDay)}`;
 }
 
-function resolveRestaurantPhotoUrl(photoUrl: string | null): string | null {
-  if (!photoUrl) {
-    return null;
-  }
-
-  if (/^(https?:)?\/\//i.test(photoUrl) || photoUrl.startsWith("data:")) {
-    return photoUrl;
-  }
-
-  if (!API_ORIGIN) {
-    return photoUrl;
-  }
-
-  if (photoUrl.startsWith("/")) {
-    return `${API_ORIGIN}${photoUrl}`;
-  }
-
-  return `${API_ORIGIN}/${photoUrl.replace(/^\/+/, "")}`;
+function resolveRestaurantPhotoUrl(photoObjectKey: string | null): string | null {
+  return photoObjectKey ? buildPublicStorePhotoUrl(photoObjectKey) : null;
 }
 
-function buildRestaurantImageSource(photoUrl: string | null): ImageSourcePropType {
-  const resolvedPhotoUrl = resolveRestaurantPhotoUrl(photoUrl);
+function buildRestaurantImageSource(photoObjectKey: string | null): ImageSourcePropType {
+  const resolvedPhotoUrl = resolveRestaurantPhotoUrl(photoObjectKey);
 
   if (!resolvedPhotoUrl) {
     return zhaoLogo;
@@ -133,10 +107,7 @@ type RegisterFormProps = {
   isLoadingRestaurants: boolean;
   restaurants: RestaurantSummary[];
   selectedRestaurantName?: string;
-  onChange: <Key extends keyof RegisterFormState>(
-    key: Key,
-    value: RegisterFormState[Key],
-  ) => void;
+  onChange: <Key extends keyof RegisterFormState>(key: Key, value: RegisterFormState[Key]) => void;
   onReloadRestaurants: () => void;
   onToggleRole: (role: string) => void;
 };
@@ -505,7 +476,7 @@ function StorePicker({
             const isSelected = selectedRestaurantId === restaurant.id;
             const imageSource = failedRestaurantImageIds.has(restaurant.id)
               ? zhaoLogo
-              : buildRestaurantImageSource(restaurant.photoUrl);
+              : buildRestaurantImageSource(restaurant.photoObjectKey);
 
             return (
               <Pressable
@@ -584,193 +555,195 @@ function RolePicker({ label, roles, selectedRoles, onToggleRole }: RolePickerPro
   );
 }
 
-const styles = StyleSheet.create(scaleStyles({
-  avatarAction: {
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  avatarActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    justifyContent: "center",
-    marginTop: 12,
-  },
-  avatarError: {
-    color: authControlStyles.colors.red,
-    fontFamily: "serif",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 6,
-    textAlign: "center",
-  },
-  avatarHint: {
-    color: authControlStyles.colors.ink40,
-    fontFamily: "serif",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 10,
-    textAlign: "center",
-  },
-  avatarPreviewFrame: {
-    backgroundColor: authControlStyles.colors.ink10,
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    height: 112,
-    marginTop: 12,
-    overflow: "hidden",
-    width: 112,
-  },
-  avatarPreviewImage: {
-    height: "100%",
-    width: "100%",
-  },
-  avatarSection: {
-    alignItems: "center",
-    borderBottomColor: authControlStyles.colors.ink,
-    borderBottomWidth: 1,
-    paddingBottom: 16,
-    paddingTop: 0,
-  },
-  birthdaySection: {
-    borderBottomColor: authControlStyles.colors.ink,
-    borderBottomWidth: 1,
-    paddingBottom: 16,
-    paddingTop: 22,
-  },
-  birthdayValue: {
-    color: authControlStyles.colors.ink,
-    fontFamily: "serif",
-    fontSize: 22,
-    lineHeight: 30,
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  dateOption: {
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    minWidth: 54,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  dateOptionRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 8,
-  },
-  dateOptionSelected: {
-    backgroundColor: authControlStyles.colors.red,
-    borderColor: authControlStyles.colors.red,
-  },
-  dateOptionText: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "monospace",
-    fontSize: 12,
-    textAlign: "center",
-  },
-  dateOptionTextSelected: {
-    color: authControlStyles.colors.paper,
-  },
-  nameCol: {
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  pickerHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  pickerSection: {
-    marginTop: 26,
-  },
-  roleDescription: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 7,
-  },
-  roleGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 14,
-  },
-  roleLabel: {
-    color: authControlStyles.colors.ink,
-    fontFamily: "serif",
-    fontSize: 17,
-    lineHeight: 21,
-  },
-  roleOption: {
-    backgroundColor: authControlStyles.colors.paper,
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    minHeight: 86,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    width: "47%",
-  },
-  roleOptionSelected: {
-    backgroundColor: "rgba(193, 22, 22, 0.06)",
-    borderColor: authControlStyles.colors.red,
-  },
-  selectedStore: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 14,
-    marginTop: 12,
-  },
-  storeAddress: {
-    color: authControlStyles.colors.ink60,
-    fontFamily: "serif",
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  storeCard: {
-    backgroundColor: authControlStyles.colors.paper,
-    borderColor: authControlStyles.colors.ink10,
-    borderWidth: 1,
-    minHeight: 218,
-    padding: 12,
-    width: 196,
-  },
-  storeCardSelected: {
-    backgroundColor: "rgba(193, 22, 22, 0.06)",
-    borderColor: authControlStyles.colors.red,
-  },
-  storeCardSpacing: {
-    marginLeft: 12,
-  },
-  storeImage: {
-    height: "100%",
-    width: "100%",
-  },
-  storeImageFrame: {
-    backgroundColor: authControlStyles.colors.ink10,
-    height: 104,
-    marginBottom: 12,
-    overflow: "hidden",
-    width: "100%",
-  },
-  storeName: {
-    color: authControlStyles.colors.ink,
-    fontFamily: "serif",
-    fontSize: 17,
-    fontWeight: "500",
-  },
-  storeRow: {
-    flexDirection: "row",
-  },
-  termsRow: {
-    marginTop: 24,
-  },
-}));
+const styles = StyleSheet.create(
+  scaleStyles({
+    avatarAction: {
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    avatarActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent: "center",
+      marginTop: 12,
+    },
+    avatarError: {
+      color: authControlStyles.colors.red,
+      fontFamily: "serif",
+      fontSize: 12,
+      lineHeight: 16,
+      marginTop: 6,
+      textAlign: "center",
+    },
+    avatarHint: {
+      color: authControlStyles.colors.ink40,
+      fontFamily: "serif",
+      fontSize: 12,
+      lineHeight: 16,
+      marginTop: 10,
+      textAlign: "center",
+    },
+    avatarPreviewFrame: {
+      backgroundColor: authControlStyles.colors.ink10,
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      height: 112,
+      marginTop: 12,
+      overflow: "hidden",
+      width: 112,
+    },
+    avatarPreviewImage: {
+      height: "100%",
+      width: "100%",
+    },
+    avatarSection: {
+      alignItems: "center",
+      borderBottomColor: authControlStyles.colors.ink,
+      borderBottomWidth: 1,
+      paddingBottom: 16,
+      paddingTop: 0,
+    },
+    birthdaySection: {
+      borderBottomColor: authControlStyles.colors.ink,
+      borderBottomWidth: 1,
+      paddingBottom: 16,
+      paddingTop: 22,
+    },
+    birthdayValue: {
+      color: authControlStyles.colors.ink,
+      fontFamily: "serif",
+      fontSize: 22,
+      lineHeight: 30,
+      marginBottom: 12,
+      marginTop: 4,
+    },
+    dateOption: {
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      minWidth: 54,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    dateOptionRow: {
+      flexDirection: "row",
+      gap: 8,
+      marginBottom: 8,
+    },
+    dateOptionSelected: {
+      backgroundColor: authControlStyles.colors.red,
+      borderColor: authControlStyles.colors.red,
+    },
+    dateOptionText: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "monospace",
+      fontSize: 12,
+      textAlign: "center",
+    },
+    dateOptionTextSelected: {
+      color: authControlStyles.colors.paper,
+    },
+    nameCol: {
+      flex: 1,
+    },
+    nameRow: {
+      flexDirection: "row",
+      gap: 16,
+    },
+    pickerHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 14,
+    },
+    pickerSection: {
+      marginTop: 26,
+    },
+    roleDescription: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: 7,
+    },
+    roleGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginTop: 14,
+    },
+    roleLabel: {
+      color: authControlStyles.colors.ink,
+      fontFamily: "serif",
+      fontSize: 17,
+      lineHeight: 21,
+    },
+    roleOption: {
+      backgroundColor: authControlStyles.colors.paper,
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      minHeight: 86,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      width: "47%",
+    },
+    roleOptionSelected: {
+      backgroundColor: "rgba(193, 22, 22, 0.06)",
+      borderColor: authControlStyles.colors.red,
+    },
+    selectedStore: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 14,
+      marginTop: 12,
+    },
+    storeAddress: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 13,
+      lineHeight: 18,
+      marginBottom: 16,
+      marginTop: 8,
+    },
+    storeCard: {
+      backgroundColor: authControlStyles.colors.paper,
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      minHeight: 218,
+      padding: 12,
+      width: 196,
+    },
+    storeCardSelected: {
+      backgroundColor: "rgba(193, 22, 22, 0.06)",
+      borderColor: authControlStyles.colors.red,
+    },
+    storeCardSpacing: {
+      marginLeft: 12,
+    },
+    storeImage: {
+      height: "100%",
+      width: "100%",
+    },
+    storeImageFrame: {
+      backgroundColor: authControlStyles.colors.ink10,
+      height: 104,
+      marginBottom: 12,
+      overflow: "hidden",
+      width: "100%",
+    },
+    storeName: {
+      color: authControlStyles.colors.ink,
+      fontFamily: "serif",
+      fontSize: 17,
+      fontWeight: "500",
+    },
+    storeRow: {
+      flexDirection: "row",
+    },
+    termsRow: {
+      marginTop: 24,
+    },
+  }),
+);

@@ -21,7 +21,7 @@ export type AbcStoreInspectionItem = {
   restaurantId: number;
   storeName: string;
   storeAddress: string;
-  photoUrl: string | null;
+  photoObjectKey: string | null;
   grade: AbcGrade | null;
   inspectionNotes: string | null;
   inspectedAt: string | null;
@@ -42,7 +42,7 @@ export type AbcGradeDirectoryEntry = {
   restaurantId: number;
   storeName: string;
   storeAddress: string;
-  photoUrl: string | null;
+  photoObjectKey: string | null;
   grade: AbcGrade | null;
   inspectionNotes: string | null;
   inspectedAt: string | null;
@@ -55,7 +55,7 @@ export type AbcGradeDirectory = {
 
 export type AbcPublicGradeEntry = Pick<
   AbcGradeDirectoryEntry,
-  "restaurantId" | "storeName" | "storeAddress" | "photoUrl"
+  "restaurantId" | "storeName" | "storeAddress" | "photoObjectKey"
 > & {
   grade: AbcGrade;
 };

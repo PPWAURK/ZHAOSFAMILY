@@ -26,7 +26,7 @@ describe('RestaurantsService', () => {
         id: 2,
         name: 'Paris Opera',
         address: '10 Rue Example',
-        photoUrl: '/uploads/paris.jpg',
+        photoObjectKey: 'stores/photos/2026/07/paris.jpg',
       },
     ]);
 
@@ -37,7 +37,7 @@ describe('RestaurantsService', () => {
         id: true,
         name: true,
         address: true,
-        photoUrl: true,
+        photoObjectKey: true,
       },
       orderBy: {
         id: 'asc',
@@ -48,46 +48,46 @@ describe('RestaurantsService', () => {
         id: 2,
         name: 'Paris Opera',
         address: '10 Rue Example',
-        photoUrl: '/uploads/paris.jpg',
+        photoObjectKey: 'stores/photos/2026/07/paris.jpg',
       },
     ]);
   });
 
-  it('creates a restaurant with normalized optional photo url', async () => {
+  it('creates a restaurant with a normalized optional photo object key', async () => {
     const { prismaService, restaurantsService } = createService();
 
     prismaService.restaurant.create.mockResolvedValue({
       id: 3,
       name: 'ZHAO Lyon',
       address: '2 Rue Lyon',
-      photoUrl: null,
+      photoObjectKey: null,
     });
 
     const result = await restaurantsService.createRestaurant({
       name: ' ZHAO Lyon ',
       address: ' 2 Rue Lyon ',
-      photoUrl: ' ',
+      photoObjectKey: ' ',
     });
 
     expect(prismaService.restaurant.create).toHaveBeenCalledWith({
       data: {
         name: 'ZHAO Lyon',
         address: '2 Rue Lyon',
-        photoUrl: null,
+        photoObjectKey: null,
         updatedAt: expect.any(Date) as Date,
       },
       select: {
         id: true,
         name: true,
         address: true,
-        photoUrl: true,
+        photoObjectKey: true,
       },
     });
     expect(result).toEqual({
       id: 3,
       name: 'ZHAO Lyon',
       address: '2 Rue Lyon',
-      photoUrl: null,
+      photoObjectKey: null,
     });
   });
 
@@ -98,7 +98,7 @@ describe('RestaurantsService', () => {
       id: 4,
       name: 'ZHAO Nice',
       address: '4 Rue Nice',
-      photoUrl: '/nice.jpg',
+      photoObjectKey: 'stores/photos/2026/07/nice.jpg',
     });
 
     await restaurantsService.updateRestaurant(4, {
@@ -117,9 +117,27 @@ describe('RestaurantsService', () => {
         id: true,
         name: true,
         address: true,
-        photoUrl: true,
+        photoObjectKey: true,
       },
     });
+  });
+
+  it('clears the photo when the update explicitly sends null', async () => {
+    const { prismaService, restaurantsService } = createService();
+    prismaService.restaurant.update.mockResolvedValue({
+      id: 4,
+      name: 'ZHAO Nice',
+      address: '4 Rue Nice',
+      photoObjectKey: null,
+    });
+
+    await restaurantsService.updateRestaurant(4, { photoObjectKey: null });
+
+    expect(prismaService.restaurant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ photoObjectKey: null }),
+      }),
+    );
   });
 
   it('deletes a restaurant by id', async () => {

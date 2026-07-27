@@ -2,7 +2,7 @@ import { createAbcScoresApi } from "@zhao/api";
 import type { AbcCycleSummary, AbcGrade, AbcPublicGradeBoard } from "@zhao/types";
 
 import { mobileApiClient } from "@/lib/api";
-import { MOBILE_API_URL } from "@/lib/env";
+import { buildPublicStorePhotoUrl } from "@/lib/media";
 
 const abcScoresApi = createAbcScoresApi(mobileApiClient);
 
@@ -19,34 +19,8 @@ export type PublishedGradeBoard = {
   entries: StoreGradeEntry[];
 };
 
-function resolveApiOrigin(): string {
-  try {
-    return new URL(MOBILE_API_URL).origin;
-  } catch {
-    return "";
-  }
-}
-
-function resolvePhotoUri(photoUrl: string | null): string | null {
-  if (!photoUrl) {
-    return null;
-  }
-
-  if (/^(https?:)?\/\//i.test(photoUrl) || photoUrl.startsWith("data:")) {
-    return photoUrl;
-  }
-
-  const apiOrigin = resolveApiOrigin();
-
-  if (!apiOrigin) {
-    return photoUrl;
-  }
-
-  if (photoUrl.startsWith("/")) {
-    return `${apiOrigin}${photoUrl}`;
-  }
-
-  return `${apiOrigin}/${photoUrl.replace(/^\/+/, "")}`;
+function resolvePhotoUri(photoObjectKey: string | null): string | null {
+  return photoObjectKey ? buildPublicStorePhotoUrl(photoObjectKey) : null;
 }
 
 function mapBoard(board: AbcPublicGradeBoard): PublishedGradeBoard {
@@ -57,7 +31,7 @@ function mapBoard(board: AbcPublicGradeBoard): PublishedGradeBoard {
       name: entry.storeName,
       address: entry.storeAddress,
       grade: entry.grade,
-      photoUri: resolvePhotoUri(entry.photoUrl),
+      photoUri: resolvePhotoUri(entry.photoObjectKey),
     })),
   };
 }

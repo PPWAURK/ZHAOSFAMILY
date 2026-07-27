@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createVideoPlayer, VideoView } from "expo-video";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   Platform,
@@ -29,6 +29,7 @@ import {
   stripDashboardNewsFormatting,
   type NewsDeskCategory,
 } from "@/features/dashboard/dashboardNewsPresentation";
+import type { MobileOnboardingTargetBounds } from "@/features/onboarding/mobileOnboardingState";
 import zhaoSealSource from "../../../assets/title-frames/zhao-seal.png";
 
 type DashboardNewsBoardProps = {
@@ -41,6 +42,10 @@ type DashboardNewsBoardProps = {
   onOpenPost: (post: DashboardNewsPost) => void;
   onSearchChange: (value: string) => void;
   onSelectCategory: (category: NewsDeskCategory) => void;
+  onCategoryTargetMeasure?: (
+    category: NewsDeskCategory,
+    bounds: MobileOnboardingTargetBounds,
+  ) => void;
   posts: DashboardNewsPost[];
   searchTerm: string;
   visiblePosts: DashboardNewsPost[];
@@ -200,10 +205,12 @@ export function DashboardNewsBoard({
   onOpenPost,
   onSearchChange,
   onSelectCategory,
+  onCategoryTargetMeasure,
   posts,
   searchTerm,
   visiblePosts,
 }: DashboardNewsBoardProps) {
+  const categoryTargetRefs = useRef<Partial<Record<NewsDeskCategory, View | null>>>({});
   const categoryCounts = useMemo(
     () =>
       NEWS_CATEGORY_FILTERS.reduce<Record<NewsDeskCategory, number>>(
@@ -230,6 +237,16 @@ export function DashboardNewsBoard({
   const canGoPrevious = activeIndex > 0;
   const canGoNext = activeIndex < visiblePosts.length - 1;
 
+  function measureCategoryTarget(category: NewsDeskCategory): void {
+    const target = categoryTargetRefs.current[category];
+
+    if (!target || !onCategoryTargetMeasure) return;
+
+    target.measureInWindow((x, y, width, height) => {
+      onCategoryTargetMeasure(category, { x, y, width, height });
+    });
+  }
+
   return (
     <View style={styles.board}>
       <View accessibilityRole="tablist" style={styles.tabs}>
@@ -241,7 +258,11 @@ export function DashboardNewsBoard({
               key={category}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
+              ref={(target) => {
+                categoryTargetRefs.current[category] = target;
+              }}
               style={[styles.tab, isActive ? styles.tabActive : null]}
+              onLayout={() => measureCategoryTarget(category)}
               onPress={() => onSelectCategory(category)}
             >
               <Text style={[styles.tabLabel, isActive ? styles.tabLabelActive : null]}>

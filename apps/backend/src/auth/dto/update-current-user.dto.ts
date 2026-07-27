@@ -1,4 +1,6 @@
 import {
+  Equals,
+  IsBoolean,
   IsIn,
   IsOptional,
   IsString,
@@ -10,6 +12,11 @@ const PROFILE_PHOTO_DATA_URL_PATTERN = /^data:image\/[a-zA-Z0-9.+-]+;base64,/;
 const LANGUAGE_VALUES = ['zh', 'en', 'fr'] as const;
 
 export class UpdateCurrentUserDto {
+  @IsOptional()
+  @IsBoolean()
+  @Equals(true, { message: 'INVALID_MOBILE_ONBOARDING_COMPLETION' })
+  completedMobileOnboarding?: boolean;
+
   @IsOptional()
   @IsIn(LANGUAGE_VALUES, { message: 'INVALID_LANGUAGE' })
   language?: (typeof LANGUAGE_VALUES)[number];

@@ -17,7 +17,7 @@ const RESTAURANT = {
   id: 2,
   name: 'ZHAO Store',
   address: '1 rue de Test',
-  photoUrl: null,
+  photoObjectKey: null,
 };
 
 function createPrismaServiceMock() {
@@ -151,8 +151,8 @@ describe('AbcScoresService', () => {
     it('returns stores in the configured store order without rank or score', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.restaurant.findMany.mockResolvedValue([
-        { id: 1, name: 'Alpha', address: 'A', photoUrl: null },
-        { id: 2, name: 'Bravo', address: 'B', photoUrl: null },
+        { id: 1, name: 'Alpha', address: 'A', photoObjectKey: null },
+        { id: 2, name: 'Bravo', address: 'B', photoObjectKey: null },
       ]);
       prisma.abcStoreInspection.findMany.mockResolvedValue([
         {
@@ -206,8 +206,8 @@ describe('AbcScoresService', () => {
         status: 'published',
       });
       prisma.restaurant.findMany.mockResolvedValue([
-        { id: 1, name: 'Alpha', address: 'A', photoUrl: null },
-        { id: 2, name: 'Bravo', address: 'B', photoUrl: null },
+        { id: 1, name: 'Alpha', address: 'A', photoObjectKey: null },
+        { id: 2, name: 'Bravo', address: 'B', photoObjectKey: null },
       ]);
       prisma.abcStoreInspection.findMany.mockResolvedValue([
         {
@@ -225,7 +225,7 @@ describe('AbcScoresService', () => {
           restaurantId: 2,
           storeName: 'Bravo',
           storeAddress: 'B',
-          photoUrl: null,
+          photoObjectKey: null,
           grade: 'A',
         },
       ]);
