@@ -774,7 +774,7 @@ export function CaseSharesModuleScreen({
 
 function statusBadgeStyle(status: CaseShareStatus): { color: string } {
   if (status === "approved") return { color: "#1f8a4c" };
-  if (status === "rejected") return { color: authControlStyles.colors.red };
+  if (status === "rejected") return { color: authControlStyles.colors.ink60 };
 
   return { color: authControlStyles.colors.ink60 };
 }

@@ -103,7 +103,7 @@ export default function CaseSharesReviewPage() {
     const note = (notes[caseItem.id] || "").trim();
 
     if (status === "rejected" && !note) {
-      toast.error(t.rejectNoteRequired);
+      toast.error(t.feedbackNoteRequired);
       return;
     }
 
@@ -114,7 +114,7 @@ export default function CaseSharesReviewPage() {
         reviewNote: note || undefined,
       });
       removeCase(caseItem.id);
-      toast.success(status === "approved" ? t.approveSuccess : t.rejectSuccess);
+      toast.success(status === "approved" ? t.approveSuccess : t.feedbackSuccess);
     } catch (error) {
       toast.error(resolveErrorMessage(error, t.reviewError));
     } finally {
@@ -205,8 +205,8 @@ export default function CaseSharesReviewPage() {
                 {cases.map((caseItem) => {
                   const note = notes[caseItem.id] || "";
                   const isApproving = pendingId === `${caseItem.id}:approved`;
-                  const isRejecting = pendingId === `${caseItem.id}:rejected`;
-                  const isBusy = isApproving || isRejecting;
+                  const isSendingFeedback = pendingId === `${caseItem.id}:rejected`;
+                  const isBusy = isApproving || isSendingFeedback;
 
                   return (
                     <article key={caseItem.id} className={styles.card}>
@@ -264,7 +264,7 @@ export default function CaseSharesReviewPage() {
                           disabled={isBusy}
                           onClick={() => void handleReview(caseItem, "rejected")}
                         >
-                          {isRejecting ? t.rejecting : t.reject}
+                          {isSendingFeedback ? t.feedbacking : t.feedback}
                         </button>
                       </div>
                     </article>
