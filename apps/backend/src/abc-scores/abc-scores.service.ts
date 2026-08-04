@@ -197,21 +197,13 @@ export class AbcScoresService {
 
     return {
       cycle: directory.cycle,
-      entries: directory.entries.flatMap((entry) => {
-        if (!entry.grade && !entry.inspectedAt) {
-          return [];
-        }
-
-        return [
-          {
-            restaurantId: entry.restaurantId,
-            storeName: entry.storeName,
-            storeAddress: entry.storeAddress,
-            photoObjectKey: entry.photoObjectKey,
-            grade: entry.grade,
-          },
-        ];
-      }),
+      entries: directory.entries.map((entry) => ({
+        restaurantId: entry.restaurantId,
+        storeName: entry.storeName,
+        storeAddress: entry.storeAddress,
+        photoObjectKey: entry.photoObjectKey,
+        grade: entry.grade,
+      })),
     };
   }
 

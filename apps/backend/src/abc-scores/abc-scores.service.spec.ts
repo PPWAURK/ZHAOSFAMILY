@@ -229,7 +229,7 @@ describe('AbcScoresService', () => {
       });
     });
 
-    it('returns graded and recorded ungraded stores from the latest published cycle', async () => {
+    it('returns graded and ungraded stores from the latest published cycle', async () => {
       prisma.abcScoreCycle.findFirst.mockResolvedValue({
         ...DRAFT_CYCLE,
         status: 'published',
@@ -262,6 +262,13 @@ describe('AbcScoresService', () => {
       const board = await service.getPublishedGradeBoard();
 
       expect(board?.entries).toEqual([
+        {
+          restaurantId: 1,
+          storeName: 'Alpha',
+          storeAddress: 'A',
+          photoObjectKey: null,
+          grade: null,
+        },
         {
           restaurantId: 2,
           storeName: 'Bravo',
