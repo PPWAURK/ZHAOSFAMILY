@@ -1,10 +1,11 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma, Restaurant } from '@prisma/client';
+import { Prisma, type Restaurant } from '@prisma/client';
 import { MediaService } from '../media/media.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AttachMediaDto } from './dto/attach-media.dto';
@@ -70,10 +71,12 @@ export class AbcScoresService {
 
     return {
       ...this.mapCycleSummary(cycle),
-      stores: restaurants.map((restaurant) =>
-        this.mapStoreInspection(
-          restaurant,
-          inspectionByRestaurant.get(restaurant.id),
+      stores: this.sortEntriesByRank(
+        restaurants.map((restaurant) =>
+          this.mapStoreInspection(
+            restaurant,
+            inspectionByRestaurant.get(restaurant.id),
+          ),
         ),
       ),
       progress: this.buildProgress(restaurants.length, inspections),
@@ -104,16 +107,30 @@ export class AbcScoresService {
     const inspectedAt = new Date();
     const data = {
       grade: dto.grade ?? null,
+      rank: dto.rank ?? null,
       inspectionNotes: this.normalizeOptionalText(dto.notes),
       inspectedByUserId: actor.id,
       inspectedAt,
     };
-    const inspection = await this.prismaService.abcStoreInspection.upsert({
-      where: { cycleId_restaurantId: { cycleId, restaurantId } },
-      create: { cycleId, restaurantId, ...data },
-      update: data,
-      include: { media: { orderBy: { createdAt: 'desc' } } },
-    });
+    let inspection: InspectionRecord;
+
+    try {
+      inspection = await this.prismaService.abcStoreInspection.upsert({
+        where: { cycleId_restaurantId: { cycleId, restaurantId } },
+        create: { cycleId, restaurantId, ...data },
+        update: data,
+        include: { media: { orderBy: { createdAt: 'desc' } } },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('ABC_RANK_ALREADY_ASSIGNED');
+      }
+
+      throw error;
+    }
 
     return this.mapStoreInspection(restaurant, inspection);
   }
@@ -153,19 +170,22 @@ export class AbcScoresService {
 
     return {
       cycle: this.mapCycleSummary(cycle),
-      entries: restaurants.map((restaurant) => {
-        const inspection = inspectionByRestaurant.get(restaurant.id);
+      entries: this.sortEntriesByRank(
+        restaurants.map((restaurant) => {
+          const inspection = inspectionByRestaurant.get(restaurant.id);
 
-        return {
-          restaurantId: restaurant.id,
-          storeName: restaurant.name,
-          storeAddress: restaurant.address,
-          photoObjectKey: restaurant.photoObjectKey ?? null,
-          grade: (inspection?.grade as AbcGrade | undefined) ?? null,
-          inspectionNotes: inspection?.inspectionNotes ?? null,
-          inspectedAt: inspection?.inspectedAt?.toISOString() ?? null,
-        };
-      }),
+          return {
+            restaurantId: restaurant.id,
+            storeName: restaurant.name,
+            storeAddress: restaurant.address,
+            photoObjectKey: restaurant.photoObjectKey ?? null,
+            grade: (inspection?.grade as AbcGrade | undefined) ?? null,
+            rank: inspection?.rank ?? null,
+            inspectionNotes: inspection?.inspectionNotes ?? null,
+            inspectedAt: inspection?.inspectedAt?.toISOString() ?? null,
+          };
+        }),
+      ),
     };
   }
 
@@ -202,6 +222,7 @@ export class AbcScoresService {
         storeName: entry.storeName,
         storeAddress: entry.storeAddress,
         photoObjectKey: entry.photoObjectKey,
+        rank: entry.rank,
         inspectionNotes: entry.inspectionNotes,
         grade: entry.grade,
       })),
@@ -333,6 +354,7 @@ export class AbcScoresService {
       storeAddress: restaurant.address,
       photoObjectKey: restaurant.photoObjectKey ?? null,
       grade: (inspection?.grade as AbcGrade | undefined) ?? null,
+      rank: inspection?.rank ?? null,
       inspectionNotes: inspection?.inspectionNotes ?? null,
       inspectedAt: inspection?.inspectedAt?.toISOString() ?? null,
       media: (inspection?.media ?? []).map((item) => ({
@@ -348,6 +370,17 @@ export class AbcScoresService {
     const trimmed = value?.trim();
 
     return trimmed ? trimmed : null;
+  }
+
+  private sortEntriesByRank<
+    T extends { rank: number | null; restaurantId: number },
+  >(entries: T[]): T[] {
+    return entries.sort(
+      (left, right) =>
+        (left.rank ?? Number.MAX_SAFE_INTEGER) -
+          (right.rank ?? Number.MAX_SAFE_INTEGER) ||
+        left.restaurantId - right.restaurantId,
+    );
   }
 
   private async deleteMediaObjects(objectKeys: string[]): Promise<void> {

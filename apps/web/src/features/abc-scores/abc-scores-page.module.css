@@ -375,6 +375,44 @@
   font-weight: 600;
 }
 
+.storeRankBadge {
+  --medal: #b16a34;
+  --medal-edge: #82431c;
+  --medal-ink: #fff;
+
+  display: block;
+  width: 36px;
+  height: 42px;
+  margin: 0;
+}
+
+.storeRankBadge svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.storeRankBadge text {
+  font-family: var(--mono);
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.storeRankBadgeFirst {
+  --medal: #c79a1e;
+  --medal-edge: #8d6810;
+}
+
+.storeRankBadgeSecond {
+  --medal: #9199a5;
+  --medal-edge: #626b78;
+}
+
+.storeRankBadgeThird {
+  --medal: #b16a34;
+  --medal-edge: #7d421c;
+}
+
 .storeAddress {
   font-size: 12px;
   color: var(--ink-40);
@@ -551,6 +589,11 @@
   align-items: flex-start;
   padding-bottom: 14px;
   border-bottom: 1px solid color-mix(in oklch, var(--grade-color, var(--ink)) 34%, transparent);
+}
+
+.gradeStoreTopRanked {
+  grid-template-columns: 76px 40px minmax(0, 1fr);
+  align-items: center;
 }
 
 .gradeStoreHeader {
@@ -925,6 +968,10 @@
 
   .gradeStoreTop {
     grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .gradeStoreTopRanked {
+    grid-template-columns: 64px 36px minmax(0, 1fr);
   }
 
   .storePhoto,

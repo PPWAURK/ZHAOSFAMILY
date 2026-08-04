@@ -60,6 +60,19 @@ export default function ScoreEditModal({
         </label>
 
         <label className={styles.formField}>
+          <span>{t.rank}</span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={draft.rank ?? ""}
+            placeholder={t.rankPlaceholder}
+            disabled={saving}
+            onChange={(event) => onChange("rank", event.target.value)}
+          />
+        </label>
+
+        <label className={styles.formField}>
           <span>{t.notes}</span>
           <textarea
             value={draft.notes ?? ""}

@@ -11,6 +11,7 @@ export type StoreGradeEntry = {
   name: string;
   address: string;
   grade: AbcGrade | null;
+  rank: number | null;
   inspectionNotes: string | null;
   photoUri: string | null;
 };
@@ -32,6 +33,7 @@ function mapBoard(board: AbcPublicGradeBoard): PublishedGradeBoard {
       name: entry.storeName,
       address: entry.storeAddress,
       grade: entry.grade,
+      rank: entry.rank,
       inspectionNotes: entry.inspectionNotes,
       photoUri: resolvePhotoUri(entry.photoObjectKey),
     })),

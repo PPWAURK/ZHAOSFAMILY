@@ -26,6 +26,30 @@ function StorePhoto({ storeName, photoObjectKey, styles }) {
   );
 }
 
+function StoreRankBadge({ rank, styles, label }) {
+  const medalClass =
+    rank === 1
+      ? styles.storeRankBadgeFirst
+      : rank === 2
+        ? styles.storeRankBadgeSecond
+        : rank === 3
+          ? styles.storeRankBadgeThird
+          : styles.storeRankBadgeStandard;
+
+  return (
+    <span className={`${styles.storeRankBadge} ${medalClass}`} aria-label={`${label} ${rank}`}>
+      <svg viewBox="0 0 36 42" aria-hidden="true">
+        <path d="M8 2h8l2 15-8 2z" fill="var(--medal-edge)" />
+        <path d="M20 2h8l-2 17-8-2z" fill="var(--medal-edge)" />
+        <circle cx="18" cy="27" r="11" fill="var(--medal)" stroke="var(--medal-edge)" strokeWidth="1.5" />
+        <text x="18" y="31" fill="var(--medal-ink)" fontSize={rank > 99 ? 8 : rank > 9 ? 10 : 13}>
+          {rank}
+        </text>
+      </svg>
+    </span>
+  );
+}
+
 function ReportActions({ store, t, styles, canUpload, isUploading, onUpload }) {
   const inputRef = useRef(null);
 
@@ -77,12 +101,13 @@ function StoreGradeCard({
 
   return (
     <article className={`${styles.gradeStoreCard} ${gradeClass}`}>
-      <div className={styles.gradeStoreTop}>
+      <div className={`${styles.gradeStoreTop} ${store.rank ? styles.gradeStoreTopRanked : ""}`}>
         <StorePhoto
           storeName={store.storeName}
           photoObjectKey={store.photoObjectKey}
           styles={styles}
         />
+        {store.rank ? <StoreRankBadge rank={store.rank} styles={styles} label={t.rank} /> : null}
         <div className={styles.gradeStoreHeader}>
           <div>
             <h3 className={styles.storeName}>{store.storeName}</h3>
@@ -115,6 +140,7 @@ function StoreGradeCard({
               onClick={() =>
                 onEdit(store.restaurantId, {
                   grade: store.grade,
+                  rank: store.rank,
                   notes: store.inspectionNotes,
                 })
               }

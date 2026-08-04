@@ -88,12 +88,13 @@ describe('AbcScoresService', () => {
   });
 
   describe('recordInspection', () => {
-    it('upserts a grade and improvement notes without storing a score', async () => {
+    it('upserts a grade, rank, and improvement notes without storing a score', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.restaurant.findUnique.mockResolvedValue(RESTAURANT);
       prisma.abcStoreInspection.upsert.mockResolvedValue({
         ...RESTAURANT,
         grade: 'B',
+        rank: 1,
         inspectionNotes: 'Improve closing checklist',
         inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
         media: [],
@@ -101,15 +102,18 @@ describe('AbcScoresService', () => {
 
       const item = await service.recordInspection(ACTOR, 1, 2, {
         grade: 'B',
+        rank: 1,
         notes: 'Improve closing checklist',
       });
 
       expect(item).toMatchObject({
         grade: 'B',
+        rank: 1,
         inspectionNotes: 'Improve closing checklist',
       });
       const inspectionData = {
         grade: 'B',
+        rank: 1,
         inspectionNotes: 'Improve closing checklist',
         inspectedByUserId: 7,
         inspectedAt: ANY_DATE,
@@ -144,6 +148,7 @@ describe('AbcScoresService', () => {
 
       const inspectionData = {
         grade: null,
+        rank: null,
         inspectionNotes: 'Improve the storefront display',
         inspectedByUserId: 7,
         inspectedAt: ANY_DATE,
@@ -182,7 +187,7 @@ describe('AbcScoresService', () => {
   });
 
   describe('getGradeDirectory', () => {
-    it('returns stores in the configured store order without rank or score', async () => {
+    it('orders ranked stores before unranked stores without a score', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.restaurant.findMany.mockResolvedValue([
         { id: 1, name: 'Alpha', address: 'A', photoObjectKey: null },
@@ -192,6 +197,7 @@ describe('AbcScoresService', () => {
         {
           restaurantId: 2,
           grade: 'A',
+          rank: 1,
           inspectionNotes: 'Keep standards',
           inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
         },
@@ -200,10 +206,9 @@ describe('AbcScoresService', () => {
       const directory = await service.getGradeDirectory(1);
 
       expect(directory.entries).toEqual([
-        expect.objectContaining({ restaurantId: 1, grade: null }),
-        expect.objectContaining({ restaurantId: 2, grade: 'A' }),
+        expect.objectContaining({ restaurantId: 2, grade: 'A', rank: 1 }),
+        expect.objectContaining({ restaurantId: 1, grade: null, rank: null }),
       ]);
-      expect(directory.entries[1]).not.toHaveProperty('rank');
       expect(directory.entries[1]).not.toHaveProperty('totalScore');
     });
   });
@@ -248,12 +253,14 @@ describe('AbcScoresService', () => {
         {
           restaurantId: 2,
           grade: 'A',
+          rank: 2,
           inspectionNotes: 'Keep standards',
           inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
         },
         {
           restaurantId: 3,
           grade: null,
+          rank: 1,
           inspectionNotes: 'Improve storefront display',
           inspectedAt: new Date('2026-06-22T12:00:00.000Z'),
         },
@@ -263,11 +270,12 @@ describe('AbcScoresService', () => {
 
       expect(board?.entries).toEqual([
         {
-          restaurantId: 1,
-          storeName: 'Alpha',
-          storeAddress: 'A',
+          restaurantId: 3,
+          storeName: 'Charlie',
+          storeAddress: 'C',
           photoObjectKey: null,
-          inspectionNotes: null,
+          rank: 1,
+          inspectionNotes: 'Improve storefront display',
           grade: null,
         },
         {
@@ -275,15 +283,17 @@ describe('AbcScoresService', () => {
           storeName: 'Bravo',
           storeAddress: 'B',
           photoObjectKey: null,
+          rank: 2,
           inspectionNotes: 'Keep standards',
           grade: 'A',
         },
         {
-          restaurantId: 3,
-          storeName: 'Charlie',
-          storeAddress: 'C',
+          restaurantId: 1,
+          storeName: 'Alpha',
+          storeAddress: 'A',
           photoObjectKey: null,
-          inspectionNotes: 'Improve storefront display',
+          rank: null,
+          inspectionNotes: null,
           grade: null,
         },
       ]);

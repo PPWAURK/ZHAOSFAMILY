@@ -201,6 +201,7 @@ model AbcStoreInspection {
   cycleId           Int                  @map("cycle_id")
   restaurantId      Int                  @map("restaurant_id")
   grade             String?              @db.VarChar(1)
+  rank              Int?                 @map("rank")
   inspectionNotes   String?              @map("inspection_notes") @db.Text
   inspectedByUserId Int?                 @map("inspected_by_user_id")
   inspectedAt       DateTime?            @map("inspected_at")
@@ -211,6 +212,7 @@ model AbcStoreInspection {
   media             AbcInspectionMedia[]
 
   @@unique([cycleId, restaurantId])
+  @@unique([cycleId, rank])
   @@index([restaurantId])
   @@map("abc_store_scores")
 }

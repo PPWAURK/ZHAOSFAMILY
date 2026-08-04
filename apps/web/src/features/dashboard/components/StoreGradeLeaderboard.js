@@ -20,6 +20,30 @@ function StorePhoto({ entry }) {
   return <img src={buildPublicStorePhotoUrl(entry.photoObjectKey)} alt="" loading="lazy" />;
 }
 
+function RankBadge({ label, rank }) {
+  const medalClassName =
+    rank === 1
+      ? styles.gradeStoreRankFirst
+      : rank === 2
+        ? styles.gradeStoreRankSecond
+        : rank === 3
+          ? styles.gradeStoreRankThird
+          : styles.gradeStoreRankStandard;
+
+  return (
+    <span className={`${styles.gradeStoreRank} ${medalClassName}`} aria-label={`${label} ${rank}`}>
+      <svg viewBox="0 0 36 42" aria-hidden="true">
+        <path d="M8 2h8l2 15-8 2z" fill="var(--medal-edge)" />
+        <path d="M20 2h8l-2 17-8-2z" fill="var(--medal-edge)" />
+        <circle cx="18" cy="27" r="11" fill="var(--medal)" stroke="var(--medal-edge)" strokeWidth="1.5" />
+        <text x="18" y="31" fill="var(--medal-ink)" fontSize={rank > 99 ? 8 : rank > 9 ? 10 : 13}>
+          {rank}
+        </text>
+      </svg>
+    </span>
+  );
+}
+
 export default function StoreGradeLeaderboard({
   copy,
   gradeCopy,
@@ -35,6 +59,11 @@ export default function StoreGradeLeaderboard({
       grade,
       entries.filter((entry) =>
         grade === "Ungraded" ? entry.grade === null : entry.grade === grade,
+      ).sort(
+        (left, right) =>
+          (left.rank ?? Number.MAX_SAFE_INTEGER) -
+            (right.rank ?? Number.MAX_SAFE_INTEGER) ||
+          left.restaurantId - right.restaurantId,
       ),
     ]),
   );
@@ -140,10 +169,14 @@ export default function StoreGradeLeaderboard({
               </header>
               <div className={styles.gradeStoreList}>
                 {gradeEntries.map((entry) => (
-                  <article key={entry.restaurantId} className={styles.gradeStoreCard}>
+                  <article
+                    key={entry.restaurantId}
+                    className={`${styles.gradeStoreCard} ${entry.rank ? styles.gradeStoreCardRanked : ""}`}
+                  >
                     <figure className={styles.gradeStorePhoto}>
                       <StorePhoto entry={entry} />
                     </figure>
+                    {entry.rank ? <RankBadge label={gradeCopy.rank} rank={entry.rank} /> : null}
                     <div className={styles.gradeStoreContent}>
                       <h4>{entry.storeName}</h4>
                       <p>{entry.storeAddress}</p>

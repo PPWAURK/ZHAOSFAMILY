@@ -6,6 +6,7 @@ export type CreateAbcCycleRequest = {
 
 export type RecordAbcInspectionRequest = {
   grade?: AbcGrade;
+  rank?: number;
   notes?: string;
 };
 

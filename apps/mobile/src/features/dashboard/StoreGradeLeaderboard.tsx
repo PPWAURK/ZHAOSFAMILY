@@ -71,7 +71,37 @@ type StoreGradeLeaderboardProps = {
 };
 
 function getGradeEntries(entries: StoreGradeEntry[], grade: StoreGradeEntry["grade"]) {
-  return entries.filter((entry) => entry.grade === grade);
+  return entries
+    .filter((entry) => entry.grade === grade)
+    .sort(
+      (left, right) =>
+        (left.rank ?? Number.MAX_SAFE_INTEGER) - (right.rank ?? Number.MAX_SAFE_INTEGER) ||
+        Number(left.id) - Number(right.id),
+    );
+}
+
+function RankMedal({ rank }: { rank: number }) {
+  const medalColors =
+    rank === 1
+      ? { fill: "#c79a1e", edge: "#8d6810" }
+      : rank === 2
+        ? { fill: "#9199a5", edge: "#626b78" }
+        : rank === 3
+          ? { fill: "#b16a34", edge: "#7d421c" }
+          : { fill: "#b16a34", edge: "#82431c" };
+
+  return (
+    <View
+      accessibilityLabel={`Rank ${rank}`}
+      style={[styles.rankMedal, { backgroundColor: medalColors.fill, borderColor: medalColors.edge }]}
+    >
+      <View style={[styles.rankMedalRibbonLeft, { backgroundColor: medalColors.edge }]} />
+      <View style={[styles.rankMedalRibbonRight, { backgroundColor: medalColors.edge }]} />
+      <Text adjustsFontSizeToFit minimumFontScale={0.75} numberOfLines={1} style={styles.rankMedalNumber}>
+        {rank}
+      </Text>
+    </View>
+  );
 }
 
 export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) {
@@ -271,9 +301,10 @@ export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) 
                         style={styles.storePhoto}
                       />
                       <View style={styles.storeBody}>
-                        <Text numberOfLines={1} style={styles.storeName}>
-                          {entry.name}
-                        </Text>
+                        <View style={styles.storeTitleRow}>
+                          {entry.rank ? <RankMedal rank={entry.rank} /> : null}
+                          <Text numberOfLines={1} style={styles.storeName}>{entry.name}</Text>
+                        </View>
                         <Text numberOfLines={2} style={styles.storeAddress}>
                           {entry.address}
                         </Text>
@@ -435,9 +466,50 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   storeName: {
+    flexShrink: 1,
     fontSize: 17,
     fontWeight: "700",
     color: colors.ink,
+  },
+  storeTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rankMedal: {
+    width: 30,
+    height: 30,
+    marginRight: 8,
+    borderWidth: 1,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  rankMedalRibbonLeft: {
+    position: "absolute",
+    top: -6,
+    left: 7,
+    width: 8,
+    height: 12,
+    backgroundColor: "#82431c",
+    transform: [{ rotate: "-12deg" }],
+  },
+  rankMedalRibbonRight: {
+    position: "absolute",
+    top: -6,
+    right: 7,
+    width: 8,
+    height: 12,
+    backgroundColor: "#82431c",
+    transform: [{ rotate: "12deg" }],
+  },
+  rankMedalNumber: {
+    minWidth: 16,
+    paddingHorizontal: 2,
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+    textAlign: "center",
   },
   storeAddress: {
     marginTop: 4,

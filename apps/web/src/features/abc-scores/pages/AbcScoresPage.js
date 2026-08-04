@@ -29,7 +29,7 @@ import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/abc-scores/abc-scores-page.module.css";
 
-const EMPTY_DRAFT = { notes: "", grade: "" };
+const EMPTY_DRAFT = { notes: "", grade: "", rank: "" };
 
 export default function AbcScoresPage() {
   const { user } = useAuth();
@@ -162,6 +162,7 @@ export default function AbcScoresPage() {
     setDraft({
       notes: current.notes ?? "",
       grade: current.grade ?? "",
+      rank: current.rank?.toString() ?? "",
     });
     setEditError("");
   }
@@ -175,13 +176,20 @@ export default function AbcScoresPage() {
     try {
       await recordAbcInspection(currentCycleId, editState.restaurantId, {
         grade: draft.grade || undefined,
+        rank: draft.rank ? Number(draft.rank) : undefined,
         notes: draft.notes || undefined,
       });
       await refreshDetail(currentCycleId);
       setEditState(null);
       setDraft(EMPTY_DRAFT);
     } catch (saveErr) {
-      setEditError(saveErr instanceof Error ? saveErr.message : t.saveError);
+      setEditError(
+        saveErr instanceof Error && saveErr.message.includes("ABC_RANK_ALREADY_ASSIGNED")
+          ? t.rankTaken
+          : saveErr instanceof Error
+            ? saveErr.message
+            : t.saveError,
+      );
     } finally {
       setSaving(false);
     }

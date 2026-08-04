@@ -30,6 +30,7 @@ export type AbcStoreInspectionItem = {
   storeAddress: string;
   photoObjectKey: string | null;
   grade: AbcGrade | null;
+  rank: number | null;
   inspectionNotes: string | null;
   inspectedAt: string | null;
   media: AbcInspectionMediaItem[];
@@ -51,6 +52,7 @@ export type AbcGradeDirectoryEntry = {
   storeAddress: string;
   photoObjectKey: string | null;
   grade: AbcGrade | null;
+  rank: number | null;
   inspectionNotes: string | null;
   inspectedAt: string | null;
 };
@@ -66,6 +68,7 @@ export type AbcPublicGradeEntry = Pick<
   | 'storeName'
   | 'storeAddress'
   | 'photoObjectKey'
+  | 'rank'
   | 'inspectionNotes'
 > & {
   grade: AbcGrade | null;
