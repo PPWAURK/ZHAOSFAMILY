@@ -186,10 +186,6 @@ export default function GlassAuthPanel() {
     () => stores.find((store) => store.name === HOLDING_STORE_NAME) ?? null,
     [stores],
   );
-  const selectableStores = useMemo(
-    () => stores.filter((store) => store.name !== HOLDING_STORE_NAME),
-    [stores],
-  );
   const registerDisplayName = useMemo(() => {
     const fullName = [values.familyName, values.givenName].filter(Boolean).join(" ").trim();
 
@@ -443,7 +439,7 @@ export default function GlassAuthPanel() {
       return (
         <StoreSelectionStep
           t={t}
-          stores={selectableStores}
+          stores={stores}
           isLoadingStores={isLoadingStores}
           storesError={storesError}
           selectedStoreId={selectedStoreId}

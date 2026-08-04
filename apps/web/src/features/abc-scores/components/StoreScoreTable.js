@@ -39,8 +39,7 @@ function StoreRankBadge({ rank, styles, label }) {
   return (
     <span className={`${styles.storeRankBadge} ${medalClass}`} aria-label={`${label} ${rank}`}>
       <svg viewBox="0 0 36 42" aria-hidden="true">
-        <path d="M8 2h8l2 15-8 2z" fill="var(--medal-edge)" />
-        <path d="M20 2h8l-2 17-8-2z" fill="var(--medal-edge)" />
+        <path d="M9 2h18l-4 16H13z" fill="var(--medal-edge)" />
         <circle cx="18" cy="27" r="11" fill="var(--medal)" stroke="var(--medal-edge)" strokeWidth="1.5" />
         <text x="18" y="31" fill="var(--medal-ink)" fontSize={rank > 99 ? 8 : rank > 9 ? 10 : 13}>
           {rank}

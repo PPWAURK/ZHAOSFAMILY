@@ -91,15 +91,24 @@ function RankMedal({ rank }: { rank: number }) {
           : { fill: "#b16a34", edge: "#82431c" };
 
   return (
-    <View
-      accessibilityLabel={`Rank ${rank}`}
-      style={[styles.rankMedal, { backgroundColor: medalColors.fill, borderColor: medalColors.edge }]}
-    >
+    <View accessibilityLabel={`Rank ${rank}`} style={styles.rankMedal}>
       <View style={[styles.rankMedalRibbonLeft, { backgroundColor: medalColors.edge }]} />
       <View style={[styles.rankMedalRibbonRight, { backgroundColor: medalColors.edge }]} />
-      <Text adjustsFontSizeToFit minimumFontScale={0.75} numberOfLines={1} style={styles.rankMedalNumber}>
-        {rank}
-      </Text>
+      <View
+        style={[
+          styles.rankMedalDisk,
+          { backgroundColor: medalColors.fill, borderColor: medalColors.edge },
+        ]}
+      >
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+          numberOfLines={1}
+          style={styles.rankMedalNumber}
+        >
+          {rank}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -271,12 +280,25 @@ export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) 
             {GRADE_TIERS.map((grade) => {
               const gradeLabel = grade ?? copy.ungraded;
               const gradeColor = grade === null ? colors.ink60 : GRADE_COLORS[grade];
+              const storeCount = getGradeEntries(entries, grade).length;
 
               return (
-                <View key={gradeLabel} style={styles.summaryItem}>
-                  <Text style={[styles.summaryGrade, { color: gradeColor }]}>{gradeLabel}</Text>
-                  <Text style={styles.summaryCount}>{getGradeEntries(entries, grade).length}</Text>
-                  <Text style={styles.summaryUnit}>{copy.storeUnit}</Text>
+                <View
+                  key={gradeLabel}
+                  accessibilityLabel={`${gradeLabel} ${storeCount} ${copy.storeUnit}`}
+                  style={styles.summaryItem}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.summaryGrade,
+                      grade === null ? styles.summaryGradeUngraded : null,
+                      { color: gradeColor },
+                    ]}
+                  >
+                    {gradeLabel}
+                  </Text>
+                  <Text style={styles.summaryCount}>{storeCount}</Text>
                 </View>
               );
             })}
@@ -413,10 +435,11 @@ const styles = StyleSheet.create({
   },
   summaryItem: {
     flex: 1,
+    flexShrink: 1,
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "center",
-    gap: 4,
+    gap: 3,
     paddingVertical: 10,
     borderWidth: 1,
     borderColor: colors.ink10,
@@ -426,14 +449,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 2,
   },
+  summaryGradeUngraded: {
+    fontSize: 14,
+    letterSpacing: 0,
+  },
   summaryCount: {
     fontSize: 18,
     fontWeight: "700",
     color: colors.ink,
-  },
-  summaryUnit: {
-    fontSize: 11,
-    color: colors.ink40,
   },
   gradeSection: {
     gap: 10,
@@ -476,32 +499,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rankMedal: {
-    width: 30,
-    height: 30,
+    width: 34,
+    height: 44,
     marginRight: 8,
-    borderWidth: 1,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
     overflow: "visible",
   },
   rankMedalRibbonLeft: {
     position: "absolute",
-    top: -6,
-    left: 7,
+    top: 0,
+    left: 6,
     width: 8,
-    height: 12,
-    backgroundColor: "#82431c",
+    height: 22,
     transform: [{ rotate: "-12deg" }],
   },
   rankMedalRibbonRight: {
     position: "absolute",
-    top: -6,
-    right: 7,
+    top: 0,
+    right: 6,
     width: 8,
-    height: 12,
-    backgroundColor: "#82431c",
+    height: 22,
     transform: [{ rotate: "12deg" }],
+  },
+  rankMedalDisk: {
+    position: "absolute",
+    bottom: 0,
+    left: 4,
+    width: 26,
+    height: 26,
+    borderWidth: 1,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
   },
   rankMedalNumber: {
     minWidth: 16,

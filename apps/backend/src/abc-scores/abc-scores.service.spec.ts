@@ -41,6 +41,7 @@ function createPrismaServiceMock() {
       findUnique: jest.fn(),
       count: jest.fn(),
     },
+    user: { findMany: jest.fn() },
   };
 }
 
@@ -48,15 +49,25 @@ function createMediaServiceMock() {
   return { deleteFile: jest.fn() };
 }
 
+function createNotificationsServiceMock() {
+  return { sendToUsers: jest.fn().mockResolvedValue(undefined) };
+}
+
 describe('AbcScoresService', () => {
   let prisma: ReturnType<typeof createPrismaServiceMock>;
   let media: ReturnType<typeof createMediaServiceMock>;
+  let notifications: ReturnType<typeof createNotificationsServiceMock>;
   let service: AbcScoresService;
 
   beforeEach(() => {
     prisma = createPrismaServiceMock();
     media = createMediaServiceMock();
-    service = new AbcScoresService(prisma as never, media as never);
+    notifications = createNotificationsServiceMock();
+    service = new AbcScoresService(
+      prisma as never,
+      media as never,
+      notifications as never,
+    );
   });
 
   describe('getProgress', () => {
@@ -309,17 +320,49 @@ describe('AbcScoresService', () => {
   });
 
   describe('publishCycle', () => {
-    it('archives a draft cycle without broadcasting a leaderboard notification', async () => {
+    it('publishes a draft cycle and broadcasts the grade board by language', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.abcScoreCycle.update.mockResolvedValue({
         ...DRAFT_CYCLE,
         status: 'published',
         publishedAt: new Date('2026-06-24T09:00:00.000Z'),
       });
+      prisma.user.findMany.mockResolvedValue([
+        { id: 9, preferredLanguage: 'zh' },
+        { id: 10, preferredLanguage: 'fr' },
+      ]);
 
       await expect(service.publishCycle(1)).resolves.toMatchObject({
         status: 'published',
       });
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { accountStatus: 'approved' },
+        select: { id: true, preferredLanguage: true },
+      });
+      expect(notifications.sendToUsers).toHaveBeenCalledWith(
+        [9],
+        expect.objectContaining({
+          title: 'ABC 评级排行榜已公布',
+          data: { type: 'abc-grade-board', cycleId: '1' },
+        }),
+      );
+      expect(notifications.sendToUsers).toHaveBeenCalledWith(
+        [10],
+        expect.objectContaining({ title: 'Classement ABC publié' }),
+      );
+    });
+
+    it('does not re-send the grade board after a cycle has already been published', async () => {
+      prisma.abcScoreCycle.findUnique.mockResolvedValue({
+        ...DRAFT_CYCLE,
+        status: 'published',
+      });
+
+      await expect(service.publishCycle(1)).resolves.toMatchObject({
+        status: 'published',
+      });
+
+      expect(notifications.sendToUsers).not.toHaveBeenCalled();
     });
   });
 

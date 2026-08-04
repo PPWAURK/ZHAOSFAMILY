@@ -6,7 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, type Restaurant } from '@prisma/client';
+import { ACCOUNT_STATUS } from '../auth/account-status';
 import { MediaService } from '../media/media.service';
+import {
+  abcGradeBoardPublishedNotification,
+  normalizeLanguage,
+  type NotificationLanguage,
+} from '../notifications/notification-content';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AttachMediaDto } from './dto/attach-media.dto';
 import type { CreateCycleDto } from './dto/create-cycle.dto';
@@ -41,6 +48,7 @@ export class AbcScoresService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly mediaService: MediaService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async listCycles(query: ListCyclesQueryDto): Promise<AbcCycleSummary[]> {
@@ -241,6 +249,8 @@ export class AbcScoresService {
       data: { status: 'published', publishedAt: new Date() },
     });
 
+    await this.notifyGradeBoardPublished(published);
+
     return this.mapCycleSummary(published);
   }
 
@@ -270,6 +280,42 @@ export class AbcScoresService {
         include: { media: { orderBy: { createdAt: 'desc' } } },
       }),
     ]);
+  }
+
+  /** Notification delivery is best-effort and must not undo a published cycle. */
+  private async notifyGradeBoardPublished(cycle: CycleRecord): Promise<void> {
+    try {
+      const recipients = await this.prismaService.user.findMany({
+        where: { accountStatus: ACCOUNT_STATUS.approved },
+        select: { id: true, preferredLanguage: true },
+      });
+      if (recipients.length === 0) {
+        return;
+      }
+
+      const idsByLanguage = new Map<NotificationLanguage, number[]>();
+      for (const recipient of recipients) {
+        const language = normalizeLanguage(recipient.preferredLanguage);
+        const userIds = idsByLanguage.get(language) ?? [];
+        userIds.push(recipient.id);
+        idsByLanguage.set(language, userIds);
+      }
+
+      await Promise.all(
+        [...idsByLanguage].map(([language, userIds]) =>
+          this.notificationsService.sendToUsers(
+            userIds,
+            abcGradeBoardPublishedNotification(language, cycle.id, cycle.label),
+          ),
+        ),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send ABC grade board push for cycle ${cycle.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   private buildProgress(

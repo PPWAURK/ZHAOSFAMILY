@@ -97,6 +97,35 @@ export function dashboardPostNotification(
   };
 }
 
+const ABC_GRADE_BOARD_PUBLISHED: Record<
+  NotificationLanguage,
+  (cycleLabel: string) => LocalizedText
+> = {
+  zh: (cycleLabel) => ({
+    title: 'ABC 评级排行榜已公布',
+    body: `${cycleLabel} 的门店评级排行榜现已公布。`,
+  }),
+  en: (cycleLabel) => ({
+    title: 'ABC grade board published',
+    body: `The ABC store grade board for ${cycleLabel} is now available.`,
+  }),
+  fr: (cycleLabel) => ({
+    title: 'Classement ABC publié',
+    body: `Le classement des niveaux ABC pour ${cycleLabel} est disponible.`,
+  }),
+};
+
+export function abcGradeBoardPublishedNotification(
+  language: string | null | undefined,
+  cycleId: number | bigint,
+  cycleLabel: string,
+): NotificationPayload {
+  return {
+    ...ABC_GRADE_BOARD_PUBLISHED[normalizeLanguage(language)](cycleLabel),
+    data: { type: 'abc-grade-board', cycleId: String(cycleId) },
+  };
+}
+
 const CASE_SHARE_LIKE: Record<
   NotificationLanguage,
   (actorName: string) => LocalizedText
