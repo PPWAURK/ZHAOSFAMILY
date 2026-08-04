@@ -25,7 +25,6 @@ const COPY = {
     kicker: "ABC STORE GRADES",
     title: "门店 ABC 评级榜",
     subtitle: "展示最新已发布周期的 A、B、C 级及未评级门店。检查报告仅向总部及管理层开放。",
-    notes: "改进重点",
     ungraded: "未评级",
     storeUnit: "家门店",
     cycleLabel: "检查周期",
@@ -41,7 +40,6 @@ const COPY = {
     subtitle:
       "A, B, C and ungraded stores from the latest published cycle. Reports remain restricted to headquarters and management.",
     ungraded: "Ungraded",
-    notes: "Improvement priorities",
     storeUnit: "stores",
     cycleLabel: "Inspection cycle",
     previousCycle: "View newer cycle",
@@ -56,7 +54,6 @@ const COPY = {
     subtitle:
       "Niveaux A, B, C et boutiques non notées du dernier cycle publié. Les rapports restent réservés au siège et au management.",
     ungraded: "Non noté",
-    notes: "Axes d’amélioration",
     storeUnit: "boutiques",
     cycleLabel: "Cycle d'inspection",
     previousCycle: "Voir le cycle plus récent",
@@ -282,7 +279,7 @@ export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) 
                         </Text>
                         {entry.inspectionNotes ? (
                           <Text numberOfLines={2} style={styles.storeNotes}>
-                            {copy.notes}: {entry.inspectionNotes}
+                            {entry.inspectionNotes}
                           </Text>
                         ) : null}
                       </View>

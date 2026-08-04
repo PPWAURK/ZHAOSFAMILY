@@ -149,7 +149,7 @@ export default function StoreGradeLeaderboard({
                       <p>{entry.storeAddress}</p>
                       {entry.inspectionNotes ? (
                         <p className={styles.gradeStoreNotes}>
-                          {gradeCopy.notes}: {entry.inspectionNotes}
+                          {entry.inspectionNotes}
                         </p>
                       ) : null}
                     </div>
