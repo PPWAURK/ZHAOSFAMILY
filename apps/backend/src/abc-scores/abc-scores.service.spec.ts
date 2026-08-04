@@ -142,18 +142,18 @@ describe('AbcScoresService', () => {
         inspectionNotes: 'Improve the storefront display',
       });
 
-      expect(prisma.abcStoreInspection.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          create: expect.objectContaining({
-            grade: null,
-            inspectionNotes: 'Improve the storefront display',
-          }),
-          update: expect.objectContaining({
-            grade: null,
-            inspectionNotes: 'Improve the storefront display',
-          }),
-        }),
-      );
+      const inspectionData = {
+        grade: null,
+        inspectionNotes: 'Improve the storefront display',
+        inspectedByUserId: 7,
+        inspectedAt: ANY_DATE,
+      };
+      expect(prisma.abcStoreInspection.upsert).toHaveBeenCalledWith({
+        where: { cycleId_restaurantId: { cycleId: 1, restaurantId: 2 } },
+        create: { cycleId: 1, restaurantId: 2, ...inspectionData },
+        update: inspectionData,
+        include: { media: { orderBy: { createdAt: 'desc' } } },
+      });
     });
 
     it('rejects edits on an archived cycle', async () => {
