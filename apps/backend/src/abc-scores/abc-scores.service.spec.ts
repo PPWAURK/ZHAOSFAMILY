@@ -267,6 +267,7 @@ describe('AbcScoresService', () => {
           storeName: 'Alpha',
           storeAddress: 'A',
           photoObjectKey: null,
+          inspectionNotes: null,
           grade: null,
         },
         {
@@ -274,6 +275,7 @@ describe('AbcScoresService', () => {
           storeName: 'Bravo',
           storeAddress: 'B',
           photoObjectKey: null,
+          inspectionNotes: 'Keep standards',
           grade: 'A',
         },
         {
@@ -281,10 +283,10 @@ describe('AbcScoresService', () => {
           storeName: 'Charlie',
           storeAddress: 'C',
           photoObjectKey: null,
+          inspectionNotes: 'Improve storefront display',
           grade: null,
         },
       ]);
-      expect(board?.entries[0]).not.toHaveProperty('inspectionNotes');
       expect(board?.entries[0]).not.toHaveProperty('media');
       expect(board?.entries[0]).not.toHaveProperty('totalScore');
     });

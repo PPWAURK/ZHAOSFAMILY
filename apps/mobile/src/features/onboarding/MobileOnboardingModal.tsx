@@ -219,9 +219,9 @@ export function MobileOnboardingModal({
     }
   }
 
-  function moveToNextStep(): void {
+  async function moveToNextStep(): Promise<void> {
     if (isFinalStep) {
-      void finish("training");
+      await finish("training");
       return;
     }
 
@@ -296,7 +296,7 @@ export function MobileOnboardingModal({
               accessibilityRole="button"
               disabled={isSubmitting}
               hitSlop={10}
-              onPress={() => void finish("home")}
+              onPress={() => finish("home")}
             >
               <Text style={styles.skip}>{isReplay ? copy.close : copy.skip}</Text>
             </Pressable>

@@ -202,6 +202,7 @@ export class AbcScoresService {
         storeName: entry.storeName,
         storeAddress: entry.storeAddress,
         photoObjectKey: entry.photoObjectKey,
+        inspectionNotes: entry.inspectionNotes,
         grade: entry.grade,
       })),
     };

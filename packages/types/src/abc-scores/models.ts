@@ -55,7 +55,11 @@ export type AbcGradeDirectory = {
 
 export type AbcPublicGradeEntry = Pick<
   AbcGradeDirectoryEntry,
-  "restaurantId" | "storeName" | "storeAddress" | "photoObjectKey"
+  | "restaurantId"
+  | "storeName"
+  | "storeAddress"
+  | "photoObjectKey"
+  | "inspectionNotes"
 > & {
   grade: AbcGrade | null;
 };

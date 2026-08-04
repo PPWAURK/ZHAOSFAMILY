@@ -147,6 +147,11 @@ export default function StoreGradeLeaderboard({
                     <div className={styles.gradeStoreContent}>
                       <h4>{entry.storeName}</h4>
                       <p>{entry.storeAddress}</p>
+                      {entry.inspectionNotes ? (
+                        <p className={styles.gradeStoreNotes}>
+                          {gradeCopy.notes}: {entry.inspectionNotes}
+                        </p>
+                      ) : null}
                     </div>
                     <span className={styles.gradeStoreValue}>{gradeLabel}</span>
                   </article>

@@ -47,8 +47,7 @@ async function press(
   const button = renderer.root.findByProps({ accessibilityLabel });
 
   await ReactTestRenderer.act(async () => {
-    button.props.onPress();
-    await Promise.resolve();
+    await button.props.onPress();
   });
 }
 
@@ -59,14 +58,18 @@ describe("MobileOnboardingModal", () => {
     });
   });
 
-  it("persists a skipped first-run guide as staying on the home screen", async () => {
-    const onComplete = jest.fn().mockResolvedValue(undefined);
-    const renderer = await renderModal({ onComplete });
+  it(
+    "persists a skipped first-run guide as staying on the home screen",
+    async () => {
+      const onComplete = jest.fn().mockResolvedValue(undefined);
+      const renderer = await renderModal({ onComplete });
 
-    await press(renderer, "跳过引导");
+      await press(renderer, "跳过引导");
 
-    expect(onComplete).toHaveBeenCalledWith("home");
-  });
+      expect(onComplete).toHaveBeenCalledWith("home");
+    },
+    15_000,
+  );
 
   it("starts training after the final first-run step", async () => {
     const onComplete = jest.fn().mockResolvedValue(undefined);

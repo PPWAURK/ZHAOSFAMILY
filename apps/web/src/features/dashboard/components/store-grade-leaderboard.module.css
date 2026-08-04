@@ -333,6 +333,10 @@
   -webkit-line-clamp: 2;
 }
 
+.gradeStoreContent .gradeStoreNotes {
+  color: var(--tier);
+}
+
 .emptyGrade {
   min-height: 64px;
   padding: 10px 0;
