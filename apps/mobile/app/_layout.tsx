@@ -6,8 +6,9 @@ import { usePushTokenRegistration } from "@/lib/usePushTokenRegistration";
 import { mobileAuthActions } from "@/lib/api";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-import { StatusBar, StyleSheet, View } from "react-native";
+import { Image, StatusBar, StyleSheet, View } from "react-native";
 import { isAndroid } from "@/lib/platform";
+import privacyLogo from "../assets/logo2024/100%chinese.jpg";
 
 export default function RootLayout() {
   const isPrivacyOverlayVisible = useScreenCaptureProtection();
@@ -35,7 +36,13 @@ export default function RootLayout() {
         </ConfirmProvider>
       </SplashCompletionProvider>
       {isPrivacyOverlayVisible ? (
-        <View pointerEvents="none" style={styles.privacyOverlay} />
+        <View pointerEvents="none" style={styles.privacyOverlay}>
+          <Image
+            resizeMode="contain"
+            source={privacyLogo}
+            style={styles.privacyLogo}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -44,7 +51,13 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   privacyOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#000000",
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 9999,
+  },
+  privacyLogo: {
+    height: 96,
+    width: 300,
   },
 });

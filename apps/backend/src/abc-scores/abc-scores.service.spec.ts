@@ -122,6 +122,40 @@ describe('AbcScoresService', () => {
       });
     });
 
+    it('upserts improvement notes without a grade', async () => {
+      prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
+      prisma.restaurant.findUnique.mockResolvedValue(RESTAURANT);
+      prisma.abcStoreInspection.upsert.mockResolvedValue({
+        ...RESTAURANT,
+        grade: null,
+        inspectionNotes: 'Improve the storefront display',
+        inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
+        media: [],
+      });
+
+      await expect(
+        service.recordInspection(ACTOR, 1, 2, {
+          notes: 'Improve the storefront display',
+        }),
+      ).resolves.toMatchObject({
+        grade: null,
+        inspectionNotes: 'Improve the storefront display',
+      });
+
+      expect(prisma.abcStoreInspection.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            grade: null,
+            inspectionNotes: 'Improve the storefront display',
+          }),
+          update: expect.objectContaining({
+            grade: null,
+            inspectionNotes: 'Improve the storefront display',
+          }),
+        }),
+      );
+    });
+
     it('rejects edits on an archived cycle', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue({
         ...DRAFT_CYCLE,

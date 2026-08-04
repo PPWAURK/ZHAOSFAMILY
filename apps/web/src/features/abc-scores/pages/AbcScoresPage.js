@@ -170,15 +170,11 @@ export default function AbcScoresPage() {
     if (!editState || !currentCycleId) {
       return;
     }
-    if (!draft.grade) {
-      setEditError(t.saveError);
-      return;
-    }
     setSaving(true);
     setEditError("");
     try {
       await recordAbcInspection(currentCycleId, editState.restaurantId, {
-        grade: draft.grade,
+        grade: draft.grade || undefined,
         notes: draft.notes || undefined,
       });
       await refreshDetail(currentCycleId);

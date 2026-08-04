@@ -227,7 +227,10 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
       setPreviewError(null);
 
       try {
-        const { fileUri, directoryUri } = await downloadTrainingMaterialToCache(material);
+        const { fileUri, directoryUri } = await downloadTrainingMaterialToCache(
+          material,
+          user.id,
+        );
 
         if (isPdfMaterial(material)) {
           const pdfDirectory = new Directory(directoryUri);
@@ -251,7 +254,7 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
         setIsLoadingPreview(false);
       }
     },
-    [copy.openError, pdfWatermarkIdentity],
+    [copy.openError, pdfWatermarkIdentity, user.id],
   );
 
   const handleClosePreview = useCallback(() => {

@@ -72,12 +72,6 @@ export const DASHBOARD_PRIMARY_NAV: DashboardNavItem[] = [
     label: { zh: "培训", en: "Training", fr: "Formation" },
     compactLabel: { fr: "Cours" },
   },
-  {
-    id: "more",
-    icon: "ellipsis-horizontal",
-    menuIcon: "···",
-    label: { zh: "更多", en: "More", fr: "Plus" },
-  },
 ];
 
 export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [

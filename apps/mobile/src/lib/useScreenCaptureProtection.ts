@@ -4,11 +4,10 @@ import type { AppStateStatus } from "react-native";
 import * as ScreenCapture from "expo-screen-capture";
 import { getCurrentScreen } from "@/lib/currentScreen";
 import { reportScreenSecurityEvent } from "@/features/training/trainingApi";
+import { mobileAuthStore } from "@/lib/api";
+import { getScreenCaptureWarningCopy } from "@/lib/screenCaptureCopy";
 
 const SCREEN_CAPTURE_PROTECTION_KEY = "zhao-family-mobile";
-const SCREENSHOT_WARNING_TITLE = "检测到截图行为";
-const SCREENSHOT_WARNING_MESSAGE =
-  "已检测到截图操作，您的账号信息已被记录。学习资料和内部资料不允许截图、录屏或外传，请立即删除该截图。";
 
 function reportScreenCaptureProtectionError(error: unknown): void {
   if (!__DEV__) {
@@ -63,7 +62,10 @@ export function useScreenCaptureProtection(): boolean {
           screenshotSubscription = ScreenCapture.addScreenshotListener(() => {
             if (!isMounted) return;
 
-            Alert.alert(SCREENSHOT_WARNING_TITLE, SCREENSHOT_WARNING_MESSAGE);
+            const warningCopy = getScreenCaptureWarningCopy(
+              mobileAuthStore.getState().user?.preferredLanguage,
+            );
+            Alert.alert(warningCopy.title, warningCopy.message);
 
             reportScreenSecurityEvent("screenshot", getCurrentScreen() || undefined, {
               platform: Platform.OS,

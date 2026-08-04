@@ -8,6 +8,7 @@ import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 import type { DashboardCopy } from "@/features/dashboard/dashboardCopy";
 import { dashboardNewsBoardStyles as styles } from "@/features/dashboard/dashboardNewsBoardStyles";
+import { createDashboardNewsPdfViewer } from "@/features/dashboard/dashboardNewsPdfPreview";
 import type {
   DashboardNewsAttachment,
   DashboardNewsPost,
@@ -49,7 +50,7 @@ type DashboardNewsBoardProps = {
 type FeaturedMedia =
   | { kind: "image"; src: string; alt: string }
   | { kind: "video"; src: string; alt: string }
-  | { kind: "pdf"; src: string; alt: string }
+  | { kind: "pdf"; attachment: DashboardNewsAttachment; src: string; alt: string }
   | null;
 
 function getAttachmentKind(
@@ -77,6 +78,15 @@ function getFeaturedMedia(post: DashboardNewsPost): FeaturedMedia {
   const attachmentKind = getAttachmentKind(post.attachment);
 
   if (attachmentKind && post.attachment?.href) {
+    if (attachmentKind === "pdf") {
+      return {
+        kind: "pdf",
+        attachment: post.attachment,
+        src: post.attachment.href,
+        alt: post.attachment.name || post.title,
+      };
+    }
+
     return {
       kind: attachmentKind,
       src: post.attachment.href,
@@ -110,7 +120,63 @@ function NewsVideo({ uri }: { uri: string }) {
   );
 }
 
-function NewsFeaturedMedia({ media }: { media: FeaturedMedia }) {
+function NewsPdf({
+  attachment,
+  onError,
+}: {
+  attachment: DashboardNewsAttachment;
+  onError: () => void;
+}) {
+  const [viewer, setViewer] = useState<{ baseUri: string; fileUri: string } | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    void createDashboardNewsPdfViewer(attachment)
+      .then((nextViewer) => {
+        if (!isCancelled) setViewer(nextViewer);
+      })
+      .catch(() => {
+        if (!isCancelled) onError();
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [attachment, onError]);
+
+  if (!viewer) {
+    return <ZhaoLoadingIndicator />;
+  }
+
+  return (
+    <WebView
+      allowFileAccess
+      allowFileAccessFromFileURLs
+      allowingReadAccessToURL={viewer.baseUri}
+      mixedContentMode="always"
+      bounces
+      nestedScrollEnabled
+      originWhitelist={["*"]}
+      scalesPageToFit
+      scrollEnabled
+      setBuiltInZoomControls
+      setDisplayZoomControls={false}
+      setSupportMultipleWindows={false}
+      showsHorizontalScrollIndicator
+      showsVerticalScrollIndicator
+      source={{ uri: viewer.fileUri }}
+      style={styles.featurePdf}
+      onError={onError}
+    />
+  );
+}
+
+function NewsFeaturedMedia({
+  media,
+}: {
+  media: FeaturedMedia;
+}) {
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => setHasError(false), [media?.src]);
@@ -131,20 +197,8 @@ function NewsFeaturedMedia({ media }: { media: FeaturedMedia }) {
   if (media.kind === "pdf") {
     return (
       <View style={styles.featurePdfFrame}>
-        <WebView
-          bounces
-          nestedScrollEnabled
-          originWhitelist={["*"]}
-          scalesPageToFit
-          scrollEnabled
-          setBuiltInZoomControls
-          setDisplayZoomControls={false}
-          setSupportMultipleWindows={false}
-          showsHorizontalScrollIndicator
-          showsVerticalScrollIndicator
-          source={{ uri: media.src }}
-          startInLoadingState
-          style={styles.featurePdf}
+        <NewsPdf
+          attachment={media.attachment}
           onError={() => setHasError(true)}
         />
       </View>
@@ -365,8 +419,9 @@ export function DashboardNewsBoard({
             <Pressable
               accessibilityHint={copy.newsReadMore}
               accessibilityRole="button"
+              delayLongPress={500}
               style={styles.articleOpenArea}
-              onPress={() => onOpenPost(activePost)}
+              onLongPress={() => onOpenPost(activePost)}
             >
               {showDistinctSummary ? (
                 <Text style={styles.articleSummary}>{summaryPreview}</Text>

@@ -93,6 +93,7 @@ export function OrderModuleScreen({
   const [activeReturnOrder, setActiveReturnOrder] =
     useState<OrderHistoryItem | null>(null);
   const [returnDraft, setReturnDraft] = useState<OrderReturnDraft | null>(null);
+  const [returnErrorMessage, setReturnErrorMessage] = useState("");
   const [returnReason, setReturnReason] = useState("");
   const [returnNotes, setReturnNotes] = useState("");
   const [returnQuantities, setReturnQuantities] = useState<ReturnQuantityMap>({});
@@ -431,6 +432,7 @@ export function OrderModuleScreen({
   function clearReturnPanel(): void {
     setActiveReturnOrder(null);
     setReturnDraft(null);
+    setReturnErrorMessage("");
     setReturnReason("");
     setReturnNotes("");
     setReturnQuantities({});
@@ -485,18 +487,14 @@ export function OrderModuleScreen({
     }
 
     try {
+      clearReturnPanel();
       setActiveReturnOrder(order);
-      setReturnDraft(null);
-      setReturnReason("");
-      setReturnNotes("");
-      setReturnQuantities({});
       setIsLoadingReturnDraft(true);
       setErrorMessage("");
       const draft = await fetchOrderReturnDraft(order.id);
       setReturnDraft(draft);
     } catch {
-      setErrorMessage(copy.returnSubmitError);
-      clearReturnPanel();
+      setReturnErrorMessage(copy.returnSubmitError);
     } finally {
       setIsLoadingReturnDraft(false);
     }
@@ -514,7 +512,7 @@ export function OrderModuleScreen({
       ...current,
       [String(purchaseOrderItemId)]: nextQuantity > 0 ? String(nextQuantity) : "",
     }));
-    setErrorMessage("");
+    setReturnErrorMessage("");
   }
 
   async function handleSubmitReturn(): Promise<void> {
@@ -528,18 +526,18 @@ export function OrderModuleScreen({
     );
 
     if (!reason) {
-      setErrorMessage(copy.returnReasonRequired);
+      setReturnErrorMessage(copy.returnReasonRequired);
       return;
     }
 
     if (selectedItems.length === 0) {
-      setErrorMessage(copy.returnItemRequired);
+      setReturnErrorMessage(copy.returnItemRequired);
       return;
     }
 
     try {
       setIsSubmittingReturn(true);
-      setErrorMessage("");
+      setReturnErrorMessage("");
       await createPurchaseReturn({
         orderId: returnDraft.orderId,
         reason,
@@ -550,7 +548,7 @@ export function OrderModuleScreen({
       clearReturnPanel();
       setShareMessage(copy.returnCreated);
     } catch {
-      setErrorMessage(copy.returnSubmitError);
+      setReturnErrorMessage(copy.returnSubmitError);
     } finally {
       setIsSubmittingReturn(false);
     }
@@ -691,145 +689,144 @@ export function OrderModuleScreen({
               const canEditOrder = order.canEdit !== false && !isLocked;
               const canReturnOrder = order.canReturn !== false;
               const canDeleteOrder = order.canDelete !== false && !isLocked;
+              const isActiveReturnOrder = activeReturnOrder?.id === order.id;
 
               return (
-                <View
-                  key={order.id}
-                  style={[styles.orderCard, isLocked ? styles.orderCardLocked : null]}
-                >
-                  <Text style={styles.orderCardTitle}>{order.number}</Text>
-                  <Text style={styles.orderCardMeta}>
-                    {order.supplierName || "-"} · {order.deliveryDate || "-"}
-                  </Text>
-                  <Text style={styles.orderCardMeta}>
-                    {copy.totalItems}: {order.totalItems ?? 0} ·{" "}
-                    {copy.estimatedTotal}: {(order.totalAmount ?? 0).toFixed(2)} EUR
-                  </Text>
-                  {isLocked ? (
-                    <Text style={styles.errorText}>{copy.returnedOrderLocked}</Text>
-                  ) : null}
-                  <View style={styles.orderCardActions}>
-                    <Pressable
-                      disabled={!canEditOrder || isDeletingOrder}
-                      style={[
-                        styles.orderCardAction,
-                        styles.orderCardActionPrimary,
-                        !canEditOrder || isDeletingOrder ? styles.disabledButton : null,
-                      ]}
-                      onPress={() => void handleSelectHistoryOrder(order)}
-                    >
-                      <Text
+                <View key={order.id} style={styles.orderHistoryItem}>
+                  <View style={[styles.orderCard, isLocked ? styles.orderCardLocked : null]}>
+                    <Text style={styles.orderCardTitle}>{order.number}</Text>
+                    <Text style={styles.orderCardMeta}>
+                      {order.supplierName || "-"} · {order.deliveryDate || "-"}
+                    </Text>
+                    <Text style={styles.orderCardMeta}>
+                      {copy.totalItems}: {order.totalItems ?? 0} · {copy.estimatedTotal}:{" "}
+                      {(order.totalAmount ?? 0).toFixed(2)} EUR
+                    </Text>
+                    {isLocked ? (
+                      <Text style={styles.errorText}>{copy.returnedOrderLocked}</Text>
+                    ) : null}
+                    <View style={styles.orderCardActions}>
+                      <Pressable
+                        disabled={!canEditOrder || isDeletingOrder}
                         style={[
-                          styles.orderCardActionText,
-                          styles.orderCardActionTextPrimary,
+                          styles.orderCardAction,
+                          styles.orderCardActionPrimary,
+                          !canEditOrder || isDeletingOrder ? styles.disabledButton : null,
                         ]}
+                        onPress={() => void handleSelectHistoryOrder(order)}
                       >
-                        {copy.editOrder}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      disabled={!canReturnOrder || isDeletingOrder}
-                      style={[
-                        styles.orderCardAction,
-                        !canReturnOrder || isDeletingOrder ? styles.disabledButton : null,
-                      ]}
-                      onPress={() => void handleOpenReturn(order)}
-                    >
-                      <Text style={styles.orderCardActionText}>{copy.returnOrder}</Text>
-                    </Pressable>
-                    <Pressable
-                      disabled={!canDeleteOrder || isDeletingOrder}
-                      style={[
-                        styles.orderCardAction,
-                        styles.orderCardActionDanger,
-                        !canDeleteOrder || isDeletingOrder ? styles.disabledButton : null,
-                      ]}
-                      onPress={() => void handleDeleteHistoryOrder(order)}
-                    >
-                      <Text style={styles.orderCardActionText}>
-                        {isDeletingOrder ? copy.deletingOrder : copy.deleteOrder}
-                      </Text>
-                    </Pressable>
+                        <Text
+                          style={[styles.orderCardActionText, styles.orderCardActionTextPrimary]}
+                        >
+                          {copy.editOrder}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        disabled={!canReturnOrder || isDeletingOrder}
+                        style={[
+                          styles.orderCardAction,
+                          !canReturnOrder || isDeletingOrder ? styles.disabledButton : null,
+                        ]}
+                        onPress={() => void handleOpenReturn(order)}
+                      >
+                        <Text style={styles.orderCardActionText}>{copy.returnOrder}</Text>
+                      </Pressable>
+                      <Pressable
+                        disabled={!canDeleteOrder || isDeletingOrder}
+                        style={[
+                          styles.orderCardAction,
+                          styles.orderCardActionDanger,
+                          !canDeleteOrder || isDeletingOrder ? styles.disabledButton : null,
+                        ]}
+                        onPress={() => void handleDeleteHistoryOrder(order)}
+                      >
+                        <Text style={styles.orderCardActionText}>
+                          {isDeletingOrder ? copy.deletingOrder : copy.deleteOrder}
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
+                  {isActiveReturnOrder ? (
+                    <View style={styles.returnPanel}>
+                      <SectionTitle label={`${copy.returnTitle}: ${order.number}`} />
+                      {isLoadingReturnDraft ? (
+                        <StateRow label={copy.loadingReturnDraft} />
+                      ) : returnErrorMessage ? (
+                        <Text style={styles.errorText}>{returnErrorMessage}</Text>
+                      ) : returnDraft?.items.some((item) => item.remainingQuantity > 0) ? (
+                        <>
+                          <View style={styles.returnField}>
+                            <Text style={styles.returnFieldLabel}>{copy.returnReason}</Text>
+                            <TextInput
+                              style={styles.returnInput}
+                              value={returnReason}
+                              onChangeText={(value) => {
+                                setReturnReason(value);
+                                setReturnErrorMessage("");
+                              }}
+                            />
+                          </View>
+                          <View style={styles.returnField}>
+                            <Text style={styles.returnFieldLabel}>{copy.returnNotes}</Text>
+                            <TextInput
+                              multiline
+                              style={[styles.returnInput, styles.returnNotesInput]}
+                              value={returnNotes}
+                              onChangeText={setReturnNotes}
+                            />
+                          </View>
+                          <View style={styles.returnItemList}>
+                            {returnDraft.items
+                              .filter((item) => item.remainingQuantity > 0)
+                              .map((item) => (
+                                <View key={item.purchaseOrderItemId} style={styles.returnItem}>
+                                  <View style={styles.returnItemInfo}>
+                                    <Text style={styles.selectedName}>
+                                      {language === "zh"
+                                        ? item.nameZh || item.nameFr || "-"
+                                        : item.nameFr || item.nameZh || "-"}
+                                    </Text>
+                                    <Text style={styles.returnItemMeta}>
+                                      {item.specification || "-"} · {item.unit || "-"}
+                                    </Text>
+                                    <Text style={styles.returnItemMeta}>
+                                      {copy.returnRemaining}: {item.remainingQuantity}
+                                    </Text>
+                                  </View>
+                                  <TextInput
+                                    keyboardType="number-pad"
+                                    maxLength={4}
+                                    style={styles.quantityInput}
+                                    value={returnQuantities[String(item.purchaseOrderItemId)] || ""}
+                                    placeholder="0"
+                                    onChangeText={(value) =>
+                                      updateReturnQuantity(
+                                        item.purchaseOrderItemId,
+                                        value,
+                                        item.remainingQuantity,
+                                      )
+                                    }
+                                    accessibilityLabel={copy.returnQuantity}
+                                  />
+                                </View>
+                              ))}
+                          </View>
+                          <PrimaryButton
+                            disabled={isSubmittingReturn}
+                            label={isSubmittingReturn ? copy.submittingReturn : copy.submitReturn}
+                            onPress={handleSubmitReturn}
+                          />
+                        </>
+                      ) : (
+                        <Text style={styles.stateText}>{copy.returnEmpty}</Text>
+                      )}
+                      <SecondaryButton label={copy.cancelReturn} onPress={clearReturnPanel} />
+                    </View>
+                  ) : null}
                 </View>
               );
             })}
           </View>
-          {activeReturnOrder ? (
-            <View style={styles.returnPanel}>
-              <SectionTitle label={`${copy.returnTitle}: ${activeReturnOrder.number}`} />
-              {isLoadingReturnDraft ? (
-                <StateRow label={copy.loadingReturnDraft} />
-              ) : returnDraft?.items.some((item) => item.remainingQuantity > 0) ? (
-                <>
-                  <View style={styles.returnField}>
-                    <Text style={styles.returnFieldLabel}>{copy.returnReason}</Text>
-                    <TextInput
-                      style={styles.returnInput}
-                      value={returnReason}
-                      onChangeText={(value) => {
-                        setReturnReason(value);
-                        setErrorMessage("");
-                      }}
-                    />
-                  </View>
-                  <View style={styles.returnField}>
-                    <Text style={styles.returnFieldLabel}>{copy.returnNotes}</Text>
-                    <TextInput
-                      multiline
-                      style={[styles.returnInput, styles.returnNotesInput]}
-                      value={returnNotes}
-                      onChangeText={setReturnNotes}
-                    />
-                  </View>
-                  <View style={styles.returnItemList}>
-                    {returnDraft.items
-                      .filter((item) => item.remainingQuantity > 0)
-                      .map((item) => (
-                        <View key={item.purchaseOrderItemId} style={styles.returnItem}>
-                          <View style={styles.returnItemInfo}>
-                            <Text style={styles.selectedName}>
-                              {language === "zh"
-                                ? item.nameZh || item.nameFr || "-"
-                                : item.nameFr || item.nameZh || "-"}
-                            </Text>
-                            <Text style={styles.returnItemMeta}>
-                              {item.specification || "-"} · {item.unit || "-"}
-                            </Text>
-                            <Text style={styles.returnItemMeta}>
-                              {copy.returnRemaining}: {item.remainingQuantity}
-                            </Text>
-                          </View>
-                          <TextInput
-                            keyboardType="number-pad"
-                            maxLength={4}
-                            style={styles.quantityInput}
-                            value={returnQuantities[String(item.purchaseOrderItemId)] || ""}
-                            placeholder="0"
-                            onChangeText={(value) =>
-                              updateReturnQuantity(
-                                item.purchaseOrderItemId,
-                                value,
-                                item.remainingQuantity,
-                              )
-                            }
-                            accessibilityLabel={copy.returnQuantity}
-                          />
-                        </View>
-                      ))}
-                  </View>
-                  <PrimaryButton
-                    disabled={isSubmittingReturn}
-                    label={isSubmittingReturn ? copy.submittingReturn : copy.submitReturn}
-                    onPress={handleSubmitReturn}
-                  />
-                </>
-              ) : (
-                <Text style={styles.stateText}>{copy.returnEmpty}</Text>
-              )}
-              <SecondaryButton label={copy.cancelReturn} onPress={clearReturnPanel} />
-            </View>
-          ) : null}
           {shareMessage ? <Text style={styles.stateText}>{shareMessage}</Text> : null}
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </View>

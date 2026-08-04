@@ -240,6 +240,9 @@ export const orderStyles = StyleSheet.create(scaleStyles({
   orderHistoryList: {
     gap: 10,
   },
+  orderHistoryItem: {
+    gap: 10,
+  },
   primaryButton: {
     alignItems: "center",
     backgroundColor: authControlStyles.colors.red,
@@ -395,6 +398,8 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     height: 6,
   },
   quantityInput: {
+    borderColor: "rgba(193, 22, 22, 0.42)",
+    borderWidth: 1,
     color: authControlStyles.colors.ink,
     fontFamily: "monospace",
     fontSize: 14,

@@ -95,7 +95,7 @@ const PERMISSIONS_COPY = {
       title: "系统",
       titleEm: "角色中心",
       titleSuffix: "",
-      lede: "只管理少数高级系统角色。日常前厅、后厨和门店岗位请在团队管理或岗位管理里处理。",
+      lede: "只管理少数高级系统角色。日常前厅、厨房和门店岗位请在团队管理或岗位管理里处理。",
       stepLabel: "RBAC",
       stepDetail: "系统角色会立即影响后端权限校验。",
       boundaryNote:

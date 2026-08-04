@@ -265,6 +265,13 @@ export function LoginScreen() {
   function changeLanguage(nextLanguage: AuthLanguage): void {
     setLanguage(nextLanguage);
     if (authStatus === "authenticated") {
+      const currentUser = mobileAuthStore.getState().user;
+      if (currentUser) {
+        mobileAuthStore.getState().setUser({
+          ...currentUser,
+          preferredLanguage: nextLanguage,
+        });
+      }
       void mobileAuthActions.updateMe({ language: nextLanguage }).catch(() => undefined);
     }
   }

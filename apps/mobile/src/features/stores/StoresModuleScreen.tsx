@@ -93,7 +93,7 @@ function parseRoleValues(jobRole: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
-// Label the *applied* position using the full role table (incl. 前厅/后厨/经理),
+// Label the *applied* position using the full role table (incl. 前厅/厨房/经理),
 // not the filtered assignable options the selector renders.
 function formatAppliedRoleLabel(
   jobRole: string | null | undefined,

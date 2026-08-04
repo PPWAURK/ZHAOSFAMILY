@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import Constants from "expo-constants";
-import { Platform } from "react-native";
+import { isRunningInExpoGo } from "expo";
 
 /**
  * Dashboard entries a tapped notification can route to. These must match the
@@ -22,8 +21,8 @@ type NotificationResponse = Awaited<
   ReturnType<(typeof import("expo-notifications"))["getLastNotificationResponseAsync"]>
 >;
 
-function isExpoGoAndroid(): boolean {
-  return Platform.OS === "android" && Constants.appOwnership === "expo";
+function isExpoGo(): boolean {
+  return isRunningInExpoGo();
 }
 
 function navigateFromResponse(
@@ -64,7 +63,7 @@ export function useNotificationNavigation(onNavigate: (entry: NotificationEntry)
   handlerRef.current = onNavigate;
 
   useEffect(() => {
-    if (isExpoGoAndroid()) {
+    if (isExpoGo()) {
       return;
     }
 

@@ -22,7 +22,6 @@ import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  type ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -379,7 +378,7 @@ const NativeVideoPlayer = memo(function NativeVideoPlayer({
   return (
     <>
       <VideoView
-        contentFit="contain"
+        contentFit="cover"
         fullscreenOptions={{ enable: false }}
         nativeControls={false}
         onFirstFrameRender={() => onReadyRef.current()}
@@ -489,7 +488,7 @@ const TrainingVideoFeedSlide = memo(function TrainingVideoFeedSlide({
   watchedPct,
 }: TrainingVideoFeedSlideProps): ReactElement {
   return (
-    <View style={[styles.videoFeedSlide, { height: slideHeight }]}> 
+    <View style={[styles.videoFeedSlide, { height: slideHeight }]}>
       {source ? (
         <NativeVideoPlayer
           canSeek={isCompleted}
@@ -898,20 +897,6 @@ export function TrainingVideoFeedModal({
     releaseAllPlayers();
   }, [releaseAllPlayers]);
 
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: Array<ViewToken<TrainingPlanMaterial>> }) => {
-      const activeItem = viewableItems.find(
-        (item) => item.isViewable && item.index !== null,
-      );
-      const nextIndex = activeItem?.index;
-      if (nextIndex === null || nextIndex === undefined) return;
-
-      setActiveIndex((currentIndex) =>
-        currentIndex === nextIndex ? currentIndex : nextIndex,
-      );
-    },
-  ).current;
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const handleMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
       if (feedMaterials.length === 0) return;
@@ -1196,9 +1181,7 @@ export function TrainingVideoFeedModal({
           renderItem={renderVideoSlide}
           removeClippedSubviews={false}
           showsVerticalScrollIndicator={false}
-          viewabilityConfig={viewabilityConfig}
           windowSize={3}
-          onViewableItemsChanged={onViewableItemsChanged}
         />
       </SafeAreaView>
     </Modal>

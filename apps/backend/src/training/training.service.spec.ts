@@ -720,7 +720,7 @@ describe('TrainingService', () => {
       },
       {
         code: 'BOH',
-        nameZh: '后厨',
+        nameZh: '厨房',
         nameEn: 'Back of House',
         nameFr: 'Cuisine',
         parentCode: null,
@@ -903,7 +903,7 @@ describe('TrainingService', () => {
       },
       {
         code: 'BOH',
-        nameZh: '后厨',
+        nameZh: '厨房',
         nameEn: 'Back of House',
         nameFr: 'Cuisine',
         parentCode: null,
@@ -957,7 +957,7 @@ describe('TrainingService', () => {
       },
       {
         code: 'BOH',
-        nameZh: '后厨',
+        nameZh: '厨房',
         nameEn: 'Back of House',
         nameFr: 'Cuisine',
         parentCode: null,
@@ -1057,7 +1057,7 @@ describe('TrainingService', () => {
       },
       {
         code: 'BOH',
-        nameZh: '后厨',
+        nameZh: '厨房',
         nameEn: 'Back of House',
         nameFr: 'Cuisine',
         parentCode: null,
@@ -1348,7 +1348,7 @@ describe('TrainingService', () => {
       },
       {
         code: 'BOH',
-        nameZh: '后厨',
+        nameZh: '厨房',
         nameEn: 'Back of House',
         nameFr: 'Cuisine',
         parentCode: null,

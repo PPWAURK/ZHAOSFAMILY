@@ -106,20 +106,29 @@ export async function updateTrainingMaterialProgress(
 
 export async function downloadTrainingMaterialToCache(
   material: TrainingPlanMaterial,
+  userId: number | string,
 ): Promise<{ fileUri: string; directoryUri: string }> {
+  const cacheDirectory = new Directory(
+    Paths.cache,
+    buildTrainingCacheDirectoryName(material, userId),
+  );
+  cacheDirectory.create({ idempotent: true, intermediates: true });
+
+  const file = new File(cacheDirectory, buildTrainingFileName(material));
+
+  if (file.exists && file.size > 0) {
+    return {
+      fileUri: file.uri,
+      directoryUri: cacheDirectory.uri,
+    };
+  }
+
   const accessToken = getAccessToken() || (await secureTokenStorage.getAccessToken());
 
   if (!accessToken) {
     throw new Error("ACCESS_TOKEN_REQUIRED");
   }
 
-  const cacheDirectory = new Directory(
-    Paths.cache,
-    buildTrainingCacheDirectoryName(),
-  );
-  cacheDirectory.create({ idempotent: true, intermediates: true });
-
-  const file = new File(cacheDirectory, buildTrainingFileName(material));
   const downloadedFile = await File.downloadFileAsync(
     getTrainingMaterialFileUrl(material.objectKey),
     file,
@@ -137,8 +146,14 @@ export async function downloadTrainingMaterialToCache(
   };
 }
 
-function buildTrainingCacheDirectoryName(): string {
-  return `training-material-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function buildTrainingCacheDirectoryName(
+  material: TrainingPlanMaterial,
+  userId: number | string,
+): string {
+  const updatedAt = Date.parse(material.updatedAt);
+  const version = Number.isNaN(updatedAt) ? "unknown" : String(updatedAt);
+
+  return `training-material-${userId}-${material.id}-${version}`;
 }
 
 function buildTrainingFileName(material: TrainingPlanMaterial): string {

@@ -247,7 +247,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     positionLabels: {
       ALL: "全员",
       FOH: "前厅",
-      BOH: "后厨",
+      BOH: "厨房",
       FRONT_HOST: "迎宾",
       FRONT_CASHIER: "收银",
       FRONT_SERVER: "服务员",

@@ -125,6 +125,6 @@ const styles = StyleSheet.create({
   },
   recordingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#000",
+    backgroundColor: "#c11616",
   },
 });

@@ -5,6 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { uploadProductImage } from "@/features/suppliers/services/suppliersApi";
 import styles from "@/features/suppliers/suppliers-page.module.css";
 
+const PRODUCT_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
 function toInputValue(product) {
   return {
     reference: product.reference || "",
@@ -77,7 +83,7 @@ export default function ProductEditRow({
       return;
     }
 
-    if (!nextFile.type.startsWith("image/")) {
+    if (!PRODUCT_IMAGE_MIME_TYPES.has(nextFile.type)) {
       setError(copy.imageInvalidType);
       event.target.value = "";
       return;
@@ -219,7 +225,7 @@ export default function ProductEditRow({
                 <input
                   ref={imageInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleImageFileChange}
                   disabled={isRowSubmitting}
                 />

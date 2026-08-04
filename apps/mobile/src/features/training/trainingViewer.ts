@@ -265,14 +265,13 @@ const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_
 
 export function buildPdfViewerHtml(
   base64Data: string,
-  watermarkIdentity: PdfWatermarkIdentity,
+  watermarkIdentity?: PdfWatermarkIdentity,
 ): string {
   const serializeForInlineScript = (value: string): string =>
     JSON.stringify(value).replace(/</g, "\\u003c");
-  const serializedWatermarkName = serializeForInlineScript(watermarkIdentity.name);
-  const serializedWatermarkEmail = serializeForInlineScript(
-    watermarkIdentity.email,
-  );
+  const serializedWatermarkName = serializeForInlineScript(watermarkIdentity?.name ?? "");
+  const serializedWatermarkEmail = serializeForInlineScript(watermarkIdentity?.email ?? "");
+  const shouldRenderWatermark = watermarkIdentity ? "true" : "false";
 
   return `<!DOCTYPE html>
 <html style="height:100%">
@@ -359,7 +358,7 @@ html,body{min-height:100%;background:#525659}
               canvas.style.width=viewport.width+'px';
               canvas.style.height=viewport.height+'px';
               pageElement.appendChild(canvas);
-              ['top','middle','bottom'].forEach(function(position){
+              if(${shouldRenderWatermark})['top','middle','bottom'].forEach(function(position){
                 var watermark=document.createElement('div');
                 watermark.className='watermark watermark--'+position;
                 var watermarkName=document.createElement('span');

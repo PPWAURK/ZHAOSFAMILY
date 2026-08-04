@@ -147,7 +147,7 @@ export default function TrainingUploadWorkspace({
               type="search"
               value={positionQuery}
               onChange={(event) => onPositionQueryChange(event.target.value)}
-              placeholder="搜索岗位，例如：前厅、后厨、店长"
+              placeholder="搜索岗位，例如：前厅、厨房、店长"
               aria-label="搜索适用岗位"
             />
             <div className={styles.uploadPositionOptions}>

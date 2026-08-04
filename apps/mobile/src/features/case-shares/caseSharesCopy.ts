@@ -58,7 +58,7 @@ export type CaseSharesCopy = {
 export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
   zh: {
     kicker: "ZHAO · 案例分享",
-    title: "伙伴宝藏",
+    title: "优秀案例",
     titleAccent: "。",
     intro: "发现伙伴们分享的好点子、好做法与优秀案例。",
     mineTitle: "我的分享",
@@ -119,7 +119,7 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
 
   en: {
     kicker: "ZHAO · SHARES",
-    title: "Team Gems",
+    title: "Best Practice",
     titleAccent: ".",
     intro: "Explore great ideas, best practices, and success stories shared by your teammates.",
     mineTitle: "My shares",
@@ -180,7 +180,7 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
 
   fr: {
     kicker: "ZHAO · PARTAGES",
-    title: "Les pépites des équipes",
+    title: "Bonnes pratiques",
     titleAccent: ".",
     intro: "Découvrez les bonnes idées, les bonnes pratiques et les réussites partagées par vos collègues.",
     mineTitle: "Mes partages",

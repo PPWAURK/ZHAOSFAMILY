@@ -29,7 +29,7 @@ const CATEGORY_COLOR: Record<TitleCategory, string> = {
 const CATEGORY_LABEL: Record<TitleCategory, string> = {
   growth: "成长",
   front: "前厅",
-  kitchen: "后厨",
+  kitchen: "厨房",
   management: "管理",
   fun: "趣味",
   premium: "尊享",

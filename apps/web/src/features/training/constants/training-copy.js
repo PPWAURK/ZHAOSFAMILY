@@ -247,11 +247,11 @@ export const TRAINING_POSITIONS = [
   {
     id: "BOH",
     code: "POS-02",
-    name: "后厨共享",
+    name: "厨房共享",
     en: "Back of House",
     fr: "Cuisine",
     mine: false,
-    desc: "后厨所有岗位都需要掌握的卫生、备料、出餐与安全基础。",
+    desc: "厨房所有岗位都需要掌握的卫生、备料、出餐与安全基础。",
   },
   {
     id: "BACK_DISHWASHER",
@@ -360,7 +360,7 @@ export const TRAINING_MATERIALS = [
   { id: "M007", pos: "FOH", type: "VIDEO", req: false, sort: 5, title: "佐餐酒搭配 · 进阶", sub: "45 min · 黄酒/白酒/茶", upd: "2025-09-30", size: "312 MB" },
   { id: "M008", pos: "FOH", type: "VIDEO", req: false, sort: 6, title: "英语速成 · 前厅场景", sub: "28 min · 50 句 + 跟读", upd: "2025-11-14", size: "168 MB" },
   { id: "M011", pos: "FOH", type: "QUIZ", req: false, sort: 7, title: "酒品盲品小测", sub: "10 题 · 风味辨识", upd: "2025-10-05", size: "—" },
-  { id: "M101", pos: "BOH", type: "VIDEO", req: true, sort: 1, title: "后厨开线 · 开店前 20 分钟", sub: "15 min · 分工/检查表", upd: "2026-01-18", size: "88 MB" },
+  { id: "M101", pos: "BOH", type: "VIDEO", req: true, sort: 1, title: "厨房开线 · 开店前 20 分钟", sub: "15 min · 分工/检查表", upd: "2026-01-18", size: "88 MB" },
   { id: "M102", pos: "BOH", type: "PDF", req: true, sort: 2, title: "招牌菜复刻手册", sub: "36 页 · 分量/火候/摆盘", upd: "2026-02-22", size: "4.6 MB" },
   { id: "M103", pos: "BOH", type: "VIDEO", req: false, sort: 3, title: "刀工 · 常见切法", sub: "22 min · 直/滚/片/剁", upd: "2025-11-08", size: "120 MB" },
   { id: "M201", pos: "CASH", type: "VIDEO", req: true, sort: 1, title: "ZPOS 收银台操作", sub: "16 min · 结账/找零/对账", upd: "2025-12-20", size: "82 MB" },

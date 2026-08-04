@@ -164,7 +164,7 @@ const TRAINING_POSITIONS = [
   },
   {
     code: 'BOH',
-    nameZh: '后厨',
+    nameZh: '厨房',
     nameEn: 'Back of House',
     nameFr: 'Cuisine',
     parentCode: null,

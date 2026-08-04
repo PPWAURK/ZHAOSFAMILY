@@ -58,6 +58,7 @@ import {
   type DashboardNewsPost,
 } from "@/features/dashboard/dashboardNewsApi";
 import { DashboardNewsBoard } from "@/features/dashboard/DashboardNewsBoard";
+import { createDashboardNewsPdfViewer } from "@/features/dashboard/dashboardNewsPdfPreview";
 import {
   formatDashboardNewsDate as formatDate,
   isDashboardNewsSummaryDistinct,
@@ -259,6 +260,8 @@ export function DashboardHomeScreen({
   const [selectedNewsCategory, setSelectedNewsCategory] = useState<NewsDeskCategory>("news");
   const [selectedNewsPost, setSelectedNewsPost] = useState<DashboardNewsPost | null>(null);
   const [pdfPreviewPost, setPdfPreviewPost] = useState<DashboardNewsPost | null>(null);
+  const [pdfPreviewFileUri, setPdfPreviewFileUri] = useState<string | null>(null);
+  const [pdfPreviewBaseUri, setPdfPreviewBaseUri] = useState<string | null>(null);
   const [isLoadingPdfPreview, setIsLoadingPdfPreview] = useState(false);
   const [pdfPreviewError, setPdfPreviewError] = useState("");
   const [isLoadingSelectedNews, setIsLoadingSelectedNews] = useState(false);
@@ -667,8 +670,8 @@ export function DashboardHomeScreen({
   }
 
   async function handleOpenAttachment(post: DashboardNewsPost): Promise<void> {
-    const attachmentUrl = post.attachment?.href;
-    if (!attachmentUrl) {
+    const attachment = post.attachment;
+    if (!attachment?.href) {
       setReaderError(copy.newsAttachmentOpenError);
       return;
     }
@@ -678,15 +681,33 @@ export function DashboardHomeScreen({
       setIsLoadingPdfPreview(true);
       pdfLoadingStartedAtRef.current = Date.now();
       pdfLoadingTokenRef.current += 1;
+      const token = pdfLoadingTokenRef.current;
       setSelectedNewsPost(null);
       setReaderError("");
       setIsLoadingSelectedNews(false);
-      setTimeout(() => setPdfPreviewPost(post), 120);
+      setPdfPreviewPost(post);
+      setPdfPreviewFileUri(null);
+      setPdfPreviewBaseUri(null);
+
+      try {
+        const viewer = await createDashboardNewsPdfViewer(
+          attachment,
+        );
+
+        if (token !== pdfLoadingTokenRef.current) {
+          return;
+        }
+
+        setPdfPreviewFileUri(viewer.fileUri);
+        setPdfPreviewBaseUri(viewer.baseUri);
+      } catch {
+        finishPdfLoading(() => setPdfPreviewError(copy.newsPdfPreviewError));
+      }
       return;
     }
 
     try {
-      await Linking.openURL(attachmentUrl);
+      await Linking.openURL(attachment.href);
     } catch {
       setReaderError(copy.newsAttachmentOpenError);
     }
@@ -694,6 +715,8 @@ export function DashboardHomeScreen({
 
   function handleClosePdfPreview(): void {
     setPdfPreviewPost(null);
+    setPdfPreviewFileUri(null);
+    setPdfPreviewBaseUri(null);
     setIsLoadingPdfPreview(false);
     setPdfPreviewError("");
     pdfLoadingStartedAtRef.current = 0;
@@ -1245,11 +1268,15 @@ export function DashboardHomeScreen({
                       </Pressable>
                     </View>
                     <View style={styles.pdfViewer}>
-                      {pdfPreviewPost?.attachment?.href ? (
+                      {pdfPreviewPost && pdfPreviewFileUri ? (
                         <ProtectedScreen screenName="dashboard-home-pdf-preview">
                           <WebView
+                            allowFileAccess
+                            allowFileAccessFromFileURLs
+                            allowingReadAccessToURL={pdfPreviewBaseUri || pdfPreviewFileUri}
+                            mixedContentMode="always"
                             originWhitelist={["*"]}
-                            source={{ uri: pdfPreviewPost.attachment.href }}
+                            source={{ uri: pdfPreviewFileUri }}
                             startInLoadingState
                             style={styles.pdfWebView}
                             onError={() => {

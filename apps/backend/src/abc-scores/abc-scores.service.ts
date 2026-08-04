@@ -103,7 +103,7 @@ export class AbcScoresService {
     const restaurant = await this.loadRestaurant(restaurantId);
     const inspectedAt = new Date();
     const data = {
-      grade: dto.grade,
+      grade: dto.grade ?? null,
       inspectionNotes: this.normalizeOptionalText(dto.notes),
       inspectedByUserId: actor.id,
       inspectedAt,

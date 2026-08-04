@@ -1,10 +1,8 @@
 import Constants from "expo-constants";
 import * as Device from "expo-device";
+import { isRunningInExpoGo } from "expo";
 import { Platform } from "react-native";
-import type {
-  PushTokenPlatform,
-  RegisterPushTokenRequest,
-} from "@zhao/types";
+import type { PushTokenPlatform, RegisterPushTokenRequest } from "@zhao/types";
 import { mobileApiClient } from "@/lib/api";
 
 const PUSH_TOKENS_PATH = "/notifications/push-tokens";
@@ -17,12 +15,12 @@ let isNotificationHandlerConfigured = false;
 
 type ExpoNotifications = typeof import("expo-notifications");
 
-function isExpoGoAndroid(): boolean {
-  return Platform.OS === "android" && Constants.appOwnership === "expo";
+function isExpoGo(): boolean {
+  return isRunningInExpoGo();
 }
 
 async function loadNotifications(): Promise<ExpoNotifications | null> {
-  if (isExpoGoAndroid()) {
+  if (isExpoGo()) {
     return null;
   }
 
@@ -50,15 +48,10 @@ function configureNotificationHandler(notifications: ExpoNotifications): void {
 }
 
 function resolveProjectId(): string | undefined {
-  return (
-    Constants.expoConfig?.extra?.eas?.projectId ??
-    Constants.easConfig?.projectId
-  );
+  return Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 }
 
-async function ensureAndroidChannel(
-  notifications: ExpoNotifications,
-): Promise<void> {
+async function ensureAndroidChannel(notifications: ExpoNotifications): Promise<void> {
   if (Platform.OS !== "android") return;
 
   await notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
@@ -68,9 +61,7 @@ async function ensureAndroidChannel(
   });
 }
 
-async function ensurePermission(
-  notifications: ExpoNotifications,
-): Promise<boolean> {
+async function ensurePermission(notifications: ExpoNotifications): Promise<boolean> {
   const settings = await notifications.getPermissionsAsync();
   if (settings.granted) return true;
 

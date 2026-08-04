@@ -1,6 +1,8 @@
+import { Directory, File, Paths } from "expo-file-system";
 import { getAccessToken } from "@zhao/api";
 import { mobileApiClient } from "@/lib/api";
 import { MOBILE_API_URL } from "@/lib/env";
+import { secureTokenStorage } from "@/lib/tokenStorage";
 
 export type DashboardNewsAttachment = {
   name: string;
@@ -182,6 +184,54 @@ export async function confirmDashboardNewsRead(id: string): Promise<DashboardNew
   return mobileApiClient.post<DashboardNewsReadConfirmation>(
     `/dashboard-news/${encodeURIComponent(id)}/read-confirmation`,
   );
+}
+
+export async function downloadDashboardNewsAttachmentToCache(
+  attachment: DashboardNewsAttachment,
+): Promise<{ directoryUri: string; fileUri: string }> {
+  const accessToken = getAccessToken() || (await secureTokenStorage.getAccessToken());
+
+  if (!accessToken || !attachment.href) {
+    throw new Error("ACCESS_TOKEN_REQUIRED");
+  }
+
+  const cacheDirectory = new Directory(
+    Paths.cache,
+    `dashboard-news-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
+  cacheDirectory.create({ idempotent: true, intermediates: true });
+
+  const file = new File(cacheDirectory, getDashboardNewsAttachmentFileName(attachment));
+  const downloadedFile = await File.downloadFileAsync(attachment.href, file, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    idempotent: true,
+  });
+
+  return {
+    directoryUri: cacheDirectory.uri,
+    fileUri: downloadedFile.uri,
+  };
+}
+
+function getDashboardNewsAttachmentFileName(attachment: DashboardNewsAttachment): string {
+  const safeName = attachment.name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "")
+    .replace(/[/\\?%*:|"<>]+/g, "-")
+    .replace(/[^a-zA-Z0-9\u3400-\u9FFF._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  if (/\.[a-z0-9]{2,8}$/i.test(safeName)) {
+    return safeName;
+  }
+
+  return attachment.mimeType.toLowerCase() === "application/pdf"
+    ? `${safeName || "dashboard-news-attachment"}.pdf`
+    : safeName || "dashboard-news-attachment";
 }
 
 export async function fetchDashboardNewsReadStatus(id: string): Promise<DashboardNewsReadStatus> {

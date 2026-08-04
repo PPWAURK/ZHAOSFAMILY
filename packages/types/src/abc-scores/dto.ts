@@ -5,7 +5,7 @@ export type CreateAbcCycleRequest = {
 };
 
 export type RecordAbcInspectionRequest = {
-  grade: AbcGrade;
+  grade?: AbcGrade;
   notes?: string;
 };
 

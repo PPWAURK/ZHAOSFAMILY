@@ -29,6 +29,12 @@ describe("PDF training viewer", () => {
     expect(html).toContain("\\u003c/script>");
     expect(html).not.toContain("</script><script>alert(1)</script>");
   });
+
+  it("can render PDFs without a watermark for non-training previews", () => {
+    const html = buildPdfViewerHtml("dGVzdA==");
+
+    expect(html).toContain("if(false)['top','middle','bottom'].forEach");
+  });
 });
 
 describe("video training viewer", () => {
