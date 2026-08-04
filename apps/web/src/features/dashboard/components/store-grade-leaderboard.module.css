@@ -44,7 +44,7 @@
 
 .gradeboardSummary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   border-top: 1px solid var(--ink-20);
   border-bottom: 1px solid var(--ink-20);
@@ -67,7 +67,8 @@
 
 .summaryGradeA,
 .summaryGradeB,
-.summaryGradeC {
+.summaryGradeC,
+.summaryGradeUngraded {
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 800;
@@ -84,6 +85,11 @@
 
 .summaryGradeC {
   color: #9b5628;
+}
+
+.summaryGradeUngraded {
+  color: var(--ink-60);
+  letter-spacing: 0.06em;
 }
 
 .gradeboardSummaryItem strong {
@@ -202,6 +208,11 @@
 .gradeTierC {
   --tier: #b16a34;
   --tier-soft: rgba(177, 106, 52, 0.16);
+}
+
+.gradeTierUngraded {
+  --tier: #8c8c8c;
+  --tier-soft: rgba(140, 140, 140, 0.14);
 }
 
 .gradeTierHeader {

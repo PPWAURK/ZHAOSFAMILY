@@ -1,6 +1,6 @@
 "use client";
 
-import { getStoreJobRoleGroups } from "@/shared/constants/job-roles";
+import { getRegistrationJobRoleGroups } from "@/shared/constants/job-roles";
 import styles from "@/features/auth/auth-page.module.css";
 
 function buildAvatarFallback(name) {
@@ -65,7 +65,7 @@ export default function RegisterDetailsStep({
 }) {
   const avatarFallback = buildAvatarFallback(memberName);
   const maxBirthday = getTodayInputValue();
-  const jobRoleGroups = getStoreJobRoleGroups(lang);
+  const jobRoleGroups = getRegistrationJobRoleGroups(lang);
   const panelTitle = isSubmitSuccessful
     ? t.detailsSuccessTitle
     : submitError

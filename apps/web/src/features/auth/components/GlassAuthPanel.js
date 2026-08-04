@@ -49,6 +49,8 @@ const INITIAL_EXTRA_DETAILS = {
   roles: [],
 };
 
+const HOLDING_STORE_NAME = "ZHAO Groupe";
+
 function revokeObjectUrl(previewUrl) {
   if (previewUrl) {
     URL.revokeObjectURL(previewUrl);
@@ -180,6 +182,14 @@ export default function GlassAuthPanel() {
     () => stores.find((store) => store.id === selectedStoreId) ?? null,
     [selectedStoreId, stores],
   );
+  const holdingStore = useMemo(
+    () => stores.find((store) => store.name === HOLDING_STORE_NAME) ?? null,
+    [stores],
+  );
+  const selectableStores = useMemo(
+    () => stores.filter((store) => store.name !== HOLDING_STORE_NAME),
+    [stores],
+  );
   const registerDisplayName = useMemo(() => {
     const fullName = [values.familyName, values.givenName].filter(Boolean).join(" ").trim();
 
@@ -237,6 +247,13 @@ export default function GlassAuthPanel() {
   function toggleExtraRole(role) {
     setRegistrationError("");
     setIsRegistrationSuccessful(false);
+    const isSelectingHolding =
+      role === "holding" && !(extraDetails.roles || []).includes("holding");
+
+    if (isSelectingHolding && holdingStore) {
+      setSelectedStoreId(holdingStore.id);
+    }
+
     setExtraDetails((current) => {
       const roles = current.roles || [];
       const nextRoles = roles.includes(role)
@@ -369,7 +386,11 @@ export default function GlassAuthPanel() {
   }
 
   async function handleRegisterSubmit() {
-    if (isSubmittingRegistration || !selectedStore) {
+    const registrationStore = extraDetails.roles?.includes("holding")
+      ? holdingStore
+      : selectedStore;
+
+    if (isSubmittingRegistration || !registrationStore) {
       return;
     }
 
@@ -397,7 +418,7 @@ export default function GlassAuthPanel() {
           givenName: values.givenName,
           email: values.email,
           password: values.password,
-          restaurantId: Number(selectedStore.id),
+          restaurantId: Number(registrationStore.id),
           birthday: extraDetails.birthday || undefined,
           jobRole: extraDetails.roles?.length ? extraDetails.roles.join(",") : undefined,
           profilePhotoDataUrl,
@@ -422,7 +443,7 @@ export default function GlassAuthPanel() {
       return (
         <StoreSelectionStep
           t={t}
-          stores={stores}
+          stores={selectableStores}
           isLoadingStores={isLoadingStores}
           storesError={storesError}
           selectedStoreId={selectedStoreId}

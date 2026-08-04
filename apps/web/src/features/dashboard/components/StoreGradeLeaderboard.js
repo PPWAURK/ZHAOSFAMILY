@@ -6,6 +6,7 @@ import { buildPublicStorePhotoUrl } from "@/shared/api/api-client";
 import styles from "@/features/dashboard/components/store-grade-leaderboard.module.css";
 
 const GRADES = ["A", "B", "C"];
+const GRADE_TIERS = [...GRADES, "Ungraded"];
 
 function getStoreInitial(storeName) {
   return storeName.trim().slice(0, 1).toUpperCase();
@@ -30,7 +31,12 @@ export default function StoreGradeLeaderboard({
   onNext,
 }) {
   const entriesByGrade = new Map(
-    GRADES.map((grade) => [grade, entries.filter((entry) => entry.grade === grade)]),
+    GRADE_TIERS.map((grade) => [
+      grade,
+      entries.filter((entry) =>
+        grade === "Ungraded" ? entry.grade === null : entry.grade === grade,
+      ),
+    ]),
   );
 
   function handleDragEnd(_, info) {
@@ -59,9 +65,11 @@ export default function StoreGradeLeaderboard({
         </div>
 
         <div className={styles.gradeboardSummary} aria-label={copy.title}>
-          {GRADES.map((grade) => (
+          {GRADE_TIERS.map((grade) => (
             <div key={grade} className={styles.gradeboardSummaryItem}>
-              <span className={styles[`summaryGrade${grade}`]}>{grade}</span>
+              <span className={styles[`summaryGrade${grade}`]}>
+                {grade === "Ungraded" ? gradeCopy.gradeNone : grade}
+              </span>
               <strong>{entriesByGrade.get(grade)?.length ?? 0}</strong>
             </div>
           ))}
@@ -109,8 +117,13 @@ export default function StoreGradeLeaderboard({
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       >
-        {GRADES.map((grade, index) => {
+        {GRADE_TIERS.map((grade, index) => {
           const gradeEntries = entriesByGrade.get(grade) ?? [];
+          const isUngraded = grade === "Ungraded";
+          const gradeLabel = isUngraded ? "—" : grade;
+          const groupLabel = isUngraded
+            ? gradeCopy.ungradedGroupLabel(gradeEntries.length)
+            : gradeCopy.gradeGroupLabel(grade, gradeEntries.length);
 
           return (
             <motion.section
@@ -122,8 +135,8 @@ export default function StoreGradeLeaderboard({
               transition={{ duration: 0.45, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
             >
               <header className={styles.gradeTierHeader}>
-                <span className={styles.gradeTierBadge}>{grade}</span>
-                <h3>{gradeCopy.gradeGroupLabel(grade, gradeEntries.length)}</h3>
+                <span className={styles.gradeTierBadge}>{gradeLabel}</span>
+                <h3>{groupLabel}</h3>
               </header>
               <div className={styles.gradeStoreList}>
                 {gradeEntries.map((entry) => (
@@ -135,11 +148,11 @@ export default function StoreGradeLeaderboard({
                       <h4>{entry.storeName}</h4>
                       <p>{entry.storeAddress}</p>
                     </div>
-                    <span className={styles.gradeStoreValue}>{grade}</span>
+                    <span className={styles.gradeStoreValue}>{gradeLabel}</span>
                   </article>
                 ))}
                 {gradeEntries.length === 0 ? (
-                  <p className={styles.emptyGrade}>{gradeCopy.gradeGroupLabel(grade, 0)}</p>
+                  <p className={styles.emptyGrade}>{groupLabel}</p>
                 ) : null}
               </div>
             </motion.section>

@@ -229,7 +229,7 @@ describe('AbcScoresService', () => {
       });
     });
 
-    it('returns only grade-board fields from the latest published cycle', async () => {
+    it('returns graded and recorded ungraded stores from the latest published cycle', async () => {
       prisma.abcScoreCycle.findFirst.mockResolvedValue({
         ...DRAFT_CYCLE,
         status: 'published',
@@ -242,6 +242,7 @@ describe('AbcScoresService', () => {
       prisma.restaurant.findMany.mockResolvedValue([
         { id: 1, name: 'Alpha', address: 'A', photoObjectKey: null },
         { id: 2, name: 'Bravo', address: 'B', photoObjectKey: null },
+        { id: 3, name: 'Charlie', address: 'C', photoObjectKey: null },
       ]);
       prisma.abcStoreInspection.findMany.mockResolvedValue([
         {
@@ -249,6 +250,12 @@ describe('AbcScoresService', () => {
           grade: 'A',
           inspectionNotes: 'Keep standards',
           inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
+        },
+        {
+          restaurantId: 3,
+          grade: null,
+          inspectionNotes: 'Improve storefront display',
+          inspectedAt: new Date('2026-06-22T12:00:00.000Z'),
         },
       ]);
 
@@ -261,6 +268,13 @@ describe('AbcScoresService', () => {
           storeAddress: 'B',
           photoObjectKey: null,
           grade: 'A',
+        },
+        {
+          restaurantId: 3,
+          storeName: 'Charlie',
+          storeAddress: 'C',
+          photoObjectKey: null,
+          grade: null,
         },
       ]);
       expect(board?.entries[0]).not.toHaveProperty('inspectionNotes');

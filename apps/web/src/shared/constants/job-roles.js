@@ -221,6 +221,13 @@ export function getStoreJobRoleGroups(lang = DEFAULT_LANGUAGE) {
   ];
 }
 
+export function getRegistrationJobRoleGroups(lang = DEFAULT_LANGUAGE) {
+  return [
+    toGroup("organization", ["holding"], lang),
+    ...getStoreJobRoleGroups(lang),
+  ];
+}
+
 export function getOrganizationJobRoleGroups(lang = DEFAULT_LANGUAGE) {
   return [
     toGroup("organization", ORGANIZATION_JOB_ROLE_VALUES, lang),

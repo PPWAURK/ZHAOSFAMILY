@@ -198,7 +198,7 @@ export class AbcScoresService {
     return {
       cycle: directory.cycle,
       entries: directory.entries.flatMap((entry) => {
-        if (!entry.grade) {
+        if (!entry.grade && !entry.inspectedAt) {
           return [];
         }
 
