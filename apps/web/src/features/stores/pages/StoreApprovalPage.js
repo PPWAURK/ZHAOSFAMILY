@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
@@ -32,7 +32,13 @@ import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
 
-function getStoreIdParam(params) {
+function getStoreIdParam(params, searchParams) {
+  const searchStoreId = searchParams.get("storeId");
+
+  if (searchStoreId) {
+    return searchStoreId;
+  }
+
   const value = params?.storeId;
 
   if (Array.isArray(value)) {
@@ -256,7 +262,8 @@ export default function StoreApprovalPage() {
   const confirm = useConfirm();
   const toast = useToast();
   const params = useParams();
-  const storeId = getStoreIdParam(params);
+  const searchParams = useSearchParams();
+  const storeId = getStoreIdParam(params, searchParams);
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [store, setStore] = useState(null);

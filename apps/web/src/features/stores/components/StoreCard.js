@@ -84,7 +84,7 @@ export default function StoreCard({
         <div className={styles.cardActions}>
           <Link
             className={`${styles.cardAction} ${styles.cardActionPrimary}`}
-            href={`/dashboard/stores/${encodeURIComponent(store.id)}`}
+            href={`/dashboard/stores/approval?storeId=${encodeURIComponent(store.id)}`}
           >
             {labels.review}
           </Link>
