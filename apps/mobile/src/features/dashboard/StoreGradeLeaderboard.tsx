@@ -13,6 +13,7 @@ import {
 
 const colors = authControlStyles.colors;
 const GRADES = ["A", "B", "C"] as const;
+const GRADE_TIERS = [...GRADES, null] as const;
 const GRADE_COLORS = {
   A: "#c79a1e",
   B: "#8c93a0",
@@ -23,7 +24,8 @@ const COPY = {
   zh: {
     kicker: "ABC STORE GRADES",
     title: "门店 ABC 评级榜",
-    subtitle: "展示最新已发布周期的 A、B、C 级门店。检查报告仅向总部及管理层开放。",
+    subtitle: "展示最新已发布周期的 A、B、C 级及未评级门店。检查报告仅向总部及管理层开放。",
+    ungraded: "未评级",
     storeUnit: "家门店",
     cycleLabel: "检查周期",
     previousCycle: "查看较新周期",
@@ -36,7 +38,8 @@ const COPY = {
     kicker: "ABC STORE GRADES",
     title: "ABC store grade board",
     subtitle:
-      "A, B and C store grades from the latest published cycle. Reports remain restricted to headquarters and management.",
+      "A, B, C and ungraded stores from the latest published cycle. Reports remain restricted to headquarters and management.",
+    ungraded: "Ungraded",
     storeUnit: "stores",
     cycleLabel: "Inspection cycle",
     previousCycle: "View newer cycle",
@@ -49,7 +52,8 @@ const COPY = {
     kicker: "NIVEAUX ABC DES BOUTIQUES",
     title: "Tableau des niveaux ABC",
     subtitle:
-      "Niveaux A, B et C du dernier cycle publié. Les rapports restent réservés au siège et au management.",
+      "Niveaux A, B, C et boutiques non notées du dernier cycle publié. Les rapports restent réservés au siège et au management.",
+    ungraded: "Non noté",
     storeUnit: "boutiques",
     cycleLabel: "Cycle d'inspection",
     previousCycle: "Voir le cycle plus récent",
@@ -66,7 +70,7 @@ type StoreGradeLeaderboardProps = {
   language: AuthLanguage;
 };
 
-function getGradeEntries(entries: StoreGradeEntry[], grade: (typeof GRADES)[number]) {
+function getGradeEntries(entries: StoreGradeEntry[], grade: StoreGradeEntry["grade"]) {
   return entries.filter((entry) => entry.grade === grade);
 }
 
@@ -234,24 +238,30 @@ export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) 
           </View>
 
           <View style={styles.summary}>
-            {GRADES.map((grade) => (
-              <View key={grade} style={styles.summaryItem}>
-                <Text style={[styles.summaryGrade, { color: GRADE_COLORS[grade] }]}>{grade}</Text>
-                <Text style={styles.summaryCount}>{getGradeEntries(entries, grade).length}</Text>
-                <Text style={styles.summaryUnit}>{copy.storeUnit}</Text>
-              </View>
-            ))}
+            {GRADE_TIERS.map((grade) => {
+              const gradeLabel = grade ?? copy.ungraded;
+              const gradeColor = grade === null ? colors.ink60 : GRADE_COLORS[grade];
+
+              return (
+                <View key={gradeLabel} style={styles.summaryItem}>
+                  <Text style={[styles.summaryGrade, { color: gradeColor }]}>{gradeLabel}</Text>
+                  <Text style={styles.summaryCount}>{getGradeEntries(entries, grade).length}</Text>
+                  <Text style={styles.summaryUnit}>{copy.storeUnit}</Text>
+                </View>
+              );
+            })}
           </View>
 
           <View {...panResponder.panHandlers}>
-            {GRADES.map((grade) => {
+            {GRADE_TIERS.map((grade) => {
               const gradeEntries = getGradeEntries(entries, grade);
-              const gradeColor = GRADE_COLORS[grade];
+              const gradeLabel = grade ?? copy.ungraded;
+              const gradeColor = grade === null ? colors.ink60 : GRADE_COLORS[grade];
 
               return (
-                <View key={grade} style={styles.gradeSection}>
+                <View key={gradeLabel} style={styles.gradeSection}>
                   <Text style={[styles.gradeHeader, { color: gradeColor }]}>
-                    {grade} · {gradeEntries.length} {copy.storeUnit}
+                    {gradeLabel} · {gradeEntries.length} {copy.storeUnit}
                   </Text>
 
                   {gradeEntries.map((entry) => (
@@ -268,7 +278,9 @@ export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) 
                           {entry.address}
                         </Text>
                       </View>
-                      <Text style={[styles.storeGrade, { color: gradeColor }]}>{grade}</Text>
+                      <Text style={[styles.storeGrade, { color: gradeColor }]}>
+                        {grade ?? "—"}
+                      </Text>
                     </View>
                   ))}
                 </View>

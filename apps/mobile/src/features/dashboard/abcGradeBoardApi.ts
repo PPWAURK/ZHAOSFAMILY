@@ -10,7 +10,7 @@ export type StoreGradeEntry = {
   id: string;
   name: string;
   address: string;
-  grade: AbcGrade;
+  grade: AbcGrade | null;
   photoUri: string | null;
 };
 
