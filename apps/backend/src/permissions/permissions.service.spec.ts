@@ -506,6 +506,7 @@ describe('PermissionsService', () => {
     prismaService.restaurant.findMany.mockResolvedValue([
       {
         id: 1,
+        storeCode: 4,
         name: 'ZHAO Opera',
         address: 'Paris',
         photoObjectKey: null,
@@ -545,6 +546,7 @@ describe('PermissionsService', () => {
     ).resolves.toEqual([
       {
         id: 1,
+        storeCode: 4,
         name: 'ZHAO Opera',
         address: 'Paris',
         photoObjectKey: null,
@@ -554,12 +556,13 @@ describe('PermissionsService', () => {
       where: {},
       select: {
         id: true,
+        storeCode: true,
         name: true,
         address: true,
         photoObjectKey: true,
       },
       orderBy: {
-        id: 'asc',
+        storeCode: 'asc',
       },
     });
   });

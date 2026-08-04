@@ -16,9 +16,10 @@ type ErrorResponseBody = {
 
 type RestaurantListItem = {
   id: number;
+  storeCode: number;
   name: string;
   address: string;
-  photoUrl: string | null;
+  photoObjectKey: string | null;
 };
 
 type SupplierListItem = {
@@ -91,9 +92,10 @@ function createPrismaServiceMock() {
       findMany: jest.fn().mockResolvedValue([
         {
           id: 1,
+          storeCode: 1,
           name: 'Paris Opera',
           address: '10 Rue Example',
-          photoUrl: '/uploads/paris-opera.jpg',
+          photoObjectKey: 'stores/photos/2026/07/paris-opera.jpg',
         },
       ]),
     },
@@ -246,20 +248,22 @@ describe('API endpoints (e2e)', () => {
     expect(prismaService.restaurant.findMany).toHaveBeenCalledWith({
       select: {
         id: true,
+        storeCode: true,
         name: true,
         address: true,
-        photoUrl: true,
+        photoObjectKey: true,
       },
       orderBy: {
-        id: 'asc',
+        storeCode: 'asc',
       },
     });
     expect(body).toEqual([
       {
         id: 1,
+        storeCode: 1,
         name: 'Paris Opera',
         address: '10 Rue Example',
-        photoUrl: '/uploads/paris-opera.jpg',
+        photoObjectKey: 'stores/photos/2026/07/paris-opera.jpg',
       },
     ]);
   });

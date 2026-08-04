@@ -1,5 +1,6 @@
 export type RestaurantApiRecord = {
   id: number | string;
+  storeCode: number | string;
   name?: string | null;
   address?: string | null;
   photoObjectKey?: string | null;

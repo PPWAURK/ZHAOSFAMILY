@@ -15,8 +15,8 @@ type StorePhotoUploadResult = {
   objectKey?: string;
 };
 
-export function formatStoreCode(restaurantId: number | string): string {
-  return `STORE ${String(restaurantId).padStart(3, "0")}`;
+export function formatStoreCode(storeCode: number | string): string {
+  return `STORE ${String(storeCode).padStart(3, "0")}`;
 }
 
 export function resolveStorePhotoPath(photoObjectKey?: string | null): string {
@@ -37,7 +37,7 @@ export function mapRestaurantToStoreOption(restaurant: RestaurantApiRecord): Sto
     id: String(restaurant.id),
     name: restaurant.name ?? "",
     address: restaurant.address ?? "",
-    storeCode: formatStoreCode(restaurant.id),
+    storeCode: formatStoreCode(restaurant.storeCode),
     photoPath: resolveStorePhotoPath(restaurant.photoObjectKey),
     photoObjectKey: restaurant.photoObjectKey ?? "",
   };
@@ -49,7 +49,7 @@ export function mapRestaurantToStoreCard(restaurant: RestaurantApiRecord): Store
     name: restaurant.name ?? "",
     address: restaurant.address ?? "",
     status: "open",
-    storeCode: formatStoreCode(restaurant.id),
+    storeCode: formatStoreCode(restaurant.storeCode),
     photoPath: resolveStorePhotoPath(restaurant.photoObjectKey),
     photoObjectKey: restaurant.photoObjectKey ?? "",
   };

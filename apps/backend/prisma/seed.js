@@ -3,9 +3,10 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const HOLDING_RESTAURANT = {
+  storeCode: 0,
   name: 'ZHAO Groupe',
   address: '169 avenue de Choisy 75013',
-  photoUrl: null,
+  photoObjectKey: null,
 };
 const LOCAL_SUPER_ADMIN_EMAIL = 'admin@zhao-family.local';
 

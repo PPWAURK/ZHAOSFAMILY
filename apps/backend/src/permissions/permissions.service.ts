@@ -273,12 +273,13 @@ export class PermissionsService {
       where,
       select: {
         id: true,
+        storeCode: true,
         name: true,
         address: true,
         photoObjectKey: true,
       },
       orderBy: {
-        id: 'asc',
+        storeCode: 'asc',
       },
     });
   }

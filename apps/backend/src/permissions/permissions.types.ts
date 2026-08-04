@@ -33,6 +33,7 @@ export type PermissionUserItem = {
 
 export type ManageableRestaurantItem = {
   id: number;
+  storeCode: number;
   name: string;
   address: string;
   photoObjectKey: string | null;

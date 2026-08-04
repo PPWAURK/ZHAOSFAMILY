@@ -10,10 +10,13 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 
 export type RestaurantListItem = {
   id: number;
+  storeCode: number;
   name: string;
   address: string;
   photoObjectKey: string | null;
 };
+
+const CREATE_RETRY_LIMIT = 3;
 
 @Injectable()
 export class RestaurantsService {
@@ -38,17 +41,19 @@ export class RestaurantsService {
     const restaurants = await this.prismaService.restaurant.findMany({
       select: {
         id: true,
+        storeCode: true,
         name: true,
         address: true,
         photoObjectKey: true,
       },
       orderBy: {
-        id: 'asc',
+        storeCode: 'asc',
       },
     });
 
     return restaurants.map((restaurant) => ({
       id: restaurant.id,
+      storeCode: restaurant.storeCode,
       name: restaurant.name,
       address: restaurant.address,
       photoObjectKey: restaurant.photoObjectKey,
@@ -62,6 +67,7 @@ export class RestaurantsService {
       },
       select: {
         id: true,
+        storeCode: true,
         name: true,
         address: true,
         photoObjectKey: true,
@@ -78,24 +84,49 @@ export class RestaurantsService {
   async createRestaurant(
     dto: CreateRestaurantDto,
   ): Promise<RestaurantListItem> {
-    try {
-      return await this.prismaService.restaurant.create({
-        data: {
-          name: dto.name.trim(),
-          address: dto.address.trim(),
-          photoObjectKey: this.normalizePhotoObjectKey(dto.photoObjectKey),
-          updatedAt: new Date(),
-        },
-        select: {
-          id: true,
-          name: true,
-          address: true,
-          photoObjectKey: true,
-        },
-      });
-    } catch (error) {
-      this.handleRestaurantWriteError(error);
+    for (let attempt = 0; attempt < CREATE_RETRY_LIMIT; attempt += 1) {
+      try {
+        return await this.prismaService.$transaction(
+          async (transaction) => {
+            const lastRestaurant = await transaction.restaurant.findFirst({
+              select: { storeCode: true },
+              orderBy: { storeCode: 'desc' },
+            });
+
+            return transaction.restaurant.create({
+              data: {
+                storeCode: (lastRestaurant?.storeCode ?? 0) + 1,
+                name: dto.name.trim(),
+                address: dto.address.trim(),
+                photoObjectKey: this.normalizePhotoObjectKey(
+                  dto.photoObjectKey,
+                ),
+                updatedAt: new Date(),
+              },
+              select: {
+                id: true,
+                storeCode: true,
+                name: true,
+                address: true,
+                photoObjectKey: true,
+              },
+            });
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error) {
+        if (
+          this.isTransactionConflict(error) &&
+          attempt < CREATE_RETRY_LIMIT - 1
+        ) {
+          continue;
+        }
+
+        this.handleRestaurantWriteError(error);
+      }
     }
+
+    throw new Error('RESTAURANT_STORE_CODE_ALLOCATION_FAILED');
   }
 
   async updateRestaurant(
@@ -121,6 +152,7 @@ export class RestaurantsService {
         },
         select: {
           id: true,
+          storeCode: true,
           name: true,
           address: true,
           photoObjectKey: true,
@@ -151,6 +183,13 @@ export class RestaurantsService {
     }
 
     return photoObjectKey.trim() || null;
+  }
+
+  private isTransactionConflict(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2034'
+    );
   }
 
   private handleRestaurantWriteError(error: unknown): never {

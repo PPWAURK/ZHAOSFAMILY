@@ -165,6 +165,7 @@ model RolePermission {
 
 model Restaurant {
   id                  Int                  @id @default(autoincrement())
+  storeCode           Int                  @unique @map("store_code")
   name                String               @unique
   address             String
   photoObjectKey      String?              @map("photo_object_key") @db.VarChar(191)

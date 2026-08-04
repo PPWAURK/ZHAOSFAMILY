@@ -4,6 +4,7 @@ import type { MobilePermissionUser, MobileStore } from "@/features/stores/storeT
 
 type ManageableRestaurantResponse = {
   id: number | string;
+  storeCode: number | string;
   name?: string | null;
   address?: string | null;
   photoObjectKey?: string | null;
@@ -21,8 +22,8 @@ type PermissionUserResponse = {
   } | null;
 };
 
-function formatStoreCode(restaurantId: number | string): string {
-  return `STORE ${String(restaurantId).padStart(3, "0")}`;
+function formatStoreCode(storeCode: number | string): string {
+  return `STORE ${String(storeCode).padStart(3, "0")}`;
 }
 
 function resolvePhotoUri(photoObjectKey?: string | null): string | null {
@@ -42,7 +43,7 @@ function mapRestaurant(restaurant: ManageableRestaurantResponse): MobileStore {
     address: restaurant.address || "",
     photoObjectKey: restaurant.photoObjectKey || null,
     photoUri: resolvePhotoUri(restaurant.photoObjectKey),
-    storeCode: formatStoreCode(id),
+    storeCode: formatStoreCode(restaurant.storeCode),
   };
 }
 
