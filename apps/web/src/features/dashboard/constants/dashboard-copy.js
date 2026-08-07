@@ -459,6 +459,7 @@ export const DASHBOARD_COPY = {
       reader: {
         title: "阅读全文",
         close: "关闭阅读",
+        fullscreen: "全屏查看附件",
         open: "阅读全文",
         delete: "删除",
         deleteConfirm: "确认删除这条动态？",
@@ -678,6 +679,7 @@ export const DASHBOARD_COPY = {
       reader: {
         title: "Read update",
         close: "Close reader",
+        fullscreen: "View attachment fullscreen",
         open: "Read",
         delete: "Delete",
         deleteConfirm: "Delete this update?",
@@ -897,6 +899,7 @@ export const DASHBOARD_COPY = {
       reader: {
         title: "Lire l'actualite",
         close: "Fermer",
+        fullscreen: "Voir la pièce jointe en plein écran",
         open: "Lire",
         delete: "Supprimer",
         deleteConfirm: "Supprimer cette actualite ?",

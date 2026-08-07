@@ -81,7 +81,6 @@ import { TrainingModuleScreen } from "@/features/training/TrainingModuleScreen";
 import { TrainingTitleFrame } from "@/features/training/TrainingTitleFrame";
 import { fetchTrainingMyTitles } from "@/features/training/trainingApi";
 import type { TrainingTitle } from "@/features/training/trainingTypes";
-import { WaitingQueueModuleScreen } from "@/features/waiting-queue/WaitingQueueModuleScreen";
 import { NotificationCenter } from "@/features/notifications/NotificationCenter";
 import { MobileOnboardingModal } from "@/features/onboarding/MobileOnboardingModal";
 import {
@@ -869,8 +868,6 @@ export function DashboardHomeScreen({
               onRegisterPublishAction={handleCaseSharePublishActionChange}
               onOpenMyCases={() => setActiveEntry("my-case-shares")}
             />
-          ) : activeEntry === "waiting-queue" ? (
-            <WaitingQueueModuleScreen language={language} />
           ) : activeEntry === "training" ? (
             <TrainingModuleScreen language={language} user={user} />
           ) : activeEntry === "training-records" ? (

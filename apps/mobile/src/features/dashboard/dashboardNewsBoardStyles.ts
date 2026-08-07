@@ -114,6 +114,18 @@ export const dashboardNewsBoardStyles = StyleSheet.create(
       fontWeight: "700",
       letterSpacing: 2,
     },
+    featureFullscreenButton: {
+      alignItems: "center",
+      backgroundColor: "rgba(20, 20, 20, 0.72)",
+      bottom: 12,
+      borderRadius: 4,
+      height: 44,
+      justifyContent: "center",
+      position: "absolute",
+      right: 12,
+      width: 44,
+      zIndex: 1,
+    },
     featureImage: {
       backgroundColor: "#ffffff",
       height: 280,
@@ -139,6 +151,63 @@ export const dashboardNewsBoardStyles = StyleSheet.create(
     featureVideo: {
       backgroundColor: authControlStyles.colors.ink,
       height: 280,
+      width: "100%",
+    },
+    fullscreenCloseButton: {
+      alignItems: "center",
+      height: 44,
+      justifyContent: "center",
+      width: 44,
+    },
+    fullscreenFallback: {
+      alignItems: "center",
+      backgroundColor: authControlStyles.colors.red,
+      flex: 1,
+      gap: 18,
+      justifyContent: "center",
+    },
+    fullscreenHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingTop: 52,
+    },
+    fullscreenImage: {
+      backgroundColor: "#ffffff",
+      flex: 1,
+      width: "100%",
+    },
+    fullscreenMedia: {
+      flex: 1,
+      marginTop: 16,
+      minHeight: 0,
+    },
+    fullscreenModal: {
+      backgroundColor: authControlStyles.colors.ink,
+      flex: 1,
+    },
+    fullscreenPdf: {
+      backgroundColor: "#ffffff",
+      flex: 1,
+      minHeight: 0,
+      width: "100%",
+    },
+    fullscreenPdfFrame: {
+      flex: 1,
+      minHeight: 0,
+      width: "100%",
+    },
+    fullscreenTitle: {
+      color: "#ffffff",
+      flex: 1,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    fullscreenVideo: {
+      backgroundColor: authControlStyles.colors.ink,
+      flex: 1,
       width: "100%",
     },
     pager: {

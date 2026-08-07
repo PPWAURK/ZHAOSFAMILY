@@ -39,6 +39,10 @@ const INITIAL_FORM = {
   visibility: "public",
   tags: "",
 };
+const PDFJS_VERSION = "3.11.174";
+const PDFJS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
+const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+let dashboardPdfJsPromise;
 
 function resolveColumn(category) {
   if (category === "people") return "congrats";
@@ -111,6 +115,49 @@ function getBackendCategory(boardCategory) {
 
 function getPostCategoryLabel(copy, category) {
   return copy.categories[getBoardCategory(category)] || category;
+}
+
+function loadDashboardPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+
+  if (!dashboardPdfJsPromise) {
+    dashboardPdfJsPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+
+      script.src = PDFJS_LIB_URL;
+      script.async = true;
+      script.onload = () => {
+        if (window.pdfjsLib) {
+          resolve(window.pdfjsLib);
+          return;
+        }
+
+        reject(new Error("PDFJS_LOAD_FAILED"));
+      };
+      script.onerror = () => reject(new Error("PDFJS_LOAD_FAILED"));
+      document.head.appendChild(script);
+    });
+  }
+
+  return dashboardPdfJsPromise;
+}
+
+async function renderDashboardPdfPage(page, container) {
+  const baseViewport = page.getViewport({ scale: 1 });
+  const availableWidth = Math.max(container.clientWidth - 24, 1);
+  const viewport = page.getViewport({ scale: availableWidth / baseViewport.width });
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) throw new Error("PDF_CANVAS_UNAVAILABLE");
+
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  canvas.style.width = `${viewport.width}px`;
+  canvas.style.height = `${viewport.height}px`;
+  container.appendChild(canvas);
+
+  await page.render({ canvasContext: context, viewport }).promise;
 }
 
 function parseMarkdownImageLine(line) {
@@ -290,23 +337,94 @@ function renderInlineMarkdown(text) {
   return elements.length > 0 ? elements : text;
 }
 
-function NewsMediaFallback() {
+function FullscreenIcon() {
   return (
-    <div className={styles.newsMediaFallback} aria-hidden="true">
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M8 3H4a1 1 0 0 0-1 1v4M16 3h4a1 1 0 0 1 1 1v4M21 16v4a1 1 0 0 1-1 1h-4M3 16v4a1 1 0 0 0 1 1h4" />
+    </svg>
+  );
+}
+
+function DashboardNewsPdfViewer({ isFullscreen = false, source, title }) {
+  const pagesRef = useRef(null);
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isCancelled = false;
+    let loadingTask;
+    let pdfDocument;
+
+    async function renderPdf() {
+      const pages = pagesRef.current;
+
+      if (!pages) return;
+
+      setHasError(false);
+      setIsLoading(true);
+      pages.replaceChildren();
+
+      try {
+        const pdfjsLib = await loadDashboardPdfJs();
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+        loadingTask = pdfjsLib.getDocument({ url: source });
+        pdfDocument = await loadingTask.promise;
+
+        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+          if (isCancelled) return;
+
+          const page = await pdfDocument.getPage(pageNumber);
+          await renderDashboardPdfPage(page, pages);
+        }
+      } catch {
+        if (!isCancelled) setHasError(true);
+      } finally {
+        if (!isCancelled) setIsLoading(false);
+      }
+    }
+
+    void renderPdf();
+
+    return () => {
+      isCancelled = true;
+      loadingTask?.destroy();
+      pdfDocument?.destroy();
+    };
+  }, [source]);
+
+  return (
+    <div
+      className={isFullscreen ? styles.newsFullscreenPdfViewer : styles.newsFeaturePdfViewer}
+      aria-label={title}
+    >
+      <div ref={pagesRef} className={styles.newsPdfPages} />
+      {isLoading ? <span className={styles.newsPdfLoading}>Loading PDF…</span> : null}
+      {hasError ? <span className={styles.newsPdfError}>PDF preview unavailable.</span> : null}
+    </div>
+  );
+}
+
+function NewsMediaFallback({ isFullscreen = false } = {}) {
+  return (
+    <div
+      className={isFullscreen ? styles.newsFullscreenFallback : styles.newsMediaFallback}
+      aria-hidden="true"
+    >
       <img src="/images/title-frames/zhao-seal.png" alt="" />
       <span>ZHAO&apos;S FAMILY</span>
     </div>
   );
 }
 
-function SignedAttachmentMedia({ media }) {
+function SignedAttachmentMedia({ isFullscreen = false, media }) {
   const { url } = useMediaUrl(media.objectKey);
   const [signedUrlFailed, setSignedUrlFailed] = useState(false);
   const [legacyImageFailed, setLegacyImageFailed] = useState(false);
   const source = !signedUrlFailed && url ? url : media.href;
 
   if (!source || legacyImageFailed) {
-    return <NewsMediaFallback />;
+    return <NewsMediaFallback isFullscreen={isFullscreen} />;
   }
 
   function handleMediaError() {
@@ -321,7 +439,7 @@ function SignedAttachmentMedia({ media }) {
   if (media.mediaKind === "video") {
     return (
       <video
-        className={styles.newsFeatureVideo}
+        className={isFullscreen ? styles.newsFullscreenVideo : styles.newsFeatureVideo}
         controls
         preload="metadata"
         onError={handleMediaError}
@@ -332,39 +450,71 @@ function SignedAttachmentMedia({ media }) {
   }
 
   if (media.mediaKind === "pdf") {
-    return <iframe className={styles.newsFeaturePdf} src={source} title={media.alt} />;
+    return <DashboardNewsPdfViewer isFullscreen={isFullscreen} source={source} title={media.alt} />;
   }
 
   return (
     <img
       src={source}
       alt={media.alt}
-      className={styles.newsFeatureImage}
+      className={isFullscreen ? styles.newsFullscreenImage : styles.newsFeatureImage}
       onError={handleMediaError}
     />
   );
 }
 
-function FeaturedNewsMedia({ post }) {
+function FeaturedNewsMedia({ isFullscreen = false, post }) {
   const media = getFeaturedMedia(post);
   const [bodyImageFailed, setBodyImageFailed] = useState(false);
 
   if (!media || bodyImageFailed) {
-    return <NewsMediaFallback />;
+    return <NewsMediaFallback isFullscreen={isFullscreen} />;
   }
 
   if (media.kind === "attachment") {
-    return <SignedAttachmentMedia media={media} />;
+    return <SignedAttachmentMedia isFullscreen={isFullscreen} media={media} />;
   }
 
   return (
     <img
       src={media.src}
       alt={media.alt}
-      className={styles.newsFeatureImage}
+      className={isFullscreen ? styles.newsFullscreenImage : styles.newsFeatureImage}
       loading="lazy"
       onError={() => setBodyImageFailed(true)}
     />
+  );
+}
+
+function NewsFullscreenOverlay({ copy, onClose, post }) {
+  const title = getFeaturedMedia(post)?.alt || post.title;
+  const titleId = `dashboard-news-fullscreen-${post.id}`;
+
+  return (
+    <div
+      className={styles.newsFullscreenOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
+      <section className={styles.newsFullscreenPanel} tabIndex={-1}>
+        <header className={styles.newsFullscreenHeader}>
+          <h2 id={titleId}>{title}</h2>
+          <button
+            type="button"
+            className={styles.newsFullscreenClose}
+            aria-label={copy.reader.close}
+            autoFocus
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </header>
+        <div className={styles.newsFullscreenMedia}>
+          <FeaturedNewsMedia isFullscreen post={post} />
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -533,6 +683,7 @@ export default function DashboardNewsModule({ lang, copy }) {
   const [selectedTag, setSelectedTag] = useState("all");
   const [activeColumnKey, setActiveColumnKey] = useState("news");
   const [selectedPost, setSelectedPost] = useState(null);
+  const [fullscreenPost, setFullscreenPost] = useState(null);
   const [readActionState, setReadActionState] = useState({
     postId: "",
     message: "",
@@ -568,6 +719,17 @@ export default function DashboardNewsModule({ lang, copy }) {
     window.addEventListener("keydown", handlePreviewKeyDown);
     return () => window.removeEventListener("keydown", handlePreviewKeyDown);
   }, [isPreviewOpen, submitState.isSubmitting]);
+
+  useEffect(() => {
+    if (!fullscreenPost) return undefined;
+
+    function handleFullscreenKeyDown(event) {
+      if (event.key === "Escape") setFullscreenPost(null);
+    }
+
+    window.addEventListener("keydown", handleFullscreenKeyDown);
+    return () => window.removeEventListener("keydown", handleFullscreenKeyDown);
+  }, [fullscreenPost]);
 
   useEffect(() => {
     if (!canPublish || !user?.id || draftLoadedRef.current) return;
@@ -1037,6 +1199,16 @@ export default function DashboardNewsModule({ lang, copy }) {
               <div className={styles.newsFeatureLayout}>
                 <figure className={styles.newsFeatureMedia}>
                   <FeaturedNewsMedia post={activePost} />
+                  {getFeaturedMedia(activePost) ? (
+                    <button
+                      type="button"
+                      className={styles.newsFullscreenTrigger}
+                      aria-label={copy.reader.fullscreen}
+                      onClick={() => setFullscreenPost(activePost)}
+                    >
+                      <FullscreenIcon />
+                    </button>
+                  ) : null}
                 </figure>
 
                 <div className={styles.newsFeatureContent}>
@@ -1631,6 +1803,14 @@ export default function DashboardNewsModule({ lang, copy }) {
             ) : null}
           </article>
         </div>
+      ) : null}
+
+      {fullscreenPost ? (
+        <NewsFullscreenOverlay
+          copy={copy}
+          post={fullscreenPost}
+          onClose={() => setFullscreenPost(null)}
+        />
       ) : null}
     </section>
   );

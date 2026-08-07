@@ -115,6 +115,9 @@ export function OrderModuleScreen({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [sharingHistoryOrderId, setSharingHistoryOrderId] = useState<string | null>(
+    null,
+  );
 
   const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
   // The product-selection page (supplier chosen, editing a new order) is the
@@ -481,6 +484,34 @@ export function OrderModuleScreen({
     }
   }
 
+  async function handleShareHistoryOrder(order: OrderHistoryItem): Promise<void> {
+    const pdfUrl = order.commandeUrl || order.bonUrl;
+    const pdfFileName = buildSharedOrderPdfName(
+      order.restaurantName || storeName,
+      order.deliveryDate,
+    );
+
+    if (!pdfUrl) {
+      setShareMessage(copy.noPdf);
+      return;
+    }
+
+    try {
+      setSharingHistoryOrderId(String(order.id));
+      setErrorMessage("");
+      setShareMessage("");
+      const result = await shareOrderPdf(pdfUrl, pdfFileName);
+
+      setShareMessage(
+        result.action === Share.dismissedAction ? copy.shareCancelled : copy.shareDone,
+      );
+    } catch {
+      setErrorMessage(copy.shareError);
+    } finally {
+      setSharingHistoryOrderId(null);
+    }
+  }
+
   async function handleOpenReturn(order: OrderHistoryItem): Promise<void> {
     if (order.canReturn === false) {
       return;
@@ -686,6 +717,7 @@ export function OrderModuleScreen({
             {filteredOrderHistory.map((order) => {
               const isLocked = Boolean(order.returnCount && order.returnCount > 0);
               const isDeletingOrder = deletingOrderId === String(order.id);
+              const isSharingOrder = sharingHistoryOrderId === String(order.id);
               const canEditOrder = order.canEdit !== false && !isLocked;
               const canReturnOrder = order.canReturn !== false;
               const canDeleteOrder = order.canDelete !== false && !isLocked;
@@ -719,6 +751,18 @@ export function OrderModuleScreen({
                           style={[styles.orderCardActionText, styles.orderCardActionTextPrimary]}
                         >
                           {copy.editOrder}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        disabled={isSharingOrder || isDeletingOrder}
+                        style={[
+                          styles.orderCardAction,
+                          isSharingOrder || isDeletingOrder ? styles.disabledButton : null,
+                        ]}
+                        onPress={() => void handleShareHistoryOrder(order)}
+                      >
+                        <Text style={styles.orderCardActionText}>
+                          {isSharingOrder ? copy.preparingPdf : copy.sharePdf}
                         </Text>
                       </Pressable>
                       <Pressable

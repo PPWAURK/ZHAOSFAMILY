@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Image, Platform, Pressable, Text, TextInput, View } from "react-native";
+import { Image, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { WebView } from "react-native-webview";
 
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
@@ -99,7 +99,7 @@ function getFeaturedMedia(post: DashboardNewsPost): FeaturedMedia {
   return bodyImage ? { kind: "image", src: bodyImage.src, alt: bodyImage.alt || post.title } : null;
 }
 
-function NewsVideo({ uri }: { uri: string }) {
+function NewsVideo({ isFullscreen = false, uri }: { isFullscreen?: boolean; uri: string }) {
   const [player] = useState(() => createVideoPlayer({ uri }));
 
   useEffect(
@@ -114,7 +114,7 @@ function NewsVideo({ uri }: { uri: string }) {
       contentFit="contain"
       nativeControls
       player={player}
-      style={styles.featureVideo}
+      style={isFullscreen ? styles.fullscreenVideo : styles.featureVideo}
       surfaceType={Platform.OS === "android" ? "textureView" : undefined}
     />
   );
@@ -122,9 +122,11 @@ function NewsVideo({ uri }: { uri: string }) {
 
 function NewsPdf({
   attachment,
+  isFullscreen = false,
   onError,
 }: {
   attachment: DashboardNewsAttachment;
+  isFullscreen?: boolean;
   onError: () => void;
 }) {
   const [viewer, setViewer] = useState<{ baseUri: string; fileUri: string } | null>(null);
@@ -166,15 +168,17 @@ function NewsPdf({
       showsHorizontalScrollIndicator
       showsVerticalScrollIndicator
       source={{ uri: viewer.fileUri }}
-      style={styles.featurePdf}
+      style={isFullscreen ? styles.fullscreenPdf : styles.featurePdf}
       onError={onError}
     />
   );
 }
 
 function NewsFeaturedMedia({
+  isFullscreen = false,
   media,
 }: {
+  isFullscreen?: boolean;
   media: FeaturedMedia;
 }) {
   const [hasError, setHasError] = useState(false);
@@ -183,7 +187,7 @@ function NewsFeaturedMedia({
 
   if (!media || hasError) {
     return (
-      <View style={styles.featureFallback}>
+      <View style={isFullscreen ? styles.fullscreenFallback : styles.featureFallback}>
         <Image source={zhaoSealSource} style={styles.featureFallbackSeal} resizeMode="contain" />
         <Text style={styles.featureFallbackText}>ZHAO&apos;S FAMILY</Text>
       </View>
@@ -191,14 +195,15 @@ function NewsFeaturedMedia({
   }
 
   if (media.kind === "video") {
-    return <NewsVideo key={media.src} uri={media.src} />;
+    return <NewsVideo key={media.src} isFullscreen={isFullscreen} uri={media.src} />;
   }
 
   if (media.kind === "pdf") {
     return (
-      <View style={styles.featurePdfFrame}>
+      <View style={isFullscreen ? styles.fullscreenPdfFrame : styles.featurePdfFrame}>
         <NewsPdf
           attachment={media.attachment}
+          isFullscreen={isFullscreen}
           onError={() => setHasError(true)}
         />
       </View>
@@ -219,12 +224,54 @@ function NewsFeaturedMedia({
       showsHorizontalScrollIndicator
       showsVerticalScrollIndicator
       source={{ html: buildDashboardNewsImageViewerHtml(media.src) }}
-      style={styles.featureImage}
+      style={isFullscreen ? styles.fullscreenImage : styles.featureImage}
       onError={() => setHasError(true)}
       onMessage={(event) => {
         if (event.nativeEvent.data === "image-error") setHasError(true);
       }}
     />
+  );
+}
+
+function NewsFullscreenModal({
+  copy,
+  media,
+  onClose,
+  visible,
+}: {
+  copy: DashboardCopy;
+  media: FeaturedMedia;
+  onClose: () => void;
+  visible: boolean;
+}) {
+  return (
+    <Modal
+      animationType="fade"
+      presentationStyle="fullScreen"
+      statusBarTranslucent
+      transparent={false}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.fullscreenModal}>
+        <View style={styles.fullscreenHeader}>
+          <Text numberOfLines={1} style={styles.fullscreenTitle}>
+            {media?.alt || copy.newsAttachment}
+          </Text>
+          <Pressable
+            accessibilityLabel={copy.newsReaderClose}
+            accessibilityRole="button"
+            style={styles.fullscreenCloseButton}
+            onPress={onClose}
+          >
+            <Ionicons color="#ffffff" name="close-outline" size={26} />
+          </Pressable>
+        </View>
+        <View style={styles.fullscreenMedia}>
+          <NewsFeaturedMedia isFullscreen media={media} />
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -250,6 +297,7 @@ export function DashboardNewsBoard({
   visiblePosts,
 }: DashboardNewsBoardProps) {
   const categoryTargetRefs = useRef<Partial<Record<NewsDeskCategory, View | null>>>({});
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const categoryCounts = useMemo(
     () =>
       NEWS_CATEGORY_FILTERS.reduce<Record<NewsDeskCategory, number>>(
@@ -413,7 +461,24 @@ export function DashboardNewsBoard({
               key={`${activePost.id}-${featuredMedia?.src || "fallback"}`}
               media={featuredMedia}
             />
+            {featuredMedia ? (
+              <Pressable
+                accessibilityLabel={copy.newsViewFullscreen}
+                accessibilityRole="button"
+                style={styles.featureFullscreenButton}
+                onPress={() => setIsFullscreen(true)}
+              >
+                <Ionicons color="#ffffff" name="scan-outline" size={30} />
+              </Pressable>
+            ) : null}
           </View>
+
+          <NewsFullscreenModal
+            copy={copy}
+            media={featuredMedia}
+            visible={isFullscreen}
+            onClose={() => setIsFullscreen(false)}
+          />
 
           <View style={styles.articleContent}>
             <Pressable

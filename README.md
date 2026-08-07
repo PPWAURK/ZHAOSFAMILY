@@ -54,7 +54,6 @@ zhao-family/
 │   ├── auth/             Store d'authentification partagé et orchestration
 │   ├── types/            DTOs partagés, contrats API, types sécurisés
 │   └── utils/            Fonctions utilitaires pures
-├── tools/zhao-monitor/   Application macOS de supervision et de déploiement
 ├── docker-compose.yml    Infrastructure locale : MySQL 8.4 + MinIO
 ├── docker-compose.backend.yml
 │                          Exécution du backend de production dans Docker
@@ -292,7 +291,6 @@ Pour le mobile sur appareil physique, remplacez l'URL d'exemple par l'adresse LA
 - La CI GitHub Actions exécute le lint, le contrôle de types, les builds, les tests unitaires backend et les tests mobiles sur les pull requests et `main`.
 - Le dashboard web est exporté statiquement puis déployé par SFTP lors des modifications Web concernées sur `main`.
 - Le backend est construit en image Docker publiée dans GHCR et déployé manuellement avec une vérification de migration et de santé.
-- `tools/zhao-monitor/` fournit une application macOS optionnelle pour surveiller les services, déclencher les pipelines et effectuer certaines opérations d'exploitation.
 
 ## Qualité et couverture
 

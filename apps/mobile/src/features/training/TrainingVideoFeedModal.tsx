@@ -594,6 +594,7 @@ export function TrainingVideoFeedModal({
   topInset,
 }: TrainingVideoFeedModalProps) {
   const { height: windowHeight } = useWindowDimensions();
+  const [feedViewportHeight, setFeedViewportHeight] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [settledIndex, setSettledIndex] = useState(0);
   const [resourceCleanupVersion, setResourceCleanupVersion] = useState(0);
@@ -646,7 +647,7 @@ export function TrainingVideoFeedModal({
     () => getVideoFeedRetainedIndexes(settledIndex, feedMaterials.length),
     [feedMaterials.length, settledIndex],
   );
-  const slideHeight = Math.max(1, windowHeight - topInset - bottomInset);
+  const slideHeight = Math.max(1, feedViewportHeight || windowHeight);
   const feedExtraData = useMemo(
     () => ({
       activeIndex,
@@ -919,6 +920,14 @@ export function TrainingVideoFeedModal({
     [feedMaterials.length, slideHeight],
   );
 
+  const handleFeedLayout = useCallback((event: LayoutChangeEvent): void => {
+    const nextHeight = Math.round(event.nativeEvent.layout.height);
+
+    setFeedViewportHeight((currentHeight) =>
+      currentHeight === nextHeight ? currentHeight : nextHeight,
+    );
+  }, []);
+
   function retryVideo(materialId: number): void {
     releasePlayer(materialId);
     preparingMaterialVersionsRef.current.delete(materialId);
@@ -1176,6 +1185,7 @@ export function TrainingVideoFeedModal({
           initialNumToRender={3}
           keyExtractor={(material) => String(material.id)}
           maxToRenderPerBatch={3}
+          onLayout={handleFeedLayout}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           pagingEnabled
           renderItem={renderVideoSlide}
