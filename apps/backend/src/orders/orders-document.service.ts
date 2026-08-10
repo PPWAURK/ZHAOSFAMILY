@@ -308,11 +308,9 @@ export class OrdersDocumentService {
     const left = doc.page.margins.left;
     const contentWidth =
       doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const colProduct = Math.floor(contentWidth * 0.4);
-    const colSpecification = Math.floor(contentWidth * 0.22);
-    const colPickingQuantity = Math.floor(contentWidth * 0.22);
-    const colUnitPrice =
-      contentWidth - colProduct - colSpecification - colPickingQuantity;
+    const colProduct = Math.floor(contentWidth * 0.45);
+    const colSpecification = Math.floor(contentWidth * 0.27);
+    const colPickingQuantity = contentWidth - colProduct - colSpecification;
     const headerRowHeight = 40;
 
     const drawHeaderRow = () => {
@@ -333,16 +331,7 @@ export class OrdersDocumentService {
         .text('数量 / Qté', left + colProduct + colSpecification + 4, y + 7, {
           width: colPickingQuantity - 8,
           align: 'center',
-        })
-        .text(
-          '单价 / PU HT',
-          left + colProduct + colSpecification + colPickingQuantity + 4,
-          y + 7,
-          {
-            width: colUnitPrice - 8,
-            align: 'right',
-          },
-        );
+        });
       doc.y = y + headerRowHeight;
     };
 
@@ -394,7 +383,6 @@ export class OrdersDocumentService {
         colProduct,
         colSpecification,
         colPickingQuantity,
-        colUnitPrice,
         contentWidth,
         index,
         item,
@@ -418,7 +406,6 @@ export class OrdersDocumentService {
       colProduct: number;
       colSpecification: number;
       colPickingQuantity: number;
-      colUnitPrice: number;
       contentWidth: number;
       index: number;
       item: OrderDocumentInput['items'][number];
@@ -492,21 +479,6 @@ export class OrdersDocumentService {
           width: layout.colPickingQuantity - 8,
           align: 'center',
         },
-      );
-
-    doc
-      .font('Helvetica-Bold')
-      .fillColor(primaryTextColor)
-      .fontSize(10)
-      .text(
-        layout.item.unitPrice.toFixed(2),
-        layout.left +
-          layout.colProduct +
-          layout.colSpecification +
-          layout.colPickingQuantity +
-          4,
-        y + 13,
-        { width: layout.colUnitPrice - 8, align: 'right' },
       );
 
     doc
