@@ -36,7 +36,9 @@ export class OrderQuantityConversionService {
     requestedQuantity: number,
     caseSize: number | null,
   ): number {
-    return this.convert(requestedQuantity, caseSize)?.orderedQuantity ??
-      requestedQuantity;
+    return (
+      this.convert(requestedQuantity, caseSize)?.orderedQuantity ??
+      requestedQuantity
+    );
   }
 }

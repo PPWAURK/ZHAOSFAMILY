@@ -475,15 +475,10 @@ export class OrdersDocumentService {
       .font(this.resolveFontForText(layout.specification, true))
       .fillColor(primaryTextColor)
       .fontSize(9.5)
-      .text(
-        layout.specification,
-        layout.left + layout.colProduct + 4,
-        y + 13,
-        {
-          width: layout.colSpecification - 8,
-          align: 'center',
-        },
-      );
+      .text(layout.specification, layout.left + layout.colProduct + 4, y + 13, {
+        width: layout.colSpecification - 8,
+        align: 'center',
+      });
 
     doc
       .font('Helvetica-Bold')

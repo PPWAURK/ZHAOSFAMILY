@@ -1077,10 +1077,11 @@ export class OrdersService {
       product,
       specificationSlot,
     );
-    const orderedQuantity = this.orderQuantityConversionService.resolveOrderedQuantity(
-      quantity,
-      selectedSpecification.caseSize,
-    );
+    const orderedQuantity =
+      this.orderQuantityConversionService.resolveOrderedQuantity(
+        quantity,
+        selectedSpecification.caseSize,
+      );
 
     return {
       product,
@@ -1399,17 +1400,20 @@ export class OrdersService {
       this.ordersDocumentService.makeFrLabel(nameFrRaw) || nameFrRaw;
 
     return [
-      this.toSupplierDocumentItem({
-        nameFr,
-        nameZh: this.ordersDocumentService.sanitizeLabel(item.product.nameCn),
-        specification: this.ordersDocumentService.sanitizeLabel(
-          item.specification,
-        ),
-        unit: this.ordersDocumentService.sanitizeLabel(item.unit),
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        lineTotal: item.lineTotal,
-      }, item.caseSize),
+      this.toSupplierDocumentItem(
+        {
+          nameFr,
+          nameZh: this.ordersDocumentService.sanitizeLabel(item.product.nameCn),
+          specification: this.ordersDocumentService.sanitizeLabel(
+            item.specification,
+          ),
+          unit: this.ordersDocumentService.sanitizeLabel(item.unit),
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          lineTotal: item.lineTotal,
+        },
+        item.caseSize,
+      ),
     ];
   }
 
@@ -1417,17 +1421,20 @@ export class OrdersService {
     item: OrderFileItemSnapshot,
   ): OrderDocumentItem[] {
     return [
-      this.toSupplierDocumentItem({
-        nameZh: this.ordersDocumentService.sanitizeLabel(item.nameZh),
-        nameFr: this.ordersDocumentService.sanitizeLabel(item.nameFr),
-        specification: this.ordersDocumentService.sanitizeLabel(
-          item.specification,
-        ),
-        unit: this.ordersDocumentService.sanitizeLabel(item.unit),
-        quantity: item.quantity,
-        unitPrice: this.toNumber(item.unitPriceHt),
-        lineTotal: this.toNumber(item.lineTotal),
-      }, item.caseSize),
+      this.toSupplierDocumentItem(
+        {
+          nameZh: this.ordersDocumentService.sanitizeLabel(item.nameZh),
+          nameFr: this.ordersDocumentService.sanitizeLabel(item.nameFr),
+          specification: this.ordersDocumentService.sanitizeLabel(
+            item.specification,
+          ),
+          unit: this.ordersDocumentService.sanitizeLabel(item.unit),
+          quantity: item.quantity,
+          unitPrice: this.toNumber(item.unitPriceHt),
+          lineTotal: this.toNumber(item.lineTotal),
+        },
+        item.caseSize,
+      ),
     ];
   }
 
@@ -1470,7 +1477,6 @@ export class OrdersService {
 
     return unitParts[unitParts.length - 1] || unit;
   }
-
 
   private calculateTotals(items: PreparedOrderItem[]): {
     totalItems: number;
