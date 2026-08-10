@@ -34,6 +34,7 @@ export type ProductApiRecord = {
   designationFr?: string | null;
   unit?: string | null;
   unitPriceHt?: number | null;
+  caseSize?: number | null;
   image?: string | null;
   specification?: string | null;
 };
@@ -50,6 +51,7 @@ export type SupplierProduct = {
   price: number;
   image: string;
   specification: string;
+  caseSize: number | null;
 };
 
 export type SupplierProductInput = {
@@ -62,4 +64,5 @@ export type SupplierProductInput = {
   specification?: string;
   image?: string;
   price?: number | string;
+  caseSize?: number | string | null;
 };

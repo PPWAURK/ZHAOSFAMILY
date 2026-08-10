@@ -26,23 +26,34 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     fontSize: 14,
     lineHeight: 21,
   },
-  filterToggle: {
-    alignItems: "center",
-    borderColor: "rgba(193, 22, 22, 0.26)",
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 12,
+  categoryChipScroller: {
+    marginHorizontal: -2,
   },
-  filterToggleText: {
-    color: authControlStyles.colors.red,
-    fontFamily: "monospace",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+  categoryChipList: {
+    gap: 8,
+    paddingHorizontal: 2,
+    paddingRight: 14,
+  },
+  categoryChip: {
+    alignItems: "center",
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: 13,
+  },
+  categoryChipActive: {
+    backgroundColor: authControlStyles.colors.red,
+    borderColor: authControlStyles.colors.red,
+  },
+  categoryChipText: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 14,
+  },
+  categoryChipTextActive: {
+    color: authControlStyles.colors.paper,
+    fontWeight: "600",
   },
   header: {
     gap: 8,
@@ -261,27 +272,27 @@ export const orderStyles = StyleSheet.create(scaleStyles({
   productCard: {
     borderColor: "rgba(193, 22, 22, 0.16)",
     borderWidth: 1,
-    gap: 10,
     minWidth: "47%",
-    padding: 12,
+    padding: 10,
     width: "47%",
   },
   productHeader: {
-    gap: 8,
+    gap: 7,
+    paddingBottom: 8,
   },
   productImage: {
-    height: 92,
+    height: 110,
     width: "100%",
   },
   productImageFrame: {
     borderColor: "rgba(193, 22, 22, 0.16)",
     borderWidth: 1,
-    height: 92,
+    height: 110,
     overflow: "hidden",
     width: "100%",
   },
   productInfo: {
-    gap: 5,
+    gap: 4,
   },
   productList: {
     flexDirection: "row",
@@ -289,17 +300,12 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     gap: 10,
     justifyContent: "space-between",
   },
-  productMeta: {
-    color: authControlStyles.colors.ink40,
-    fontFamily: "monospace",
-    fontSize: 11,
-  },
   productName: {
     color: authControlStyles.colors.ink,
     fontFamily: "serif",
-    fontSize: 14,
+    fontSize: 17,
     fontWeight: "500",
-    lineHeight: 18,
+    lineHeight: 20,
   },
   stockStatus: {
     alignSelf: "flex-start",
@@ -403,8 +409,8 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     color: authControlStyles.colors.ink,
     fontFamily: "monospace",
     fontSize: 14,
-    minHeight: 42,
-    minWidth: 30,
+    minHeight: 40,
+    minWidth: 36,
     paddingHorizontal: 2,
     textAlign: "center",
   },
@@ -419,8 +425,8 @@ export const orderStyles = StyleSheet.create(scaleStyles({
   stepperButton: {
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 42,
-    width: 26,
+    minHeight: 40,
+    width: 28,
   },
   stepperButtonPressed: {
     backgroundColor: authControlStyles.colors.ink05,
@@ -559,10 +565,51 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     fontWeight: "500",
     lineHeight: 34,
   },
-  variantRow: {
+  productOrderArea: {
+    borderTopColor: "rgba(193, 22, 22, 0.14)",
+    borderTopWidth: 1,
+    gap: 8,
+    paddingTop: 8,
+  },
+  variantOrderLabel: {
+    alignSelf: "flex-start",
+    backgroundColor: authControlStyles.colors.red,
+    color: authControlStyles.colors.paper,
+    fontFamily: "monospace",
+    fontSize: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  productSpecification: {
+    alignSelf: "flex-start",
+    backgroundColor: authControlStyles.colors.red,
+    color: authControlStyles.colors.paper,
+    fontFamily: "monospace",
+    fontSize: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  quantityRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 8,
+    gap: 7,
+  },
+  quantityLabel: {
+    color: authControlStyles.colors.ink40,
+    fontFamily: "monospace",
+    fontSize: 10,
+  },
+  productTotalResult: {
+    alignSelf: "stretch",
+    backgroundColor: "rgba(25, 122, 61, 0.12)",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  productTotalResultText: {
+    color: authControlStyles.colors.success,
+    fontFamily: "serif",
+    fontSize: 13,
+    fontWeight: "600",
   },
   variantText: {
     color: authControlStyles.colors.ink60,
@@ -575,7 +622,6 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     flexShrink: 1,
     fontFamily: "monospace",
     fontSize: 9,
-    marginLeft: 4,
     textAlign: "left",
   },
 }));

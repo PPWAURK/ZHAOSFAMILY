@@ -308,11 +308,12 @@ export class OrdersDocumentService {
     const left = doc.page.margins.left;
     const contentWidth =
       doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const colProduct = Math.floor(contentWidth * 0.52);
-    const colQty = Math.floor(contentWidth * 0.1);
-    const colOrderUnit = Math.floor(contentWidth * 0.12);
-    const colUnitPrice = contentWidth - colProduct - colOrderUnit - colQty;
-    const headerRowHeight = 38;
+    const colProduct = Math.floor(contentWidth * 0.4);
+    const colSpecification = Math.floor(contentWidth * 0.22);
+    const colPickingQuantity = Math.floor(contentWidth * 0.22);
+    const colUnitPrice =
+      contentWidth - colProduct - colSpecification - colPickingQuantity;
+    const headerRowHeight = 40;
 
     const drawHeaderRow = () => {
       const y = doc.y;
@@ -322,21 +323,26 @@ export class OrdersDocumentService {
         .fill();
       doc
         .fillColor(this.pdfColors.white)
-        .font(this.resolveFontForText('Produit FR / ZH', true))
+        .font(this.resolveFontForText('商品 / Produits', true))
         .fontSize(10)
-        .text('Produit FR / ZH', left + 8, y + 7, { width: colProduct - 12 })
-        .text('Qte', left + colProduct + 4, y + 7, {
-          width: colQty - 8,
+        .text('商品 / Produits', left + 8, y + 7, { width: colProduct - 12 })
+        .text('单箱规格 / Spécification', left + colProduct + 4, y + 7, {
+          width: colSpecification - 8,
           align: 'center',
         })
-        .text('Unite', left + colProduct + colQty + 4, y + 7, {
-          width: colOrderUnit - 8,
+        .text('数量 / Qté', left + colProduct + colSpecification + 4, y + 7, {
+          width: colPickingQuantity - 8,
           align: 'center',
         })
-        .text('PU HT', left + colProduct + colOrderUnit + colQty + 4, y + 7, {
-          width: colUnitPrice - 8,
-          align: 'right',
-        });
+        .text(
+          '单价 / PU HT',
+          left + colProduct + colSpecification + colPickingQuantity + 4,
+          y + 7,
+          {
+            width: colUnitPrice - 8,
+            align: 'right',
+          },
+        );
       doc.y = y + headerRowHeight;
     };
 
@@ -345,7 +351,8 @@ export class OrdersDocumentService {
     input.items.forEach((item, index) => {
       const productNameFr = this.sanitizePlainLabel(item.nameFr);
       const productNameZh = this.sanitizeLabel(item.nameZh);
-      const orderUnit = this.sanitizeLabel(item.unit?.trim() || '-');
+      const specification = this.sanitizePlainLabel(item.specification);
+      const pickingQuantity = this.sanitizePlainLabel(item.pickingQuantity);
       const productColumnWidth = colProduct - 12;
       const productNameFrHeight = this.measureTextHeight(
         doc,
@@ -361,22 +368,39 @@ export class OrdersDocumentService {
         9.5,
         productColumnWidth,
       );
+      const pickingQuantityHeight = this.measureTextHeight(
+        doc,
+        pickingQuantity,
+        'Helvetica-Bold',
+        10,
+        colPickingQuantity - 8,
+      );
+      const specificationHeight = this.measureTextHeight(
+        doc,
+        specification,
+        this.resolveFontForText(specification, true),
+        9.5,
+        colSpecification - 8,
+      );
       const rowHeight = Math.max(
         38,
         productNameFrHeight + productNameZhHeight + 16,
+        specificationHeight + 20,
+        pickingQuantityHeight + 20,
       );
 
       this.ensureTableSpace(doc, rowHeight, drawHeaderRow);
       this.drawItemRow(doc, {
         colProduct,
-        colQty,
-        colOrderUnit,
+        colSpecification,
+        colPickingQuantity,
         colUnitPrice,
         contentWidth,
         index,
         item,
         left,
-        orderUnit,
+        specification,
+        pickingQuantity,
         productColumnWidth,
         productNameFr,
         productNameFrHeight,
@@ -392,14 +416,15 @@ export class OrdersDocumentService {
     doc: PdfDoc,
     layout: {
       colProduct: number;
-      colQty: number;
-      colOrderUnit: number;
+      colSpecification: number;
+      colPickingQuantity: number;
       colUnitPrice: number;
       contentWidth: number;
       index: number;
       item: OrderDocumentInput['items'][number];
       left: number;
-      orderUnit: string;
+      specification: string;
+      pickingQuantity: string;
       productColumnWidth: number;
       productNameFr: string;
       productNameFrHeight: number;
@@ -447,29 +472,29 @@ export class OrdersDocumentService {
       );
 
     doc
-      .font('Helvetica-Bold')
+      .font(this.resolveFontForText(layout.specification, true))
       .fillColor(primaryTextColor)
-      .fontSize(10)
+      .fontSize(9.5)
       .text(
-        String(layout.item.quantity),
+        layout.specification,
         layout.left + layout.colProduct + 4,
         y + 13,
         {
-          width: layout.colQty - 8,
+          width: layout.colSpecification - 8,
           align: 'center',
         },
       );
 
     doc
-      .font(this.resolveFontForText(layout.orderUnit, true))
+      .font('Helvetica-Bold')
       .fillColor(primaryTextColor)
       .fontSize(10)
       .text(
-        layout.orderUnit,
-        layout.left + layout.colProduct + layout.colQty + 4,
+        layout.pickingQuantity,
+        layout.left + layout.colProduct + layout.colSpecification + 4,
         y + 13,
         {
-          width: layout.colOrderUnit - 8,
+          width: layout.colPickingQuantity - 8,
           align: 'center',
         },
       );
@@ -482,8 +507,8 @@ export class OrdersDocumentService {
         layout.item.unitPrice.toFixed(2),
         layout.left +
           layout.colProduct +
-          layout.colOrderUnit +
-          layout.colQty +
+          layout.colSpecification +
+          layout.colPickingQuantity +
           4,
         y + 13,
         { width: layout.colUnitPrice - 8, align: 'right' },
@@ -539,9 +564,9 @@ export class OrdersDocumentService {
 
     doc
       .fillColor(this.pdfColors.primaryDark)
-      .font(this.resolveFontForText('Articles total', true))
+      .font(this.resolveCjkFont(true))
       .fontSize(11)
-      .text(`Articles total: ${input.totalItems}`, x + 10, y + 12, {
+      .text(`商品总数 / Articles total: ${input.totalItems}`, x + 10, y + 12, {
         width: cardWidth - 20,
       });
 

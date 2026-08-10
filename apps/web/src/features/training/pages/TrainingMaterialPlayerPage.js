@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
+import PdfCanvasViewer from "@/shared/components/PdfCanvasViewer";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
 import {
@@ -51,8 +52,7 @@ const PLAYER_PAGE_COPY = {
 
 function resolveWatermarkLabel(user) {
   const name =
-      user?.name?.trim() ||
-      [user?.givenName, user?.familyName].filter(Boolean).join(" ").trim();
+    user?.name?.trim() || [user?.givenName, user?.familyName].filter(Boolean).join(" ").trim();
 
   const email = user?.email?.trim();
 
@@ -99,9 +99,7 @@ export default function TrainingMaterialPlayerPage() {
           }
         } catch (progressError) {
           if (isActive) {
-            setProgressErrorMessage(
-              progressError.message || "学习进度保存失败",
-            );
+            setProgressErrorMessage(progressError.message || "学习进度保存失败");
           }
         }
       } catch (error) {
@@ -147,16 +145,12 @@ export default function TrainingMaterialPlayerPage() {
     <TrainingLayout pageCopy={PLAYER_PAGE_COPY}>
       {({ styles }) => {
         if (isLoading) {
-          return (
-            <section className={styles.materialEmpty}>正在加载资料...</section>
-          );
+          return <section className={styles.materialEmpty}>正在加载资料...</section>;
         }
 
         if (errorMessage || !material) {
           return (
-            <section className={styles.uploadMessageError}>
-              {errorMessage || "资料不存在"}
-            </section>
+            <section className={styles.uploadMessageError}>{errorMessage || "资料不存在"}</section>
           );
         }
 
@@ -165,12 +159,9 @@ export default function TrainingMaterialPlayerPage() {
         const isImage = material.mimeType?.startsWith("image/");
 
         if (!mediaUrl) {
-          return (
-            <section className={styles.materialEmpty}>正在加载资料...</section>
-          );
+          return <section className={styles.materialEmpty}>正在加载资料...</section>;
         }
 
-        const pdfPreviewUrl = `${mediaUrl}#toolbar=0&navpanes=0&download=0`;
         const watermarkLabel = resolveWatermarkLabel(user);
 
         return (
@@ -202,16 +193,11 @@ export default function TrainingMaterialPlayerPage() {
                   type="button"
                   className={styles.completeButton}
                   onClick={markCompleted}
-                  disabled={
-                    isSavingProgress || progress?.status === "completed"
-                  }
+                  disabled={isSavingProgress || progress?.status === "completed"}
                 >
                   {progress?.status === "completed" ? "已完成" : "标记完成"}
                 </button>
-                <Link
-                  href="/dashboard/training/materials"
-                  className={styles.backLink}
-                >
+                <Link href="/dashboard/training/materials" className={styles.backLink}>
                   返回资料库
                 </Link>
               </div>
@@ -229,9 +215,12 @@ export default function TrainingMaterialPlayerPage() {
                   onContextMenu={(event) => event.preventDefault()}
                 />
               ) : isPdf ? (
-                <iframe
+                <PdfCanvasViewer
                   className={styles.pdfViewer}
-                  src={pdfPreviewUrl}
+                  errorClassName={styles.pdfViewerError}
+                  loadingClassName={styles.pdfViewerLoading}
+                  pagesClassName={styles.pdfViewerPages}
+                  source={mediaUrl}
                   title={material.title}
                 />
               ) : isImage ? (
@@ -243,9 +232,7 @@ export default function TrainingMaterialPlayerPage() {
                   onContextMenu={(event) => event.preventDefault()}
                 />
               ) : (
-                <div className={styles.previewUnavailable}>
-                  当前文件类型暂不支持在线预览。
-                </div>
+                <div className={styles.previewUnavailable}>当前文件类型暂不支持在线预览。</div>
               )}
 
               <div className={styles.viewerWatermark} aria-hidden="true">

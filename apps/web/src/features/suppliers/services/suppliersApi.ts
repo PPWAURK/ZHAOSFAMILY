@@ -56,7 +56,19 @@ function normalizeProduct(raw: ProductApiRecord | null): SupplierProduct | null 
       typeof raw.unitPriceHt === "number" && Number.isFinite(raw.unitPriceHt) ? raw.unitPriceHt : 0,
     image: resolveProductImageUrl(raw.image),
     specification: raw.specification ?? "",
+    caseSize:
+      typeof raw.caseSize === "number" && Number.isInteger(raw.caseSize) && raw.caseSize > 0
+        ? raw.caseSize
+        : null,
   };
+}
+
+function toCaseSize(value: SupplierProductInput["caseSize"]): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+
+  const caseSize = Number(value);
+  return Number.isInteger(caseSize) && caseSize > 0 ? caseSize : undefined;
 }
 
 export async function fetchSuppliers(): Promise<SupplierSummary[]> {
@@ -132,6 +144,8 @@ export async function createProductApi(
   if (input.price !== undefined && Number.isFinite(Number(input.price))) {
     body.unitPriceHt = Number(input.price);
   }
+  const caseSize = toCaseSize(input.caseSize);
+  if (caseSize !== null && caseSize !== undefined) body.caseSize = caseSize;
   const data = await productsApi.create(body);
   return normalizeProduct(data);
 }
@@ -152,6 +166,8 @@ export async function updateProductApi(
   if (input.price !== undefined && Number.isFinite(Number(input.price))) {
     body.unitPriceHt = Number(input.price);
   }
+  const caseSize = toCaseSize(input.caseSize);
+  if (caseSize !== undefined) body.caseSize = caseSize;
   const data = await productsApi.update(productId, body);
   return normalizeProduct(data);
 }

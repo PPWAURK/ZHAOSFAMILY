@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { convertOrderQuantityToCases } from "@zhao/utils";
 
 import OrderProductImage from "@/features/orders/components/OrderProductImage";
 import {
+  getLocalizedOrderUnit,
+  getOrderCaseLabel,
+  getOrderCaseSizeHint,
   getOrderProductName,
   getOrderProductUnit,
   getOrderProductVariants,
@@ -27,6 +31,31 @@ function formatMoney(amount, symbol) {
   }
 
   return `${amount.toFixed(2)} ${symbol}`;
+}
+
+function formatCaseConversion(quantity, caseSize, unit, lang) {
+  const convertedQuantity = convertOrderQuantityToCases(quantity, caseSize);
+  const localizedUnit = getLocalizedOrderUnit(unit, lang);
+
+  if (!convertedQuantity) {
+    if (quantity <= 0) {
+      return null;
+    }
+
+    const totalQuantity = `${quantity} ${localizedUnit}`;
+    if (lang === "zh") return `总计：${totalQuantity}`;
+    if (lang === "fr") return `Total : ${totalQuantity}`;
+    return `Total: ${totalQuantity}`;
+  }
+
+  const remainingLabel = convertedQuantity.remainingQuantity
+    ? ` + ${convertedQuantity.remainingQuantity} ${localizedUnit === "—" ? "" : localizedUnit}`
+    : "";
+  const totalQuantity = `${convertedQuantity.caseQuantity} ${getOrderCaseLabel(lang)}${remainingLabel}`;
+
+  if (lang === "zh") return `总计：${totalQuantity}`;
+  if (lang === "fr") return `Total : ${totalQuantity}`;
+  return `Total: ${totalQuantity}`;
 }
 
 function getProductCategory(product, fallbackLabel) {
@@ -115,7 +144,9 @@ export default function StepProducts({
           return variantSum;
         }
 
-        return variantSum + qty * variant.price;
+            const orderedQuantity =
+              convertOrderQuantityToCases(qty, variant.caseSize)?.orderedQuantity ?? qty;
+            return variantSum + orderedQuantity * variant.price;
       }, 0),
     0,
   );
@@ -165,53 +196,63 @@ export default function StepProducts({
 
   function renderQuantityStepper(productName, variant, stock, isOutOfStock) {
     const qty = Number(quantities[variant.id]) || 0;
+    const totalMessage = formatCaseConversion(qty, variant.caseSize, variant.unit, lang);
     const inputProps = {};
     if (stockEnforced && Number.isFinite(stock)) {
       inputProps.max = stock;
     }
 
     return (
-      <span key={variant.id} className={styles.qtyStepper}>
-        <button
-          type="button"
-          className={styles.stepperBtn}
-          onClick={() => changeQtyBy(variant.id, -1, stock)}
-          disabled={isOutOfStock || qty <= 0}
-          aria-label="−"
-          tabIndex={-1}
-        >
-          −
-        </button>
-        <input
-          type="number"
-          min="0"
-          step="1"
-          {...inputProps}
-          className={styles.qtyInput}
-          value={qty === 0 ? "" : qty}
-          placeholder={isOutOfStock ? "—" : "0"}
-          disabled={isOutOfStock}
-          onChange={(e) => {
-            const raw = e.target.value;
-            let parsed = raw === "" ? 0 : Math.max(0, Number(raw));
-            if (stockEnforced && Number.isFinite(stock) && parsed > stock) {
-              parsed = stock;
-            }
-            onChangeQty(variant.id, Number.isFinite(parsed) ? parsed : 0);
-          }}
-          aria-label={`${productName} ${variant.specification || variant.unit || ""}`.trim()}
-        />
-        <button
-          type="button"
-          className={styles.stepperBtn}
-          onClick={() => changeQtyBy(variant.id, 1, stock)}
-          disabled={isOutOfStock || (stockEnforced && Number.isFinite(stock) && qty >= stock)}
-          aria-label="+"
-          tabIndex={-1}
-        >
-          +
-        </button>
-      </span>
+      <Fragment key={variant.id}>
+        <span className={styles.quantityControl}>
+          <span className={styles.qtyStepper}>
+            <button
+              type="button"
+              className={styles.stepperBtn}
+              onClick={() => changeQtyBy(variant.id, -1, stock)}
+              disabled={isOutOfStock || qty <= 0}
+              aria-label="−"
+              tabIndex={-1}
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              {...inputProps}
+              className={styles.qtyInput}
+              value={qty === 0 ? "" : qty}
+              placeholder={isOutOfStock ? "—" : "0"}
+              disabled={isOutOfStock}
+              onChange={(e) => {
+                const raw = e.target.value;
+                let parsed = raw === "" ? 0 : Math.max(0, Number(raw));
+                if (stockEnforced && Number.isFinite(stock) && parsed > stock) {
+                  parsed = stock;
+                }
+                onChangeQty(variant.id, Number.isFinite(parsed) ? parsed : 0);
+              }}
+              aria-label={`${productName} ${variant.specification || variant.unit || ""}`.trim()}
+            />
+            <button
+              type="button"
+              className={styles.stepperBtn}
+              onClick={() => changeQtyBy(variant.id, 1, stock)}
+              disabled={isOutOfStock || (stockEnforced && Number.isFinite(stock) && qty >= stock)}
+              aria-label="+"
+              tabIndex={-1}
+            >
+              +
+            </button>
+          </span>
+        </span>
+        {totalMessage ? (
+          <span className={styles.productTotalResult}>
+            <span className={styles.productTotalResultText}>{totalMessage}</span>
+          </span>
+        ) : null}
+      </Fragment>
     );
   }
 
@@ -358,11 +399,22 @@ export default function StepProducts({
                 </span>
                 <span className={styles.productCellStack}>
                   <span className={styles.specRefLabel}>{copy.caseSpecReference}</span>
-                  {variants.map((variant) => (
-                    <span key={variant.id} className={styles.productCellValue}>
-                      {variant.specification || "—"}
-                    </span>
-                  ))}
+                  {variants.map((variant) => {
+                    const caseSizeHint = getOrderCaseSizeHint(
+                      variant.caseSize,
+                      variant.unit || getOrderProductUnit(product),
+                      lang,
+                    );
+
+                    return (
+                      <span key={variant.id} className={styles.productCellValue}>
+                        <span>{variant.specification || "—"}</span>
+                        {caseSizeHint ? (
+                          <span className={styles.caseSizeHint}>{caseSizeHint}</span>
+                        ) : null}
+                      </span>
+                    );
+                  })}
                 </span>
                 <span className={styles.productCellStack}>
                   {variants.map((variant) =>
@@ -372,14 +424,21 @@ export default function StepProducts({
                 <span className={`${styles.productUnit} ${styles.productCellStack}`}>
                   {variants.map((variant) => (
                     <span key={variant.id} className={styles.productCellValue}>
-                      {variant.unit || getOrderProductUnit(product)}
+                      {getLocalizedOrderUnit(
+                        variant.unit || getOrderProductUnit(product),
+                        lang,
+                      )}
                     </span>
                   ))}
                 </span>
                 <span className={`${styles.productSubtotal} ${styles.productCellStack}`}>
                   {variants.map((variant) => {
                     const qty = Number(quantities[variant.id]) || 0;
-                    const subtotal = Number.isFinite(variant.price) ? qty * variant.price : null;
+                    const orderedQuantity =
+                      convertOrderQuantityToCases(qty, variant.caseSize)?.orderedQuantity ?? qty;
+                    const subtotal = Number.isFinite(variant.price)
+                      ? orderedQuantity * variant.price
+                      : null;
 
                     return (
                       <span key={variant.id} className={styles.productCellValue}>
@@ -394,9 +453,13 @@ export default function StepProducts({
                 <span className={styles.productMobileQuantityRow}>
                   {variants.map((variant) => (
                     <span key={variant.id} className={styles.productMobileQuantityLine}>
+                      <span className={styles.productQuantityLabel}>{copy.quantity}</span>
                       {renderQuantityStepper(productName, variant, stock, isOutOfStock)}
                       <span className={styles.productMobileUnit}>
-                        {variant.unit || getOrderProductUnit(product)}
+                        {getLocalizedOrderUnit(
+                          variant.unit || getOrderProductUnit(product),
+                          lang,
+                        )}
                       </span>
                     </span>
                   ))}

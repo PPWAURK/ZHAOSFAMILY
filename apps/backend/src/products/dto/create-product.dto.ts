@@ -45,6 +45,24 @@ export class CreateProductDto {
   unitPriceHt?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'CASE_SIZE_INVALID' })
+  @Min(1, { message: 'CASE_SIZE_INVALID' })
+  caseSize?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'CASE_SIZE_INVALID' })
+  @Min(1, { message: 'CASE_SIZE_INVALID' })
+  caseSize2?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'CASE_SIZE_INVALID' })
+  @Min(1, { message: 'CASE_SIZE_INVALID' })
+  caseSize3?: number;
+
+  @IsOptional()
   @IsString()
   image?: string;
 

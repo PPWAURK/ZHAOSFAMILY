@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { OrdersDocumentService } from './orders-document.service';
+import { OrderQuantityConversionService } from './order-quantity-conversion.service';
 import { OrdersService } from './orders.service';
 
 type ProductFixture = {
@@ -17,6 +18,9 @@ type ProductFixture = {
   unitPriceHt: number;
   unitPriceHt2: null;
   unitPriceHt3: null;
+  caseSize: number | null;
+  caseSize2: number | null;
+  caseSize3: number | null;
 };
 
 type AsyncMock = jest.MockedFunction<(...args: unknown[]) => Promise<unknown>>;
@@ -99,6 +103,9 @@ function createProduct(
     unitPriceHt: 2.5,
     unitPriceHt2: null,
     unitPriceHt3: null,
+    caseSize: null,
+    caseSize2: null,
+    caseSize3: null,
     ...overrides,
   };
 }
@@ -188,6 +195,7 @@ describe('OrdersService', () => {
     service = new OrdersService(
       prismaService,
       ordersDocumentService as unknown as OrdersDocumentService,
+      new OrderQuantityConversionService(),
     );
   });
 
@@ -227,6 +235,78 @@ describe('OrdersService', () => {
         supplierName: 'Metro',
         totalItems: 2,
         totalAmount: 5,
+      }),
+    );
+  });
+
+  it('renders configured case quantities with their individual remainder', async () => {
+    const createMany = createAsyncMock();
+
+    prismaService.product.findMany.mockResolvedValue([
+      createProduct({ caseSize: 12 }),
+    ]);
+    prismaService.supplier.findUnique.mockResolvedValue({
+      id: 1,
+      name: 'Metro',
+      includeAllProductsInOrder: false,
+    });
+    prismaService.restaurant.findUnique.mockResolvedValue({
+      id: 3,
+      name: 'ZHAO Opera',
+      address: '1 rue test',
+    });
+    prismaService.$transaction.mockImplementation((callback) =>
+      callback({
+        purchaseOrder: {
+          create: createAsyncMock().mockResolvedValue({
+            id: 42,
+            createdAt: new Date('2026-04-29T10:00:00.000Z'),
+          }),
+          delete: createAsyncMock(),
+          update: createAsyncMock(),
+        },
+        purchaseOrderItem: {
+          createMany,
+          deleteMany: createAsyncMock(),
+        },
+        inventoryMovement: {
+          createMany: createAsyncMock(),
+        },
+      }),
+    );
+
+    const result = await service.createOrder(
+      { id: 7, restaurantId: 3 },
+      {
+        deliveryDate: '2026-04-30',
+        items: [{ productId: 11, quantity: 25, specificationSlot: 1 }],
+      },
+      { protocol: 'http', get: () => 'localhost:3002' },
+    );
+
+    expect(result).toMatchObject({
+      totalItems: 25,
+      totalAmount: 62.5,
+    });
+
+    expect(createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          quantity: 25,
+          caseSize: 12,
+        }),
+      ],
+    });
+    expect(ordersDocumentService.generateCommandePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            quantity: 25,
+            pickingQuantity: '2 CTN + 1 sac',
+            unitPrice: 2.5,
+            lineTotal: 62.5,
+          }),
+        ],
       }),
     );
   });

@@ -249,6 +249,9 @@ model Product {
   unit3             String?  @map("unit_3") @db.VarChar(100)
   unitPriceHt2      Decimal? @map("prix_u_ht_2") @db.Decimal(10, 2)
   unitPriceHt3      Decimal? @map("prix_u_ht_3") @db.Decimal(10, 2)
+  caseSize          Int?     @map("case_size")
+  caseSize2         Int?     @map("case_size_2")
+  caseSize3         Int?     @map("case_size_3")
   isActive          Boolean  @default(true) @map("is_active")
   productCategoryId Int?     @map("product_category_id")
 
@@ -330,6 +333,7 @@ model PurchaseOrderItem {
   nameFr            String?              @map("name_fr") @db.VarChar(255)
   specification     String?              @db.VarChar(100)
   unit              String?              @db.VarChar(100)
+  caseSize          Int?                 @map("case_size")
   category          String               @db.VarChar(20)
   returnItems       PurchaseReturnItem[]
 

@@ -1,4 +1,5 @@
 import type { AuthLanguage } from "@/features/auth/authCopy";
+import { convertOrderQuantityToCases } from "@zhao/utils";
 import {
   getOrderProductName,
   getOrderProductVariants,
@@ -16,6 +17,7 @@ export type DeliveryMode = "today" | "tomorrow" | "other";
 export type SelectedOrderLine = {
   product: OrderProduct;
   quantity: number;
+  orderedQuantity: number;
   variant: OrderProductVariant;
 };
 
@@ -53,7 +55,8 @@ export function getStockViolation(
 ): StockViolation | null {
   for (const product of products) {
     const requestedQuantity = getOrderProductVariants(product).reduce(
-      (sum, variant) => sum + (Number(quantities[variant.id]) || 0),
+      (sum, variant) =>
+        sum + getOrderedQuantity(Number(quantities[variant.id]) || 0, variant.caseSize),
       0,
     );
     const availableQuantity = stockMap[product.id] ?? 0;
@@ -80,9 +83,17 @@ export function getSelectedLines(
         product,
         variant,
         quantity: Number(quantities[variant.id]) || 0,
+        orderedQuantity: getOrderedQuantity(
+          Number(quantities[variant.id]) || 0,
+          variant.caseSize,
+        ),
       }))
       .filter((line) => line.quantity > 0),
   );
+}
+
+function getOrderedQuantity(quantity: number, caseSize: number | null): number {
+  return convertOrderQuantityToCases(quantity, caseSize)?.orderedQuantity ?? quantity;
 }
 
 export function filterProducts(

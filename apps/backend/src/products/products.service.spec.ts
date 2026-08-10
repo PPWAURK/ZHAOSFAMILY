@@ -23,6 +23,9 @@ describe('ProductsService', () => {
             unit3: null,
             unitPriceHt2: null,
             unitPriceHt3: null,
+            caseSize: null,
+            caseSize2: null,
+            caseSize3: null,
           },
         ]),
       },
@@ -54,6 +57,9 @@ describe('ProductsService', () => {
         unit3: true,
         unitPriceHt2: true,
         unitPriceHt3: true,
+        caseSize: true,
+        caseSize2: true,
+        caseSize3: true,
       },
       orderBy: {
         id: 'asc',
@@ -78,6 +84,9 @@ describe('ProductsService', () => {
         unit3: null,
         unitPriceHt2: null,
         unitPriceHt3: null,
+        caseSize: null,
+        caseSize2: null,
+        caseSize3: null,
       },
     ]);
   });

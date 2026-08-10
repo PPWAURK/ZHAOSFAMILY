@@ -9,6 +9,7 @@ export type OrderDocumentItem = {
   specification: string;
   unit: string;
   quantity: number;
+  pickingQuantity: string;
   unitPrice: number;
   lineTotal: number;
 };

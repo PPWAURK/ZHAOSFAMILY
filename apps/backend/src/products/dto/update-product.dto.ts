@@ -53,6 +53,24 @@ export class UpdateProductDto {
   unitPriceHt?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'CASE_SIZE_INVALID' })
+  @Min(1, { message: 'CASE_SIZE_INVALID' })
+  caseSize?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'CASE_SIZE_INVALID' })
+  @Min(1, { message: 'CASE_SIZE_INVALID' })
+  caseSize2?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'CASE_SIZE_INVALID' })
+  @Min(1, { message: 'CASE_SIZE_INVALID' })
+  caseSize3?: number | null;
+
+  @IsOptional()
   @IsString()
   image?: string;
 

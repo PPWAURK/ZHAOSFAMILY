@@ -97,7 +97,6 @@ export function OrderModuleScreen({
   const [returnReason, setReturnReason] = useState("");
   const [returnNotes, setReturnNotes] = useState("");
   const [returnQuantities, setReturnQuantities] = useState<ReturnQuantityMap>({});
-  const [areFiltersVisible, setAreFiltersVisible] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("tomorrow");
@@ -168,9 +167,9 @@ export function OrderModuleScreen({
   );
   const deliveryDate = getDeliveryDate(deliveryMode, customDate);
   const orderItems = useMemo(() => buildCreateOrderItems(quantities), [quantities]);
-  const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItems = selectedLines.reduce((sum, line) => sum + line.orderedQuantity, 0);
   const estimatedTotal = selectedLines.reduce(
-    (sum, line) => sum + line.quantity * (line.variant.price ?? 0),
+    (sum, line) => sum + line.orderedQuantity * (line.variant.price ?? 0),
     0,
   );
   const isStockEnforced = supplierEnforcesStock(selectedSupplierId);
@@ -371,7 +370,6 @@ export function OrderModuleScreen({
     setEditingOrder(null);
     setOriginalStockMap({});
     setQuantities({});
-    setAreFiltersVisible(false);
     setProductSearch("");
     setSelectedCategory("");
     setStep("edit");
@@ -394,7 +392,6 @@ export function OrderModuleScreen({
     setSelectedSupplierId("");
     setOriginalStockMap({});
     setQuantities({});
-    setAreFiltersVisible(false);
     setProductSearch("");
     setSelectedCategory("");
     setErrorMessage("");
@@ -406,7 +403,6 @@ export function OrderModuleScreen({
     setSelectedSupplierId("");
     setEditingOrder(null);
     setOriginalStockMap({});
-    setAreFiltersVisible(false);
     setProductSearch("");
     setSelectedCategory("");
     setStep("edit");
@@ -422,7 +418,6 @@ export function OrderModuleScreen({
     clearReturnPanel();
     setOriginalStockMap({});
     setQuantities({});
-    setAreFiltersVisible(false);
     setProductSearch("");
     setSelectedCategory("");
     setStep("edit");
@@ -613,7 +608,6 @@ export function OrderModuleScreen({
       setCustomDate(detail.deliveryDate);
       setQuantities(buildQuantitiesFromOrderDetail(detail));
       setOriginalStockMap(buildOriginalStockMap(detail));
-      setAreFiltersVisible(false);
       setProductSearch("");
       setSelectedCategory("");
       setCreatedOrder(null);
@@ -977,75 +971,57 @@ export function OrderModuleScreen({
             <Text style={styles.datePreview}>{deliveryDate}</Text>
           )}
 
-          <Pressable
-            style={styles.filterToggle}
-            onPress={() => setAreFiltersVisible((current) => !current)}
+          <SectionTitle label={copy.productFilter} />
+          <TextInput
+            autoCapitalize="none"
+            placeholder={copy.filterPlaceholder}
+            placeholderTextColor={authControlStyles.colors.ink40}
+            style={styles.searchInput}
+            value={productSearch}
+            onChangeText={setProductSearch}
+          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryChipList}
+            style={styles.categoryChipScroller}
           >
-            <Ionicons
-              color={authControlStyles.colors.red}
-              name="options-outline"
-              size={18}
-            />
-            <Text style={styles.filterToggleText}>
-              {areFiltersVisible ? copy.hideFilters : copy.showFilters}
-            </Text>
-            <Ionicons
-              color={authControlStyles.colors.red}
-              name={areFiltersVisible ? "chevron-up-outline" : "chevron-down-outline"}
-              size={16}
-            />
-          </Pressable>
-
-          {areFiltersVisible ? (
-            <>
-              <SectionTitle label={copy.productFilter} />
-              <TextInput
-                autoCapitalize="none"
-                placeholder={copy.filterPlaceholder}
-                placeholderTextColor={authControlStyles.colors.ink40}
-                style={styles.searchInput}
-                value={productSearch}
-                onChangeText={setProductSearch}
-              />
-              <View style={styles.optionGrid}>
-                <Pressable
+            <Pressable
+              style={[
+                styles.categoryChip,
+                selectedCategory === "" ? styles.categoryChipActive : null,
+              ]}
+              onPress={() => setSelectedCategory("")}
+            >
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  selectedCategory === "" ? styles.categoryChipTextActive : null,
+                ]}
+              >
+                {copy.allCategories}
+              </Text>
+            </Pressable>
+            {productCategories.map((category) => (
+              <Pressable
+                key={category}
+                style={[
+                  styles.categoryChip,
+                  selectedCategory === category ? styles.categoryChipActive : null,
+                ]}
+                onPress={() => setSelectedCategory(category)}
+              >
+                <Text
                   style={[
-                    styles.optionButton,
-                    selectedCategory === "" ? styles.optionButtonActive : null,
+                    styles.categoryChipText,
+                    selectedCategory === category ? styles.categoryChipTextActive : null,
                   ]}
-                  onPress={() => setSelectedCategory("")}
                 >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      selectedCategory === "" ? styles.optionTextActive : null,
-                    ]}
-                  >
-                    {copy.allCategories}
-                  </Text>
-                </Pressable>
-                {productCategories.map((category) => (
-                  <Pressable
-                    key={category}
-                    style={[
-                      styles.optionButton,
-                      selectedCategory === category ? styles.optionButtonActive : null,
-                    ]}
-                    onPress={() => setSelectedCategory(category)}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        selectedCategory === category ? styles.optionTextActive : null,
-                      ]}
-                    >
-                      {translateOrderCategory(category, language)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
-          ) : null}
+                  {translateOrderCategory(category, language)}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
           <SectionTitle label={copy.products} />
           {isLoadingProducts ? <StateRow label={copy.loadingProducts} /> : null}
           {!isLoadingProducts && selectedSupplierId && products.length === 0 ? (

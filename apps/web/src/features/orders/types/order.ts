@@ -37,6 +37,7 @@ export type OrderProductVariant = {
   specification: string | null;
   unit: string | null;
   price: number | null;
+  caseSize: number | null;
 };
 
 export type OrderProduct = {
@@ -56,6 +57,9 @@ export type OrderProduct = {
   unit3?: string | null;
   price2: number | null;
   price3: number | null;
+  caseSize?: number | null;
+  caseSize2?: number | null;
+  caseSize3?: number | null;
   variants: OrderProductVariant[];
 };
 
@@ -72,6 +76,9 @@ export type OrderProductApiRecord = {
   unitPriceHt?: number | null;
   unitPriceHt2?: number | null;
   unitPriceHt3?: number | null;
+  caseSize?: number | null;
+  caseSize2?: number | null;
+  caseSize3?: number | null;
   image?: string | null;
   specification?: string | null;
   specification2?: string | null;

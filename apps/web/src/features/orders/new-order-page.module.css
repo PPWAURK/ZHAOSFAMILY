@@ -573,41 +573,32 @@
   color: var(--ink-60);
 }
 
-/* Table de produits */
+/* Liste de produits — intentionally mirrors the mobile ordering cards. */
 .productTable {
-  display: flex;
-  flex-direction: column;
-  overflow-x: auto;
-  max-width: 100%;
-  -webkit-overflow-scrolling: touch;
-  border-top: 1px solid var(--red-soft-2);
-}
-
-.productRow {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr) 120px 120px 100px 100px;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--red-soft);
-  min-width: 760px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .productHeader {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--red);
-  font-weight: 600;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--red-soft-2);
+  display: none;
+}
+
+.productRow {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
 }
 
 .productName {
   font-family: var(--zh-serif);
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -619,15 +610,15 @@
 
 .productImageCell {
   display: flex;
-  align-items: center;
 }
 
 .productImageFrame,
 .productImagePlaceholder {
   position: relative;
   overflow: hidden;
-  width: 64px;
-  height: 64px;
+  width: 100%;
+  aspect-ratio: 1.54;
+  height: auto;
   border: 1px solid var(--red-soft-2);
   background: var(--red-soft);
 }
@@ -685,6 +676,223 @@
 }
 
 .productMeta {
+  display: none;
+}
+
+.productStockOk,
+.productStockOut {
+  align-self: flex-start;
+}
+
+.productStockOk {
+  display: inline-flex;
+  width: fit-content;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #0b7a3f;
+  background: rgba(11, 122, 63, 0.08);
+  border: 1px solid rgba(11, 122, 63, 0.28);
+  padding: 2px 8px;
+  font-weight: 700;
+}
+
+.productStockOut {
+  display: inline-flex;
+  width: fit-content;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  background: var(--red-soft);
+  border: 1px solid var(--red-soft-2);
+  padding: 2px 8px;
+  font-weight: 700;
+}
+
+.productCellStack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.productRow > .productCellStack:nth-child(3) {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--red-soft-2);
+}
+
+.productCellValue {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 0;
+  padding: 3px 7px;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.specRefLabel,
+.productCatPill,
+.productRow > .productCellStack:nth-child(4),
+.productRow > .productCellStack:nth-child(5),
+.productRow > .productCellStack:nth-child(6) {
+  display: none;
+}
+
+.productSubtotal,
+.productUnit {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-60);
+}
+
+.productSubtotal {
+  text-align: right;
+}
+
+.qtyInput {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--red-soft-2);
+  background: var(--paper);
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--ink);
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+
+.qtyInput:focus {
+  outline: none;
+  border-color: var(--red);
+}
+
+.productNameRow {
+  display: contents;
+}
+
+.productMobileQuantityRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.productMobileQuantityLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.productQuantityLabel {
+  flex: none;
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.productMobileQuantityLine .quantityControl {
+  flex: 0 1 132px;
+  width: 132px;
+}
+
+.productMobileQuantityLine .qtyStepper {
+  max-width: 132px;
+}
+
+.productMobileUnit {
+  min-width: 0;
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caseConversion {
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.caseSizeHint {
+  display: none;
+}
+
+.qtyStepper {
+  display: inline-flex;
+  align-items: stretch;
+  width: 100%;
+  border: 1px solid var(--red-soft-2);
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.quantityControl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.stepperBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  border: none;
+  background: var(--paper);
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.stepperBtn:hover:not(:disabled) {
+  background: var(--red-soft);
+}
+
+.stepperBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qtyStepper .qtyInput {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  border-top: none;
+  border-bottom: none;
+  border-radius: 0;
+  text-align: center;
+  padding: 8px 2px;
+}
+
+.productTotal {
+  display: none;
+}
+
+.productTotalLabel,
+.productTotalValue,
+.unitPriceInline {
+  display: none;
+}
+
+/* Product table styles retained below for other order states are overridden by
+   the mobile card layout above. */
+.productMetaLegacy {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -791,6 +999,29 @@
   border-radius: 10px;
   overflow: hidden;
   background: var(--paper);
+}
+
+.quantityControl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.caseConversion {
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.caseSizeHint {
+  display: block;
+  margin-top: 3px;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.25;
 }
 
 .stepperBtn {
@@ -1427,6 +1658,11 @@
     max-width: 132px;
   }
 
+  .productMobileQuantityLine .quantityControl {
+    flex: 0 0 132px;
+    width: 132px;
+  }
+
   .productMobileUnit {
     min-width: 0;
     color: var(--ink-60);
@@ -1568,5 +1804,171 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+/* Keep every viewport on the same product card composition as the mobile app. */
+.productTable {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  overflow: visible;
+  min-width: 0;
+  border-top: none;
+}
+
+.productTable .productRow {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--red-soft-2);
+  border-radius: 0;
+  background: var(--paper);
+}
+
+.productTable .productRow.productHeader,
+.productTable .productRow > .productCatPill,
+.productTable .productRow > :nth-child(4),
+.productTable .productRow > :nth-child(5),
+.productTable .productRow > :nth-child(6),
+.productTable .productRow .specRefLabel,
+.productTable .productRow .caseSizeHint {
+  display: none;
+}
+
+.productTable .productRow > :nth-child(1),
+.productTable .productRow > :nth-child(2),
+.productTable .productRow > :nth-child(3),
+.productTable .productRow > :nth-child(8) {
+  display: flex;
+  grid-column: auto;
+  grid-row: auto;
+  margin: 0;
+}
+
+.productTable .productImageFrame,
+.productTable .productImagePlaceholder {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1.54;
+  border: 1px solid var(--red-soft-2);
+  border-radius: 0;
+}
+
+.productTable .productName {
+  font-size: 18px;
+}
+
+.productTable .productRow > :nth-child(3) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--red-soft-2);
+}
+
+.productTable .productRow > :nth-child(3) .productCellValue {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 0;
+  padding: 3px 7px;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.productTable .productMobileQuantityRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.productTable .productMobileQuantityLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  gap: 8px;
+}
+
+.productTable .productMobileQuantityLine .quantityControl {
+  display: flex;
+  flex: 0 1 132px;
+  width: 132px;
+}
+
+.productTable .productMobileQuantityLine .qtyStepper {
+  flex: 1;
+  max-width: 132px;
+  border-radius: 0;
+}
+
+.productTable .productMobileQuantityLine .stepperBtn {
+  display: flex;
+  width: 30px;
+  background: var(--paper);
+}
+
+.productTable .productMobileQuantityLine .qtyInput {
+  border-top: none;
+  border-bottom: none;
+  border-left: 1px solid var(--red-soft-2);
+  border-right: 1px solid var(--red-soft-2);
+}
+
+.productTable .productMobileUnit {
+  order: 1;
+}
+
+.productTotalResult {
+  display: block;
+  order: 2;
+  flex-basis: 100%;
+  padding: 6px 8px;
+  background: rgba(25, 122, 61, 0.12);
+}
+
+.productTotalResultText {
+  color: #0b7a3f;
+  font-family: var(--zh-serif);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.productTotal {
+  display: none;
+}
+
+@media (max-width: 520px) {
+  .productTable {
+    gap: 10px;
+  }
+
+  .productTable .productRow {
+    padding: 10px;
+  }
+
+  .productTable .productName {
+    font-size: 16px;
+  }
+
+  .productTable .productMobileQuantityLine .quantityControl {
+    flex-basis: 92px;
+    width: 92px;
+  }
+
+  .productTable .productMobileQuantityLine .qtyStepper {
+    max-width: 92px;
+  }
+
+  .productTable .productMobileQuantityLine .stepperBtn {
+    width: 26px;
   }
 }

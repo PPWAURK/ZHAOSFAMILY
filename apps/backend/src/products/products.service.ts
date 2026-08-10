@@ -21,6 +21,9 @@ export type ProductListItem = {
   unit3: string | null;
   unitPriceHt2: number | null;
   unitPriceHt3: number | null;
+  caseSize: number | null;
+  caseSize2: number | null;
+  caseSize3: number | null;
 };
 
 function toNullableNumber(value: { toString(): string } | null): number | null {
@@ -111,6 +114,9 @@ const PRODUCT_SELECT = {
   unit3: true,
   unitPriceHt2: true,
   unitPriceHt3: true,
+  caseSize: true,
+  caseSize2: true,
+  caseSize3: true,
 } as const;
 
 type PrismaProductRow = {
@@ -131,6 +137,9 @@ type PrismaProductRow = {
   unit3: string | null;
   unitPriceHt2: { toString(): string } | null;
   unitPriceHt3: { toString(): string } | null;
+  caseSize: number | null;
+  caseSize2: number | null;
+  caseSize3: number | null;
 };
 
 function toProductListItem(product: PrismaProductRow): ProductListItem {
@@ -152,6 +161,9 @@ function toProductListItem(product: PrismaProductRow): ProductListItem {
     unit3: fixMojibake(product.unit3),
     unitPriceHt2: toNullableNumber(product.unitPriceHt2),
     unitPriceHt3: toNullableNumber(product.unitPriceHt3),
+    caseSize: product.caseSize,
+    caseSize2: product.caseSize2,
+    caseSize3: product.caseSize3,
   };
 }
 
@@ -206,6 +218,9 @@ export class ProductsService {
         designationFr: dto.designationFr ?? null,
         unit: dto.unit ?? null,
         unitPriceHt: dto.unitPriceHt ?? null,
+        caseSize: dto.caseSize ?? null,
+        caseSize2: dto.caseSize2 ?? null,
+        caseSize3: dto.caseSize3 ?? null,
         image: dto.image ?? null,
         specification: dto.specification ?? null,
       },
@@ -242,6 +257,9 @@ export class ProductsService {
         ...(dto.unitPriceHt !== undefined
           ? { unitPriceHt: dto.unitPriceHt }
           : {}),
+        ...(dto.caseSize !== undefined ? { caseSize: dto.caseSize } : {}),
+        ...(dto.caseSize2 !== undefined ? { caseSize2: dto.caseSize2 } : {}),
+        ...(dto.caseSize3 !== undefined ? { caseSize3: dto.caseSize3 } : {}),
         ...(dto.image !== undefined ? { image: dto.image || null } : {}),
         ...(dto.specification !== undefined
           ? { specification: dto.specification || null }

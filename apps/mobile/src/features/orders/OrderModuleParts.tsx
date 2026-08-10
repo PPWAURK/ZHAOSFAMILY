@@ -6,6 +6,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import type { ImageSource } from "expo-image";
+import { convertOrderQuantityToCases } from "@zhao/utils";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
@@ -13,7 +14,6 @@ import {
   getOrderProductName,
   getOrderProductVariants,
 } from "@/features/orders/orderApi";
-import { translateOrderCategory } from "@/features/orders/orderCategories";
 import type { OrderCopy } from "@/features/orders/orderCopy";
 import { orderStyles as styles } from "@/features/orders/orderStyles";
 import { isTablet } from "@/lib/responsive";
@@ -33,12 +33,6 @@ const productCardTabletStyle = isTablet
   ? ({ width: "31%", minWidth: "31%" } as const)
   : null;
 
-// On tablets the product card is far wider, so swap the fixed image height for
-// an aspect ratio: the picture grows with the card instead of staying squat.
-const productImageTabletStyle = isTablet
-  ? ({ height: undefined, aspectRatio: 1.7 } as const)
-  : null;
-
 const MAX_QUANTITY = 9999;
 
 // Step the quantity string by ±1, clamped to [0, MAX_QUANTITY]; 0 clears the
@@ -49,6 +43,83 @@ function stepQuantity(current: string | undefined, delta: number): string {
   const next = Math.min(MAX_QUANTITY, Math.max(0, base + delta));
 
   return next === 0 ? "" : String(next);
+}
+
+function formatOrderQuantity(
+  quantity: number,
+  caseSize: number | null,
+  unit: string | null | undefined,
+  language: AuthLanguage,
+): string | null {
+  const convertedQuantity = convertOrderQuantityToCases(quantity, caseSize);
+
+  const quantityUnit = getLocalizedUnit(unit, language);
+  if (!convertedQuantity) return quantity > 0 ? `${quantity} ${quantityUnit}` : null;
+
+  const caseUnit = language === "zh" ? "箱" : "CTN";
+
+  return `${convertedQuantity.caseQuantity} ${caseUnit}${
+    convertedQuantity.remainingQuantity
+      ? ` + ${convertedQuantity.remainingQuantity} ${quantityUnit}`
+      : ""
+  }`;
+}
+
+function getLocalizedUnit(
+  unit: string | null | undefined,
+  language: AuthLanguage,
+): string {
+  const unitParts = String(unit || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (unitParts.length < 2) {
+    return unitParts[0] || (language === "zh" ? "个" : "unités");
+  }
+
+  return language === "zh" ? unitParts[0] : unitParts[unitParts.length - 1];
+}
+
+function getDeliveryMessage(
+  quantity: number,
+  caseSize: number | null,
+  unit: string | null | undefined,
+  language: AuthLanguage,
+  isConfirmation: boolean,
+): string | null {
+  const deliveryQuantity = formatOrderQuantity(quantity, caseSize, unit, language);
+  if (!deliveryQuantity) return null;
+
+  if (language === "zh") {
+    return `${isConfirmation ? "送" : "这次送"}：${deliveryQuantity}`;
+  }
+
+  if (language === "fr") {
+    return `${isConfirmation ? "Livraison" : "Cette livraison"} : ${deliveryQuantity}`;
+  }
+
+  return `${isConfirmation ? "Delivery" : "This delivery"}: ${deliveryQuantity}`;
+}
+
+function getTotalMessage(
+  quantity: number,
+  caseSize: number | null,
+  unit: string | null | undefined,
+  language: AuthLanguage,
+): string | null {
+  const totalQuantity = formatOrderQuantity(quantity, caseSize, unit, language);
+  if (!totalQuantity) return null;
+
+  if (language === "zh") return `总计：${totalQuantity}`;
+  if (language === "fr") return `Total : ${totalQuantity}`;
+  return `Total: ${totalQuantity}`;
+}
+
+function getQuantityLabel(language: AuthLanguage): string {
+  if (language === "zh") return "数量";
+  if (language === "fr") return "Quantité";
+  return "Quantity";
 }
 
 function resolveApiOrigin(): string {
@@ -119,37 +190,35 @@ export function ProductQuantityRow({
   const imageSource = buildProductImageSource(product.image);
   const variants = getOrderProductVariants(product);
   const isInStock = (stockMap[product.id] ?? 0) > 0;
+  const hasSingleVariant = variants.length === 1;
+  const primaryVariant = variants[0];
 
   return (
     <View style={[styles.productCard, productCardTabletStyle]}>
       <View style={styles.productHeader}>
-        <View style={[styles.productImageFrame, productImageTabletStyle]}>
+        <View style={styles.productImageFrame}>
           {imageSource ? (
             <Image
               source={imageSource}
-              style={[styles.productImage, productImageTabletStyle]}
+              style={styles.productImage}
               contentFit="cover"
               cachePolicy="memory-disk"
               transition={0}
               recyclingKey={String(product.id)}
             />
           ) : (
-            <View style={[styles.productImage, styles.imagePlaceholder, productImageTabletStyle]}>
+            <View style={[styles.productImage, styles.imagePlaceholder]}>
               <Text style={styles.imagePlaceholderText}>{productName.slice(0, 1)}</Text>
             </View>
           )}
         </View>
         <View style={styles.productInfo}>
-          <Text style={styles.productName}>{productName}</Text>
-          {variants.map((variant) => (
-            <Text key={variant.id} style={styles.variantText}>
-              {variant.specification || product.specification || product.reference || "-"}
-            </Text>
-          ))}
-          {product.reference ? <Text style={styles.productMeta}>{product.reference}</Text> : null}
-          {product.category ? (
-            <Text style={styles.productMeta}>
-              {translateOrderCategory(product.category, language)}
+          <Text style={styles.productName} numberOfLines={2}>
+            {productName}
+          </Text>
+          {hasSingleVariant ? (
+            <Text style={styles.productSpecification} numberOfLines={1}>
+              {primaryVariant?.specification || product.specification || product.reference || "-"}
             </Text>
           ) : null}
           {showStock ? (
@@ -173,52 +242,76 @@ export function ProductQuantityRow({
           ) : null}
         </View>
       </View>
-      {variants.map((variant) => (
-        <View key={variant.id} style={styles.variantRow}>
-          <View style={styles.quantityStepper}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="-"
-              hitSlop={6}
-              style={({ pressed }) => [
-                styles.stepperButton,
-                styles.stepperButtonLeft,
-                pressed ? styles.stepperButtonPressed : null,
-              ]}
-              onPress={() =>
-                onChangeQuantity(variant.id, stepQuantity(quantities[variant.id], -1))
-              }
-            >
-              <Text style={styles.stepperButtonText}>−</Text>
-            </Pressable>
-            <TextInput
-              keyboardType="number-pad"
-              maxLength={4}
-              style={styles.quantityInput}
-              value={quantities[variant.id] || ""}
-              onChangeText={(value) => onChangeQuantity(variant.id, value)}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="+"
-              hitSlop={6}
-              style={({ pressed }) => [
-                styles.stepperButton,
-                styles.stepperButtonRight,
-                pressed ? styles.stepperButtonPressed : null,
-              ]}
-              onPress={() =>
-                onChangeQuantity(variant.id, stepQuantity(quantities[variant.id], 1))
-              }
-            >
-              <Text style={styles.stepperButtonText}>+</Text>
-            </Pressable>
+      {variants.map((variant) => {
+        const totalMessage = getTotalMessage(
+          Number(quantities[variant.id]) || 0,
+          variant.caseSize,
+          variant.unit || product.unit,
+          language,
+        );
+
+        return (
+          <View key={variant.id} style={styles.productOrderArea}>
+            {!hasSingleVariant ? (
+              <>
+                <Text style={styles.variantOrderLabel} numberOfLines={1}>
+                  {variant.specification || product.specification || product.reference || "-"}
+                </Text>
+              </>
+            ) : null}
+            <View style={styles.quantityRow}>
+              <Text style={styles.quantityLabel}>{getQuantityLabel(language)}</Text>
+              <View style={styles.quantityStepper}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="-"
+                  hitSlop={6}
+                  style={({ pressed }) => [
+                    styles.stepperButton,
+                    styles.stepperButtonLeft,
+                    pressed ? styles.stepperButtonPressed : null,
+                  ]}
+                  onPress={() =>
+                    onChangeQuantity(variant.id, stepQuantity(quantities[variant.id], -1))
+                  }
+                >
+                  <Text style={styles.stepperButtonText}>−</Text>
+                </Pressable>
+                <TextInput
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  style={styles.quantityInput}
+                  value={quantities[variant.id] || ""}
+                  onChangeText={(value) => onChangeQuantity(variant.id, value)}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="+"
+                  hitSlop={6}
+                  style={({ pressed }) => [
+                    styles.stepperButton,
+                    styles.stepperButtonRight,
+                    pressed ? styles.stepperButtonPressed : null,
+                  ]}
+                  onPress={() =>
+                    onChangeQuantity(variant.id, stepQuantity(quantities[variant.id], 1))
+                  }
+                >
+                  <Text style={styles.stepperButtonText}>+</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.unitText} numberOfLines={1}>
+                {getLocalizedUnit(variant.unit || product.unit, language)}
+              </Text>
+            </View>
+            {totalMessage ? (
+              <View style={styles.productTotalResult}>
+                <Text style={styles.productTotalResultText}>{totalMessage}</Text>
+              </View>
+            ) : null}
           </View>
-          <Text style={styles.unitText} numberOfLines={1}>
-            {variant.unit || product.unit || "-"}
-          </Text>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -236,7 +329,13 @@ export function SelectedLinesList({
         <View key={line.variant.id} style={styles.selectedLine}>
           <Text style={styles.selectedName}>{getOrderProductName(line.product, language)}</Text>
           <Text style={styles.selectedMeta}>
-            {line.variant.specification || line.product.reference || "-"} x {line.quantity}
+            {line.variant.specification || line.product.reference || "-"} · {getDeliveryMessage(
+              line.quantity,
+              line.variant.caseSize,
+              line.variant.unit || line.product.unit,
+              language,
+              true,
+            )}
           </Text>
         </View>
       ))}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
+import PdfCanvasViewer from "@/shared/components/PdfCanvasViewer";
 import { useMediaUrl } from "@/shared/hooks/useMediaUrl";
 import DashboardNewsMarkdownEditor, {
   DashboardNewsInlineEditor,
@@ -39,10 +40,6 @@ const INITIAL_FORM = {
   visibility: "public",
   tags: "",
 };
-const PDFJS_VERSION = "3.11.174";
-const PDFJS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
-const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
-let dashboardPdfJsPromise;
 
 function resolveColumn(category) {
   if (category === "people") return "congrats";
@@ -115,49 +112,6 @@ function getBackendCategory(boardCategory) {
 
 function getPostCategoryLabel(copy, category) {
   return copy.categories[getBoardCategory(category)] || category;
-}
-
-function loadDashboardPdfJs() {
-  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-
-  if (!dashboardPdfJsPromise) {
-    dashboardPdfJsPromise = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-
-      script.src = PDFJS_LIB_URL;
-      script.async = true;
-      script.onload = () => {
-        if (window.pdfjsLib) {
-          resolve(window.pdfjsLib);
-          return;
-        }
-
-        reject(new Error("PDFJS_LOAD_FAILED"));
-      };
-      script.onerror = () => reject(new Error("PDFJS_LOAD_FAILED"));
-      document.head.appendChild(script);
-    });
-  }
-
-  return dashboardPdfJsPromise;
-}
-
-async function renderDashboardPdfPage(page, container) {
-  const baseViewport = page.getViewport({ scale: 1 });
-  const availableWidth = Math.max(container.clientWidth - 24, 1);
-  const viewport = page.getViewport({ scale: availableWidth / baseViewport.width });
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-
-  if (!context) throw new Error("PDF_CANVAS_UNAVAILABLE");
-
-  canvas.width = Math.floor(viewport.width);
-  canvas.height = Math.floor(viewport.height);
-  canvas.style.width = `${viewport.width}px`;
-  canvas.style.height = `${viewport.height}px`;
-  container.appendChild(canvas);
-
-  await page.render({ canvasContext: context, viewport }).promise;
 }
 
 function parseMarkdownImageLine(line) {
@@ -346,62 +300,15 @@ function FullscreenIcon() {
 }
 
 function DashboardNewsPdfViewer({ isFullscreen = false, source, title }) {
-  const pagesRef = useRef(null);
-  const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let isCancelled = false;
-    let loadingTask;
-    let pdfDocument;
-
-    async function renderPdf() {
-      const pages = pagesRef.current;
-
-      if (!pages) return;
-
-      setHasError(false);
-      setIsLoading(true);
-      pages.replaceChildren();
-
-      try {
-        const pdfjsLib = await loadDashboardPdfJs();
-
-        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
-        loadingTask = pdfjsLib.getDocument({ url: source });
-        pdfDocument = await loadingTask.promise;
-
-        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
-          if (isCancelled) return;
-
-          const page = await pdfDocument.getPage(pageNumber);
-          await renderDashboardPdfPage(page, pages);
-        }
-      } catch {
-        if (!isCancelled) setHasError(true);
-      } finally {
-        if (!isCancelled) setIsLoading(false);
-      }
-    }
-
-    void renderPdf();
-
-    return () => {
-      isCancelled = true;
-      loadingTask?.destroy();
-      pdfDocument?.destroy();
-    };
-  }, [source]);
-
   return (
-    <div
+    <PdfCanvasViewer
       className={isFullscreen ? styles.newsFullscreenPdfViewer : styles.newsFeaturePdfViewer}
-      aria-label={title}
-    >
-      <div ref={pagesRef} className={styles.newsPdfPages} />
-      {isLoading ? <span className={styles.newsPdfLoading}>Loading PDF…</span> : null}
-      {hasError ? <span className={styles.newsPdfError}>PDF preview unavailable.</span> : null}
-    </div>
+      errorClassName={styles.newsPdfError}
+      loadingClassName={styles.newsPdfLoading}
+      pagesClassName={styles.newsPdfPages}
+      source={source}
+      title={title}
+    />
   );
 }
 

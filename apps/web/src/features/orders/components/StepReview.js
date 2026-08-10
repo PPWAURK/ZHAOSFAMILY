@@ -1,7 +1,10 @@
 "use client";
 
 import OrderProductImage from "@/features/orders/components/OrderProductImage";
+import { convertOrderQuantityToCases } from "@zhao/utils";
 import {
+  getLocalizedOrderUnit,
+  getOrderCaseLabel,
   getOrderProductName,
   getOrderProductUnit,
   getOrderProductVariants,
@@ -14,6 +17,21 @@ function formatMoney(amount, symbol) {
   }
 
   return `${amount.toFixed(2)} ${symbol}`;
+}
+
+function formatOrderQuantity(quantity, caseSize, unit, lang) {
+  const convertedQuantity = convertOrderQuantityToCases(quantity, caseSize);
+  const localizedUnit = getLocalizedOrderUnit(unit, lang);
+
+  if (!convertedQuantity) {
+    return `${quantity} ${localizedUnit}`;
+  }
+
+  return `${convertedQuantity.caseQuantity} ${getOrderCaseLabel(lang)}${
+    convertedQuantity.remainingQuantity
+      ? ` + ${convertedQuantity.remainingQuantity} ${localizedUnit}`
+      : ""
+  }`;
 }
 
 export default function StepReview({
@@ -43,7 +61,9 @@ export default function StepReview({
       return sum;
     }
 
-    return sum + item.qty * item.variant.price;
+    const orderedQuantity =
+      convertOrderQuantityToCases(item.qty, item.variant.caseSize)?.orderedQuantity ?? item.qty;
+    return sum + orderedQuantity * item.variant.price;
   }, 0);
 
   return (
@@ -86,11 +106,16 @@ export default function StepReview({
       ) : (
         <div className={styles.reviewItems}>
           {items.map((item) => {
+            const orderedQuantity =
+              convertOrderQuantityToCases(item.qty, item.variant.caseSize)?.orderedQuantity ?? item.qty;
             const subtotal = Number.isFinite(item.variant.price)
-              ? item.qty * item.variant.price
+              ? orderedQuantity * item.variant.price
               : null;
             const productName = getOrderProductName(item, lang);
-            const variantLabel = item.variant.specification || getOrderProductUnit(item);
+            const variantLabel = item.variant.specification || getLocalizedOrderUnit(
+              getOrderProductUnit(item),
+              lang,
+            );
 
             return (
               <div key={item.variant.id} className={styles.reviewItem}>
@@ -106,7 +131,13 @@ export default function StepReview({
                   <span className={styles.reviewItemVariant}>{variantLabel}</span>
                 </span>
                 <span className={styles.reviewItemQty}>
-                  × {item.qty} {item.variant.unit || getOrderProductUnit(item)}
+                  ×{" "}
+                  {formatOrderQuantity(
+                    item.qty,
+                    item.variant.caseSize,
+                    item.variant.unit || getOrderProductUnit(item),
+                    lang,
+                  )}
                 </span>
                 <span className={styles.reviewItemSubtotal}>
                   {formatMoney(subtotal, copy.currencySymbol)}

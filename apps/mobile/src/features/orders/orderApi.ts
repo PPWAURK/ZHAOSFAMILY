@@ -21,9 +21,7 @@ import type {
 
 const STOCK_ENFORCED_SUPPLIER_IDS = new Set<string>(["8"]);
 
-export function supplierEnforcesStock(
-  supplierId: number | string | null | undefined,
-): boolean {
+export function supplierEnforcesStock(supplierId: number | string | null | undefined): boolean {
   if (supplierId === null || supplierId === undefined) return false;
   return STOCK_ENFORCED_SUPPLIER_IDS.has(String(supplierId));
 }
@@ -35,33 +33,35 @@ function buildProductVariants(product: OrderProductApiRecord): OrderProductVaria
       specification: product.specification,
       unit: product.unit,
       price: product.unitPriceHt,
+      caseSize: product.caseSize,
     },
     {
       key: "2",
       specification: product.specification2,
       unit: product.unit2,
       price: product.unitPriceHt2,
+      caseSize: product.caseSize2,
     },
     {
       key: "3",
       specification: product.specification3,
       unit: product.unit3,
       price: product.unitPriceHt3,
+      caseSize: product.caseSize3,
     },
   ];
 
   return variantFields
-    .filter(
-      (variant) =>
-        variant.specification ||
-        variant.unit ||
-        Number.isFinite(variant.price),
-    )
+    .filter((variant) => variant.specification || variant.unit || Number.isFinite(variant.price))
     .map((variant) => ({
       id: `${product.id}:${variant.key}`,
       specification: variant.specification || null,
       unit: variant.unit || null,
       price: Number.isFinite(variant.price) ? Number(variant.price) : null,
+      caseSize:
+        Number.isInteger(variant.caseSize) && Number(variant.caseSize) > 0
+          ? Number(variant.caseSize)
+          : null,
     }));
 }
 
@@ -71,9 +71,7 @@ function parseVariantId(variantId: string): CreateOrderItem {
 
   return {
     productId: Number(productId),
-    ...(Number.isInteger(specificationSlot)
-      ? { specificationSlot }
-      : {}),
+    ...(Number.isInteger(specificationSlot) ? { specificationSlot } : {}),
     quantity: 0,
   };
 }
@@ -139,6 +137,9 @@ export async function fetchOrderProducts(supplierId: string): Promise<OrderProdu
     unit3: product.unit3,
     price2: typeof product.unitPriceHt2 === "number" ? product.unitPriceHt2 : null,
     price3: typeof product.unitPriceHt3 === "number" ? product.unitPriceHt3 : null,
+    caseSize: product.caseSize,
+    caseSize2: product.caseSize2,
+    caseSize3: product.caseSize3,
     variants: buildProductVariants(product),
   }));
 }
@@ -185,22 +186,17 @@ export async function updatePurchaseOrder(
   deliveryDate: string,
   quantities: QuantityMap,
 ): Promise<PurchaseOrder> {
-  return mobileApiClient.patch<PurchaseOrder>(
-    `/orders/${encodeURIComponent(String(orderId))}`,
-    {
-      deliveryDate,
-      items: buildCreateOrderItems(quantities),
-    },
-  );
+  return mobileApiClient.patch<PurchaseOrder>(`/orders/${encodeURIComponent(String(orderId))}`, {
+    deliveryDate,
+    items: buildCreateOrderItems(quantities),
+  });
 }
 
 export async function deletePurchaseOrder(orderId: number | string): Promise<void> {
   await mobileApiClient.delete(`/orders/${encodeURIComponent(String(orderId))}`);
 }
 
-export async function fetchOrderReturnDraft(
-  orderId: number | string,
-): Promise<OrderReturnDraft> {
+export async function fetchOrderReturnDraft(orderId: number | string): Promise<OrderReturnDraft> {
   return mobileApiClient.get<OrderReturnDraft>(
     `/orders/${encodeURIComponent(String(orderId))}/return-draft`,
   );
@@ -279,6 +275,10 @@ export function getOrderProductVariants(product: OrderProduct): OrderProductVari
           specification: product.specification || null,
           unit: product.unit || null,
           price: product.price,
+          caseSize:
+            Number.isInteger(product.caseSize) && Number(product.caseSize) > 0
+              ? Number(product.caseSize)
+              : null,
         },
       ];
 }

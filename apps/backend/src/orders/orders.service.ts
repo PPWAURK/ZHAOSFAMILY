@@ -8,6 +8,7 @@ import type { Prisma } from '@prisma/client';
 import { renameSync } from 'fs';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersDocumentService } from './orders-document.service';
+import { OrderQuantityConversionService } from './order-quantity-conversion.service';
 import type { CreateOrderReturnDto } from './dto/create-order-return.dto';
 import type { CreateOrderDto } from './dto/create-order.dto';
 import type { UpdateOrderDto } from './dto/update-order.dto';
@@ -66,6 +67,9 @@ type OrderProduct = {
   unitPriceHt: Prisma.Decimal | number | null;
   unitPriceHt2: Prisma.Decimal | number | null;
   unitPriceHt3: Prisma.Decimal | number | null;
+  caseSize: number | null;
+  caseSize2: number | null;
+  caseSize3: number | null;
 };
 
 type ProductSpecification = {
@@ -73,6 +77,7 @@ type ProductSpecification = {
   specification: string | null;
   unit: string | null;
   unitPrice: number;
+  caseSize: number | null;
 };
 
 type PreparedOrderItem = {
@@ -83,6 +88,7 @@ type PreparedOrderItem = {
   unit: string | null;
   unitPrice: number;
   lineTotal: number;
+  caseSize: number | null;
 };
 
 type ExistingOrderItemQuantity = {
@@ -95,6 +101,7 @@ type OrderFileItemSnapshot = {
   nameFr: string | null;
   specification: string | null;
   unit: string | null;
+  caseSize: number | null;
   quantity: number;
   unitPriceHt: Prisma.Decimal | number;
   lineTotal: Prisma.Decimal | number;
@@ -121,6 +128,7 @@ export class OrdersService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly ordersDocumentService: OrdersDocumentService,
+    private readonly orderQuantityConversionService: OrderQuantityConversionService,
   ) {}
 
   async createOrder(
@@ -152,7 +160,9 @@ export class OrdersService {
       ? await this.prepareSupplierCatalogItems(supplierId, selectedItems)
       : selectedItems;
     const totals = this.calculateTotals(orderItems);
-    const pdfItems = orderItems.map((item) => this.toOrderDocumentItem(item));
+    const pdfItems = orderItems.flatMap((item) =>
+      this.toOrderDocumentItems(item),
+    );
     let generatedOrderFilePath: string | null = null;
 
     try {
@@ -201,6 +211,7 @@ export class OrdersService {
             nameFr: item.product.designationFr,
             specification: item.specification,
             unit: item.unit,
+            caseSize: item.caseSize,
             category: item.product.category,
           })),
         });
@@ -516,6 +527,7 @@ export class OrdersService {
         productId: item.productId.toString(),
         specificationSlot: item.specificationSlot,
         quantity: item.quantity,
+        caseSize: item.caseSize,
         nameZh: this.ordersDocumentService.sanitizeLabel(item.nameZh),
         nameFr: this.ordersDocumentService.sanitizeLabel(item.nameFr),
         specification: this.ordersDocumentService.sanitizeLabel(
@@ -572,7 +584,9 @@ export class OrdersService {
       ? await this.prepareSupplierCatalogItems(supplierId, selectedItems)
       : selectedItems;
     const totals = this.calculateTotals(orderItems);
-    const pdfItems = orderItems.map((item) => this.toOrderDocumentItem(item));
+    const pdfItems = orderItems.flatMap((item) =>
+      this.toOrderDocumentItems(item),
+    );
     const oldOrderFilePath = this.ordersDocumentService.buildOrderFilePath(
       order.bonFileName,
     );
@@ -616,6 +630,7 @@ export class OrdersService {
             nameFr: item.product.designationFr,
             specification: item.specification,
             unit: item.unit,
+            caseSize: item.caseSize,
             category: item.product.category,
           })),
         });
@@ -977,6 +992,7 @@ export class OrdersService {
             nameFr: true,
             specification: true,
             unit: true,
+            caseSize: true,
             quantity: true,
             unitPriceHt: true,
             lineTotal: true,
@@ -1061,15 +1077,20 @@ export class OrdersService {
       product,
       specificationSlot,
     );
+    const orderedQuantity = this.orderQuantityConversionService.resolveOrderedQuantity(
+      quantity,
+      selectedSpecification.caseSize,
+    );
 
     return {
       product,
-      quantity,
+      quantity: orderedQuantity,
       specificationSlot: selectedSpecification.slot,
       specification: selectedSpecification.specification,
       unit: selectedSpecification.unit,
       unitPrice: selectedSpecification.unitPrice,
-      lineTotal: selectedSpecification.unitPrice * quantity,
+      lineTotal: selectedSpecification.unitPrice * orderedQuantity,
+      caseSize: selectedSpecification.caseSize,
     };
   }
 
@@ -1106,6 +1127,7 @@ export class OrdersService {
             unit: specification.unit,
             unitPrice: specification.unitPrice,
             lineTotal: 0,
+            caseSize: specification.caseSize,
           },
         );
       }
@@ -1295,6 +1317,7 @@ export class OrdersService {
         specification: this.normalizeText(product.specification),
         unit: this.normalizeText(product.unit),
         unitPrice: this.toNumber(product.unitPriceHt),
+        caseSize: product.caseSize,
       },
     ];
   }
@@ -1316,6 +1339,7 @@ export class OrdersService {
         specification: this.normalizeText(product.specification),
         unit: this.normalizeText(product.unit),
         unitPrice: this.toNumber(product.unitPriceHt),
+        caseSize: product.caseSize,
       };
     }
 
@@ -1343,18 +1367,21 @@ export class OrdersService {
         specification: this.normalizeText(product.specification),
         unit: this.normalizeText(product.unit),
         unitPrice: this.toNumber(product.unitPriceHt),
+        caseSize: product.caseSize,
       },
       {
         slot: 2,
         specification: this.normalizeText(product.specification2),
         unit: this.normalizeText(product.unit2),
         unitPrice: this.toNumber(product.unitPriceHt2),
+        caseSize: product.caseSize2,
       },
       {
         slot: 3,
         specification: this.normalizeText(product.specification3),
         unit: this.normalizeText(product.unit3),
         unitPrice: this.toNumber(product.unitPriceHt3),
+        caseSize: product.caseSize3,
       },
     ].filter(
       (entry) =>
@@ -1364,25 +1391,86 @@ export class OrdersService {
     );
   }
 
-  private toOrderDocumentItem(item: PreparedOrderItem): OrderDocumentItem {
+  private toOrderDocumentItems(item: PreparedOrderItem): OrderDocumentItem[] {
     const nameFrRaw = this.ordersDocumentService.sanitizeLabel(
       item.product.designationFr ?? item.product.nameCn,
     );
     const nameFr =
       this.ordersDocumentService.makeFrLabel(nameFrRaw) || nameFrRaw;
 
+    return [
+      this.toSupplierDocumentItem({
+        nameFr,
+        nameZh: this.ordersDocumentService.sanitizeLabel(item.product.nameCn),
+        specification: this.ordersDocumentService.sanitizeLabel(
+          item.specification,
+        ),
+        unit: this.ordersDocumentService.sanitizeLabel(item.unit),
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: item.lineTotal,
+      }, item.caseSize),
+    ];
+  }
+
+  private toOrderDocumentItemsFromSnapshot(
+    item: OrderFileItemSnapshot,
+  ): OrderDocumentItem[] {
+    return [
+      this.toSupplierDocumentItem({
+        nameZh: this.ordersDocumentService.sanitizeLabel(item.nameZh),
+        nameFr: this.ordersDocumentService.sanitizeLabel(item.nameFr),
+        specification: this.ordersDocumentService.sanitizeLabel(
+          item.specification,
+        ),
+        unit: this.ordersDocumentService.sanitizeLabel(item.unit),
+        quantity: item.quantity,
+        unitPrice: this.toNumber(item.unitPriceHt),
+        lineTotal: this.toNumber(item.lineTotal),
+      }, item.caseSize),
+    ];
+  }
+
+  private toSupplierDocumentItem(
+    item: Omit<OrderDocumentItem, 'pickingQuantity'>,
+    caseSize: number | null,
+  ): OrderDocumentItem {
+    const supplierUnit = this.getSupplierDocumentUnit(item.unit);
+
+    if (!caseSize || item.quantity < caseSize) {
+      return {
+        ...item,
+        unit: supplierUnit,
+        pickingQuantity: `${item.quantity} ${supplierUnit}`,
+      };
+    }
+
+    const convertedQuantity = this.orderQuantityConversionService.convert(
+      item.quantity,
+      caseSize,
+    );
+    const caseQuantity = convertedQuantity?.caseQuantity ?? 0;
+    const remainingQuantity = convertedQuantity?.remainingQuantity ?? 0;
+    const remainderLabel = remainingQuantity
+      ? ` + ${remainingQuantity} ${supplierUnit}`
+      : '';
+
     return {
-      nameFr,
-      nameZh: this.ordersDocumentService.sanitizeLabel(item.product.nameCn),
-      specification: this.ordersDocumentService.sanitizeLabel(
-        item.specification,
-      ),
-      unit: this.ordersDocumentService.sanitizeLabel(item.unit),
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      lineTotal: item.lineTotal,
+      ...item,
+      unit: supplierUnit,
+      pickingQuantity: `${caseQuantity} CTN${remainderLabel}`,
     };
   }
+
+  private getSupplierDocumentUnit(unit: string): string {
+    const unitParts = unit
+      .split('/')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return unitParts[unitParts.length - 1] || unit;
+  }
+
 
   private calculateTotals(items: PreparedOrderItem[]): {
     totalItems: number;
@@ -1481,17 +1569,9 @@ export class OrdersService {
         restaurantName: order.restaurant.name,
         deliveryDate: order.deliveryDate.toISOString().slice(0, 10),
         deliveryAddress: order.deliveryAddress,
-        items: order.items.map((item) => ({
-          nameZh: this.ordersDocumentService.sanitizeLabel(item.nameZh),
-          nameFr: this.ordersDocumentService.sanitizeLabel(item.nameFr),
-          specification: this.ordersDocumentService.sanitizeLabel(
-            item.specification,
-          ),
-          unit: this.ordersDocumentService.sanitizeLabel(item.unit),
-          quantity: item.quantity,
-          unitPrice: this.toNumber(item.unitPriceHt),
-          lineTotal: this.toNumber(item.lineTotal),
-        })),
+        items: order.items.flatMap((item) =>
+          this.toOrderDocumentItemsFromSnapshot(item),
+        ),
         totalItems: order.totalItems,
         totalAmount: this.toNumber(order.totalAmount),
       });

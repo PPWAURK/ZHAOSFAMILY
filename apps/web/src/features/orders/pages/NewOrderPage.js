@@ -32,6 +32,7 @@ import {
 } from "@/features/orders/services/ordersApi";
 import { shareOrderPdf } from "@/features/orders/services/orderPdfSharing";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
+import { convertOrderQuantityToCases } from "@zhao/utils";
 import styles from "@/features/orders/new-order-page.module.css";
 
 function getDefaultDeliveryDate() {
@@ -154,7 +155,9 @@ export default function NewOrderPage() {
             if (!Number.isFinite(variant.price)) {
               return variantSum;
             }
-            return variantSum + qty * variant.price;
+            const orderedQuantity =
+              convertOrderQuantityToCases(qty, variant.caseSize)?.orderedQuantity ?? qty;
+            return variantSum + orderedQuantity * variant.price;
           }, 0),
         0,
       ),
@@ -168,7 +171,13 @@ export default function NewOrderPage() {
       // variant ids are `${productId}:${key}`
       for (const [variantId, qty] of Object.entries(quantities)) {
         if (variantId.startsWith(`${product.id}:`)) {
-          totalQty += Number(qty) || 0;
+          const variant = getOrderProductVariants(product).find(
+            (item) => item.id === variantId,
+          );
+          const quantity = Number(qty) || 0;
+          totalQty += variant
+            ? convertOrderQuantityToCases(quantity, variant.caseSize)?.orderedQuantity ?? quantity
+            : quantity;
         }
       }
       if (totalQty <= 0) continue;

@@ -25,18 +25,21 @@ function buildProductVariants(product: OrderProductApiRecord): OrderProductVaria
       specification: product.specification,
       unit: product.unit,
       price: product.unitPriceHt,
+      caseSize: product.caseSize,
     },
     {
       key: "2",
       specification: product.specification2,
       unit: product.unit2,
       price: product.unitPriceHt2,
+      caseSize: product.caseSize2,
     },
     {
       key: "3",
       specification: product.specification3,
       unit: product.unit3,
       price: product.unitPriceHt3,
+      caseSize: product.caseSize3,
     },
   ];
 
@@ -47,6 +50,10 @@ function buildProductVariants(product: OrderProductApiRecord): OrderProductVaria
       specification: variant.specification || null,
       unit: variant.unit || null,
       price: Number.isFinite(variant.price) ? Number(variant.price) : null,
+      caseSize:
+        Number.isInteger(variant.caseSize) && Number(variant.caseSize) > 0
+          ? Number(variant.caseSize)
+          : null,
     }));
 
   return variants.length > 0 ? variants : [];
@@ -98,6 +105,9 @@ export async function fetchOrderProducts(supplierId: string): Promise<OrderProdu
     unit3: product.unit3,
     price2: typeof product.unitPriceHt2 === "number" ? product.unitPriceHt2 : null,
     price3: typeof product.unitPriceHt3 === "number" ? product.unitPriceHt3 : null,
+    caseSize: product.caseSize,
+    caseSize2: product.caseSize2,
+    caseSize3: product.caseSize3,
     variants: buildProductVariants(product),
   }));
 }
@@ -131,6 +141,61 @@ export function getOrderProductUnit(product: OrderProduct): string {
   return product.unit || product.specification || "—";
 }
 
+export function getLocalizedOrderUnit(unit: string | null | undefined, lang: string): string {
+  const normalizedUnit = unit?.trim();
+
+  if (!normalizedUnit) {
+    return "—";
+  }
+
+  const unitLabels = normalizedUnit
+    .split("/")
+    .map((label) => label.trim())
+    .filter(Boolean);
+
+  if (unitLabels.length <= 1) {
+    return normalizedUnit;
+  }
+
+  return lang === "zh" ? unitLabels[0] : unitLabels[unitLabels.length - 1];
+}
+
+export function getOrderCaseLabel(lang: string): string {
+  if (lang === "zh") {
+    return "箱";
+  }
+
+  return lang === "fr" ? "carton" : "box";
+}
+
+export function getOrderCaseSizeHint(
+  caseSize: number | null | undefined,
+  unit: string | null | undefined,
+  lang: string,
+): string | null {
+  if (
+    caseSize === null ||
+    caseSize === undefined ||
+    !Number.isInteger(caseSize) ||
+    caseSize <= 0
+  ) {
+    return null;
+  }
+
+  const localizedUnit = getLocalizedOrderUnit(unit, lang);
+  if (localizedUnit === "—") {
+    return null;
+  }
+
+  if (lang === "zh") {
+    return `📦 一箱有 ${caseSize} ${localizedUnit}`;
+  }
+
+  return lang === "fr"
+    ? `📦 1 carton = ${caseSize} ${localizedUnit}`
+    : `📦 1 box = ${caseSize} ${localizedUnit}`;
+}
+
 export function getOrderProductVariants(product: OrderProduct): OrderProductVariant[] {
   if (Array.isArray(product.variants) && product.variants.length > 0) {
     return product.variants;
@@ -142,6 +207,10 @@ export function getOrderProductVariants(product: OrderProduct): OrderProductVari
       specification: product.specification || null,
       unit: product.unit || null,
       price: Number.isFinite(product.price) ? product.price : null,
+      caseSize:
+        Number.isInteger(product.caseSize) && Number(product.caseSize) > 0
+          ? Number(product.caseSize)
+          : null,
     },
   ];
 }

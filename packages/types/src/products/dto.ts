@@ -12,6 +12,9 @@ export type CreateProductRequest = {
   designationFr?: string;
   unit?: string;
   unitPriceHt?: number;
+  caseSize?: number | null;
+  caseSize2?: number | null;
+  caseSize3?: number | null;
   image?: string;
   specification?: string;
 };

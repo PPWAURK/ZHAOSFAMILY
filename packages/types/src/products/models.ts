@@ -16,6 +16,9 @@ export type ProductSummary = {
   unit3: string | null;
   unitPriceHt2: number | null;
   unitPriceHt3: number | null;
+  caseSize: number | null;
+  caseSize2: number | null;
+  caseSize3: number | null;
 };
 
 export type ProductDetail = ProductSummary;

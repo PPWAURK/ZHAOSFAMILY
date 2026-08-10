@@ -37,6 +37,7 @@ function emptyProduct(supplierId) {
     unit: "",
     price: 0,
     specification: "",
+    caseSize: null,
     image: "",
   };
 }
@@ -96,6 +97,7 @@ export default function SupplierDetailPage({ supplierId }) {
         .some((value) => value.includes(query));
     });
   }, [categoryFilter, products, search]);
+  const hasActiveProductFilters = Boolean(search || categoryFilter !== ALL_CATEGORIES);
 
   async function handleSaveInfo(data) {
     setSavingInfo(true);
@@ -306,12 +308,12 @@ export default function SupplierDetailPage({ supplierId }) {
 
             {/* Produits */}
             <div className={styles.section}>
-              <div className={styles.sectionHeader}>
+              <div className={`${styles.sectionHeader} ${styles.productsSectionHeader}`}>
                 <div className={styles.sectionHeadingBlock}>
                   <h2 className={styles.sectionHeading}>
-                    {t.productsHeading}{" "}
-                    <span style={{ color: "var(--ink-40)", fontSize: 14 }}>
-                      · {products.length} {t.productsCount}
+                    {t.productsHeading}
+                    <span className={styles.productsCount}>
+                      {products.length} {t.productsCount}
                     </span>
                   </h2>
                   <p className={styles.sectionHint}>{t.productsHint}</p>
@@ -347,18 +349,17 @@ export default function SupplierDetailPage({ supplierId }) {
                     </option>
                   ))}
                 </select>
-                {search || categoryFilter !== ALL_CATEGORIES ? (
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    onClick={() => {
-                      setSearch("");
-                      setCategoryFilter(ALL_CATEGORIES);
-                    }}
-                  >
-                    {t.clearSearch}
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  disabled={!hasActiveProductFilters}
+                  onClick={() => {
+                    setSearch("");
+                    setCategoryFilter(ALL_CATEGORIES);
+                  }}
+                >
+                  {t.clearSearch}
+                </button>
               </div>
 
               <div className={styles.tableWrap}>
@@ -382,6 +383,7 @@ export default function SupplierDetailPage({ supplierId }) {
                         product={newDraft}
                         editing
                         submitting={savingProduct}
+                        lang={lang}
                         copy={t}
                         onCancelEdit={cancelEdit}
                         onSave={saveProduct}
@@ -402,6 +404,7 @@ export default function SupplierDetailPage({ supplierId }) {
                         product={product}
                         editing={editingProductId === product.id}
                         submitting={savingProduct}
+                        lang={lang}
                         copy={t}
                         onStartEdit={() => setEditingProductId(product.id)}
                         onCancelEdit={cancelEdit}
