@@ -96,6 +96,19 @@ type ExistingOrderItemQuantity = {
   quantity: number;
 };
 
+const supplierDocumentUnitAbbreviations: Record<string, string> = {
+  盒: 'BTE',
+  箱: 'CTN',
+  瓶: 'BT',
+  桶: 'BDN',
+  袋: 'SAC',
+  公斤: 'KG',
+  千克: 'KG',
+  克: 'G',
+  升: 'L',
+  个: 'PCS',
+};
+
 type OrderFileItemSnapshot = {
   nameZh: string;
   nameFr: string | null;
@@ -1475,7 +1488,9 @@ export class OrdersService {
       .map((part) => part.trim())
       .filter(Boolean);
 
-    return unitParts[unitParts.length - 1] || unit;
+    const supplierUnit = unitParts[unitParts.length - 1] || unit;
+
+    return supplierDocumentUnitAbbreviations[supplierUnit] ?? supplierUnit;
   }
 
   private calculateTotals(items: PreparedOrderItem[]): {

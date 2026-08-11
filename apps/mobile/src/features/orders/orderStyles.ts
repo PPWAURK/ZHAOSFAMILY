@@ -55,6 +55,22 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     color: authControlStyles.colors.paper,
     fontWeight: "600",
   },
+  backNavigation: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 44,
+    paddingRight: 12,
+  },
+  backNavigationText: {
+    color: authControlStyles.colors.red,
+    fontFamily: "monospace",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
   header: {
     gap: 8,
   },
@@ -179,6 +195,9 @@ export const orderStyles = StyleSheet.create(scaleStyles({
     minHeight: 58,
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  supplierPressable: {
+    width: "100%",
   },
   supplierRowActive: {
     backgroundColor: "rgba(193, 22, 22, 0.05)",

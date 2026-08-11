@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   Alert,
+  Animated,
+  Easing,
   Linking,
   Pressable,
   ScrollView,
@@ -74,6 +77,103 @@ type OrderModuleScreenProps = {
 
 type OrderModuleMode = "new" | "history";
 
+type SupplierListItemProps = {
+  index: number;
+  reduceMotion: boolean;
+  supplier: OrderSupplier;
+  onSelect: (supplierId: string) => void;
+};
+
+function SupplierListItem({
+  index,
+  reduceMotion,
+  supplier,
+  onSelect,
+}: SupplierListItemProps) {
+  const entryProgress = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const pressProgress = useRef(new Animated.Value(0)).current;
+  const [isPressed, setIsPressed] = useState(false);
+
+  useEffect(() => {
+    entryProgress.stopAnimation();
+    entryProgress.setValue(reduceMotion ? 1 : 0);
+
+    if (reduceMotion) return;
+
+    const animation = Animated.timing(entryProgress, {
+      delay: Math.min(index * 45, 315),
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      toValue: 1,
+      useNativeDriver: true,
+    });
+
+    animation.start();
+
+    return () => animation.stop();
+  }, [entryProgress, index, reduceMotion]);
+
+  function updatePressedState(pressed: boolean): void {
+    setIsPressed(pressed);
+
+    if (reduceMotion) return;
+
+    Animated.timing(pressProgress, {
+      duration: pressed ? 90 : 150,
+      easing: Easing.out(Easing.cubic),
+      toValue: pressed ? 1 : 0,
+      useNativeDriver: true,
+    }).start();
+  }
+
+  return (
+    <Pressable
+      accessibilityLabel={supplier.name}
+      accessibilityRole="button"
+      style={styles.supplierPressable}
+      onPress={() => onSelect(supplier.id)}
+      onPressIn={() => updatePressedState(true)}
+      onPressOut={() => updatePressedState(false)}
+    >
+      <Animated.View
+        style={[
+          styles.supplierRow,
+          isPressed ? styles.supplierRowActive : null,
+          {
+            opacity: entryProgress,
+            transform: [
+              {
+                translateY: entryProgress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [reduceMotion ? 0 : 10, 0],
+                }),
+              },
+              {
+                scale: pressProgress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0.99],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Text
+          numberOfLines={1}
+          style={[styles.supplierRowText, isPressed ? styles.supplierRowTextActive : null]}
+        >
+          {supplier.name}
+        </Text>
+        <Ionicons
+          color={isPressed ? authControlStyles.colors.red : authControlStyles.colors.ink40}
+          name="chevron-forward"
+          size={18}
+        />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export function OrderModuleScreen({
   language,
   storeName,
@@ -117,6 +217,7 @@ export function OrderModuleScreen({
   const [sharingHistoryOrderId, setSharingHistoryOrderId] = useState<string | null>(
     null,
   );
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
   // The product-selection page (supplier chosen, editing a new order) is the
@@ -129,6 +230,22 @@ export function OrderModuleScreen({
   }, [isProductView, onProductViewChange]);
 
   useEffect(() => () => onProductViewChange?.(false), [onProductViewChange]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (isMounted) setReduceMotion(enabled);
+    });
+
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, []);
+
   const historySupplierOptions = useMemo(
     () => buildHistorySupplierOptions(orderHistory),
     [orderHistory],
@@ -877,36 +994,15 @@ export function OrderModuleScreen({
             <StateRow label={copy.loadingSuppliers} />
           ) : (
             <View style={styles.optionGrid}>
-              {suppliers.map((supplier) => {
-                const isActive = selectedSupplierId === supplier.id;
-
-                return (
-                  <Pressable
-                    key={supplier.id}
-                    style={[styles.supplierRow, isActive ? styles.supplierRowActive : null]}
-                    onPress={() => handleSelectSupplier(supplier.id)}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        styles.supplierRowText,
-                        isActive ? styles.supplierRowTextActive : null,
-                      ]}
-                    >
-                      {supplier.name}
-                    </Text>
-                    <Ionicons
-                      color={
-                        isActive
-                          ? authControlStyles.colors.red
-                          : authControlStyles.colors.ink40
-                      }
-                      name="chevron-forward"
-                      size={18}
-                    />
-                  </Pressable>
-                );
-              })}
+              {suppliers.map((supplier, index) => (
+                <SupplierListItem
+                  key={supplier.id}
+                  index={index}
+                  reduceMotion={reduceMotion}
+                  supplier={supplier}
+                  onSelect={handleSelectSupplier}
+                />
+              ))}
             </View>
           )}
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
@@ -915,6 +1011,21 @@ export function OrderModuleScreen({
 
       {mode === "new" && step === "edit" && selectedSupplierId ? (
         <View style={styles.section}>
+          <Pressable
+            accessibilityLabel={editingOrder ? copy.backToHistory : copy.backToSuppliers}
+            accessibilityRole="button"
+            style={styles.backNavigation}
+            onPress={handleBackToSuppliers}
+          >
+            <Ionicons
+              color={authControlStyles.colors.red}
+              name="arrow-back"
+              size={20}
+            />
+            <Text style={styles.backNavigationText}>
+              {editingOrder ? copy.backToHistory : copy.backToSuppliers}
+            </Text>
+          </Pressable>
           {editingOrder ? (
             <Text style={styles.stateText}>
               {copy.editingOrder}: {editingOrder.number}
@@ -926,10 +1037,6 @@ export function OrderModuleScreen({
             estimatedTotal={estimatedTotal}
             supplierName={selectedSupplier?.name || editingOrder?.supplierName || "-"}
             totalItems={totalItems}
-          />
-          <SecondaryButton
-            label={editingOrder ? copy.backToHistory : copy.backToSuppliers}
-            onPress={handleBackToSuppliers}
           />
           <SectionTitle label={copy.deliveryDate} />
           <View style={styles.segmentRow}>

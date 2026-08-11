@@ -360,7 +360,7 @@ export class OrdersDocumentService {
       const pickingQuantityHeight = this.measureTextHeight(
         doc,
         pickingQuantity,
-        'Helvetica-Bold',
+        this.resolveFontForText(pickingQuantity, true),
         10,
         colPickingQuantity - 8,
       );
@@ -468,7 +468,7 @@ export class OrdersDocumentService {
       });
 
     doc
-      .font('Helvetica-Bold')
+      .font(this.resolveFontForText(layout.pickingQuantity, true))
       .fillColor(primaryTextColor)
       .fontSize(10)
       .text(
