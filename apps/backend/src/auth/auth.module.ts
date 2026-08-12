@@ -6,6 +6,7 @@ import { RestaurantsModule } from '../restaurants/restaurants.module';
 import { ConfigModule } from '@nestjs/config';
 import { PermissionGuard } from './guards/permission.guard';
 import { AuthGuard } from './guards/auth.guard';
+import { MonitorAnalyticsTokenGuard } from './guards/monitor-analytics-token.guard';
 import { MailModule } from '../mail/mail.module';
 
 @Module({
@@ -19,8 +20,14 @@ import { MailModule } from '../mail/mail.module';
     AuthService,
     PermissionGuard,
     AuthGuard,
+    MonitorAnalyticsTokenGuard,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
-  exports: [AuthService, PermissionGuard, AuthGuard],
+  exports: [
+    AuthService,
+    PermissionGuard,
+    AuthGuard,
+    MonitorAnalyticsTokenGuard,
+  ],
 })
 export class AuthModule {}

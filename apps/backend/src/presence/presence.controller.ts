@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { PermissionGuard } from '../auth/guards/permission.guard';
+import { Public } from '../auth/decorators/public.decorator';
+import { MonitorAnalyticsTokenGuard } from '../auth/guards/monitor-analytics-token.guard';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { RequirePermissions, SYSTEM_PERMISSIONS } from '../auth/permissions';
 import { PresenceService } from './presence.service';
 import type { MobilePresenceSummary } from './presence.types';
 
@@ -19,8 +19,8 @@ export class PresenceController {
   }
 
   @Get('mobile/summary')
-  @UseGuards(PermissionGuard)
-  @RequirePermissions(SYSTEM_PERMISSIONS.viewAnalytics)
+  @Public()
+  @UseGuards(MonitorAnalyticsTokenGuard)
   getMobilePresenceSummary(): Promise<MobilePresenceSummary> {
     return this.presenceService.getMobilePresenceSummary();
   }

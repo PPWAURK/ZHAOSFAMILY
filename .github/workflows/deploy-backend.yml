@@ -91,6 +91,10 @@ jobs:
               echo "::error::REDIS_URL=redis://127.0.0.1:6379 is required in apps/backend/.env before deployment."
               exit 1
             fi
+            if ! grep -qE '^MONITOR_ANALYTICS_TOKEN=.+$' apps/backend/.env; then
+              echo "::error::MONITOR_ANALYTICS_TOKEN is required in apps/backend/.env before deployment."
+              exit 1
+            fi
 
             # Authenticate to GHCR just for this deploy (token is run-scoped).
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin

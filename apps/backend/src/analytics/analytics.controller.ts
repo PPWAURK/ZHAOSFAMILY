@@ -8,9 +8,9 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { PermissionGuard } from '../auth/guards/permission.guard';
+import { Public } from '../auth/decorators/public.decorator';
+import { MonitorAnalyticsTokenGuard } from '../auth/guards/monitor-analytics-token.guard';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { RequirePermissions, SYSTEM_PERMISSIONS } from '../auth/permissions';
 import { AnalyticsService } from './analytics.service';
 import { MonthlyUsageQueryDto } from './dto/monthly-usage-query.dto';
 import { RecordMobileUsageDto } from './dto/record-mobile-usage.dto';
@@ -31,8 +31,8 @@ export class AnalyticsController {
   }
 
   @Get('monthly')
-  @UseGuards(PermissionGuard)
-  @RequirePermissions(SYSTEM_PERMISSIONS.viewAnalytics)
+  @Public()
+  @UseGuards(MonitorAnalyticsTokenGuard)
   getMonthlyUsageReport(
     @Query() query: MonthlyUsageQueryDto,
   ): Promise<MonthlyUsageReport> {
@@ -40,8 +40,8 @@ export class AnalyticsController {
   }
 
   @Get('monthly/export.csv')
-  @UseGuards(PermissionGuard)
-  @RequirePermissions(SYSTEM_PERMISSIONS.exportAnalytics)
+  @Public()
+  @UseGuards(MonitorAnalyticsTokenGuard)
   @Header('Content-Type', 'text/csv; charset=utf-8')
   getMonthlyUsageCsv(@Query() query: MonthlyUsageQueryDto): Promise<string> {
     return this.analyticsService
