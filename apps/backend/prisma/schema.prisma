@@ -50,6 +50,7 @@ model User {
   refreshSessions            RefreshSession[]
   pushTokens                 PushToken[]
   notifications              Notification[]
+  appUsageEvents             AppUsageEvent[]
   createdRecruitmentRequests RecruitmentRequest[]       @relation("RecruitmentRequestCreatedBy")
   handledRecruitmentRequests RecruitmentRequest[]       @relation("RecruitmentRequestHandledBy")
   caseShares                 CaseShare[]                @relation("CaseShareAuthor")
@@ -112,6 +113,19 @@ model Notification {
   @@index([userId, readAt])
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+model AppUsageEvent {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  moduleName String   @map("module_name") @db.VarChar(80)
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([occurredAt])
+  @@index([userId, occurredAt])
+  @@index([moduleName, occurredAt])
+  @@map("app_usage_events")
 }
 
 model Role {

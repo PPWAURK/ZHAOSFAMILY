@@ -34,6 +34,8 @@ export const SCREEN_SECURITY_PERMISSIONS = {
 
 export const SYSTEM_PERMISSIONS = {
   managePermissions: 'system.permission.manage',
+  viewAnalytics: 'system.analytics.view',
+  exportAnalytics: 'system.analytics.export',
 } as const;
 
 export const EMPLOYEE_PERMISSIONS = {

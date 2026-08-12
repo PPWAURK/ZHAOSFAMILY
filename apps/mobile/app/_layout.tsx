@@ -3,6 +3,8 @@ import { ToastProvider } from "@/components/toast/ToastProvider";
 import { SplashCompletionProvider } from "@/features/splash/SplashCompletionProvider";
 import { useScreenCaptureProtection } from "@/lib/useScreenCaptureProtection";
 import { usePushTokenRegistration } from "@/lib/usePushTokenRegistration";
+import { useMobilePresence } from "@/lib/useMobilePresence";
+import { useFirebaseAnalyticsIdentity } from "@/lib/useFirebaseAnalyticsIdentity";
 import { mobileAuthActions } from "@/lib/api";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
@@ -14,6 +16,8 @@ export default function RootLayout() {
   const isPrivacyOverlayVisible = useScreenCaptureProtection();
 
   usePushTokenRegistration();
+  useMobilePresence();
+  useFirebaseAnalyticsIdentity();
 
   // 冷启动时用 SecureStore 中保存的 refresh token 恢复会话，
   // 避免每次杀后台重开都要重新登录。

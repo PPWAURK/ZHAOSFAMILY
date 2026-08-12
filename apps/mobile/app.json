@@ -15,6 +15,7 @@
     ],
     "ios": {
       "bundleIdentifier": "com.zhao.family",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -23,6 +24,7 @@
     },
     "android": {
       "package": "com.zhao.family",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/play-store/adaptive-foreground-1024.png",
         "backgroundColor": "#FFFFFF"
@@ -36,6 +38,16 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "@react-native-firebase/app",
+        {
+          "ios": {
+            "disableSPM": true
+          }
+        }
+      ],
+      "./plugins/with-google-utilities-modular-headers",
+      "@react-native-firebase/analytics",
       [
         "expo-image-picker",
         {

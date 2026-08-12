@@ -16,6 +16,14 @@ const PERMISSIONS = [
     description: 'Manage system role assignments',
   },
   {
+    key: 'system.analytics.view',
+    description: 'View aggregated platform usage analytics',
+  },
+  {
+    key: 'system.analytics.export',
+    description: 'Export aggregated platform usage reports',
+  },
+  {
     key: 'employee.job_role.manage_store',
     description: 'Manage job roles for employees in the same store',
   },

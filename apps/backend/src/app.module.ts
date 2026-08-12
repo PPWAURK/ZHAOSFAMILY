@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AbcScoresModule } from './abc-scores/abc-scores.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { CaseSharesModule } from './case-shares/case-shares.module';
 import { DashboardNewsModule } from './dashboard-news/dashboard-news.module';
@@ -13,6 +14,7 @@ import { MediaModule } from './media/media.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { PresenceModule } from './presence/presence.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { RecruitmentRequestsModule } from './recruitment-requests/recruitment-requests.module';
@@ -37,6 +39,7 @@ import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
     ]),
     PrismaModule,
     AuthModule,
+    AnalyticsModule,
     AbcScoresModule,
     CaseSharesModule,
     DashboardNewsModule,
@@ -49,6 +52,7 @@ import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
     OrdersModule,
     InventoryModule,
     PermissionsModule,
+    PresenceModule,
     TrainingModule,
     MediaModule,
     MailModule,

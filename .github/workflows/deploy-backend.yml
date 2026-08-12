@@ -87,6 +87,11 @@ jobs:
             COMPOSE="docker compose -f docker-compose.backend.yml"
             export IMAGE_TAG
 
+            if ! grep -qE '^REDIS_URL="?redis://127\.0\.0\.1:6379/?"?$' apps/backend/.env; then
+              echo "::error::REDIS_URL=redis://127.0.0.1:6379 is required in apps/backend/.env before deployment."
+              exit 1
+            fi
+
             # Authenticate to GHCR just for this deploy (token is run-scoped).
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
@@ -122,6 +127,11 @@ jobs:
               echo "::error::Pending DB migrations detected. Apply them manually, or re-run 'Deploy Backend' with apply_migrations=true. Aborting so new code never runs against an old schema."
               exit 1
             fi
+
+            # This targeted, idempotent seed only adds reporting permissions
+            # to super-admin. It intentionally avoids the full development
+            # seed, which can add sample content.
+            $COMPOSE run --rm --no-deps -T backend node prisma/seed-analytics-permissions.js
 
             # --- roll out the new container ---
             $COMPOSE up -d

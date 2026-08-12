@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1068629009870",
+    "project_id": "zhaosfamily-772f0",
+    "storage_bucket": "zhaosfamily-772f0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068629009870:android:faae7f2db88ab861a6379f",
+        "android_client_info": {
+          "package_name": "com.zhao.family"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdIp8NIdx6mDHOPTIxxwEZR1YqU43VXZA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
