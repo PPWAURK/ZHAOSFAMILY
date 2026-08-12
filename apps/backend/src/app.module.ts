@@ -22,6 +22,7 @@ import { RecipesModule } from './recipes/recipes.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { TrainingModule } from './training/training.module';
+import { TrafficModule } from './traffic/traffic.module';
 import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
 
 @Module({
@@ -53,6 +54,7 @@ import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
     InventoryModule,
     PermissionsModule,
     PresenceModule,
+    TrafficModule,
     TrainingModule,
     MediaModule,
     MailModule,

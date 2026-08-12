@@ -1,6 +1,7 @@
 import "@/app/globals.css";
 import AppProviders from "@/app/providers";
 import { AuthProvider } from "@/features/auth/context/AuthContext";
+import { WebTrafficTracker } from "@/features/traffic/components/WebTrafficTracker";
 
 export const metadata = {
   title: "ZHAO‘s Family",
@@ -24,7 +25,10 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <AppProviders>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <WebTrafficTracker />
+            {children}
+          </AuthProvider>
         </AppProviders>
       </body>
     </html>
