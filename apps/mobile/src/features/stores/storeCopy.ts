@@ -32,7 +32,7 @@ export const STORE_ASSIGNABLE_JOB_ROLE_VALUES = STORE_MANAGER_ASSIGNABLE_JOB_ROL
 
 export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> = {
   zh: [
-    { value: "holding", label: "总部" },
+    { value: "holding", label: "ZHAO Groupe" },
     { value: "regional-manager", label: "区域经理" },
     { value: "store-manager", label: "店长" },
     { value: "front-manager", label: "前厅经理" },
@@ -53,7 +53,7 @@ export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> 
     { value: "back-rice", label: "饭" },
   ],
   en: [
-    { value: "holding", label: "Holding" },
+    { value: "holding", label: "ZHAO Groupe" },
     { value: "regional-manager", label: "Regional manager" },
     { value: "store-manager", label: "Store manager" },
     { value: "front-manager", label: "Front manager" },
@@ -74,7 +74,7 @@ export const STORE_JOB_ROLE_OPTIONS: Record<AuthLanguage, StoreJobRoleOption[]> 
     { value: "back-rice", label: "Rice station" },
   ],
   fr: [
-    { value: "holding", label: "Holding" },
+    { value: "holding", label: "ZHAO Groupe" },
     { value: "regional-manager", label: "Manager régional" },
     { value: "store-manager", label: "Gérant" },
     { value: "front-manager", label: "Responsable salle" },

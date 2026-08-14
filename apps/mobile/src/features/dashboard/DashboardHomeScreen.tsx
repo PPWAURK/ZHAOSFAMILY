@@ -945,24 +945,6 @@ export function DashboardHomeScreen({
                           style={styles.mandatoryNewsAttachmentImage}
                         />
                       ) : null}
-                      {mandatoryNewsPost.attachment?.href &&
-                      !isImageAttachment(mandatoryNewsPost) ? (
-                        <Pressable
-                          style={styles.attachmentCard}
-                          onPress={() => void handleOpenAttachment(mandatoryNewsPost)}
-                        >
-                          <View style={styles.attachmentBody}>
-                            <Text style={styles.newsMetaText}>{copy.newsAttachment}</Text>
-                            <Text style={styles.attachmentName}>
-                              {mandatoryNewsPost.attachment.name || "-"}
-                            </Text>
-                            <Text style={styles.stateText}>
-                              {formatAttachmentSize(mandatoryNewsPost.attachment.sizeBytes)}
-                            </Text>
-                          </View>
-                          <Text style={styles.newsReadMore}>{copy.newsOpenAttachment}</Text>
-                        </Pressable>
-                      ) : null}
                       {isDashboardNewsSummaryDistinct(
                         mandatoryNewsPost.summary,
                         mandatoryNewsPost.body,

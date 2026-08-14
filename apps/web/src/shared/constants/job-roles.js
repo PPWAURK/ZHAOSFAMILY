@@ -36,6 +36,16 @@ const ORGANIZATION_JOB_ROLE_VALUES = [
   "back-assistant",
 ];
 
+// 区域经理由总部配置，不在门店入职申请中开放选择。
+const REGISTRATION_ORGANIZATION_JOB_ROLE_VALUES = [
+  "holding",
+  "store-manager",
+  "front-manager",
+  "back-manager",
+  "front-assistant",
+  "back-assistant",
+];
+
 const LEGACY_JOB_ROLE_VALUES = ["front-of-house", "back-of-house"];
 
 const JOB_ROLE_ORDER = [
@@ -56,7 +66,7 @@ const JOB_ROLE_ORDER = [
 
 const JOB_ROLE_LABELS = {
   zh: {
-    holding: "总部",
+    holding: "ZHAO Groupe",
     "regional-manager": "区域经理",
     "store-manager": "店长",
     "front-manager": "前厅经理",
@@ -77,7 +87,7 @@ const JOB_ROLE_LABELS = {
     "back-rice": "饭",
   },
   en: {
-    holding: "Holding",
+    holding: "ZHAO Groupe",
     "regional-manager": "Regional manager",
     "store-manager": "Store manager",
     "front-manager": "Front manager",
@@ -98,7 +108,7 @@ const JOB_ROLE_LABELS = {
     "back-rice": "Rice station",
   },
   fr: {
-    holding: "Holding",
+    holding: "ZHAO Groupe",
     "regional-manager": "Manager regional",
     "store-manager": "Gerant",
     "front-manager": "Responsable salle",
@@ -223,7 +233,7 @@ export function getStoreJobRoleGroups(lang = DEFAULT_LANGUAGE) {
 
 export function getRegistrationJobRoleGroups(lang = DEFAULT_LANGUAGE) {
   return [
-    toGroup("organization", ["holding"], lang),
+    toGroup("organization", REGISTRATION_ORGANIZATION_JOB_ROLE_VALUES, lang),
     ...getStoreJobRoleGroups(lang),
   ];
 }

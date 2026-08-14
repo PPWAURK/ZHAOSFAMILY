@@ -260,7 +260,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
       BACK_RICE: "米饭",
       SM: "店长",
       RM: "区域经理",
-      HOLDING: "总部",
+      HOLDING: "ZHAO Groupe",
     },
   },
 
@@ -410,7 +410,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
       BACK_RICE: "Rice station",
       SM: "Store manager",
       RM: "Regional manager",
-      HOLDING: "Head office",
+      HOLDING: "ZHAO Groupe",
     },
   },
 
@@ -560,7 +560,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
       BACK_RICE: "Poste riz",
       SM: "Responsable restaurant",
       RM: "Responsable régional",
-      HOLDING: "Siège",
+      HOLDING: "ZHAO Groupe",
     },
   },
 };

@@ -97,7 +97,7 @@ export const LANGUAGE_OPTIONS: { value: AuthLanguage; label: string }[] = [
 ];
 
 const COMMON_ROLES_ZH: RoleOption[] = [
-  { value: "holding", label: "总部", description: "总部管理与支持" },
+  { value: "holding", label: "ZHAO Groupe", description: "总部管理与支持" },
   { value: "regional-manager", label: "区域经理", description: "负责多店支持与区域管理" },
   { value: "store-manager", label: "店长", description: "负责门店运营与带班" },
   { value: "front-manager", label: "前厅经理", description: "负责服务团队与现场节奏" },
@@ -109,7 +109,7 @@ const COMMON_ROLES_ZH: RoleOption[] = [
 ];
 
 const COMMON_ROLES_EN: RoleOption[] = [
-  { value: "holding", label: "Holding", description: "Headquarters management and support" },
+  { value: "holding", label: "ZHAO Groupe", description: "Headquarters management and support" },
   {
     value: "regional-manager",
     label: "Regional manager",
@@ -141,7 +141,7 @@ const COMMON_ROLES_EN: RoleOption[] = [
 ];
 
 const COMMON_ROLES_FR: RoleOption[] = [
-  { value: "holding", label: "Holding", description: "Direction et support siege" },
+  { value: "holding", label: "ZHAO Groupe", description: "Direction et support siege" },
   {
     value: "regional-manager",
     label: "Manager regional",

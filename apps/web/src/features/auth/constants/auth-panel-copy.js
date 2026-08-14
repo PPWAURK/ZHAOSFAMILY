@@ -33,7 +33,7 @@ export const AUTH_PANEL_COPY = {
     avatarUploadAction: "上传头像",
     avatarRemoveAction: "移除",
     roleOptions: [
-      { value: "holding", label: "总部", description: "总部管理与支持" },
+      { value: "holding", label: "ZHAO Groupe", description: "总部管理与支持" },
       { value: "regional-manager", label: "区域经理", description: "负责多店支持与区域管理" },
       { value: "store-manager", label: "店长", description: "负责门店运营与带班" },
       { value: "front-manager", label: "前厅经理", description: "负责服务团队与现场节奏" },
@@ -152,7 +152,7 @@ export const AUTH_PANEL_COPY = {
     avatarRemoveAction: "Remove",
 
     roleOptions: [
-      { value: "holding", label: "Headquarters", description: "Headquarters management and support" },
+      { value: "holding", label: "ZHAO Groupe", description: "Headquarters management and support" },
       { value: "regional-manager", label: "Regional manager", description: "Responsible for multi-store support and regional management" },
       { value: "store-manager", label: "Store manager", description: "Responsible for store operations and shift management" },
       { value: "front-manager", label: "Front manager", description: "Responsible for the service team and floor rhythm" },
@@ -280,7 +280,7 @@ export const AUTH_PANEL_COPY = {
     avatarRemoveAction: "Retirer",
 
     roleOptions: [
-      { value: "holding", label: "Siège", description: "Gestion et support du siège" },
+      { value: "holding", label: "ZHAO Groupe", description: "Gestion et support du siège" },
       { value: "regional-manager", label: "Responsable régional", description: "Responsable du support multi-restaurants et de la gestion régionale" },
       { value: "store-manager", label: "Gérant", description: "Responsable de l'exploitation du restaurant et de la gestion des services" },
       { value: "front-manager", label: "Responsable salle", description: "Responsable de l'équipe de service et du rythme en salle" },

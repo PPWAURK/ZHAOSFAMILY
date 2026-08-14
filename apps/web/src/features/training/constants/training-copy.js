@@ -334,9 +334,9 @@ export const TRAINING_POSITIONS = [
   {
     id: "HOLDING",
     code: "POS-06",
-    name: "总部 / Holding",
-    en: "Holding",
-    fr: "Holding",
+    name: "ZHAO Groupe",
+    en: "ZHAO Groupe",
+    fr: "ZHAO Groupe",
     mine: false,
     desc: "最高管理、总部支持与跨门店治理资料。",
     locked: true,
