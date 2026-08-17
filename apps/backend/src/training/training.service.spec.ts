@@ -195,7 +195,7 @@ describe('TrainingService', () => {
       { code: 'SM', parentCode: null },
     ];
 
-    it('includes the leaf position, ancestors, and all-position code', () => {
+    it("keeps leaf positions out of their managers' training materials", () => {
       const result = resolveTrainingPositionCodes(
         'front-host',
         positions,
@@ -208,7 +208,7 @@ describe('TrainingService', () => {
       });
     });
 
-    it('includes descendants for branch roles', () => {
+    it('does not include parent materials for a branch role', () => {
       const result = resolveTrainingPositionCodes(
         'front-manager',
         positions,
@@ -231,7 +231,7 @@ describe('TrainingService', () => {
       });
     });
 
-    it('resolves a custom training position code to its shared parent materials', () => {
+    it('resolves a custom training position without inheriting its parent materials', () => {
       const result = resolveTrainingPositionCodes(
         'PREP',
         positions,

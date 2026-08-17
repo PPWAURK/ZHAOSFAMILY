@@ -1,4 +1,11 @@
 export const ALL_POSITION_CODE = 'ALL';
+const SHARED_BRANCH_POSITION_CODES = new Set([
+  'FRONT_OF_HOUSE',
+  'KITCHEN',
+  // Support existing position trees until their migration is applied.
+  'FOH',
+  'BOH',
+]);
 
 export type TrainingPositionResolverPositionRow = {
   code: string;
@@ -145,12 +152,12 @@ function getPositionScopeCodes(
     codes.push(...getDescendantCodes(mapping.positionCode, positions));
   }
 
-  codes.push(...getAncestorCodes(anchor, positions));
+  codes.push(...getSharedBranchAncestorCodes(anchor, positions));
 
   return codes;
 }
 
-function getAncestorCodes(
+function getSharedBranchAncestorCodes(
   anchor: TrainingPositionResolverPositionRow,
   positions: TrainingPositionResolverPositionRow[],
 ): string[] {
@@ -168,7 +175,10 @@ function getAncestorCodes(
       break;
     }
 
-    codes.push(parent.code);
+    if (SHARED_BRANCH_POSITION_CODES.has(parent.code)) {
+      codes.push(parent.code);
+    }
+
     visited.add(parent.code);
     parentCode = parent.parentCode;
   }
