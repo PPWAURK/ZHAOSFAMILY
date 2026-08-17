@@ -44,6 +44,10 @@ type FindUniqueUserArgs = {
       }
     | {
         id: true;
+        accountStatus: true;
+      }
+    | {
+        id: true;
         preferredLanguage: true;
       };
 };
@@ -91,7 +95,7 @@ type PasswordResetMailCall = {
 
 describe('AuthService', () => {
   function createService(options?: {
-    existingUser?: { id: number } | null;
+    existingUser?: { id: number; accountStatus?: string } | null;
     passwordResetDebug?: boolean;
   }) {
     const findUnique = jest.fn<
@@ -121,13 +125,14 @@ describe('AuthService', () => {
     >();
 
     findUnique.mockResolvedValue(options?.existingUser ?? null);
-    create.mockResolvedValue({
+    const registrationUser = {
       id: 7,
       familyName: 'Zhao',
       givenName: 'Lina',
       name: 'Zhao Lina',
       email: 'lina@example.com',
       emailVerified: false,
+      accountStatus: 'pending',
       restaurantId: 3,
       restaurant: {
         id: 3,
@@ -142,7 +147,9 @@ describe('AuthService', () => {
       profilePhoto: 'data:image/png;base64,abc123',
       userLevel: 0,
       preferredLanguage: 'fr',
-    });
+    };
+    create.mockResolvedValue(registrationUser);
+    update.mockResolvedValue(registrationUser);
     createRefreshSession.mockResolvedValue({ id: 1 });
     findManyUserRoles.mockResolvedValue([]);
     ensureRestaurantExists.mockResolvedValue(undefined);
@@ -222,6 +229,7 @@ describe('AuthService', () => {
       },
       select: {
         id: true,
+        accountStatus: true,
       },
     });
     expect(prismaService.user.create).toHaveBeenCalledTimes(1);
@@ -297,6 +305,45 @@ describe('AuthService', () => {
         language: 'fr',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('allows a rejected employee to submit a new registration', async () => {
+    const { authService, prismaService, restaurantsService } = createService({
+      existingUser: { id: 2, accountStatus: 'rejected' },
+    });
+
+    const result = await authService.register({
+      familyName: 'Zhao',
+      givenName: 'Lina',
+      email: 'lina@example.com',
+      password: 'new-password123',
+      restaurantId: 4,
+      jobRole: 'kitchen',
+      acceptedTerms: true,
+      language: 'zh',
+    });
+
+    expect(restaurantsService.ensureRestaurantExists).toHaveBeenCalledWith(4);
+    expect(prismaService.user.create).not.toHaveBeenCalled();
+    const [updateCall] = prismaService.user.update.mock.calls[0] as [
+      UpdateUserCall,
+    ];
+    expect(updateCall).toMatchObject({
+      where: { id: 2 },
+      data: {
+        familyName: 'Zhao',
+        givenName: 'Lina',
+        email: 'lina@example.com',
+        accountStatus: 'pending',
+        accountReviewedAt: null,
+        accountReviewedByUserId: null,
+        restaurantId: 4,
+        jobRole: 'kitchen',
+        acceptedTerms: true,
+        preferredLanguage: 'zh',
+      },
+    });
+    expect(result.message).toBe('REGISTRATION_PENDING_APPROVAL');
   });
 
   it('stores null birthday when registration omits birthday', async () => {
