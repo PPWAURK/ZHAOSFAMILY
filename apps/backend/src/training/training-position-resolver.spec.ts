@@ -1,9 +1,37 @@
 import {
+  resolveTrainingPositionCodes,
   resolveTrainingMaterialRecipients,
   type TrainingJobRolePositionRow,
   type TrainingMaterialRecipient,
   type TrainingPositionResolverPositionRow,
 } from './training-position-resolver';
+
+describe('resolveTrainingPositionCodes', () => {
+  it('includes every descendant when a hierarchical position is assigned directly', () => {
+    const result = resolveTrainingPositionCodes(
+      'FRONT_MANAGER',
+      [
+        { code: 'ALL', parentCode: null },
+        { code: 'FRONT_OF_HOUSE', parentCode: null },
+        { code: 'FRONT_MANAGER', parentCode: 'FRONT_OF_HOUSE' },
+        { code: 'FRONT_ASSISTANT', parentCode: 'FRONT_MANAGER' },
+        { code: 'FRONT_HOST', parentCode: 'FRONT_ASSISTANT' },
+      ],
+      [],
+    );
+
+    expect(result).toEqual({
+      positionCodes: [
+        'FRONT_MANAGER',
+        'FRONT_ASSISTANT',
+        'FRONT_HOST',
+        'FRONT_OF_HOUSE',
+        'ALL',
+      ],
+      warnings: [],
+    });
+  });
+});
 
 describe('resolveTrainingMaterialRecipients', () => {
   const positions: TrainingPositionResolverPositionRow[] = [

@@ -74,7 +74,7 @@ export function buildTrainingMapData(plan: TrainingPlan): TrainingMapData {
 
     positionGates.push({
       positionId,
-      positionLabel: positionId,
+      positionLabel: materials[0]?.positionLabel || positionId,
       materials: nodes,
       completedCount: completed,
       totalCount: nodes.length,

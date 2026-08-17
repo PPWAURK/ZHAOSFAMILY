@@ -75,6 +75,8 @@ export const DASHBOARD_NAV = [
         zh: "学习资料",
         en: "Learning materials",
         fr: "Ressources",
+        // 学习资料仅向总部（holding）账号开放。
+        visibleForJobRoles: ["holding"],
       },
     ],
   },

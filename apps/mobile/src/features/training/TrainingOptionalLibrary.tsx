@@ -1,5 +1,6 @@
 import { Text, View } from "react-native";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
+import { getTrainingPositionLabel } from "@/features/training/trainingPositionLabels";
 import { OptionalLibraryCard } from "@/features/training/TrainingGuidedPlan";
 import { trainingStyles as styles } from "@/features/training/trainingStyles";
 import type {
@@ -15,20 +16,13 @@ type TrainingOptionalLibraryProps = {
   onOpenMaterial: (material: TrainingPlanMaterial) => void;
 };
 
-function getPositionLabel(
-  code: string,
-  labels: Record<string, string>,
-): string {
-  return labels[code] || code;
-}
-
 export function TrainingOptionalLibrary({
   copy,
   plan,
   onOpenMaterial,
 }: TrainingOptionalLibraryProps) {
   const positionLabels = plan.positionCodes.map((code) =>
-    getPositionLabel(code, copy.positionLabels),
+    getTrainingPositionLabel(code, plan.positionLabels || {}, copy),
   );
 
   if (plan.optional.length === 0) {

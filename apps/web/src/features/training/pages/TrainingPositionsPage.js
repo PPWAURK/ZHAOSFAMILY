@@ -26,13 +26,24 @@ const EMPTY_FORM = {
   nameZh: "",
   nameEn: "",
   nameFr: "",
-  parentCode: "FOH",
+  parentCode: "FRONT_OF_HOUSE",
   sortOrder: 100,
 };
 
-const PRIMARY_POSITION_GROUP_CODES = ["ALL", "FOH", "BOH"];
+const PRIMARY_POSITION_GROUP_CODES = ["ALL", "FRONT_OF_HOUSE", "KITCHEN"];
 const MANAGEMENT_POSITION_GROUP_CODES = ["SM", "RM", "HOLDING"];
-const HIDDEN_LEGACY_POSITION_CODES = new Set(["CASH", "FOH_SERVER"]);
+const HIDDEN_LEGACY_POSITION_CODES = new Set([
+  "CASH",
+  "FOH",
+  "BOH",
+  "FOH_SERVER",
+  "FRONT_PACKER",
+  "BACK_DISHWASHER",
+  "BACK_NOODLE",
+  "BACK_HOT_APPETIZER",
+  "BACK_COLD_APPETIZER",
+  "BACK_RICE",
+]);
 const SYSTEM_POSITION_CODES = new Set(
   flattenTrainingPositions(DEFAULT_TRAINING_POSITION_TREE).map(
     (position) => position.code,
@@ -90,7 +101,7 @@ function toEditablePosition(position) {
     nameZh: position.name.zh,
     nameEn: position.name.en,
     nameFr: position.name.fr,
-    parentCode: position.parentCode || "FOH",
+    parentCode: position.parentCode || "FRONT_OF_HOUSE",
     sortOrder: position.sortOrder,
     isActive: position.isActive,
   };

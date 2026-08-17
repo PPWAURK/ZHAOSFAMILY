@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
+import { getTrainingPositionLabel } from "@/features/training/trainingPositionLabels";
 import { trainingStyles as styles } from "@/features/training/trainingStyles";
 import {
   buildTrainingGuidedFlow,
@@ -39,9 +40,10 @@ function formatSize(sizeBytes: string): string {
 
 function getPositionLabel(
   code: string,
-  labels: Record<string, string>,
+  copy: TrainingCopySet,
+  positionLabel?: string,
 ): string {
-  return labels[code] || code;
+  return positionLabel || getTrainingPositionLabel(code, {}, copy);
 }
 
 function formatTemplate(
@@ -114,7 +116,11 @@ function RequiredJourneyCard({
   isLast: boolean;
   onOpen: (material: TrainingPlanMaterial) => void;
 }) {
-  const positionLabel = getPositionLabel(material.positionId, copy.positionLabels);
+  const positionLabel = getPositionLabel(
+    material.positionId,
+    copy,
+    material.positionLabel,
+  );
   const materialType = copy.materialTypes[material.type] || material.type;
   const progressPct = clampPercent(state.progressPct);
   const footerLabel = state.isLocked
@@ -261,7 +267,11 @@ export function OptionalLibraryCard({
   material: TrainingPlanMaterial;
   onOpen: (material: TrainingPlanMaterial) => void;
 }) {
-  const positionLabel = getPositionLabel(material.positionId, copy.positionLabels);
+  const positionLabel = getPositionLabel(
+    material.positionId,
+    copy,
+    material.positionLabel,
+  );
   const materialType = copy.materialTypes[material.type] || material.type;
   const status = copy.statuses[material.progress.status] || material.progress.status;
   const progressPct = clampPercent(material.progress.progressPct);
@@ -419,7 +429,11 @@ export function TrainingGuidedPlan({
             {currentMaterial.description || currentMaterial.originalName}
           </Text>
           <Text style={styles.focusMeta}>
-            {getPositionLabel(currentMaterial.positionId, copy.positionLabels)} ·{" "}
+            {getPositionLabel(
+              currentMaterial.positionId,
+              copy,
+              currentMaterial.positionLabel,
+            )} ·{" "}
             {copy.materialTypes[currentMaterial.type] || currentMaterial.type}
             {currentMaterial.hasQuiz ? ` · ${copy.quizTag}` : ""}
           </Text>
@@ -462,7 +476,8 @@ export function TrainingGuidedPlan({
               const isExpanded = expandedPositions.has(group.positionId);
               const positionLabel = getPositionLabel(
                 group.positionId,
-                copy.positionLabels,
+                copy,
+                group.materials[0]?.material.positionLabel,
               );
 
               return (

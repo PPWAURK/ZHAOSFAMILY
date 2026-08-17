@@ -2,18 +2,25 @@ import { DASHBOARD_MORE_NAV_GROUPS } from "@/features/dashboard/dashboardCopy";
 import { getStoreManagerInvitationRoleOptions } from "@/features/stores/invitationRoleOptions";
 
 describe("store manager invitation roles", () => {
-  it("includes permitted built-in and operational custom positions only", () => {
+  it("includes every active operational position below the store roots", () => {
     const options = getStoreManagerInvitationRoleOptions("zh", [
       {
-        code: "BOH",
-        name: { zh: "后厨", en: "Kitchen", fr: "Cuisine" },
+        code: "FRONT_OF_HOUSE",
+        name: { zh: "前厅", en: "Front of House", fr: "Salle" },
         isActive: true,
         children: [
           {
-            code: "PREP",
-            name: { zh: "备菜", en: "Prep", fr: "Préparation" },
+            code: "FRONT_MANAGER",
+            name: { zh: "前厅经理", en: "Front Manager", fr: "Salle Manager" },
             isActive: true,
-            children: [],
+            children: [
+              {
+                code: "FRONT_HOST",
+                name: { zh: "接待", en: "Host", fr: "Accueil" },
+                isActive: true,
+                children: [],
+              },
+            ],
           },
         ],
       },
@@ -33,10 +40,10 @@ describe("store manager invitation roles", () => {
     ]);
 
     expect(options.map((option) => option.value)).toEqual(
-      expect.arrayContaining(["front-server", "PREP"]),
+      expect.arrayContaining(["FRONT_MANAGER", "FRONT_HOST"]),
     );
     expect(options.map((option) => option.value)).not.toEqual(
-      expect.arrayContaining(["store-manager", "SHIFT_LEAD"]),
+      expect.arrayContaining(["FRONT_OF_HOUSE", "SHIFT_LEAD"]),
     );
   });
 

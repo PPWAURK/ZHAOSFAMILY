@@ -95,6 +95,7 @@ export type ForgotPasswordResponse = {
 
 export type EmployeeInvitationInput = {
   email: string;
+  inviterName: string;
   jobRole: string;
   language: 'zh' | 'en' | 'fr';
   restaurantId: number;
@@ -342,6 +343,8 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           include: restaurantInclude,
         });
 
+    await this.notifyPendingRegistration(user);
+
     return {
       message: 'REGISTRATION_PENDING_APPROVAL',
       user: this.toAuthUser(user, []),
@@ -536,6 +539,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.mailService.sendEmployeeInvitationEmail({
         email,
+        inviterName: input.inviterName,
         language: input.language,
         invitationUrl: this.buildInvitationUrl(invitationToken),
         storeName: input.storeName,
@@ -543,6 +547,26 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     } catch {
       this.logger.error('Employee invitation email delivery failed');
       throw new ServiceUnavailableException('INVITATION_EMAIL_DELIVERY_FAILED');
+    }
+  }
+
+  private async notifyPendingRegistration(user: {
+    email: string;
+    name: string;
+    preferredLanguage: string;
+  }): Promise<void> {
+    try {
+      await this.mailService.sendEmployeePendingApprovalEmail({
+        to: user.email,
+        employeeName: user.name,
+        language: user.preferredLanguage,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Pending-registration email failed for ${user.email}: ${
+          error instanceof Error ? error.message : 'UNKNOWN_ERROR'
+        }`,
+      );
     }
   }
 

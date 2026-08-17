@@ -3,8 +3,8 @@ import { buildPublicStorePhotoUrl } from "@/lib/media";
 import type {
   MobilePermissionUser,
   MobileStore,
-  TrainingPositionOption,
 } from "@/features/stores/storeTypes";
+export { fetchTrainingPositions } from "@/features/training/trainingApi";
 
 type ManageableRestaurantResponse = {
   id: number | string;
@@ -24,13 +24,6 @@ type PermissionUserResponse = {
     id: number | string;
     name?: string | null;
   } | null;
-};
-
-type TrainingPositionResponse = {
-  code?: string;
-  name?: Record<string, string>;
-  isActive?: boolean;
-  children?: TrainingPositionResponse[];
 };
 
 type InvitationResponse = {
@@ -90,33 +83,6 @@ export async function fetchApprovableUsers(): Promise<MobilePermissionUser[]> {
   const users = await mobileApiClient.get<PermissionUserResponse[]>("/permissions/users/approvals");
 
   return Array.isArray(users) ? users.map(mapPermissionUser) : [];
-}
-
-function mapTrainingPosition(
-  position: TrainingPositionResponse,
-): TrainingPositionOption | null {
-  if (!position.code || !position.name) return null;
-
-  return {
-    code: position.code,
-    name: position.name,
-    isActive: position.isActive ?? false,
-    children: (position.children || [])
-      .map(mapTrainingPosition)
-      .filter((child): child is TrainingPositionOption => child !== null),
-  };
-}
-
-export async function fetchTrainingPositions(): Promise<TrainingPositionOption[]> {
-  const positions = await mobileApiClient.get<TrainingPositionResponse[]>(
-    "/training/positions",
-  );
-
-  return Array.isArray(positions)
-    ? positions
-        .map(mapTrainingPosition)
-        .filter((position): position is TrainingPositionOption => position !== null)
-    : [];
 }
 
 export async function sendEmployeeInvitation(input: {

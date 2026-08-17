@@ -26,36 +26,13 @@ import {
   normalizeJobRoleString,
   normalizeJobRoleValues,
   parseJobRoleValues,
-  REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
-  STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
 } from "@/shared/constants/job-roles";
 import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
 
-const BUILT_IN_TRAINING_POSITION_CODES = new Set([
-  "ALL",
-  "FOH",
-  "BOH",
-  "CASH",
-  "SM",
-  "RM",
-  "HOLDING",
-  "FRONT_HOST",
-  "FRONT_CASHIER",
-  "FRONT_SERVER",
-  "FRONT_PACKER",
-  "FRONT_BAR",
-  "FRONT_MANAGER",
-  "FRONT_ASSISTANT",
-  "BACK_DISHWASHER",
-  "BACK_NOODLE",
-  "BACK_HOT_APPETIZER",
-  "BACK_COLD_APPETIZER",
-  "BACK_RICE",
-]);
-const STORE_INVITATION_POSITION_ROOT_CODES = new Set(["FOH", "BOH", "CASH"]);
+const STORE_INVITATION_POSITION_ROOT_CODES = new Set(["FRONT_OF_HOUSE", "KITCHEN"]);
 const MANAGEMENT_TRAINING_POSITION_CODES = new Set(["ALL", "SM", "RM", "HOLDING"]);
 
 function getStoreIdParam(params, searchParams) {
@@ -105,39 +82,54 @@ function canInviteEmployees(user) {
   return getJobRoleValues(user).includes("store-manager");
 }
 
-// Mirror mobile: holding/admins may assign any role; regional and store
-// managers use the same hierarchy enforced by the backend.
-function getCustomTrainingPositionOptions(positions, lang) {
-  return positions
-    .filter((position) => position.isActive && !BUILT_IN_TRAINING_POSITION_CODES.has(position.code))
-    .map((position) => ({
-      value: position.code,
-      label: position.name?.[lang] || position.name?.zh || position.code,
-    }));
+function getOperationalPositionOptions(positions, lang) {
+  const options = [];
+
+  function visit(positionList, isOperationalBranch, isManagementBranch) {
+    positionList.forEach((position) => {
+      const nextIsOperationalBranch =
+        isOperationalBranch || STORE_INVITATION_POSITION_ROOT_CODES.has(position.code);
+      const nextIsManagementBranch =
+        isManagementBranch || MANAGEMENT_TRAINING_POSITION_CODES.has(position.code);
+
+      if (
+        position.isActive &&
+        nextIsOperationalBranch &&
+        !nextIsManagementBranch &&
+        !STORE_INVITATION_POSITION_ROOT_CODES.has(position.code)
+      ) {
+        options.push({
+          value: position.code,
+          label: position.name?.[lang] || position.name?.zh || position.code,
+        });
+      }
+
+      visit(position.children || [], nextIsOperationalBranch, nextIsManagementBranch);
+    });
+  }
+
+  visit(positions, false, false);
+  return options;
 }
 
 function getVisibleRoleOptions(lang, user, trainingPositions) {
   const options = STORE_JOB_ROLE_OPTIONS[lang] || STORE_JOB_ROLE_OPTIONS.zh;
-  const customPositionOptions = getCustomTrainingPositionOptions(trainingPositions, lang);
-
-  if (canManageHoldingJobRole(user)) {
-    return [...options, ...customPositionOptions];
-  }
-
-  const assignable = new Set(
-    canManageRegionalJobRoles(user)
-      ? REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES
-      : STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
+  const positionOptions = getOperationalPositionOptions(trainingPositions, lang);
+  const managementOptions = options.filter((option) =>
+    ["holding", "regional-manager", "store-manager"].includes(option.value),
   );
 
-  return [...options.filter((option) => assignable.has(option.value)), ...customPositionOptions];
+  if (canManageHoldingJobRole(user)) {
+    return [...managementOptions, ...positionOptions];
+  }
+
+  return canManageRegionalJobRoles(user)
+    ? [...managementOptions.filter((option) => option.value === "store-manager"), ...positionOptions]
+    : positionOptions;
 }
 
 function getStoreManagerInvitationRoleOptions(lang, positions) {
-  const builtInOptions = (STORE_JOB_ROLE_OPTIONS[lang] || STORE_JOB_ROLE_OPTIONS.zh).filter((option) =>
-    STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES.includes(option.value),
-  );
-  const customOptions = [];
+  const options = [];
 
   function visit(positionList, isStorePosition, isManagementPosition) {
     positionList.forEach((position) => {
@@ -150,9 +142,9 @@ function getStoreManagerInvitationRoleOptions(lang, positions) {
         position.isActive &&
         nextIsStorePosition &&
         !nextIsManagementPosition &&
-        !BUILT_IN_TRAINING_POSITION_CODES.has(position.code)
+        !STORE_INVITATION_POSITION_ROOT_CODES.has(position.code)
       ) {
-        customOptions.push({
+        options.push({
           value: position.code,
           label: position.name?.[lang] || position.name?.zh || position.code,
         });
@@ -166,7 +158,7 @@ function getStoreManagerInvitationRoleOptions(lang, positions) {
 
   visit(positions, false, false);
 
-  return [...builtInOptions, ...customOptions];
+  return options;
 }
 
 function toggleJobRoleValue(jobRole, value, allowedValues = null) {

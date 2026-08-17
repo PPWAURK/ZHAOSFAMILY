@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuthService, type AuthUser } from '../auth/auth.service';
+import { MailService } from '../mail/mail.service';
 import { ACCOUNT_STATUS } from '../auth/account-status';
 import { accountApprovedNotification } from '../notifications/notification-content';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -57,6 +58,8 @@ type PermissionUserRow = {
 
 type PermissionUserRoleScope = {
   id: number;
+  name: string;
+  email: string;
   jobRole: string | null;
   restaurantId: number;
   accountStatus: string;
@@ -116,15 +119,33 @@ const MANAGEMENT_TRAINING_POSITION_CODES = new Set([
   'HOLDING',
 ]);
 const STORE_ASSIGNABLE_TRAINING_POSITION_ROOT_CODES = new Set([
+  'FRONT_OF_HOUSE',
+  'KITCHEN',
+  // Existing stores may still have custom positions under the former roots
+  // until the data migration has run.
   'FOH',
   'BOH',
-  'CASH',
 ]);
 const BUILT_IN_JOB_ROLE_VALUES = new Set<string>(JOB_ROLE_VALUES);
 
 const BUILT_IN_ROLE_ORDER = new Map<string, number>(
   BUILT_IN_ROLE_NAMES.map((roleName, index) => [roleName, index]),
 );
+
+function resolveInvitationLanguage(
+  preferredLanguage: string | null | undefined,
+  requestedLanguage: 'zh' | 'en' | 'fr',
+): 'zh' | 'en' | 'fr' {
+  if (preferredLanguage === 'zh' || preferredLanguage === 'en') {
+    return preferredLanguage;
+  }
+
+  if (preferredLanguage === 'fr') {
+    return 'fr';
+  }
+
+  return requestedLanguage;
+}
 
 function sortRoleNames(roleNames: string[]): string[] {
   return [...roleNames].sort(
@@ -207,6 +228,7 @@ export class PermissionsService {
     private readonly prismaService: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly authService: AuthService,
+    private readonly mailService: MailService,
   ) {}
 
   async listRoles(): Promise<PermissionRoleItem[]> {
@@ -402,8 +424,14 @@ export class PermissionsService {
 
     await this.authService.sendEmployeeInvitation({
       email: dto.email,
+      inviterName: viewer.name?.trim() || viewer.email || viewer.store.name,
       jobRole,
-      language: dto.language,
+      // The inviter's saved language is the source of truth. The request
+      // language remains a legacy fallback for accounts created before it.
+      language: resolveInvitationLanguage(
+        viewer.preferredLanguage,
+        dto.language,
+      ),
       restaurantId: viewer.restaurantId,
       storeName: viewer.store.name,
     });
@@ -482,7 +510,7 @@ export class PermissionsService {
 
     this.authService.invalidateUserPermissions(userId);
 
-    await this.notifyAccountApproved(userId, targetUser.preferredLanguage);
+    await this.notifyAccountApproved(targetUser);
 
     return this.getUser(userId);
   }
@@ -492,6 +520,15 @@ export class PermissionsService {
    * fail the approval itself, so errors are swallowed after logging.
    */
   private async notifyAccountApproved(
+    user: PermissionUserRoleScope,
+  ): Promise<void> {
+    await Promise.all([
+      this.sendAccountApprovedPush(user.id, user.preferredLanguage),
+      this.sendAccountApprovedEmail(user),
+    ]);
+  }
+
+  private async sendAccountApprovedPush(
     userId: number,
     language: string | null,
   ): Promise<void> {
@@ -503,6 +540,24 @@ export class PermissionsService {
     } catch (error) {
       this.logger.warn(
         `Failed to send account-approved push to user ${userId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  private async sendAccountApprovedEmail(
+    user: PermissionUserRoleScope,
+  ): Promise<void> {
+    try {
+      await this.mailService.sendEmployeeApprovedEmail({
+        to: user.email,
+        employeeName: user.name,
+        language: user.preferredLanguage ?? undefined,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Account-approved email failed for ${user.id}: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -723,6 +778,8 @@ export class PermissionsService {
       where: { id: userId },
       select: {
         id: true,
+        name: true,
+        email: true,
         jobRole: true,
         restaurantId: true,
         accountStatus: true,

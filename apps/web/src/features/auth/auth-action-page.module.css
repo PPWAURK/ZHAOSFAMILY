@@ -298,6 +298,29 @@
   font-family: var(--serif);
 }
 
+.invitationPage {
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  padding: clamp(20px, 5vw, 64px);
+}
+
+.card {
+  width: min(100%, 600px);
+  padding: clamp(24px, 5vw, 48px);
+  border: 1px solid var(--ink-20);
+  background: var(--paper);
+}
+
+.invitationPage .title {
+  margin-bottom: 36px;
+  font-size: clamp(2.25rem, 6vw, 4.5rem);
+  overflow-wrap: anywhere;
+}
+
+.invitationPage .input {
+  min-height: 44px;
+}
+
 @media (max-width: 900px) {
   .page {
     grid-template-columns: 1fr;
@@ -313,6 +336,37 @@
 }
 
 @media (max-width: 560px) {
+  .invitationPage {
+    place-items: start stretch;
+    padding: 20px 16px 32px;
+  }
+
+  .card {
+    width: 100%;
+    padding: 24px 20px;
+  }
+
+  .invitationPage .title {
+    margin-bottom: 28px;
+    font-size: clamp(2rem, 11vw, 3rem);
+    line-height: 1.08;
+  }
+
+  .invitationPage .form {
+    gap: 20px;
+  }
+
+  .invitationPage .input {
+    font-size: 1.25rem;
+  }
+
+  .invitationPage .button {
+    justify-content: center;
+    min-height: 56px;
+    padding: 12px 20px;
+    text-align: center;
+  }
+
   .brandPanel {
     padding: 28px 24px;
   }

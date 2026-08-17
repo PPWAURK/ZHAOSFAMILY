@@ -43,13 +43,13 @@ const JOB_ROLE_POSITION_CODE_BY_ROLE = new Map([
   ["front-host", "FRONT_HOST"],
   ["front-cashier", "FRONT_CASHIER"],
   ["front-server", "FRONT_SERVER"],
-  ["front-packer", "FRONT_PACKER"],
+  ["front-packer", "FRONT_PACKING"],
   ["front-bar", "FRONT_BAR"],
-  ["back-dishwasher", "BACK_DISHWASHER"],
-  ["back-noodle", "BACK_NOODLE"],
-  ["back-hot-appetizer", "BACK_HOT_APPETIZER"],
-  ["back-cold-appetizer", "BACK_COLD_APPETIZER"],
-  ["back-rice", "BACK_RICE"],
+  ["back-dishwasher", "KITCHEN_DISHWASHING"],
+  ["back-noodle", "KITCHEN_NOODLE_STATION"],
+  ["back-hot-appetizer", "KITCHEN_HOT_APPETIZERS"],
+  ["back-cold-appetizer", "KITCHEN_COLD_APPETIZERS"],
+  ["back-rice", "KITCHEN_RICE"],
 ]);
 
 export function flattenTrainingPositions(positions) {
@@ -127,7 +127,7 @@ function getRoleValues(user) {
 function getStorePositionCodes(positions) {
   return flattenTrainingPositions(positions)
     .map((position) => position.code)
-    .filter((code) => !["ALL", "HOLDING", "RM"].includes(code));
+    .filter((code) => !["ALL", "HOLDING", "RM", "SM"].includes(code));
 }
 
 function getAllLearningPositionCodes(positions) {
@@ -210,12 +210,12 @@ export function getUserTrainingPositionCodes(user, positions) {
       role.includes("back-cold-appetizer") ||
       role.includes("back-rice")
     ) {
-      codes.add("BOH");
+      codes.add("KITCHEN");
       return;
     }
 
     if (role === "cash") {
-      codes.add("CASH");
+      codes.add("FRONT_CASHIER");
       return;
     }
 
@@ -240,12 +240,12 @@ export function getUserTrainingPositionCodes(user, positions) {
       role.includes("front-packer") ||
       role.includes("front-bar")
     ) {
-      codes.add("FOH");
+      codes.add("FRONT_OF_HOUSE");
     }
   });
 
   if (codes.size === 0) {
-    codes.add("FOH");
+    codes.add("FRONT_OF_HOUSE");
   }
 
   codes.add("ALL");

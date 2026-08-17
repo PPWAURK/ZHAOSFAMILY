@@ -152,6 +152,10 @@ describe('AuthService', () => {
       Promise<void>,
       [PasswordResetMailCall]
     >();
+    const sendEmployeePendingApprovalEmail = jest.fn<
+      Promise<void>,
+      [unknown]
+    >();
     const sendEmployeeInvitationEmail = jest.fn<
       Promise<void>,
       [EmployeeInvitationMailCall]
@@ -225,6 +229,7 @@ describe('AuthService', () => {
       ),
     };
     const mailService = {
+      sendEmployeePendingApprovalEmail,
       sendEmployeeInvitationEmail,
       sendResetPasswordEmail,
     };
@@ -243,7 +248,8 @@ describe('AuthService', () => {
   }
 
   it('creates a user from the registration payload', async () => {
-    const { authService, prismaService, restaurantsService } = createService();
+    const { authService, mailService, prismaService, restaurantsService } =
+      createService();
 
     const result = await authService.register({
       familyName: 'Zhao',
@@ -301,6 +307,11 @@ describe('AuthService', () => {
     // Registration creates a pending account that requires HQ approval;
     // no session is issued until the account is approved.
     expect(prismaService.refreshSession.create).not.toHaveBeenCalled();
+    expect(mailService.sendEmployeePendingApprovalEmail).toHaveBeenCalledWith({
+      to: 'lina@example.com',
+      employeeName: 'Zhao Lina',
+      language: 'fr',
+    });
     expect(result.message).toBe('REGISTRATION_PENDING_APPROVAL');
     expect(result.user).toMatchObject({
       id: 7,
@@ -628,6 +639,7 @@ describe('AuthService', () => {
 
     await authService.sendEmployeeInvitation({
       email: ' Partner@Example.com ',
+      inviterName: 'Manager Zhao',
       jobRole: 'front-server',
       language: 'zh',
       restaurantId: 3,
@@ -661,6 +673,7 @@ describe('AuthService', () => {
     );
     expect(mailCall).toMatchObject({
       email: 'partner@example.com',
+      inviterName: 'Manager Zhao',
       language: 'zh',
       storeName: 'ZHAO Test',
     });
@@ -676,6 +689,7 @@ describe('AuthService', () => {
 
     await authService.sendEmployeeInvitation({
       email: 'partner@example.com',
+      inviterName: 'Manager Zhao',
       jobRole: 'front-server',
       language: 'fr',
       restaurantId: 3,
@@ -698,6 +712,7 @@ describe('AuthService', () => {
     await expect(
       authService.sendEmployeeInvitation({
         email: 'existing@example.com',
+        inviterName: 'Manager Zhao',
         jobRole: 'front-server',
         language: 'fr',
         restaurantId: 3,
@@ -715,6 +730,7 @@ describe('AuthService', () => {
     await expect(
       authService.sendEmployeeInvitation({
         email: 'partner@example.com',
+        inviterName: 'Manager Zhao',
         jobRole: 'front-server',
         language: 'en',
         restaurantId: 3,

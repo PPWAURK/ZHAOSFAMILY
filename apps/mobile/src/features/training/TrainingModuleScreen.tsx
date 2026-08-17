@@ -15,6 +15,7 @@ import {
   downloadTrainingMaterialToCache,
   fetchTrainingMyBadges,
   fetchTrainingMyPlan,
+  fetchTrainingPositions,
   updateTrainingMaterialProgress,
 } from "@/features/training/trainingApi";
 import {
@@ -22,6 +23,10 @@ import {
 } from "@/features/training/trainingMapActions";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { buildTrainingMapData } from "@/features/training/trainingMapState";
+import {
+  applyTrainingPositionLabels,
+  buildTrainingPositionLabels,
+} from "@/features/training/trainingPositionLabels";
 import { TrainingBadgeUnlockModal } from "@/features/training/TrainingBadgeUnlockModal";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
 import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
@@ -76,7 +81,7 @@ function findNextTrainingFocus(
     const requiredNode = gate.materials.find((node) => !node.isCompleted);
     if (requiredNode) {
       return {
-        layerLabel: copy.positionLabels[gate.positionId] || gate.positionId,
+        layerLabel: gate.positionLabel,
         material: requiredNode.material,
       };
     }
@@ -179,14 +184,18 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
     setLocalLoading(true);
     setPlanError(null);
     try {
-      const data = await fetchTrainingMyPlan();
-      setPlan(data);
+      const [data, positions] = await Promise.all([
+        fetchTrainingMyPlan(),
+        fetchTrainingPositions().catch(() => []),
+      ]);
+      const positionLabels = buildTrainingPositionLabels(positions, language);
+      setPlan(applyTrainingPositionLabels(data, positionLabels, copy));
     } catch {
       setPlanError(copy.error);
     } finally {
       setLocalLoading(false);
     }
-  }, [copy.error]);
+  }, [copy, language]);
 
   useEffect(() => {
     void loadPlan();
@@ -550,8 +559,7 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
         >
           {mapData.positionGates.map((gate) => {
             const isExpanded = expandedPositions[gate.positionId] ?? false;
-            const positionLabel =
-              copy.positionLabels[gate.positionId] || gate.positionLabel;
+            const positionLabel = gate.positionLabel;
 
             return (
               <View key={gate.positionId}>

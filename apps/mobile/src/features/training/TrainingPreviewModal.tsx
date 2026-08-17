@@ -301,7 +301,7 @@ export function TrainingPreviewModal({
         <View style={styles.viewerHeader}>
           <View style={styles.viewerHeaderTitleGroup}>
             <Text style={styles.viewerHeaderMeta}>
-              {material?.positionId || "-"}
+              {material?.positionLabel || material?.positionId || "-"}
             </Text>
             <Text style={styles.viewerHeaderTitle} numberOfLines={2}>
               {material?.title || "-"}

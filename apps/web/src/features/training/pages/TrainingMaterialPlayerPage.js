@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import PdfCanvasViewer from "@/shared/components/PdfCanvasViewer";
@@ -13,6 +13,7 @@ import {
   updateTrainingProgress,
 } from "@/features/training/services/trainingMediaApi";
 import { useMediaUrl } from "@/shared/hooks/useMediaUrl";
+import { hasHoldingJobRole } from "@/features/training/utils/trainingAccess";
 
 const PLAYER_PAGE_COPY = {
   zh: {
@@ -61,6 +62,7 @@ function resolveWatermarkLabel(user) {
 
 export default function TrainingMaterialPlayerPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const materialId = searchParams.get("id");
   const [material, setMaterial] = useState(null);
@@ -70,8 +72,19 @@ export default function TrainingMaterialPlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProgress, setIsSavingProgress] = useState(false);
   const { url: mediaUrl } = useMediaUrl(material?.objectKey);
+  const canAccessMaterials = hasHoldingJobRole(user);
 
   useEffect(() => {
+    if (user && !canAccessMaterials) {
+      router.replace("/dashboard");
+    }
+  }, [canAccessMaterials, router, user]);
+
+  useEffect(() => {
+    if (!canAccessMaterials) {
+      return undefined;
+    }
+
     let isActive = true;
 
     async function loadMaterial() {
@@ -118,7 +131,11 @@ export default function TrainingMaterialPlayerPage() {
     return () => {
       isActive = false;
     };
-  }, [materialId]);
+  }, [canAccessMaterials, materialId]);
+
+  if (!canAccessMaterials) {
+    return null;
+  }
 
   async function markCompleted() {
     if (!materialId) {

@@ -59,7 +59,7 @@ function AcceptInvitationForm() {
   }
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${styles.invitationPage}`}>
       <section className={styles.card}>
         <h1 className={styles.title}>接受邀请 · Accepter l&apos;invitation</h1>
 

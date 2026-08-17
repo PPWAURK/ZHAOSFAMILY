@@ -13,6 +13,7 @@ type TrainingCopy = {
   completed: string;
   progress: string;
   positions: string;
+  unknownPosition: string;
   requiredDone: string;
   guidedStageIntro: string;
   guidedStageLearning: string;
@@ -132,6 +133,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     completed: "已完成",
     progress: "学习进度",
     positions: "适用岗位",
+    unknownPosition: "岗位",
     requiredDone: "必学完成",
     guidedStageIntro: "准备开始",
     guidedStageLearning: "正在学习",
@@ -279,6 +281,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     completed: "Completed",
     progress: "Progress",
     positions: "For positions",
+    unknownPosition: "Position",
     requiredDone: "Required done",
     guidedStageIntro: "Ready to start",
     guidedStageLearning: "Learning",
@@ -431,6 +434,7 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     completed: "Terminé",
     progress: "Progression",
     positions: "Pour les postes",
+    unknownPosition: "Poste",
     requiredDone: "Obligatoire terminé",
     guidedStageIntro: "Prêt à commencer",
     guidedStageLearning: "En cours",

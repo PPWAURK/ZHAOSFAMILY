@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
@@ -25,6 +25,7 @@ import {
   mergeMaterialPositionTabs,
   mergeDefaultTrainingPositions,
 } from "@/features/training/utils/trainingPositions";
+import { hasHoldingJobRole } from "@/features/training/utils/trainingAccess";
 
 const MATERIAL_FILTER_TYPES = ["VIDEO", "PDF", "QUIZ", "ARTICLE", "IMAGE", "OTHER"];
 
@@ -63,6 +64,7 @@ function toMaterialListItem(material) {
 
 export default function TrainingMaterialsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const confirm = useConfirm();
   const searchParams = useSearchParams();
   const initialPosition = searchParams.get("position");
@@ -94,6 +96,8 @@ export default function TrainingMaterialsPage() {
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [quizMaterial, setQuizMaterial] = useState(null);
 
+  const canAccessMaterials = hasHoldingJobRole(user);
+
   const permissions = user?.permissions ?? [];
   const canCreateMaterials = permissions.includes("training.material.create");
   const canUpdateMaterials = permissions.includes("training.material.update");
@@ -103,6 +107,16 @@ export default function TrainingMaterialsPage() {
   const activePositionOptions = flatPositions.filter((position) => position.isActive);
 
   useEffect(() => {
+    if (user && !canAccessMaterials) {
+      router.replace("/dashboard");
+    }
+  }, [canAccessMaterials, router, user]);
+
+  useEffect(() => {
+    if (!canAccessMaterials) {
+      return undefined;
+    }
+
     let isActive = true;
 
     async function loadMaterials() {
@@ -151,7 +165,11 @@ export default function TrainingMaterialsPage() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [canAccessMaterials]);
+
+  if (!canAccessMaterials) {
+    return null;
+  }
 
   const positionCounts = useMemo(
     () =>

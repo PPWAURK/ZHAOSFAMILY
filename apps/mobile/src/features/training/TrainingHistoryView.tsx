@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
-import { fetchTrainingMyRecords } from "@/features/training/trainingApi";
+import {
+  fetchTrainingMyRecords,
+  fetchTrainingPositions,
+} from "@/features/training/trainingApi";
 import type { TRAINING_COPY } from "@/features/training/trainingCopy";
+import {
+  buildTrainingPositionLabels,
+  getTrainingPositionLabel,
+} from "@/features/training/trainingPositionLabels";
 import { trainingStyles as styles } from "@/features/training/trainingStyles";
 import type { TrainingMyRecords, TrainingRecord } from "@/features/training/trainingTypes";
 
@@ -62,10 +69,6 @@ function formatScore(value: number | null): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function getPositionLabel(code: string, labels: Record<string, string>): string {
-  return labels[code] || code;
-}
-
 function matchesRecordFilter(record: TrainingRecord, filter: RecordFilter): boolean {
   if (filter === "required") return record.isRequired;
   if (filter === "optional") return !record.isRequired;
@@ -81,6 +84,7 @@ export function TrainingHistoryView({
   refreshToken = 0,
 }: TrainingHistoryViewProps) {
   const [records, setRecords] = useState<TrainingMyRecords | null>(null);
+  const [positionLabels, setPositionLabels] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [activeFilter, setActiveFilter] = useState<RecordFilter>("all");
@@ -89,14 +93,18 @@ export function TrainingHistoryView({
     try {
       setIsLoading(true);
       setErrorMessage("");
-      const nextRecords = await fetchTrainingMyRecords();
+      const [nextRecords, positions] = await Promise.all([
+        fetchTrainingMyRecords(),
+        fetchTrainingPositions().catch(() => []),
+      ]);
       setRecords(nextRecords);
+      setPositionLabels(buildTrainingPositionLabels(positions, language));
     } catch {
       setErrorMessage(copy.error);
     } finally {
       setIsLoading(false);
     }
-  }, [copy.error]);
+  }, [copy.error, language]);
 
   useEffect(() => {
     void load();
@@ -192,7 +200,11 @@ export function TrainingHistoryView({
           {filteredRecords.length > 0 ? (
             <View style={styles.list}>
               {filteredRecords.map((record) => {
-                const positionLabel = getPositionLabel(record.positionId, copy.positionLabels);
+                const positionLabel = getTrainingPositionLabel(
+                  record.positionId,
+                  positionLabels,
+                  copy,
+                );
                 const materialType = copy.materialTypes[record.type] || record.type;
                 const hasScore = record.bestQuizScore !== null;
 

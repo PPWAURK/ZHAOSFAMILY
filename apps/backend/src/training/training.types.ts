@@ -31,9 +31,8 @@ export type TrainingCourseItem = {
 };
 
 export const TRAINING_POSITION_IDS = [
-  'FOH',
-  'BOH',
-  'CASH',
+  'FRONT_OF_HOUSE',
+  'KITCHEN',
   'SM',
   'RM',
   'ALL',

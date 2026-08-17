@@ -28,6 +28,7 @@ type EmployeeApprovalInput = {
 
 type EmployeeInvitationInput = {
   email: string;
+  inviterName: string;
   invitationUrl: string;
   language: 'zh' | 'en' | 'fr';
   storeName: string;
@@ -50,6 +51,17 @@ type TemplateCopy = {
   body: string;
   actionLabel?: string;
   footer: string;
+  notificationLabel?: string;
+  automatedFooter?: string;
+};
+
+type EmployeeInvitationCopy = Omit<
+  TemplateCopy,
+  'body' | 'subject' | 'title'
+> & {
+  subject: (storeName: string) => string;
+  title: (storeName: string) => string;
+  body: (storeName: string, inviterName: string) => string;
 };
 
 const DEFAULT_LANGUAGE = 'fr';
@@ -65,20 +77,20 @@ const VERIFICATION_COPY: Record<
   Omit<TemplateCopy, 'body'> & { body: (code: string) => string }
 > = {
   zh: {
-    subject: 'ZHAO Plateforme 邮箱验证码',
+    subject: "ZHAO's Family 邮箱验证码",
     title: '邮箱验证码',
     body: (code) => `你的验证码是 ${code}。`,
     footer: '验证码将在短时间内失效。如果不是你本人操作，请忽略这封邮件。',
   },
   en: {
-    subject: 'ZHAO Plateforme email verification code',
+    subject: "ZHAO's Family email verification code",
     title: 'Email verification code',
     body: (code) => `Your verification code is ${code}.`,
     footer:
       'This code expires soon. If you did not request it, ignore this email.',
   },
   fr: {
-    subject: 'Code de vérification ZHAO Plateforme',
+    subject: "Code de vérification ZHAO's Family",
     title: 'Code de vérification',
     body: (code) => `Votre code de vérification est ${code}.`,
     footer:
@@ -88,14 +100,14 @@ const VERIFICATION_COPY: Record<
 
 const RESET_PASSWORD_COPY: Record<string, TemplateCopy> = {
   zh: {
-    subject: 'ZHAO Plateforme 密码重置',
+    subject: "ZHAO's Family 密码重置",
     title: '密码重置',
     body: '你的账号收到了一次密码重置请求。',
     actionLabel: '重置密码',
     footer: '链接将在 30 分钟后失效。如果不是你本人操作，请忽略这封邮件。',
   },
   en: {
-    subject: 'ZHAO Plateforme password reset',
+    subject: "ZHAO's Family password reset",
     title: 'Password reset',
     body: 'A password reset request was created for your account.',
     actionLabel: 'Reset password',
@@ -103,7 +115,7 @@ const RESET_PASSWORD_COPY: Record<string, TemplateCopy> = {
       'This link expires in 30 minutes. If you did not request this, ignore this email.',
   },
   fr: {
-    subject: 'Réinitialisation du mot de passe ZHAO Plateforme',
+    subject: "Réinitialisation du mot de passe ZHAO's Family",
     title: 'Réinitialisation du mot de passe',
     body: 'Une demande de réinitialisation du mot de passe a été créée pour votre compte.',
     actionLabel: 'Réinitialiser le mot de passe',
@@ -114,19 +126,19 @@ const RESET_PASSWORD_COPY: Record<string, TemplateCopy> = {
 
 const PENDING_APPROVAL_COPY: Record<string, TemplateCopy> = {
   zh: {
-    subject: 'ZHAO Plateforme 注册申请已提交',
+    subject: "ZHAO's Family 注册申请已提交",
     title: '等待门店管理员审核',
     body: '你的注册申请已经提交。门店管理员审核通过后，你就可以登录平台。',
     footer: '如需加急处理，请联系你的门店负责人。',
   },
   en: {
-    subject: 'ZHAO Plateforme registration submitted',
+    subject: "ZHAO's Family registration submitted",
     title: 'Waiting for manager approval',
     body: 'Your registration request has been submitted. You can sign in after your store manager approves it.',
     footer: 'Contact your store manager if this needs urgent handling.',
   },
   fr: {
-    subject: 'Demande d’inscription ZHAO Plateforme envoyée',
+    subject: "Demande d’inscription ZHAO's Family envoyée",
     title: 'En attente de validation',
     body: 'Votre demande d’inscription a été envoyée. Vous pourrez vous connecter après validation par un responsable.',
     footer:
@@ -136,56 +148,64 @@ const PENDING_APPROVAL_COPY: Record<string, TemplateCopy> = {
 
 const APPROVED_COPY: Record<string, TemplateCopy> = {
   zh: {
-    subject: 'ZHAO Plateforme 账号已通过审核',
+    subject: "ZHAO's Family 账号已通过审核",
     title: '账号已通过审核',
     body: '你的账号已经通过审核，现在可以登录平台。',
     actionLabel: '进入平台',
-    footer: '欢迎加入 ZHAO Plateforme。',
+    footer: "欢迎加入 ZHAO's Family。",
   },
   en: {
-    subject: 'ZHAO Plateforme account approved',
+    subject: "ZHAO's Family account approved",
     title: 'Your account is approved',
     body: 'Your account has been approved. You can now sign in.',
     actionLabel: 'Open platform',
-    footer: 'Welcome to ZHAO Plateforme.',
+    footer: "Welcome to ZHAO's Family.",
   },
   fr: {
-    subject: 'Compte ZHAO Plateforme validé',
+    subject: "Compte ZHAO's Family validé",
     title: 'Votre compte est validé',
     body: 'Votre compte a été validé. Vous pouvez maintenant vous connecter.',
     actionLabel: 'Ouvrir la plateforme',
-    footer: 'Bienvenue sur ZHAO Plateforme.',
+    footer: "Bienvenue chez ZHAO's Family.",
   },
 };
 
-const EMPLOYEE_INVITATION_COPY: Record<
-  string,
-  Omit<TemplateCopy, 'body'> & { body: (storeName: string) => string }
-> = {
+const EMPLOYEE_INVITATION_COPY: Record<string, EmployeeInvitationCopy> = {
   zh: {
-    subject: 'ZHAO Plateforme 邀请你加入团队',
-    title: '你受邀加入 ZHAO 团队',
-    body: (storeName) =>
-      `${storeName} 邀请你加入团队。请通过下方链接填写姓名并设置登录密码。`,
-    actionLabel: '设置账号密码',
-    footer: '邀请链接将在 7 天后失效，且只能使用一次。',
+    subject: (storeName) => `加入 ${storeName} 的邀请｜ZHAO`,
+    title: (storeName) => `欢迎加入 ${storeName}`,
+    body: (storeName, inviterName) =>
+      `${inviterName} 邀请你加入 ${storeName}。点击下方按钮填写姓名并设置登录密码；完成后即可登录 ZHAO's Family。`,
+    actionLabel: '完成入职设置',
+    footer:
+      '此邀请链接将在 7 天后失效，且只能使用一次。若你并不认识邀请人，请忽略此邮件。',
+    notificationLabel: '员工入职邀请',
+    automatedFooter:
+      '这是一封系统自动发送的邮件。如有问题，请联系你的门店负责人或平台支持团队。',
   },
   en: {
-    subject: 'You are invited to join ZHAO Plateforme',
-    title: 'You are invited to join the ZHAO team',
-    body: (storeName) =>
-      `${storeName} invited you to join the team. Use the link below to enter your name and set your sign-in password.`,
-    actionLabel: 'Set up your password',
-    footer: 'This invitation link expires in 7 days and can only be used once.',
+    subject: (storeName) => `Invitation to join ${storeName} | ZHAO`,
+    title: (storeName) => `Welcome to ${storeName}`,
+    body: (storeName, inviterName) =>
+      `${inviterName} invited you to join ${storeName}. Use the button below to enter your name and create your sign-in password. You can sign in to ZHAO's Family straight away once you are done.`,
+    actionLabel: 'Complete account setup',
+    footer:
+      'This invitation link expires in 7 days and can only be used once. If you do not recognise the inviter, you can safely ignore this email.',
+    notificationLabel: 'Employee invitation',
+    automatedFooter:
+      'This is an automated email. For help, contact your store manager or the platform support team.',
   },
   fr: {
-    subject: 'Vous êtes invité(e) à rejoindre ZHAO Plateforme',
-    title: 'Vous êtes invité(e) à rejoindre l’équipe ZHAO',
-    body: (storeName) =>
-      `${storeName} vous invite à rejoindre son équipe. Utilisez le lien ci-dessous pour renseigner votre nom et choisir votre mot de passe.`,
-    actionLabel: 'Configurer mon mot de passe',
+    subject: (storeName) => `Invitation à rejoindre ${storeName} | ZHAO`,
+    title: (storeName) => `Bienvenue chez ${storeName}`,
+    body: (storeName, inviterName) =>
+      `${inviterName} vous invite à rejoindre ${storeName}. Utilisez le bouton ci-dessous pour renseigner votre nom et créer votre mot de passe de connexion. Vous pourrez vous connecter à ZHAO's Family dès cette étape terminée.`,
+    actionLabel: 'Finaliser mon compte',
     footer:
-      'Ce lien d’invitation expire dans 7 jours et ne peut être utilisé qu’une seule fois.',
+      'Ce lien d’invitation expire dans 7 jours et ne peut être utilisé qu’une seule fois. Si vous ne reconnaissez pas l’expéditeur, vous pouvez ignorer cet email.',
+    notificationLabel: 'Invitation collaborateur',
+    automatedFooter:
+      'Ceci est un email automatique. Pour toute question, contactez votre responsable de boutique ou le support de la plateforme.',
   },
 };
 
@@ -194,21 +214,21 @@ const ORDER_PDF_COPY: Record<
   Omit<TemplateCopy, 'body'> & { body: (orderNumber: string) => string }
 > = {
   zh: {
-    subject: 'ZHAO Plateforme 订单 PDF 已生成',
+    subject: "ZHAO's Family 订单 PDF 已生成",
     title: '订单 PDF 已生成',
     body: (orderNumber) =>
       `订单 ${orderNumber} 的 PDF 已生成，附件中可以查看。`,
     footer: '这是一封系统自动发送的邮件。',
   },
   en: {
-    subject: 'ZHAO Plateforme order PDF generated',
+    subject: "ZHAO's Family order PDF generated",
     title: 'Order PDF generated',
     body: (orderNumber) =>
       `The PDF for order ${orderNumber} has been generated. You can find it attached.`,
     footer: 'This is an automated platform email.',
   },
   fr: {
-    subject: 'PDF de commande ZHAO Plateforme généré',
+    subject: "PDF de commande ZHAO's Family généré",
     title: 'PDF de commande généré',
     body: (orderNumber) =>
       `Le PDF de la commande ${orderNumber} a été généré. Vous le trouverez en pièce jointe.`,
@@ -270,7 +290,7 @@ function buildHtmlEmail(
   const appWebUrl = brand?.appWebUrl;
   const logoUrl = brand?.logoUrl;
   const logoHtml = logoUrl
-    ? `<img src="${escapeHtml(logoUrl)}" width="132" alt="ZHAO Plateforme" style="display:block;width:132px;max-width:132px;height:auto;border:0;outline:none;text-decoration:none;">`
+    ? `<img src="${escapeHtml(logoUrl)}" width="132" alt="ZHAO's Family" style="display:block;width:132px;max-width:132px;height:auto;border:0;outline:none;text-decoration:none;">`
     : `<div style="font-family:Arial,sans-serif;font-size:28px;line-height:1;font-weight:900;letter-spacing:.02em;color:${BRAND_RED};">ZHAO</div>`;
   const homeLinkStart = appWebUrl
     ? `<a href="${escapeHtml(appWebUrl)}" style="text-decoration:none;">`
@@ -298,7 +318,7 @@ function buildHtmlEmail(
     '</tr>',
     '<tr>',
     `<td colspan="2" style="padding-top:24px;font-family:Arial,sans-serif;color:#ffffff;">`,
-    '<div style="font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.86;">Notification interne</div>',
+    `<div style="font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.86;">${escapeHtml(copy.notificationLabel ?? 'Notification interne')}</div>`,
     `<div style="font-size:30px;line-height:1.18;font-weight:900;margin-top:8px;">${escapeHtml(copy.title)}</div>`,
     '</td>',
     '</tr>',
@@ -314,8 +334,8 @@ function buildHtmlEmail(
     actionHtml,
     '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:2px 0 22px;border-top:1px solid #eee3df;border-bottom:1px solid #eee3df;">',
     '<tr>',
-    `<td style="padding:14px 0;font-family:Arial,sans-serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:${BRAND_MUTED};">Plateforme entreprise</td>`,
-    `<td align="right" style="padding:14px 0;font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:${BRAND_INK};">ZHAO Groupe</td>`,
+    `<td style="padding:14px 0;font-family:Arial,sans-serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:${BRAND_MUTED};">ZHAO's Family</td>`,
+    `<td align="right" style="padding:14px 0;font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:${BRAND_INK};">ZHAO's Family</td>`,
     '</tr>',
     '</table>',
     `<p style="margin:0;font-family:Arial,sans-serif;font-size:13px;line-height:1.6;color:${BRAND_MUTED};">${escapeHtml(copy.footer)}</p>`,
@@ -323,8 +343,11 @@ function buildHtmlEmail(
     '</tr>',
     '<tr>',
     `<td style="padding:20px 34px 28px;background:#faf7f5;border-top:1px solid #eee3df;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;color:${BRAND_MUTED};">`,
-    '<strong style="color:#2b2b2b;">ZHAO Plateforme</strong><br>',
-    'Email automatique interne. Pour toute question, contactez votre responsable ou le support de la plateforme.',
+    '<strong style="color:#2b2b2b;">ZHAO\'s Family</strong><br>',
+    escapeHtml(
+      copy.automatedFooter ??
+        'Email automatique interne. Pour toute question, contactez votre responsable ou le support de la plateforme.',
+    ),
     '</td>',
     '</tr>',
     '</table>',
@@ -441,19 +464,18 @@ export class MailService {
   ): Promise<MailSendResult> {
     const copy = getLocalizedCopy(EMPLOYEE_INVITATION_COPY, input.language);
     const brand = this.getBrandEmailOptions();
+    const invitationCopy: TemplateCopy = {
+      ...copy,
+      subject: copy.subject(input.storeName),
+      title: copy.title(input.storeName),
+      body: copy.body(input.storeName, input.inviterName),
+    };
 
     return this.sendEmail({
       to: input.email,
-      subject: copy.subject,
-      text: buildTextEmail(
-        { ...copy, body: copy.body(input.storeName) },
-        input.invitationUrl,
-      ),
-      html: buildHtmlEmail(
-        { ...copy, body: copy.body(input.storeName) },
-        input.invitationUrl,
-        brand,
-      ),
+      subject: invitationCopy.subject,
+      text: buildTextEmail(invitationCopy, input.invitationUrl),
+      html: buildHtmlEmail(invitationCopy, input.invitationUrl, brand),
     });
   }
 

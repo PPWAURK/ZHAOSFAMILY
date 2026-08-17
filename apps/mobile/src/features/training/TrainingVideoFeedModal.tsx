@@ -542,7 +542,9 @@ const TrainingVideoFeedSlide = memo(function TrainingVideoFeedSlide({
         {!isInfoCollapsed ? (
           <View style={styles.videoFeedInfo}>
             <View style={styles.videoFeedTagRow}>
-              <Text style={styles.videoFeedTag}>{material.positionId}</Text>
+              <Text style={styles.videoFeedTag}>
+                {material.positionLabel || material.positionId}
+              </Text>
               {material.isRequired ? (
                 <Text style={styles.videoFeedRequiredTag}>{copy.required}</Text>
               ) : null}

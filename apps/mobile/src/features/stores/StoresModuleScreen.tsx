@@ -15,8 +15,6 @@ import {
 } from "@/features/stores/StoreModuleParts";
 import {
   STORE_COPY,
-  REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
-  STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
   STORE_JOB_ROLE_OPTIONS,
 } from "@/features/stores/storeCopy";
 import {
@@ -48,27 +46,8 @@ type StoresState = {
 
 type StoreDetailView = "overview" | "pending" | "team" | "stats";
 
-const BUILT_IN_TRAINING_POSITION_CODES = new Set([
-  "ALL",
-  "FOH",
-  "BOH",
-  "CASH",
-  "SM",
-  "RM",
-  "HOLDING",
-  "FRONT_HOST",
-  "FRONT_CASHIER",
-  "FRONT_SERVER",
-  "FRONT_PACKER",
-  "FRONT_BAR",
-  "FRONT_MANAGER",
-  "FRONT_ASSISTANT",
-  "BACK_DISHWASHER",
-  "BACK_NOODLE",
-  "BACK_HOT_APPETIZER",
-  "BACK_COLD_APPETIZER",
-  "BACK_RICE",
-]);
+const STORE_POSITION_ROOT_CODES = new Set(["FRONT_OF_HOUSE", "KITCHEN"]);
+const MANAGEMENT_POSITION_CODES = new Set(["ALL", "SM", "RM", "HOLDING"]);
 
 function getJobRoleValues(user: AuthUser): string[] {
   return `${user.jobRole || user.position || user.role || ""}`
@@ -88,28 +67,41 @@ function canManageRegionalJobRoles(user: AuthUser): boolean {
   return getJobRoleValues(user).includes("regional-manager");
 }
 
-function flattenTrainingPositions(
-  positions: TrainingPositionOption[],
-): TrainingPositionOption[] {
-  return positions.flatMap((position) => [
-    position,
-    ...flattenTrainingPositions(position.children),
-  ]);
-}
-
-function getCustomTrainingPositionOptions(
+function getOperationalTrainingPositionOptions(
   positions: TrainingPositionOption[],
   language: AuthLanguage,
 ): StoreJobRoleOption[] {
-  return flattenTrainingPositions(positions)
-    .filter(
-      (position) =>
-        position.isActive && !BUILT_IN_TRAINING_POSITION_CODES.has(position.code),
-    )
-    .map((position) => ({
-      value: position.code,
-      label: position.name[language] || position.name.zh || position.code,
-    }));
+  const options: StoreJobRoleOption[] = [];
+
+  function visit(
+    items: TrainingPositionOption[],
+    isOperationalBranch: boolean,
+    isManagementBranch: boolean,
+  ): void {
+    for (const position of items) {
+      const nextIsOperationalBranch =
+        isOperationalBranch || STORE_POSITION_ROOT_CODES.has(position.code);
+      const nextIsManagementBranch =
+        isManagementBranch || MANAGEMENT_POSITION_CODES.has(position.code);
+
+      if (
+        position.isActive &&
+        nextIsOperationalBranch &&
+        !nextIsManagementBranch &&
+        !STORE_POSITION_ROOT_CODES.has(position.code)
+      ) {
+        options.push({
+          value: position.code,
+          label: position.name[language] || position.name.zh || position.code,
+        });
+      }
+
+      visit(position.children, nextIsOperationalBranch, nextIsManagementBranch);
+    }
+  }
+
+  visit(positions, false, false);
+  return options;
 }
 
 function getVisibleRoleOptions(
@@ -118,27 +110,26 @@ function getVisibleRoleOptions(
   trainingPositions: TrainingPositionOption[],
 ): StoreJobRoleOption[] {
   const options = STORE_JOB_ROLE_OPTIONS[language];
-  const customPositionOptions = getCustomTrainingPositionOptions(
+  const positionOptions = getOperationalTrainingPositionOptions(
     trainingPositions,
     language,
+  );
+  const managementOptions = options.filter((option) =>
+    ["holding", "regional-manager", "store-manager"].includes(option.value),
   );
 
   // Holding/admins may assign any role; regional and store managers use
   // the same hierarchy enforced by the backend.
   if (canManageHoldingRole(user)) {
-    return [...options, ...customPositionOptions];
+    return [...managementOptions, ...positionOptions];
   }
 
-  const assignable = new Set(
-    canManageRegionalJobRoles(user)
-      ? REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES
-      : STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
-  );
-
-  return [
-    ...options.filter((option) => assignable.has(option.value)),
-    ...customPositionOptions,
-  ];
+  return canManageRegionalJobRoles(user)
+    ? [
+        ...managementOptions.filter((option) => option.value === "store-manager"),
+        ...positionOptions,
+      ]
+    : positionOptions;
 }
 
 function getUsersForStore(users: MobilePermissionUser[], storeId: number): MobilePermissionUser[] {
@@ -157,10 +148,13 @@ function parseRoleValues(jobRole: string | null | undefined): string[] {
 function formatAppliedRoleLabel(
   jobRole: string | null | undefined,
   language: AuthLanguage,
+  roleOptions: StoreJobRoleOption[],
 ): string {
-  const options = STORE_JOB_ROLE_OPTIONS[language];
   const labels = parseRoleValues(jobRole).map(
-    (value) => options.find((option) => option.value === value)?.label || value,
+    (value) =>
+      roleOptions.find((option) => option.value === value)?.label ||
+      STORE_JOB_ROLE_OPTIONS[language].find((option) => option.value === value)?.label ||
+      value,
   );
 
   return labels.length > 0 ? labels.join(" / ") : "-";
@@ -506,7 +500,11 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
                 <PendingUserCard
                   key={item.id}
                   copy={copy}
-                  appliedRoleLabel={formatAppliedRoleLabel(item.jobRole, language)}
+                  appliedRoleLabel={formatAppliedRoleLabel(
+                    item.jobRole,
+                    language,
+                    roleOptions,
+                  )}
                   draft={approvalDrafts[item.id] || { jobRole: "" }}
                   isReviewing={reviewingUserId === item.id}
                   roleOptions={roleOptions}

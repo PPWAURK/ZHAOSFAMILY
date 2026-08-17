@@ -9,6 +9,7 @@ export type TrainingMaterialProgress = {
 export type TrainingPlanMaterial = {
   id: number;
   positionId: string;
+  positionLabel?: string;
   type: string;
   isRequired: boolean;
   title: string;
@@ -32,9 +33,17 @@ export type TrainingPlanSummary = {
 
 export type TrainingPlan = {
   positionCodes: string[];
+  positionLabels?: Record<string, string>;
   required: TrainingPlanMaterial[];
   optional: TrainingPlanMaterial[];
   summary: TrainingPlanSummary;
+};
+
+export type TrainingPositionOption = {
+  code: string;
+  name: Record<string, string>;
+  isActive: boolean;
+  children: TrainingPositionOption[];
 };
 
 export type UpdateTrainingProgressInput = {

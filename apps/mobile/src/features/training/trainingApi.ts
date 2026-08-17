@@ -10,11 +10,46 @@ import type {
   TrainingMyTitles,
   TrainingPlanMaterial,
   TrainingPlan,
+  TrainingPositionOption,
   TrainingQuiz,
   TrainingQuizAnswer,
   TrainingQuizAttemptResult,
   UpdateTrainingProgressInput,
 } from "@/features/training/trainingTypes";
+
+type TrainingPositionResponse = {
+  code?: string;
+  name?: Record<string, string>;
+  isActive?: boolean;
+  children?: TrainingPositionResponse[];
+};
+
+function mapTrainingPosition(
+  position: TrainingPositionResponse,
+): TrainingPositionOption | null {
+  if (!position.code || !position.name) return null;
+
+  return {
+    code: position.code,
+    name: position.name,
+    isActive: position.isActive ?? false,
+    children: (position.children || [])
+      .map(mapTrainingPosition)
+      .filter((child): child is TrainingPositionOption => child !== null),
+  };
+}
+
+export async function fetchTrainingPositions(): Promise<TrainingPositionOption[]> {
+  const positions = await mobileApiClient.get<TrainingPositionResponse[]>(
+    "/training/positions",
+  );
+
+  return Array.isArray(positions)
+    ? positions
+        .map(mapTrainingPosition)
+        .filter((position): position is TrainingPositionOption => position !== null)
+    : [];
+}
 
 export async function fetchTrainingMyPlan(): Promise<TrainingPlan> {
   return mobileApiClient.get<TrainingPlan>("/training/my-plan");

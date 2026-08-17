@@ -74,15 +74,20 @@ describe('PermissionsService', () => {
       invalidateUserPermissions: jest.fn(),
       sendEmployeeInvitation: jest.fn().mockResolvedValue(undefined),
     };
+    const mailService = {
+      sendEmployeeApprovedEmail: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       prismaService,
       notificationsService,
       authService,
+      mailService,
       service: new PermissionsService(
         prismaService as never,
         notificationsService as never,
         authService as never,
+        mailService as never,
       ),
     };
   }
@@ -432,6 +437,9 @@ describe('PermissionsService', () => {
   it('lets a store manager invite one permitted employee role to their own store', async () => {
     const { authService, service } = createService();
     const viewer = {
+      email: 'manager@zhao.test',
+      name: 'Manager Zhao',
+      preferredLanguage: 'fr',
       restaurantId: 7,
       store: { name: 'ZHAO Test' },
       jobRole: 'store-manager',
@@ -445,8 +453,9 @@ describe('PermissionsService', () => {
 
     expect(authService.sendEmployeeInvitation).toHaveBeenCalledWith({
       email: 'partner@example.com',
+      inviterName: 'Manager Zhao',
       jobRole: 'front-server',
-      language: 'zh',
+      language: 'fr',
       restaurantId: 7,
       storeName: 'ZHAO Test',
     });
@@ -1183,10 +1192,13 @@ describe('PermissionsService', () => {
   };
 
   it('sends a localized push to the user it approves', async () => {
-    const { service, prismaService, notificationsService } = createService();
+    const { service, prismaService, notificationsService, mailService } =
+      createService();
     prismaService.user.findUnique
       .mockResolvedValueOnce({
         id: 12,
+        name: 'New Staff',
+        email: 'new@zhao.test',
         jobRole: 'front-of-house',
         restaurantId: 7,
         accountStatus: 'pending',
@@ -1220,6 +1232,11 @@ describe('PermissionsService', () => {
         data: { type: 'account-approved' },
       }),
     );
+    expect(mailService.sendEmployeeApprovedEmail).toHaveBeenCalledWith({
+      to: 'new@zhao.test',
+      employeeName: 'New Staff',
+      language: 'en',
+    });
   });
 
   it('does not push when a registration is rejected', async () => {

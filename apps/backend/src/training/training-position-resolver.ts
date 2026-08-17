@@ -56,7 +56,10 @@ export function resolveTrainingPositionCodes(
           resultCodes,
           getPositionScopeCodes(directPosition, positions, {
             positionCode: directPosition.code,
-            includeDescendants: false,
+            // A position selected directly is still a node in the organisation
+            // tree. Managers and assistants therefore inherit the materials of
+            // every position beneath them.
+            includeDescendants: true,
           }),
         );
         continue;

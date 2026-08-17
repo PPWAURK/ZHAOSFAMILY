@@ -32,9 +32,4 @@ export type StoreJobRoleOption = {
   label: string;
 };
 
-export type TrainingPositionOption = {
-  code: string;
-  name: Record<string, string>;
-  isActive: boolean;
-  children: TrainingPositionOption[];
-};
+export type { TrainingPositionOption } from "@/features/training/trainingTypes";
