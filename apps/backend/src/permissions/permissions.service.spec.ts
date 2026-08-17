@@ -34,6 +34,9 @@ describe('PermissionsService', () => {
         findMany: jest.fn(),
         findUnique: jest.fn(),
       },
+      trainingPosition: {
+        findMany: jest.fn(),
+      },
       role,
       user,
       userRole,
@@ -69,6 +72,7 @@ describe('PermissionsService', () => {
 
     const authService = {
       invalidateUserPermissions: jest.fn(),
+      sendEmployeeInvitation: jest.fn().mockResolvedValue(undefined),
     };
 
     return {
@@ -361,6 +365,152 @@ describe('PermissionsService', () => {
       where: { id: 12 },
       data: { jobRole: 'front-manager,front-assistant' },
     });
+  });
+
+  it('allows a store manager to assign an active operational training position', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({
+        id: 12,
+        jobRole: 'front-of-house',
+        restaurantId: 7,
+      })
+      .mockResolvedValueOnce({
+        id: 12,
+        name: 'Store Staff',
+        email: 'staff@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'PREP',
+        restaurant: { id: 7, name: 'ZHAO Test' },
+        userRoles: [],
+      });
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      { code: 'BOH', parentCode: null },
+      { code: 'PREP', parentCode: 'BOH' },
+    ]);
+
+    await service.updateUserJobRole(
+      {
+        id: 1,
+        familyName: 'Zhao',
+        givenName: 'Manager',
+        firstName: 'Manager',
+        lastName: 'Zhao',
+        name: 'Zhao Manager',
+        email: 'manager@zhao.test',
+        emailVerified: true,
+        restaurantId: 7,
+        store: {
+          id: 7,
+          name: 'ZHAO Test',
+          address: 'Test',
+          photoObjectKey: null,
+        },
+        storeName: 'ZHAO Test',
+        jobRole: 'store-manager',
+        role: 'store-manager',
+        position: 'store-manager',
+        birthday: null,
+        avatar: null,
+        avatarUrl: null,
+        phone: null,
+        address: null,
+        userLevel: 0,
+        preferredLanguage: 'zh',
+        permissions: ['employee.job_role.manage_store'],
+      },
+      12,
+      'prep',
+    );
+
+    expect(prismaService.user.update).toHaveBeenCalledWith({
+      where: { id: 12 },
+      data: { jobRole: 'PREP' },
+    });
+  });
+
+  it('lets a store manager invite one permitted employee role to their own store', async () => {
+    const { authService, service } = createService();
+    const viewer = {
+      restaurantId: 7,
+      store: { name: 'ZHAO Test' },
+      jobRole: 'store-manager',
+    };
+
+    await service.sendEmployeeInvitation(viewer as never, {
+      email: 'partner@example.com',
+      jobRole: 'front-server',
+      language: 'zh',
+    });
+
+    expect(authService.sendEmployeeInvitation).toHaveBeenCalledWith({
+      email: 'partner@example.com',
+      jobRole: 'front-server',
+      language: 'zh',
+      restaurantId: 7,
+      storeName: 'ZHAO Test',
+    });
+  });
+
+  it('normalizes an active store training position when a store manager invites', async () => {
+    const { authService, prismaService, service } = createService();
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      { code: 'BOH', parentCode: null },
+      { code: 'PREP', parentCode: 'BOH' },
+    ]);
+
+    await service.sendEmployeeInvitation(
+      {
+        restaurantId: 7,
+        store: { name: 'ZHAO Test' },
+        jobRole: 'store-manager',
+      } as never,
+      {
+        email: 'partner@example.com',
+        jobRole: 'prep',
+        language: 'fr',
+      },
+    );
+
+    expect(authService.sendEmployeeInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ jobRole: 'PREP' }),
+    );
+  });
+
+  it('rejects non-store-managers and multi-role invitations', async () => {
+    const { authService, service } = createService();
+
+    await expect(
+      service.sendEmployeeInvitation(
+        {
+          restaurantId: 7,
+          store: { name: 'ZHAO Test' },
+          jobRole: 'regional-manager',
+        } as never,
+        {
+          email: 'partner@example.com',
+          jobRole: 'front-server',
+          language: 'en',
+        },
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+
+    await expect(
+      service.sendEmployeeInvitation(
+        {
+          restaurantId: 7,
+          store: { name: 'ZHAO Test' },
+          jobRole: 'store-manager',
+        } as never,
+        {
+          email: 'partner@example.com',
+          jobRole: 'front-server,front-host',
+          language: 'en',
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(authService.sendEmployeeInvitation).not.toHaveBeenCalled();
   });
 
   it('rejects store managers updating employees outside their store', async () => {

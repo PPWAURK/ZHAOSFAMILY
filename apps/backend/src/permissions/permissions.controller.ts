@@ -7,8 +7,10 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../auth/auth.service';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { PermissionGuard } from '../auth/guards/permission.guard';
@@ -17,6 +19,7 @@ import { UpdateUserApprovalDto } from './dto/update-user-approval.dto';
 import { UpdateUserJobRoleDto } from './dto/update-user-job-role.dto';
 import { UpdateUserRolesDto } from './dto/update-user-roles.dto';
 import { UpdateManagedRestaurantsDto } from './dto/update-managed-restaurants.dto';
+import { SendEmployeeInvitationDto } from './dto/send-employee-invitation.dto';
 import { PermissionsService } from './permissions.service';
 import type {
   ManageableRestaurantItem,
@@ -58,6 +61,21 @@ export class PermissionsController {
     );
 
     return this.permissionsService.listManageableRestaurants(viewer);
+  }
+
+  @Post('invitations')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  async sendEmployeeInvitation(
+    @Headers('authorization') authorization: string | undefined,
+    @Body() dto: SendEmployeeInvitationDto,
+  ): Promise<{ message: 'INVITATION_SENT' }> {
+    const viewer = await this.authService.getCurrentUser(
+      parseBearerToken(authorization),
+    );
+
+    await this.permissionsService.sendEmployeeInvitation(viewer, dto);
+
+    return { message: 'INVITATION_SENT' };
   }
 
   @Patch('users/:id/roles')

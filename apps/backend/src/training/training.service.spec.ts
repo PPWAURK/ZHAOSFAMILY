@@ -131,8 +131,8 @@ describe('TrainingService', () => {
     },
     {
       jobRole: 'front-manager',
-      positionCode: 'FOH',
-      includeDescendants: true,
+      positionCode: 'FRONT_MANAGER',
+      includeDescendants: false,
       grantsAllPositions: false,
     },
     {
@@ -143,8 +143,8 @@ describe('TrainingService', () => {
     },
     {
       jobRole: 'front-assistant',
-      positionCode: 'FOH',
-      includeDescendants: true,
+      positionCode: 'FRONT_ASSISTANT',
+      includeDescendants: false,
       grantsAllPositions: false,
     },
     {
@@ -156,7 +156,7 @@ describe('TrainingService', () => {
     {
       jobRole: 'front-of-house',
       positionCode: 'FOH',
-      includeDescendants: true,
+      includeDescendants: false,
       grantsAllPositions: false,
     },
     {
@@ -187,8 +187,11 @@ describe('TrainingService', () => {
       { code: 'FOH', parentCode: null },
       { code: 'FRONT_HOST', parentCode: 'FOH' },
       { code: 'FRONT_CASHIER', parentCode: 'FOH' },
+      { code: 'FRONT_MANAGER', parentCode: 'FOH' },
+      { code: 'FRONT_ASSISTANT', parentCode: 'FOH' },
       { code: 'BOH', parentCode: null },
       { code: 'BACK_RICE', parentCode: 'BOH' },
+      { code: 'PREP', parentCode: 'BOH' },
       { code: 'SM', parentCode: null },
     ];
 
@@ -212,12 +215,33 @@ describe('TrainingService', () => {
         TRAINING_JOB_ROLE_POSITIONS,
       );
 
-      expect(result.positionCodes).toEqual([
-        'FOH',
-        'FRONT_HOST',
-        'FRONT_CASHIER',
-        'ALL',
-      ]);
+      expect(result.positionCodes).toEqual(['FRONT_MANAGER', 'FOH', 'ALL']);
+    });
+
+    it('keeps generic front-of-house users within shared front materials', () => {
+      const result = resolveTrainingPositionCodes(
+        'front-of-house',
+        positions,
+        TRAINING_JOB_ROLE_POSITIONS,
+      );
+
+      expect(result).toEqual({
+        positionCodes: ['FOH', 'ALL'],
+        warnings: [],
+      });
+    });
+
+    it('resolves a custom training position code to its shared parent materials', () => {
+      const result = resolveTrainingPositionCodes(
+        'PREP',
+        positions,
+        TRAINING_JOB_ROLE_POSITIONS,
+      );
+
+      expect(result).toEqual({
+        positionCodes: ['PREP', 'BOH', 'ALL'],
+        warnings: [],
+      });
     });
 
     it('includes every active position for all-position roles', () => {
@@ -232,8 +256,11 @@ describe('TrainingService', () => {
         'FOH',
         'FRONT_HOST',
         'FRONT_CASHIER',
+        'FRONT_MANAGER',
+        'FRONT_ASSISTANT',
         'BOH',
         'BACK_RICE',
+        'PREP',
         'SM',
       ]);
     });

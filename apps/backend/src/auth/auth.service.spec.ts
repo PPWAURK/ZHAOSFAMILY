@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import {
@@ -41,6 +42,10 @@ type FindUniqueUserArgs = {
   select:
     | {
         id: true;
+      }
+    | {
+        id: true;
+        accountStatus: true;
       }
     | {
         id: true;
@@ -89,9 +94,16 @@ type PasswordResetMailCall = {
   resetUrl: string;
 };
 
+type EmployeeInvitationMailCall = {
+  email: string;
+  invitationUrl: string;
+  language: 'zh' | 'en' | 'fr';
+  storeName: string;
+};
+
 describe('AuthService', () => {
   function createService(options?: {
-    existingUser?: { id: number } | null;
+    existingUser?: { id: number; accountStatus?: string } | null;
     passwordResetDebug?: boolean;
   }) {
     const findUnique = jest.fn<
@@ -111,23 +123,49 @@ describe('AuthService', () => {
     const findManyUserRoles = jest.fn();
     const deleteManyUserRoles = jest.fn();
     const deleteManyPushTokens = jest.fn();
-    const runTransaction = jest.fn((operations: unknown[]) =>
-      Promise.resolve(operations),
+    const role = {
+      findUnique: jest.fn(),
+    };
+    const createManyUserRoles = jest.fn();
+    const runTransaction = jest.fn(
+      (
+        operations:
+          | unknown[]
+          | ((tx: {
+              role: typeof role;
+              user: { update: typeof update };
+              userRole: { createMany: typeof createManyUserRoles };
+            }) => unknown),
+      ) =>
+        Promise.resolve(
+          typeof operations === 'function'
+            ? operations({
+                role,
+                user: { update },
+                userRole: { createMany: createManyUserRoles },
+              })
+            : operations,
+        ),
     );
     const ensureRestaurantExists = jest.fn<Promise<void>, [number]>();
     const sendResetPasswordEmail = jest.fn<
       Promise<void>,
       [PasswordResetMailCall]
     >();
+    const sendEmployeeInvitationEmail = jest.fn<
+      Promise<void>,
+      [EmployeeInvitationMailCall]
+    >();
 
     findUnique.mockResolvedValue(options?.existingUser ?? null);
-    create.mockResolvedValue({
+    const registrationUser = {
       id: 7,
       familyName: 'Zhao',
       givenName: 'Lina',
       name: 'Zhao Lina',
       email: 'lina@example.com',
       emailVerified: false,
+      accountStatus: 'pending',
       restaurantId: 3,
       restaurant: {
         id: 3,
@@ -142,9 +180,12 @@ describe('AuthService', () => {
       profilePhoto: 'data:image/png;base64,abc123',
       userLevel: 0,
       preferredLanguage: 'fr',
-    });
+    };
+    create.mockResolvedValue(registrationUser);
+    update.mockResolvedValue(registrationUser);
     createRefreshSession.mockResolvedValue({ id: 1 });
     findManyUserRoles.mockResolvedValue([]);
+    role.findUnique.mockResolvedValue({ id: 8 });
     ensureRestaurantExists.mockResolvedValue(undefined);
     const prismaService = {
       user: {
@@ -160,6 +201,7 @@ describe('AuthService', () => {
         updateMany: updateManyRefreshSessions,
       },
       userRole: {
+        createMany: createManyUserRoles,
         findMany: findManyUserRoles,
         deleteMany: deleteManyUserRoles,
       },
@@ -183,6 +225,7 @@ describe('AuthService', () => {
       ),
     };
     const mailService = {
+      sendEmployeeInvitationEmail,
       sendResetPasswordEmail,
     };
 
@@ -222,6 +265,7 @@ describe('AuthService', () => {
       },
       select: {
         id: true,
+        accountStatus: true,
       },
     });
     expect(prismaService.user.create).toHaveBeenCalledTimes(1);
@@ -297,6 +341,45 @@ describe('AuthService', () => {
         language: 'fr',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('allows a rejected employee to submit a new registration', async () => {
+    const { authService, prismaService, restaurantsService } = createService({
+      existingUser: { id: 2, accountStatus: 'rejected' },
+    });
+
+    const result = await authService.register({
+      familyName: 'Zhao',
+      givenName: 'Lina',
+      email: 'lina@example.com',
+      password: 'new-password123',
+      restaurantId: 4,
+      jobRole: 'kitchen',
+      acceptedTerms: true,
+      language: 'zh',
+    });
+
+    expect(restaurantsService.ensureRestaurantExists).toHaveBeenCalledWith(4);
+    expect(prismaService.user.create).not.toHaveBeenCalled();
+    const [updateCall] = prismaService.user.update.mock.calls[0] as [
+      UpdateUserCall,
+    ];
+    expect(updateCall).toMatchObject({
+      where: { id: 2 },
+      data: {
+        familyName: 'Zhao',
+        givenName: 'Lina',
+        email: 'lina@example.com',
+        accountStatus: 'pending',
+        accountReviewedAt: null,
+        accountReviewedByUserId: null,
+        restaurantId: 4,
+        jobRole: 'kitchen',
+        acceptedTerms: true,
+        preferredLanguage: 'zh',
+      },
+    });
+    expect(result.message).toBe('REGISTRATION_PENDING_APPROVAL');
   });
 
   it('stores null birthday when registration omits birthday', async () => {
@@ -540,6 +623,108 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('creates a hashed seven-day invitation and sends the web setup link', async () => {
+    const { authService, mailService, prismaService } = createService();
+
+    await authService.sendEmployeeInvitation({
+      email: ' Partner@Example.com ',
+      jobRole: 'front-server',
+      language: 'zh',
+      restaurantId: 3,
+      storeName: 'ZHAO Test',
+    });
+
+    const [createCall] = prismaService.user.create.mock.calls[0] as [
+      { data: Record<string, unknown> },
+    ];
+    const [mailCall] = mailService.sendEmployeeInvitationEmail.mock.calls[0];
+    const invitationToken = new URL(mailCall.invitationUrl).searchParams.get(
+      'token',
+    );
+
+    expect(createCall.data).toMatchObject({
+      accountStatus: 'invited',
+      email: 'partner@example.com',
+      emailVerified: false,
+      jobRole: 'front-server',
+      restaurantId: 3,
+    });
+    expect(createCall.data.passwordHash).toMatch(/^scrypt\$/);
+    expect(createCall.data.invitationTokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(createCall.data.invitationExpiresAt).toBeInstanceOf(Date);
+    expect(
+      (createCall.data.invitationExpiresAt as Date).getTime(),
+    ).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
+    expect(invitationToken).toEqual(expect.any(String));
+    expect(createCall.data.invitationTokenHash).toBe(
+      createHash('sha256').update(invitationToken!).digest('hex'),
+    );
+    expect(mailCall).toMatchObject({
+      email: 'partner@example.com',
+      language: 'zh',
+      storeName: 'ZHAO Test',
+    });
+    expect(mailCall.invitationUrl).toMatch(
+      /^http:\/\/localhost:3000\/accept-invitation\?token=.+/,
+    );
+  });
+
+  it('reissues an unaccepted invitation but never overwrites an existing account', async () => {
+    const { authService, mailService, prismaService } = createService({
+      existingUser: { id: 12, accountStatus: 'invited' },
+    });
+
+    await authService.sendEmployeeInvitation({
+      email: 'partner@example.com',
+      jobRole: 'front-server',
+      language: 'fr',
+      restaurantId: 3,
+      storeName: 'ZHAO Test',
+    });
+
+    expect(prismaService.user.create).not.toHaveBeenCalled();
+    const [updateCall] = prismaService.user.update.mock.calls[0] as [
+      UpdateUserCall,
+    ];
+    expect(updateCall.where).toEqual({ id: 12 });
+    expect(updateCall.data.accountStatus).toBe('invited');
+    expect(mailService.sendEmployeeInvitationEmail).toHaveBeenCalledTimes(1);
+
+    prismaService.user.findUnique.mockResolvedValueOnce({
+      id: 99,
+      accountStatus: 'approved',
+    });
+
+    await expect(
+      authService.sendEmployeeInvitation({
+        email: 'existing@example.com',
+        jobRole: 'front-server',
+        language: 'fr',
+        restaurantId: 3,
+        storeName: 'ZHAO Test',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('preserves the inactive invitation for retry when email delivery fails', async () => {
+    const { authService, mailService, prismaService } = createService();
+    mailService.sendEmployeeInvitationEmail.mockRejectedValueOnce(
+      new Error('BREVO_UNAVAILABLE'),
+    );
+
+    await expect(
+      authService.sendEmployeeInvitation({
+        email: 'partner@example.com',
+        jobRole: 'front-server',
+        language: 'en',
+        restaurantId: 3,
+        storeName: 'ZHAO Test',
+      }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(prismaService.user.create).toHaveBeenCalledTimes(1);
+  });
+
   it('accepts a valid invitation and returns a login session', async () => {
     const { authService, prismaService } = createService();
     const token = 'invitation-token-with-enough-length';
@@ -610,6 +795,10 @@ describe('AuthService', () => {
       invitationExpiresAt: null,
     });
     expect(updateCall.data.passwordHash).toMatch(/^scrypt\$/);
+    expect(prismaService.userRole.createMany).toHaveBeenCalledWith({
+      data: [{ userId: 21, roleId: 8 }],
+      skipDuplicates: true,
+    });
   });
 
   it('anonymizes the account and revokes sessions when the password matches', async () => {

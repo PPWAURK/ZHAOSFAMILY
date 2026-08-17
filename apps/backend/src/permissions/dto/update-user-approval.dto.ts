@@ -1,7 +1,7 @@
 import { IsIn, IsInt, IsOptional, Matches, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { AccountStatus } from '../../auth/account-status';
-import { JOB_ROLE_PATTERN } from '../../auth/job-roles';
+import { JOB_ROLE_ASSIGNMENT_PATTERN } from '../../auth/job-roles';
 
 export class UpdateUserApprovalDto {
   @IsIn(['approved', 'rejected'], { message: 'INVALID_ACCOUNT_STATUS' })
@@ -14,6 +14,6 @@ export class UpdateUserApprovalDto {
   restaurantId?: number;
 
   @IsOptional()
-  @Matches(JOB_ROLE_PATTERN, { message: 'INVALID_JOB_ROLE' })
+  @Matches(JOB_ROLE_ASSIGNMENT_PATTERN, { message: 'INVALID_JOB_ROLE' })
   jobRole?: string;
 }

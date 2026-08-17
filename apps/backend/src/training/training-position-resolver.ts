@@ -49,6 +49,19 @@ export function resolveTrainingPositionCodes(
     const mapping = mappingByRole.get(normalizedRole);
 
     if (!mapping) {
+      const directPosition = positionByCode.get(roleValue.toUpperCase());
+
+      if (directPosition) {
+        addCodes(
+          resultCodes,
+          getPositionScopeCodes(directPosition, positions, {
+            positionCode: directPosition.code,
+            includeDescendants: false,
+          }),
+        );
+        continue;
+      }
+
       warnings.push({
         jobRole: roleValue,
         reason: 'JOB_ROLE_MAPPING_NOT_FOUND',
