@@ -23,6 +23,14 @@ export async function fetchApprovablePermissionUsers(): Promise<PermissionUser[]
   return Array.isArray(users) ? users : [];
 }
 
+export async function sendEmployeeInvitation(input: {
+  email: string;
+  jobRole: string;
+  language: "zh" | "en" | "fr";
+}): Promise<{ message: "INVITATION_SENT" }> {
+  return apiClient.post<{ message: "INVITATION_SENT" }>("/permissions/invitations", input);
+}
+
 export async function fetchManageableRestaurants(): Promise<ManageableRestaurant[]> {
   const restaurants = await apiClient.get<ManageableRestaurant[]>(
     "/permissions/restaurants/manageable",

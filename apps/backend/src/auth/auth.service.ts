@@ -4,6 +4,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  ServiceUnavailableException,
   type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
@@ -37,6 +38,8 @@ const DELETED_ACCOUNT_NAME = 'Compte supprimé';
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 8;
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
+const EMPLOYEE_INVITATION_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+const TRAINING_VIEWER_ROLE_NAME = 'training-viewer';
 const PERMISSIONS_CACHE_TTL_MS = 1000 * 60;
 const PERMISSIONS_CACHE_SWEEP_INTERVAL_MS = 1000 * 60 * 5;
 const DEFAULT_WEB_APP_URL = 'http://localhost:3000';
@@ -88,6 +91,14 @@ export type RegisterResponse = {
 export type ForgotPasswordResponse = {
   message: 'PASSWORD_RESET_REQUESTED';
   resetUrl?: string;
+};
+
+export type EmployeeInvitationInput = {
+  email: string;
+  jobRole: string;
+  language: 'zh' | 'en' | 'fr';
+  restaurantId: number;
+  storeName: string;
 };
 
 type AccessTokenPayload = {
@@ -275,10 +286,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       },
       select: {
         id: true,
+        accountStatus: true,
       },
     });
 
-    if (existingUser) {
+    if (
+      existingUser &&
+      existingUser.accountStatus !== ACCOUNT_STATUS.rejected
+    ) {
       throw new ConflictException('EMAIL_ALREADY_REGISTERED');
     }
 
@@ -288,36 +303,44 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
     const birthday = parseOptionalBirthday(registerDto.birthday);
     const passwordHash = await hashPassword(registerDto.password);
-    const user = await this.prismaService.user.create({
-      data: {
-        familyName,
-        givenName,
-        name: buildFullName(familyName, givenName),
-        email: normalizedEmail,
-        emailVerified: false,
-        accountStatus: ACCOUNT_STATUS.pending,
-        accountReviewedAt: null,
-        accountReviewedByUserId: null,
-        passwordHash,
-        restaurantId: registerDto.restaurantId,
-        birthday,
-        jobRole: registerDto.jobRole ?? null,
-        profilePhoto: registerDto.profilePhotoDataUrl ?? null,
-        userLevel: registerDto.level ?? DEFAULT_USER_LEVEL,
-        acceptedTerms: registerDto.acceptedTerms,
-        preferredLanguage: registerDto.language,
-      },
-      include: {
-        restaurant: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            photoObjectKey: true,
-          },
+    const registrationData = {
+      familyName,
+      givenName,
+      name: buildFullName(familyName, givenName),
+      email: normalizedEmail,
+      emailVerified: false,
+      accountStatus: ACCOUNT_STATUS.pending,
+      accountReviewedAt: null,
+      accountReviewedByUserId: null,
+      passwordHash,
+      restaurantId: registerDto.restaurantId,
+      birthday,
+      jobRole: registerDto.jobRole ?? null,
+      profilePhoto: registerDto.profilePhotoDataUrl ?? null,
+      userLevel: registerDto.level ?? DEFAULT_USER_LEVEL,
+      acceptedTerms: registerDto.acceptedTerms,
+      preferredLanguage: registerDto.language,
+    };
+    const restaurantInclude = {
+      restaurant: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          photoObjectKey: true,
         },
       },
-    });
+    };
+    const user = existingUser
+      ? await this.prismaService.user.update({
+          where: { id: existingUser.id },
+          data: registrationData,
+          include: restaurantInclude,
+        })
+      : await this.prismaService.user.create({
+          data: registrationData,
+          include: restaurantInclude,
+        });
 
     return {
       message: 'REGISTRATION_PENDING_APPROVAL',
@@ -415,33 +438,112 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
     const normalizedName = dto.name.trim();
     const passwordHash = await hashPassword(dto.password);
-    const user = await this.prismaService.user.update({
-      where: { id: invitedUser.id },
-      data: {
-        familyName: normalizedName,
-        givenName: '',
-        name: normalizedName,
-        passwordHash,
-        emailVerified: true,
-        accountStatus: ACCOUNT_STATUS.approved,
-        accountReviewedAt: new Date(),
-        accountReviewedByUserId: null,
-        invitationTokenHash: null,
-        invitationExpiresAt: null,
-      },
-      include: {
-        restaurant: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            photoObjectKey: true,
+    const user = await this.prismaService.$transaction(async (tx) => {
+      const acceptedUser = await tx.user.update({
+        where: { id: invitedUser.id },
+        data: {
+          familyName: normalizedName,
+          givenName: '',
+          name: normalizedName,
+          passwordHash,
+          emailVerified: true,
+          accountStatus: ACCOUNT_STATUS.approved,
+          accountReviewedAt: new Date(),
+          accountReviewedByUserId: null,
+          invitationTokenHash: null,
+          invitationExpiresAt: null,
+        },
+        include: {
+          restaurant: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              photoObjectKey: true,
+            },
           },
         },
-      },
+      });
+      const trainingViewerRole = await tx.role.findUnique({
+        where: { name: TRAINING_VIEWER_ROLE_NAME },
+        select: { id: true },
+      });
+
+      if (trainingViewerRole) {
+        await tx.userRole.createMany({
+          data: [{ userId: acceptedUser.id, roleId: trainingViewerRole.id }],
+          skipDuplicates: true,
+        });
+      }
+
+      return acceptedUser;
     });
 
     return this.createAuthSession(user);
+  }
+
+  async sendEmployeeInvitation(input: EmployeeInvitationInput): Promise<void> {
+    const email = input.email.trim().toLowerCase();
+    const invitationToken = createOpaqueToken();
+    const invitationExpiresAt = new Date(
+      Date.now() + EMPLOYEE_INVITATION_TOKEN_TTL_MS,
+    );
+    const invitationData = {
+      email,
+      restaurantId: input.restaurantId,
+      jobRole: input.jobRole,
+      preferredLanguage: input.language,
+      emailVerified: false,
+      accountStatus: ACCOUNT_STATUS.invited,
+      accountReviewedAt: null,
+      accountReviewedByUserId: null,
+      passwordHash: await hashPassword(createOpaqueToken()),
+      invitationTokenHash: hashOpaqueToken(invitationToken),
+      invitationExpiresAt,
+    };
+    const existingUser = await this.prismaService.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        accountStatus: true,
+      },
+    });
+
+    if (existingUser && existingUser.accountStatus !== ACCOUNT_STATUS.invited) {
+      throw new ConflictException('INVITATION_EMAIL_ALREADY_EXISTS');
+    }
+
+    if (existingUser) {
+      await this.prismaService.user.update({
+        where: { id: existingUser.id },
+        data: invitationData,
+      });
+    } else {
+      await this.prismaService.user.create({
+        data: {
+          ...invitationData,
+          familyName: '',
+          givenName: '',
+          name: '',
+          birthday: null,
+          profilePhoto: null,
+          userLevel: DEFAULT_USER_LEVEL,
+          acceptedTerms: false,
+        },
+      });
+    }
+
+    try {
+      await this.mailService.sendEmployeeInvitationEmail({
+        email,
+        language: input.language,
+        invitationUrl: this.buildInvitationUrl(invitationToken),
+        storeName: input.storeName,
+      });
+    } catch {
+      this.logger.error('Employee invitation email delivery failed');
+      throw new ServiceUnavailableException('INVITATION_EMAIL_DELIVERY_FAILED');
+    }
   }
 
   async forgotPassword(
@@ -842,6 +944,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     const normalizedWebAppUrl = webAppUrl.replace(/\/+$/, '');
 
     return `${normalizedWebAppUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+  }
+
+  private buildInvitationUrl(invitationToken: string): string {
+    const webAppUrl =
+      this.configService.get<string>('APP_WEB_URL') || DEFAULT_WEB_APP_URL;
+    const normalizedWebAppUrl = webAppUrl.replace(/\/+$/, '');
+
+    return `${normalizedWebAppUrl}/accept-invitation?token=${encodeURIComponent(invitationToken)}`;
   }
 
   private shouldExposePasswordResetDebugUrl(): boolean {

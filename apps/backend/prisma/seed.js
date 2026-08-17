@@ -172,6 +172,22 @@ const TRAINING_POSITIONS = [
     sortOrder: 15,
   },
   {
+    code: 'FRONT_MANAGER',
+    nameZh: '前厅经理',
+    nameEn: 'Front Manager',
+    nameFr: 'Responsable salle',
+    parentCode: 'FOH',
+    sortOrder: 16,
+  },
+  {
+    code: 'FRONT_ASSISTANT',
+    nameZh: '前厅助理',
+    nameEn: 'Front Assistant',
+    nameFr: 'Assistant salle',
+    parentCode: 'FOH',
+    sortOrder: 17,
+  },
+  {
     code: 'BOH',
     nameZh: '厨房',
     nameEn: 'Back of House',
@@ -274,8 +290,8 @@ const TRAINING_JOB_ROLE_POSITIONS = [
   },
   {
     jobRole: 'front-manager',
-    positionCode: 'FOH',
-    includeDescendants: true,
+    positionCode: 'FRONT_MANAGER',
+    includeDescendants: false,
     grantsAllPositions: false,
   },
   {
@@ -286,8 +302,8 @@ const TRAINING_JOB_ROLE_POSITIONS = [
   },
   {
     jobRole: 'front-assistant',
-    positionCode: 'FOH',
-    includeDescendants: true,
+    positionCode: 'FRONT_ASSISTANT',
+    includeDescendants: false,
     grantsAllPositions: false,
   },
   {
@@ -299,7 +315,7 @@ const TRAINING_JOB_ROLE_POSITIONS = [
   {
     jobRole: 'front-of-house',
     positionCode: 'FOH',
-    includeDescendants: true,
+    includeDescendants: false,
     grantsAllPositions: false,
   },
   {

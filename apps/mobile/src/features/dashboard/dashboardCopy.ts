@@ -101,6 +101,12 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
         visibleForJobRoles: ["store-manager"],
         label: { zh: "招聘请求", en: "Recruitment requests", fr: "Demandes recrutement" },
       },
+      {
+        id: "invite-partner",
+        icon: "邀",
+        visibleForJobRoles: ["store-manager"],
+        label: { zh: "邀请伙伴", en: "Invite a partner", fr: "Inviter un partenaire" },
+      },
     ],
   },
 ];

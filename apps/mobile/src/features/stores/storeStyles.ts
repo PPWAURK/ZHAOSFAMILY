@@ -238,6 +238,67 @@ export const storeStyles = StyleSheet.create(scaleStyles({
     fontSize: 15,
     lineHeight: 22,
   },
+  invitationField: {
+    gap: 8,
+  },
+  invitationForm: {
+    backgroundColor: "#ffffff",
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    gap: 18,
+    padding: 16,
+  },
+  invitationLoadingRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    minHeight: 48,
+  },
+  invitationRoleCheck: {
+    color: authControlStyles.colors.red,
+    fontSize: 18,
+  },
+  invitationRoleLabel: {
+    color: authControlStyles.colors.ink,
+    flex: 1,
+    fontFamily: "serif",
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  invitationRoleLabelSelected: {
+    color: authControlStyles.colors.red,
+    fontWeight: "700",
+  },
+  invitationRoleList: {
+    borderColor: authControlStyles.colors.ink10,
+    borderWidth: 1,
+    maxHeight: 260,
+  },
+  invitationRoleOption: {
+    alignItems: "center",
+    borderBottomColor: authControlStyles.colors.ink10,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    minHeight: 50,
+    paddingHorizontal: 12,
+  },
+  invitationStore: {
+    color: authControlStyles.colors.red,
+    fontFamily: "serif",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  invitationSubmit: {
+    alignItems: "center",
+    backgroundColor: authControlStyles.colors.red,
+    justifyContent: "center",
+    minHeight: 48,
+    paddingHorizontal: 16,
+  },
+  invitationSubmitDisabled: {
+    opacity: 0.56,
+  },
   list: {
     gap: 12,
   },

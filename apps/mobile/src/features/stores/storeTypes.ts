@@ -31,3 +31,10 @@ export type StoreJobRoleOption = {
   value: string;
   label: string;
 };
+
+export type TrainingPositionOption = {
+  code: string;
+  name: Record<string, string>;
+  isActive: boolean;
+  children: TrainingPositionOption[];
+};

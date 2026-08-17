@@ -14,9 +14,11 @@ import {
 import {
   fetchApprovablePermissionUsers,
   removePermissionUser,
+  sendEmployeeInvitation,
   updatePermissionUserApproval,
   updatePermissionUserJobRole,
 } from "@/features/permissions/services/permissionsApi";
+import { fetchTrainingPositions } from "@/features/training/services/trainingMediaApi";
 import { STORES_COPY, STORE_JOB_ROLE_OPTIONS } from "@/features/stores/constants/stores-copy";
 import { fetchStoresPageStores } from "@/features/stores/services/restaurantsApi";
 import {
@@ -31,6 +33,30 @@ import { useConfirm } from "@/shared/components/confirm/ConfirmProvider";
 import { useToast } from "@/shared/components/toast/ToastProvider";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
+
+const BUILT_IN_TRAINING_POSITION_CODES = new Set([
+  "ALL",
+  "FOH",
+  "BOH",
+  "CASH",
+  "SM",
+  "RM",
+  "HOLDING",
+  "FRONT_HOST",
+  "FRONT_CASHIER",
+  "FRONT_SERVER",
+  "FRONT_PACKER",
+  "FRONT_BAR",
+  "FRONT_MANAGER",
+  "FRONT_ASSISTANT",
+  "BACK_DISHWASHER",
+  "BACK_NOODLE",
+  "BACK_HOT_APPETIZER",
+  "BACK_COLD_APPETIZER",
+  "BACK_RICE",
+]);
+const STORE_INVITATION_POSITION_ROOT_CODES = new Set(["FOH", "BOH", "CASH"]);
+const MANAGEMENT_TRAINING_POSITION_CODES = new Set(["ALL", "SM", "RM", "HOLDING"]);
 
 function getStoreIdParam(params, searchParams) {
   const searchStoreId = searchParams.get("storeId");
@@ -75,13 +101,27 @@ function canManageRegionalJobRoles(user) {
   return getJobRoleValues(user).includes("regional-manager");
 }
 
+function canInviteEmployees(user) {
+  return getJobRoleValues(user).includes("store-manager");
+}
+
 // Mirror mobile: holding/admins may assign any role; regional and store
 // managers use the same hierarchy enforced by the backend.
-function getVisibleRoleOptions(lang, user) {
+function getCustomTrainingPositionOptions(positions, lang) {
+  return positions
+    .filter((position) => position.isActive && !BUILT_IN_TRAINING_POSITION_CODES.has(position.code))
+    .map((position) => ({
+      value: position.code,
+      label: position.name?.[lang] || position.name?.zh || position.code,
+    }));
+}
+
+function getVisibleRoleOptions(lang, user, trainingPositions) {
   const options = STORE_JOB_ROLE_OPTIONS[lang] || STORE_JOB_ROLE_OPTIONS.zh;
+  const customPositionOptions = getCustomTrainingPositionOptions(trainingPositions, lang);
 
   if (canManageHoldingJobRole(user)) {
-    return options;
+    return [...options, ...customPositionOptions];
   }
 
   const assignable = new Set(
@@ -90,7 +130,43 @@ function getVisibleRoleOptions(lang, user) {
       : STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
   );
 
-  return options.filter((option) => assignable.has(option.value));
+  return [...options.filter((option) => assignable.has(option.value)), ...customPositionOptions];
+}
+
+function getStoreManagerInvitationRoleOptions(lang, positions) {
+  const builtInOptions = (STORE_JOB_ROLE_OPTIONS[lang] || STORE_JOB_ROLE_OPTIONS.zh).filter((option) =>
+    STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES.includes(option.value),
+  );
+  const customOptions = [];
+
+  function visit(positionList, isStorePosition, isManagementPosition) {
+    positionList.forEach((position) => {
+      const nextIsStorePosition =
+        isStorePosition || STORE_INVITATION_POSITION_ROOT_CODES.has(position.code);
+      const nextIsManagementPosition =
+        isManagementPosition || MANAGEMENT_TRAINING_POSITION_CODES.has(position.code);
+
+      if (
+        position.isActive &&
+        nextIsStorePosition &&
+        !nextIsManagementPosition &&
+        !BUILT_IN_TRAINING_POSITION_CODES.has(position.code)
+      ) {
+        customOptions.push({
+          value: position.code,
+          label: position.name?.[lang] || position.name?.zh || position.code,
+        });
+      }
+
+      if (Array.isArray(position.children)) {
+        visit(position.children, nextIsStorePosition, nextIsManagementPosition);
+      }
+    });
+  }
+
+  visit(positions, false, false);
+
+  return [...builtInOptions, ...customOptions];
 }
 
 function toggleJobRoleValue(jobRole, value, allowedValues = null) {
@@ -116,6 +192,16 @@ function userHasRole(user, roleValue) {
   if (!roleValue) return true;
 
   return parseJobRoleValues(user.jobRole).includes(roleValue);
+}
+
+function formatRoleLabel(jobRole, lang, roleOptions) {
+  return parseJobRoleValues(jobRole)
+    .map(
+      (role) =>
+        roleOptions.find((option) => option.value === role)?.label ||
+        formatJobRoleLabel(role, lang, role),
+    )
+    .join(" / ");
 }
 
 // A vertical switch list — the web mirror of mobile's RoleMultiSelector.
@@ -150,6 +236,33 @@ function RoleSwitchList({ disabled, options, requireSelection = false, value, on
               <span className={styles.switchThumb} aria-hidden="true" />
             </span>
           </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function InvitationRoleList({ disabled, options, value, onChange }) {
+  return (
+    <div className={styles.roleSelectPanel} role="radiogroup">
+      {options.map((option) => {
+        const isSelected = option.value === value;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            className={`${styles.invitationRoleOption} ${
+              isSelected ? styles.invitationRoleOptionSelected : ""
+            }`}
+            disabled={disabled}
+            role="radio"
+            aria-checked={isSelected}
+            onClick={() => onChange(option.value)}
+          >
+            <span>{option.label}</span>
+            <span className={styles.invitationRoleIndicator} aria-hidden="true" />
+          </button>
         );
       })}
     </div>
@@ -235,7 +348,7 @@ function TeamUserCard({
         <div className={styles.teamCardIdentity}>
           <p className={styles.userName}>{user.name || "-"}</p>
           <p className={styles.userEmail}>{user.email || "-"}</p>
-          <p className={styles.userMeta}>{formatJobRoleLabel(user.jobRole, lang)}</p>
+          <p className={styles.userMeta}>{formatRoleLabel(user.jobRole, lang, roleOptions)}</p>
         </div>
         <button
           type="button"
@@ -268,6 +381,7 @@ export default function StoreApprovalPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [store, setStore] = useState(null);
   const [users, setUsers] = useState([]);
+  const [trainingPositions, setTrainingPositions] = useState([]);
   const [reviewDrafts, setReviewDrafts] = useState({});
   const [teamDrafts, setTeamDrafts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -278,10 +392,22 @@ export default function StoreApprovalPage() {
   const [detailView, setDetailView] = useState("overview");
   const [teamSearchTerm, setTeamSearchTerm] = useState("");
   const [teamRoleFilter, setTeamRoleFilter] = useState("");
+  const [invitationEmail, setInvitationEmail] = useState("");
+  const [invitationJobRole, setInvitationJobRole] = useState("");
+  const [invitationError, setInvitationError] = useState("");
+  const [isSendingInvitation, setIsSendingInvitation] = useState(false);
 
   const t = STORES_COPY[lang];
   const page = t.approval;
-  const roleOptions = useMemo(() => getVisibleRoleOptions(lang, user), [lang, user]);
+  const roleOptions = useMemo(
+    () => getVisibleRoleOptions(lang, user, trainingPositions),
+    [lang, trainingPositions, user],
+  );
+  const invitationRoleOptions = useMemo(
+    () => getStoreManagerInvitationRoleOptions(lang, trainingPositions),
+    [lang, trainingPositions],
+  );
+  const isStoreManager = canInviteEmployees(user);
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
 
   const storeUsers = useMemo(
@@ -325,9 +451,10 @@ export default function StoreApprovalPage() {
         setIsLoading(true);
         setErrorMessage("");
 
-        const [nextStores, nextUsers] = await Promise.all([
+        const [nextStores, nextUsers, nextTrainingPositions] = await Promise.all([
           fetchStoresPageStores(),
           fetchApprovablePermissionUsers(),
+          fetchTrainingPositions(),
         ]);
 
         if (isCancelled) {
@@ -354,6 +481,7 @@ export default function StoreApprovalPage() {
 
         setStore(nextStore);
         setUsers(nextUsers);
+        setTrainingPositions(nextTrainingPositions);
         setReviewDrafts(nextDrafts);
         setTeamDrafts(nextTeamDrafts);
       } catch (error) {
@@ -492,9 +620,53 @@ export default function StoreApprovalPage() {
     }
   }
 
+  async function submitInvitation(event) {
+    event.preventDefault();
+
+    const email = invitationEmail.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setInvitationError(page.inviteEmailInvalid);
+      return;
+    }
+
+    if (!invitationJobRole) {
+      setInvitationError(page.inviteRoleRequired);
+      return;
+    }
+
+    setIsSendingInvitation(true);
+    setInvitationError("");
+
+    try {
+      await sendEmployeeInvitation({
+        email,
+        jobRole: invitationJobRole,
+        language: lang,
+      });
+      setInvitationEmail("");
+      setInvitationJobRole("");
+      toast.success(page.inviteSuccess);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      const inviteMessage = message.includes("INVITATION_EMAIL_ALREADY_EXISTS")
+        ? page.inviteEmailExists
+        : message.includes("INSUFFICIENT_PERMISSIONS") || message.includes("INVALID_JOB_ROLE")
+          ? page.inviteRoleForbidden
+          : message.includes("INVITATION_EMAIL_DELIVERY_FAILED")
+            ? page.inviteDeliveryError
+            : page.inviteError;
+
+      setInvitationError(inviteMessage);
+      toast.error(inviteMessage);
+    } finally {
+      setIsSendingInvitation(false);
+    }
+  }
+
   function openDetailView(nextView) {
     setDetailView(nextView);
     setErrorMessage("");
+    setInvitationError("");
     if (nextView !== "team") {
       setTeamSearchTerm("");
       setTeamRoleFilter("");
@@ -629,7 +801,54 @@ export default function StoreApprovalPage() {
                   label={page.stats}
                   onClick={() => openDetailView("stats")}
                 />
+                {isStoreManager ? (
+                  <ActionCard
+                    count="→"
+                    hint={page.inviteCardHint}
+                    label={page.inviteEmployee}
+                    onClick={() => openDetailView("invite")}
+                  />
+                ) : null}
               </div>
+            ) : null}
+
+            {detailView === "invite" && isStoreManager ? (
+              <section className={styles.detailSection}>
+                <div className={styles.sectionHeader}>
+                  <span className={styles.sectionTitle}>{page.inviteEmployee}</span>
+                </div>
+                <p className={styles.invitationHint}>{page.inviteHint}</p>
+                <form className={`${styles.formPanel} ${styles.invitationForm}`} onSubmit={submitInvitation}>
+                  <label className={styles.formField}>
+                    <span>{page.inviteEmailLabel}</span>
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      placeholder={page.inviteEmailPlaceholder}
+                      disabled={isSendingInvitation}
+                      value={invitationEmail}
+                      onChange={(event) => setInvitationEmail(event.target.value)}
+                    />
+                  </label>
+                  <div className={styles.formField}>
+                    <span>{page.inviteRoleLabel}</span>
+                    <InvitationRoleList
+                      disabled={isSendingInvitation}
+                      options={invitationRoleOptions}
+                      value={invitationJobRole}
+                      onChange={setInvitationJobRole}
+                    />
+                  </div>
+                  {invitationError ? (
+                    <p className={styles.formError} role="alert">
+                      {invitationError}
+                    </p>
+                  ) : null}
+                  <button type="submit" className={styles.formPrimaryButton} disabled={isSendingInvitation}>
+                    {isSendingInvitation ? page.inviteSending : page.inviteSend}
+                  </button>
+                </form>
+              </section>
             ) : null}
 
             {detailView === "pending" ? (
@@ -645,7 +864,7 @@ export default function StoreApprovalPage() {
                     {pendingUsers.map((item) => (
                       <PendingUserCard
                         key={item.id}
-                        appliedRoleLabel={formatJobRoleLabel(item.jobRole, lang)}
+                        appliedRoleLabel={formatRoleLabel(item.jobRole, lang, roleOptions)}
                         draft={reviewDrafts[String(item.id)] ?? { jobRole: "" }}
                         isReviewing={reviewingUserId === item.id}
                         labels={page}

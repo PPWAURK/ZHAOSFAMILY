@@ -26,6 +26,13 @@ type EmployeeApprovalInput = {
   language?: string;
 };
 
+type EmployeeInvitationInput = {
+  email: string;
+  invitationUrl: string;
+  language: 'zh' | 'en' | 'fr';
+  storeName: string;
+};
+
 type OrderPdfInput = {
   to: string | string[];
   orderNumber: string;
@@ -148,6 +155,37 @@ const APPROVED_COPY: Record<string, TemplateCopy> = {
     body: 'Votre compte a été validé. Vous pouvez maintenant vous connecter.',
     actionLabel: 'Ouvrir la plateforme',
     footer: 'Bienvenue sur ZHAO Plateforme.',
+  },
+};
+
+const EMPLOYEE_INVITATION_COPY: Record<
+  string,
+  Omit<TemplateCopy, 'body'> & { body: (storeName: string) => string }
+> = {
+  zh: {
+    subject: 'ZHAO Plateforme 邀请你加入团队',
+    title: '你受邀加入 ZHAO 团队',
+    body: (storeName) =>
+      `${storeName} 邀请你加入团队。请通过下方链接填写姓名并设置登录密码。`,
+    actionLabel: '设置账号密码',
+    footer: '邀请链接将在 7 天后失效，且只能使用一次。',
+  },
+  en: {
+    subject: 'You are invited to join ZHAO Plateforme',
+    title: 'You are invited to join the ZHAO team',
+    body: (storeName) =>
+      `${storeName} invited you to join the team. Use the link below to enter your name and set your sign-in password.`,
+    actionLabel: 'Set up your password',
+    footer: 'This invitation link expires in 7 days and can only be used once.',
+  },
+  fr: {
+    subject: 'Vous êtes invité(e) à rejoindre ZHAO Plateforme',
+    title: 'Vous êtes invité(e) à rejoindre l’équipe ZHAO',
+    body: (storeName) =>
+      `${storeName} vous invite à rejoindre son équipe. Utilisez le lien ci-dessous pour renseigner votre nom et choisir votre mot de passe.`,
+    actionLabel: 'Configurer mon mot de passe',
+    footer:
+      'Ce lien d’invitation expire dans 7 jours et ne peut être utilisé qu’une seule fois.',
   },
 };
 
@@ -395,6 +433,27 @@ export class MailService {
       subject: copy.subject,
       text: buildTextEmail(copy, appWebUrl),
       html: buildHtmlEmail(copy, appWebUrl, brand),
+    });
+  }
+
+  async sendEmployeeInvitationEmail(
+    input: EmployeeInvitationInput,
+  ): Promise<MailSendResult> {
+    const copy = getLocalizedCopy(EMPLOYEE_INVITATION_COPY, input.language);
+    const brand = this.getBrandEmailOptions();
+
+    return this.sendEmail({
+      to: input.email,
+      subject: copy.subject,
+      text: buildTextEmail(
+        { ...copy, body: copy.body(input.storeName) },
+        input.invitationUrl,
+      ),
+      html: buildHtmlEmail(
+        { ...copy, body: copy.body(input.storeName) },
+        input.invitationUrl,
+        brand,
+      ),
     });
   }
 

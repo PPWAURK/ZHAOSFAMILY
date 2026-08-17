@@ -1,5 +1,6 @@
 export const ACCOUNT_STATUS = {
   approved: 'approved',
+  invited: 'invited',
   pending: 'pending',
   rejected: 'rejected',
   removed: 'removed',
@@ -7,6 +8,7 @@ export const ACCOUNT_STATUS = {
 } as const;
 
 export const ACCOUNT_STATUS_VALUES = [
+  ACCOUNT_STATUS.invited,
   ACCOUNT_STATUS.pending,
   ACCOUNT_STATUS.approved,
   ACCOUNT_STATUS.rejected,

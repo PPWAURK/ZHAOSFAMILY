@@ -75,6 +75,7 @@ import { ProfileScreen } from "@/features/profile/ProfileScreen";
 import { RecruitmentModuleScreen } from "@/features/recruitment/RecruitmentModuleScreen";
 import { RecipeModuleScreen } from "@/features/recipes/RecipeModuleScreen";
 import { StoresModuleScreen } from "@/features/stores/StoresModuleScreen";
+import { InvitePartnerScreen } from "@/features/stores/InvitePartnerScreen";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { TrainingHistoryView } from "@/features/training/TrainingHistoryView";
 import { TrainingModuleScreen } from "@/features/training/TrainingModuleScreen";
@@ -216,6 +217,7 @@ function isConnectedDashboardEntry(entryId: string): boolean {
     entryId === "orders" ||
     entryId === "recipes" ||
     entryId === "profile" ||
+    entryId === "invite-partner" ||
     entryId === "recruitment-requests" ||
     entryId === "store-grade-ranking" ||
     entryId === "stores" ||
@@ -850,6 +852,8 @@ export function DashboardHomeScreen({
               onUpdateProfile={onUpdateProfile}
               onDeleteAccount={onDeleteAccount}
             />
+          ) : activeEntry === "invite-partner" ? (
+            <InvitePartnerScreen language={language} user={user} />
           ) : activeEntry === "recruitment-requests" ? (
             <RecruitmentModuleScreen language={language} />
           ) : activeEntry === "recipes" ? (

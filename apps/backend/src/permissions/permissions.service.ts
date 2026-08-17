@@ -12,7 +12,9 @@ import { ACCOUNT_STATUS } from '../auth/account-status';
 import { accountApprovedNotification } from '../notifications/notification-content';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { JOB_ROLE_VALUES } from '../auth/job-roles';
 import { UpdateUserApprovalDto } from './dto/update-user-approval.dto';
+import { SendEmployeeInvitationDto } from './dto/send-employee-invitation.dto';
 import {
   BUILT_IN_ROLE_NAMES,
   ManageableRestaurantItem,
@@ -66,6 +68,11 @@ type ManagedRestaurantRow = {
   restaurantId: number;
 };
 
+type TrainingPositionRoleRow = {
+  code: string;
+  parentCode: string | null;
+};
+
 const SUPER_ADMIN_ROLE_NAME = 'super-admin';
 const TRAINING_VIEWER_ROLE_NAME = 'training-viewer';
 const HOLDING_JOB_ROLE = 'holding';
@@ -102,6 +109,18 @@ const REGIONAL_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES = new Set([
   STORE_MANAGER_JOB_ROLE,
   ...STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
 ]);
+const MANAGEMENT_TRAINING_POSITION_CODES = new Set([
+  'ALL',
+  'SM',
+  'RM',
+  'HOLDING',
+]);
+const STORE_ASSIGNABLE_TRAINING_POSITION_ROOT_CODES = new Set([
+  'FOH',
+  'BOH',
+  'CASH',
+]);
+const BUILT_IN_JOB_ROLE_VALUES = new Set<string>(JOB_ROLE_VALUES);
 
 const BUILT_IN_ROLE_ORDER = new Map<string, number>(
   BUILT_IN_ROLE_NAMES.map((roleName, index) => [roleName, index]),
@@ -369,6 +388,27 @@ export class PermissionsService {
     return this.getUser(userId);
   }
 
+  async sendEmployeeInvitation(
+    viewer: AuthUser,
+    dto: SendEmployeeInvitationDto,
+  ): Promise<void> {
+    if (!this.parseJobRoles(viewer.jobRole).has(STORE_MANAGER_JOB_ROLE)) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+    }
+
+    const jobRole = await this.resolveStoreManagerInvitationJobRole(
+      dto.jobRole,
+    );
+
+    await this.authService.sendEmployeeInvitation({
+      email: dto.email,
+      jobRole,
+      language: dto.language,
+      restaurantId: viewer.restaurantId,
+      storeName: viewer.store.name,
+    });
+  }
+
   async updateUserApproval(
     viewer: AuthUser,
     userId: number,
@@ -390,16 +430,19 @@ export class PermissionsService {
     if (dto.accountStatus === ACCOUNT_STATUS.approved && !nextJobRole) {
       throw new BadRequestException('INVALID_JOB_ROLE');
     }
-    if (dto.accountStatus === ACCOUNT_STATUS.approved && nextJobRole) {
-      this.assertApprovalJobRoleAllowed(viewer, nextJobRole);
-    }
+    const normalizedJobRole =
+      dto.accountStatus === ACCOUNT_STATUS.approved && nextJobRole
+        ? await this.resolveAssignableJobRole(viewer, nextJobRole)
+        : null;
 
     const reviewData = {
       accountStatus: dto.accountStatus,
       accountReviewedAt: new Date(),
       accountReviewedByUserId: viewer.id,
       ...(dto.restaurantId ? { restaurantId: dto.restaurantId } : {}),
-      ...(dto.jobRole ? { jobRole: dto.jobRole } : {}),
+      ...(dto.jobRole && normalizedJobRole
+        ? { jobRole: normalizedJobRole }
+        : {}),
     };
 
     if (dto.accountStatus === ACCOUNT_STATUS.rejected) {
@@ -472,11 +515,15 @@ export class PermissionsService {
     jobRole: string,
   ): Promise<PermissionUserItem> {
     const targetUser = await this.getUserRoleScope(userId);
-    await this.assertJobRoleUpdateAllowed(viewer, targetUser, jobRole);
+    await this.assertJobRoleUpdateAllowed(viewer, targetUser);
+    const normalizedJobRole = await this.resolveAssignableJobRole(
+      viewer,
+      jobRole,
+    );
 
     await this.prismaService.user.update({
       where: { id: userId },
-      data: { jobRole },
+      data: { jobRole: normalizedJobRole },
     });
 
     return this.getUser(userId);
@@ -744,34 +791,9 @@ export class PermissionsService {
     throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
   }
 
-  private assertApprovalJobRoleAllowed(
-    viewer: AuthUser,
-    jobRole: string,
-  ): void {
-    if (this.hasHoldingScope(viewer)) {
-      return;
-    }
-
-    const viewerRoles = this.parseJobRoles(viewer.jobRole);
-    const canApproveStoreJobRole =
-      viewerRoles.has(REGIONAL_MANAGER_JOB_ROLE) ||
-      viewerRoles.has(STORE_MANAGER_JOB_ROLE) ||
-      viewer.permissions.includes(MANAGE_STORE_JOB_ROLES_PERMISSION);
-
-    if (
-      canApproveStoreJobRole &&
-      this.areJobRolesAssignableByViewer(viewer, this.parseJobRoles(jobRole))
-    ) {
-      return;
-    }
-
-    throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
-  }
-
   private async assertJobRoleUpdateAllowed(
     viewer: AuthUser,
     targetUser: PermissionUserRoleScope,
-    jobRole: string,
   ): Promise<void> {
     if (this.hasHoldingScope(viewer)) {
       return;
@@ -800,12 +822,6 @@ export class PermissionsService {
         viewer.id,
         targetUser.restaurantId,
       );
-    }
-
-    if (
-      !this.areJobRolesAssignableByViewer(viewer, this.parseJobRoles(jobRole))
-    ) {
-      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
     }
   }
 
@@ -908,12 +924,119 @@ export class PermissionsService {
     );
   }
 
+  private async resolveAssignableJobRole(
+    viewer: AuthUser,
+    jobRole: string,
+  ): Promise<string> {
+    const jobRoles = [...this.parseJobRoles(jobRole)];
+
+    if (jobRoles.length === 0) {
+      throw new BadRequestException('INVALID_JOB_ROLE');
+    }
+
+    const customPositionRoles = jobRoles.filter(
+      (role) => !BUILT_IN_JOB_ROLE_VALUES.has(role.toLowerCase()),
+    );
+    const positions =
+      await this.findActiveTrainingPositions(customPositionRoles);
+    const positionsByCode = new Map(
+      positions.map((position) => [position.code, position]),
+    );
+
+    if (
+      customPositionRoles.some(
+        (role) => !positionsByCode.has(role.toUpperCase()),
+      )
+    ) {
+      throw new BadRequestException('INVALID_JOB_ROLE');
+    }
+
+    const normalizedJobRoles = jobRoles.map((role) => {
+      const builtInRole = role.toLowerCase();
+
+      return BUILT_IN_JOB_ROLE_VALUES.has(builtInRole)
+        ? builtInRole
+        : positionsByCode.get(role.toUpperCase())!.code;
+    });
+
+    if (
+      !this.areJobRolesAssignableByViewer(
+        viewer,
+        normalizedJobRoles,
+        positionsByCode,
+      )
+    ) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+    }
+
+    return [...new Set(normalizedJobRoles)].join(',');
+  }
+
+  private async resolveStoreManagerInvitationJobRole(
+    jobRole: string,
+  ): Promise<string> {
+    const jobRoles = [...this.parseJobRoles(jobRole)];
+
+    if (jobRoles.length !== 1) {
+      throw new BadRequestException('INVALID_JOB_ROLE');
+    }
+
+    const [jobRoleValue] = jobRoles;
+    const normalizedBuiltInRole = jobRoleValue.toLowerCase();
+
+    if (BUILT_IN_JOB_ROLE_VALUES.has(normalizedBuiltInRole)) {
+      if (
+        !STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES.has(normalizedBuiltInRole)
+      ) {
+        throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+      }
+
+      return normalizedBuiltInRole;
+    }
+
+    const positions = await this.findActiveTrainingPositions([jobRoleValue]);
+    const positionsByCode = new Map(
+      positions.map((position) => [position.code, position]),
+    );
+    const positionCode = jobRoleValue.toUpperCase();
+
+    if (!positionsByCode.has(positionCode)) {
+      throw new BadRequestException('INVALID_JOB_ROLE');
+    }
+
+    if (
+      !this.isStoreAssignableTrainingPosition(positionCode, positionsByCode)
+    ) {
+      throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
+    }
+
+    return positionsByCode.get(positionCode)!.code;
+  }
+
+  private async findActiveTrainingPositions(
+    customPositionRoles: string[],
+  ): Promise<TrainingPositionRoleRow[]> {
+    if (customPositionRoles.length === 0) {
+      return [];
+    }
+
+    return this.prismaService.trainingPosition.findMany({
+      where: { isActive: true },
+      select: { code: true, parentCode: true },
+    });
+  }
+
   private areJobRolesAssignableByViewer(
     viewer: AuthUser,
-    jobRoles: Set<string>,
+    jobRoles: string[],
+    positionsByCode: Map<string, TrainingPositionRoleRow>,
   ): boolean {
-    if (jobRoles.size === 0) {
+    if (jobRoles.length === 0) {
       return false;
+    }
+
+    if (this.hasHoldingScope(viewer)) {
+      return true;
     }
 
     const viewerRoles = this.parseJobRoles(viewer.jobRole);
@@ -924,7 +1047,37 @@ export class PermissionsService {
         ? STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES
         : new Set<string>();
 
-    return [...jobRoles].every((role) => assignableRoles.has(role));
+    return jobRoles.every((role) => {
+      if (BUILT_IN_JOB_ROLE_VALUES.has(role)) {
+        return assignableRoles.has(role);
+      }
+
+      return this.isStoreAssignableTrainingPosition(role, positionsByCode);
+    });
+  }
+
+  private isStoreAssignableTrainingPosition(
+    positionCode: string,
+    positionsByCode: Map<string, TrainingPositionRoleRow>,
+  ): boolean {
+    const visited = new Set<string>();
+    let position = positionsByCode.get(positionCode);
+
+    while (position && !visited.has(position.code)) {
+      if (MANAGEMENT_TRAINING_POSITION_CODES.has(position.code)) {
+        return false;
+      }
+      if (STORE_ASSIGNABLE_TRAINING_POSITION_ROOT_CODES.has(position.code)) {
+        return true;
+      }
+
+      visited.add(position.code);
+      position = position.parentCode
+        ? positionsByCode.get(position.parentCode)
+        : undefined;
+    }
+
+    return false;
   }
 
   private parseJobRoles(jobRole: string | null | undefined): Set<string> {

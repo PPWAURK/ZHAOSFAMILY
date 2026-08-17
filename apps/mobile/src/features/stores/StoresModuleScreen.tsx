@@ -22,6 +22,7 @@ import {
 import {
   fetchApprovableUsers,
   fetchManageableStores,
+  fetchTrainingPositions,
   updateUserApproval,
   updateUserJobRole,
 } from "@/features/stores/storeApi";
@@ -32,6 +33,7 @@ import type {
   StoreApprovalDraft,
   StoreJobRoleOption,
   StoreTeamDraft,
+  TrainingPositionOption,
 } from "@/features/stores/storeTypes";
 
 type StoresModuleScreenProps = {
@@ -45,6 +47,28 @@ type StoresState = {
 };
 
 type StoreDetailView = "overview" | "pending" | "team" | "stats";
+
+const BUILT_IN_TRAINING_POSITION_CODES = new Set([
+  "ALL",
+  "FOH",
+  "BOH",
+  "CASH",
+  "SM",
+  "RM",
+  "HOLDING",
+  "FRONT_HOST",
+  "FRONT_CASHIER",
+  "FRONT_SERVER",
+  "FRONT_PACKER",
+  "FRONT_BAR",
+  "FRONT_MANAGER",
+  "FRONT_ASSISTANT",
+  "BACK_DISHWASHER",
+  "BACK_NOODLE",
+  "BACK_HOT_APPETIZER",
+  "BACK_COLD_APPETIZER",
+  "BACK_RICE",
+]);
 
 function getJobRoleValues(user: AuthUser): string[] {
   return `${user.jobRole || user.position || user.role || ""}`
@@ -64,13 +88,45 @@ function canManageRegionalJobRoles(user: AuthUser): boolean {
   return getJobRoleValues(user).includes("regional-manager");
 }
 
-function getVisibleRoleOptions(language: AuthLanguage, user: AuthUser): StoreJobRoleOption[] {
+function flattenTrainingPositions(
+  positions: TrainingPositionOption[],
+): TrainingPositionOption[] {
+  return positions.flatMap((position) => [
+    position,
+    ...flattenTrainingPositions(position.children),
+  ]);
+}
+
+function getCustomTrainingPositionOptions(
+  positions: TrainingPositionOption[],
+  language: AuthLanguage,
+): StoreJobRoleOption[] {
+  return flattenTrainingPositions(positions)
+    .filter(
+      (position) =>
+        position.isActive && !BUILT_IN_TRAINING_POSITION_CODES.has(position.code),
+    )
+    .map((position) => ({
+      value: position.code,
+      label: position.name[language] || position.name.zh || position.code,
+    }));
+}
+
+function getVisibleRoleOptions(
+  language: AuthLanguage,
+  user: AuthUser,
+  trainingPositions: TrainingPositionOption[],
+): StoreJobRoleOption[] {
   const options = STORE_JOB_ROLE_OPTIONS[language];
+  const customPositionOptions = getCustomTrainingPositionOptions(
+    trainingPositions,
+    language,
+  );
 
   // Holding/admins may assign any role; regional and store managers use
   // the same hierarchy enforced by the backend.
   if (canManageHoldingRole(user)) {
-    return options;
+    return [...options, ...customPositionOptions];
   }
 
   const assignable = new Set(
@@ -79,7 +135,10 @@ function getVisibleRoleOptions(language: AuthLanguage, user: AuthUser): StoreJob
       : STORE_MANAGER_ASSIGNABLE_JOB_ROLE_VALUES,
   );
 
-  return options.filter((option) => assignable.has(option.value));
+  return [
+    ...options.filter((option) => assignable.has(option.value)),
+    ...customPositionOptions,
+  ];
 }
 
 function getUsersForStore(users: MobilePermissionUser[], storeId: number): MobilePermissionUser[] {
@@ -132,7 +191,11 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
   const confirm = useConfirm();
   const toast = useToast();
   const copy = STORE_COPY[language];
-  const roleOptions = useMemo(() => getVisibleRoleOptions(language, user), [language, user]);
+  const [trainingPositions, setTrainingPositions] = useState<TrainingPositionOption[]>([]);
+  const roleOptions = useMemo(
+    () => getVisibleRoleOptions(language, user, trainingPositions),
+    [language, trainingPositions, user],
+  );
   const [data, setData] = useState<StoresState>({ stores: [], users: [] });
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [detailView, setDetailView] = useState<StoreDetailView>("overview");
@@ -171,14 +234,16 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
       setErrorMessage("");
 
       try {
-        const [stores, users] = await Promise.all([
+        const [stores, users, positions] = await Promise.all([
           fetchManageableStores(),
           fetchApprovableUsers(),
+          fetchTrainingPositions(),
         ]);
 
         if (isCancelled) return;
 
         setData({ stores, users });
+        setTrainingPositions(positions);
         setApprovalDrafts(buildApprovalDrafts(users));
         setTeamDrafts(buildTeamDrafts(users));
       } catch (error) {
