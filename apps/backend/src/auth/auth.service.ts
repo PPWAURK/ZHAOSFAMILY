@@ -275,10 +275,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       },
       select: {
         id: true,
+        accountStatus: true,
       },
     });
 
-    if (existingUser) {
+    if (
+      existingUser &&
+      existingUser.accountStatus !== ACCOUNT_STATUS.rejected
+    ) {
       throw new ConflictException('EMAIL_ALREADY_REGISTERED');
     }
 
@@ -288,36 +292,44 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
     const birthday = parseOptionalBirthday(registerDto.birthday);
     const passwordHash = await hashPassword(registerDto.password);
-    const user = await this.prismaService.user.create({
-      data: {
-        familyName,
-        givenName,
-        name: buildFullName(familyName, givenName),
-        email: normalizedEmail,
-        emailVerified: false,
-        accountStatus: ACCOUNT_STATUS.pending,
-        accountReviewedAt: null,
-        accountReviewedByUserId: null,
-        passwordHash,
-        restaurantId: registerDto.restaurantId,
-        birthday,
-        jobRole: registerDto.jobRole ?? null,
-        profilePhoto: registerDto.profilePhotoDataUrl ?? null,
-        userLevel: registerDto.level ?? DEFAULT_USER_LEVEL,
-        acceptedTerms: registerDto.acceptedTerms,
-        preferredLanguage: registerDto.language,
-      },
-      include: {
-        restaurant: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            photoObjectKey: true,
-          },
+    const registrationData = {
+      familyName,
+      givenName,
+      name: buildFullName(familyName, givenName),
+      email: normalizedEmail,
+      emailVerified: false,
+      accountStatus: ACCOUNT_STATUS.pending,
+      accountReviewedAt: null,
+      accountReviewedByUserId: null,
+      passwordHash,
+      restaurantId: registerDto.restaurantId,
+      birthday,
+      jobRole: registerDto.jobRole ?? null,
+      profilePhoto: registerDto.profilePhotoDataUrl ?? null,
+      userLevel: registerDto.level ?? DEFAULT_USER_LEVEL,
+      acceptedTerms: registerDto.acceptedTerms,
+      preferredLanguage: registerDto.language,
+    };
+    const restaurantInclude = {
+      restaurant: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          photoObjectKey: true,
         },
       },
-    });
+    };
+    const user = existingUser
+      ? await this.prismaService.user.update({
+          where: { id: existingUser.id },
+          data: registrationData,
+          include: restaurantInclude,
+        })
+      : await this.prismaService.user.create({
+          data: registrationData,
+          include: restaurantInclude,
+        });
 
     return {
       message: 'REGISTRATION_PENDING_APPROVAL',
