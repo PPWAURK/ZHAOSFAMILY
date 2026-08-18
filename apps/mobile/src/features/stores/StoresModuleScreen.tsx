@@ -23,6 +23,7 @@ import {
   fetchTrainingPositions,
   updateUserApproval,
   updateUserJobRole,
+  type UpdateUserApprovalResult,
 } from "@/features/stores/storeApi";
 import { storeStyles as styles } from "@/features/stores/storeStyles";
 import type {
@@ -314,7 +315,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
     setErrorMessage("");
 
     try {
-      const updatedUser = await updateUserApproval(
+      const result = await updateUserApproval(
         permissionUser.id,
         accountStatus,
         accountStatus === "approved"
@@ -324,6 +325,21 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
             }
           : {},
       );
+
+      if (isDeletedApprovalResult(result)) {
+        setData((current) => ({
+          ...current,
+          users: current.users.filter((user) => user.id !== permissionUser.id),
+        }));
+        setApprovalDrafts((current) => {
+          const nextDrafts = { ...current };
+          delete nextDrafts[permissionUser.id];
+          return nextDrafts;
+        });
+        return;
+      }
+
+      const updatedUser = result;
 
       setData((current) => ({
         ...current,
@@ -383,11 +399,15 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
     setErrorMessage("");
 
     try {
-      const updatedUser = await updateUserApproval(permissionUser.id, "rejected");
+      const result = await updateUserApproval(permissionUser.id, "rejected");
+
+      if (!isDeletedApprovalResult(result)) {
+        throw new Error("EMPLOYEE_DELETION_FAILED");
+      }
 
       setData((current) => ({
         ...current,
-        users: upsertUser(current.users, updatedUser),
+        users: current.users.filter((user) => user.id !== permissionUser.id),
       }));
       setTeamDrafts((current) => {
         const nextDrafts = { ...current };
@@ -681,4 +701,10 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
       ) : null}
     </View>
   );
+}
+
+function isDeletedApprovalResult(
+  result: UpdateUserApprovalResult,
+): result is { message: "EMPLOYEE_DELETED" } {
+  return "message" in result;
 }

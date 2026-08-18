@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Modal, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { FlashList } from "@shopify/flash-list";
 import type { NotificationItem } from "@zhao/types";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
+import { FeedbackPressable } from "@/components/FeedbackPressable";
+import { Skeleton } from "@/components/Skeleton";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { resolveNotificationEntry, type NotificationEntry } from "@/lib/useNotificationNavigation";
 import {
@@ -112,7 +107,7 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
 
   return (
     <>
-      <Pressable
+      <FeedbackPressable
         accessibilityLabel={copy.bellLabel}
         accessibilityRole="button"
         style={styles.bellButton}
@@ -126,7 +121,7 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
             </Text>
           </View>
         ) : null}
-      </Pressable>
+      </FeedbackPressable>
 
       <Modal
         animationType="slide"
@@ -140,24 +135,24 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
               <Text style={styles.title}>{copy.title}</Text>
               <View style={styles.headerActions}>
                 {items.some((item) => !item.readAt) ? (
-                  <Pressable onPress={handleMarkAll} hitSlop={8}>
+                  <FeedbackPressable onPress={handleMarkAll} hitSlop={8}>
                     <Text style={styles.markAll}>{copy.markAll}</Text>
-                  </Pressable>
+                  </FeedbackPressable>
                 ) : null}
-                <Pressable
+                <FeedbackPressable
                   accessibilityLabel={copy.close}
                   accessibilityRole="button"
                   onPress={() => setIsOpen(false)}
                   hitSlop={8}
                 >
                   <Ionicons color={colors.ink} name="close" size={24} />
-                </Pressable>
+                </FeedbackPressable>
               </View>
             </View>
 
             {isLoading ? (
               <View style={styles.stateBox}>
-                <ActivityIndicator color={colors.red} />
+                <Skeleton style={styles.loadingSkeleton} />
               </View>
             ) : hasError ? (
               <View style={styles.stateBox}>
@@ -168,12 +163,12 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
                 <Text style={styles.stateText}>{copy.empty}</Text>
               </View>
             ) : (
-              <FlatList
+              <FlashList
                 data={items}
                 keyExtractor={(item) => String(item.id)}
                 contentContainerStyle={styles.listContent}
                 renderItem={({ item }) => (
-                  <Pressable
+                  <FeedbackPressable
                     style={[styles.row, item.readAt ? null : styles.rowUnread]}
                     onPress={() => void handlePressItem(item)}
                   >
@@ -187,7 +182,7 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
                       <Text style={styles.rowText}>{item.body}</Text>
                       <Text style={styles.rowTime}>{formatRelativeTime(item.createdAt, copy)}</Text>
                     </View>
-                  </Pressable>
+                  </FeedbackPressable>
                 )}
               />
             )}
@@ -234,6 +229,7 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: "row", alignItems: "center", gap: 16 },
   markAll: { fontSize: 13, fontWeight: "600", color: colors.red },
   stateBox: { paddingVertical: 48, alignItems: "center", justifyContent: "center" },
+  loadingSkeleton: { height: 72, width: "84%" },
   stateText: { fontSize: 14, color: colors.ink60 },
   listContent: { paddingBottom: 8 },
   row: {

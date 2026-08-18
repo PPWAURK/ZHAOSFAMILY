@@ -23,6 +23,7 @@ import type {
   CaseShareType,
 } from "@zhao/types";
 import { useScreenName } from "@/lib/useScreenName";
+import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { useConfirm } from "@/components/confirm/ConfirmProvider";
 import { useToast } from "@/components/toast/ToastProvider";
@@ -250,6 +251,7 @@ export function CaseSharesModuleScreen({
       setComposerOpen(false);
       onOpenMyCases?.();
       toast.success(copy.submitSuccess);
+      triggerSuccessFeedback();
     } catch (error) {
       const isUpload = composerImage && !(error instanceof Error);
       setComposerError(isUpload ? copy.uploadError : copy.submitError);
@@ -277,6 +279,7 @@ export function CaseSharesModuleScreen({
       await deleteCaseShare(item.id);
       setMine((current) => current.filter((entry) => entry.id !== item.id));
       toast.success(copy.deleteSuccess);
+      triggerSuccessFeedback();
     } catch {
       toast.error(copy.deleteError);
     } finally {

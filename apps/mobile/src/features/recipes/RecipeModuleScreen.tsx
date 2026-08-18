@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Image, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { recipesQueryKeys } from "@zhao/api";
+import { useQuery } from "@tanstack/react-query";
 import { MANAGEMENT_JOB_ROLES, resolveJobRoles } from "@zhao/utils";
 import type { AuthUser, Recipe, RecipeLocalizedText } from "@zhao/types";
 
+import { ErrorState, EmptyState } from "@/components/ContentState";
+import { FeedbackPressable } from "@/components/FeedbackPressable";
+import { RemoteImage } from "@/components/RemoteImage";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { fetchRecipes } from "@/features/recipes/recipesApi";
 import { recipeStyles as styles } from "@/features/recipes/recipeStyles";
@@ -113,20 +111,31 @@ function formatRoleLabels(roles: string[]): string {
   return roles.join(" · ");
 }
 
-function getRecipeImage(imageUrl: string | null) {
-  if (!imageUrl) return fallbackRecipeImage;
+function getRecipeImageSource(imageUrl: string | null) {
+  if (!imageUrl) return null;
 
   return {
-    uri: imageUrl.startsWith("/recipes/images/")
-      ? `${MOBILE_API_URL}${imageUrl}`
-      : imageUrl,
+    uri: imageUrl.startsWith("/recipes/images/") ? `${MOBILE_API_URL}${imageUrl}` : imageUrl,
   };
 }
 
-function getRecipeText(
-  value: RecipeLocalizedText,
-  language: AuthLanguage,
-): string {
+function RecipeImage({
+  imageUrl,
+  style,
+}: {
+  imageUrl: string | null;
+  style: object;
+}): React.JSX.Element {
+  return (
+    <RemoteImage
+      fallback={<Image resizeMode="cover" source={fallbackRecipeImage} style={style} />}
+      source={getRecipeImageSource(imageUrl)}
+      style={style}
+    />
+  );
+}
+
+function getRecipeText(value: RecipeLocalizedText, language: AuthLanguage): string {
   return language === "zh" ? value.zh || value.fr : value.fr || value.zh;
 }
 
@@ -157,8 +166,14 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
   const [servings, setServings] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loadError, setLoadError] = useState("");
+  const recipesQuery = useQuery({
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: () => fetchRecipes({ pageSize: 100 }),
+    queryKey: recipesQueryKeys.lists(),
+    staleTime: 30 * 60 * 1000,
+  });
+  const recipes = recipesQuery.data ?? [];
   const roles = useMemo(() => resolveJobRoles(user), [user]);
   const isRecipeAdministrator =
     roles.some((role) => MANAGEMENT_JOB_ROLES.some((value) => value === role)) ||
@@ -167,35 +182,13 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
   const allCategories = copy.allCategories;
 
   useEffect(() => {
-    let isActive = true;
-
-    async function loadRecipes(): Promise<void> {
-      try {
-        setLoadError("");
-        const nextRecipes = await fetchRecipes({ pageSize: 100 });
-        if (isActive) setRecipes(nextRecipes);
-      } catch {
-        if (isActive) setLoadError(copy.loadError);
-      }
-    }
-
-    void loadRecipes();
-
-    return () => {
-      isActive = false;
-    };
-  }, [copy.loadError]);
-
-  useEffect(() => {
     setCategory(allCategories);
   }, [allCategories]);
 
   const categories = useMemo(
     () => [
       allCategories,
-      ...Array.from(
-        new Set(recipes.map((recipe) => getRecipeText(recipe.category, language))),
-      ),
+      ...Array.from(new Set(recipes.map((recipe) => getRecipeText(recipe.category, language)))),
     ],
     [allCategories, language, recipes],
   );
@@ -209,17 +202,13 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
       const matchesCategory = category === allCategories || recipeCategory === category;
       const matchesSearch =
         !query ||
-        [recipeName, recipeCategory, ...recipeTags]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
+        [recipeName, recipeCategory, ...recipeTags].join(" ").toLowerCase().includes(query);
 
       return matchesCategory && matchesSearch;
     });
   }, [allCategories, language, recipes, category, searchTerm]);
   const featuredRecipe = visibleRecipes[0];
-  const hasActiveRecipeFilter =
-    Boolean(searchTerm.trim()) || category !== allCategories;
+  const hasActiveRecipeFilter = Boolean(searchTerm.trim()) || category !== allCategories;
 
   function openRecipe(recipe: Recipe): void {
     setSelectedRecipe(recipe);
@@ -230,17 +219,13 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
 
   function toggleFavorite(recipeId: number): void {
     setFavorites((current) =>
-      current.includes(recipeId)
-        ? current.filter((id) => id !== recipeId)
-        : [...current, recipeId],
+      current.includes(recipeId) ? current.filter((id) => id !== recipeId) : [...current, recipeId],
     );
   }
 
   function toggleStep(index: number): void {
     setCompletedSteps((current) =>
-      current.includes(index)
-        ? current.filter((value) => value !== index)
-        : [...current, index],
+      current.includes(index) ? current.filter((value) => value !== index) : [...current, index],
     );
   }
 
@@ -250,19 +235,15 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
 
     return (
       <View style={styles.module}>
-        <Pressable
+        <FeedbackPressable
           accessibilityRole="button"
           style={styles.backButton}
           onPress={() => setView("list")}
         >
           <Ionicons color="#c11616" name="arrow-back" size={18} />
           <Text style={styles.backButtonText}>{copy.back}</Text>
-        </Pressable>
-        <Image
-          source={getRecipeImage(selectedRecipe.finishedImageUrl)}
-          resizeMode="cover"
-          style={styles.heroImage}
-        />
+        </FeedbackPressable>
+        <RecipeImage imageUrl={selectedRecipe.finishedImageUrl} style={styles.heroImage} />
         <View style={styles.detailIntro}>
           <RecipeTags language={language} tags={selectedRecipe.tags} />
           <Text style={styles.detailTitle}>{getRecipeText(selectedRecipe.name, language)}</Text>
@@ -270,7 +251,7 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
             {copy.prep} {selectedRecipe.preparationMinutes} MIN · {copy.cook}{" "}
             {selectedRecipe.cookingMinutes} MIN
           </Text>
-          <Pressable
+          <FeedbackPressable
             accessibilityRole="button"
             style={styles.favoriteButton}
             onPress={() => toggleFavorite(selectedRecipe.id)}
@@ -278,44 +259,40 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
             <Text style={styles.favoriteButtonText}>
               {isFavorite ? copy.unfavorite : copy.favorite} {isFavorite ? "♥" : "♡"}
             </Text>
-          </Pressable>
+          </FeedbackPressable>
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionKicker}>01 · {copy.servings}</Text>
           <View style={styles.scaleControl}>
-            <Pressable
+            <FeedbackPressable
               accessibilityLabel="减少份数"
               style={styles.scaleToggle}
               onPress={() => setServings((value) => Math.max(1, value - 1))}
             >
               <Text style={styles.scaleToggleText}>−</Text>
-            </Pressable>
+            </FeedbackPressable>
             <View>
               <Text style={styles.scaleNumber}>{servings}</Text>
               <Text style={styles.scaleText}>{copy.servings.toUpperCase()}</Text>
             </View>
-            <Pressable
+            <FeedbackPressable
               accessibilityLabel="增加份数"
               style={styles.scaleToggle}
               onPress={() => setServings((value) => value + 1)}
             >
               <Text style={styles.scaleToggleText}>＋</Text>
-            </Pressable>
+            </FeedbackPressable>
           </View>
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionKicker}>02 · {copy.ingredients}</Text>
           {selectedRecipe.ingredients.map((ingredient) => (
             <View key={ingredient.id} style={styles.ingredientRow}>
-              <Text style={styles.ingredientName}>
-                {getRecipeText(ingredient.name, language)}
-              </Text>
+              <Text style={styles.ingredientName}>{getRecipeText(ingredient.name, language)}</Text>
               <Text style={styles.ingredientAmount}>
                 {scaledQuantity(ingredient.quantity, multiplier)}
               </Text>
-              <Text style={styles.ingredientUnit}>
-                {getRecipeText(ingredient.unit, language)}
-              </Text>
+              <Text style={styles.ingredientUnit}>{getRecipeText(ingredient.unit, language)}</Text>
             </View>
           ))}
         </View>
@@ -325,32 +302,28 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
             const complete = completedSteps.includes(index);
 
             return (
-              <Pressable
+              <FeedbackPressable
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: complete }}
                 key={step.id}
                 style={styles.stepItem}
                 onPress={() => toggleStep(index)}
               >
-                <Text style={styles.stepNumber}>
-                  {String(index + 1).padStart(2, "0")}
-                </Text>
+                <Text style={styles.stepNumber}>{String(index + 1).padStart(2, "0")}</Text>
                 <View style={[styles.stepCheck, complete ? styles.stepCheckDone : null]}>
                   {complete ? <Ionicons color="#fff" name="checkmark" size={15} /> : null}
                 </View>
                 <Text style={[styles.stepText, complete ? styles.stepTextDone : null]}>
                   {getRecipeText(step.instruction, language)}
                 </Text>
-              </Pressable>
+              </FeedbackPressable>
             );
           })}
         </View>
         {selectedRecipe.note ? (
           <View style={styles.section}>
             <Text style={styles.sectionKicker}>04 · {copy.note}</Text>
-            <Text style={styles.noteText}>
-              {getRecipeText(selectedRecipe.note, language)}
-            </Text>
+            <Text style={styles.noteText}>{getRecipeText(selectedRecipe.note, language)}</Text>
           </View>
         ) : null}
       </View>
@@ -363,7 +336,9 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
         <Text style={styles.sectionKicker}>{copy.kicker}</Text>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{copy.title}</Text>
-          <View style={styles.recipeCount}><Text style={styles.recipeCountText}>{recipes.length}</Text></View>
+          <View style={styles.recipeCount}>
+            <Text style={styles.recipeCountText}>{recipes.length}</Text>
+          </View>
         </View>
         <Text style={styles.roleCaption}>
           {isRecipeAdministrator
@@ -373,12 +348,12 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
       </View>
 
       {featuredRecipe ? (
-        <Pressable
+        <FeedbackPressable
           accessibilityRole="button"
           style={styles.featuredRecipe}
           onPress={() => openRecipe(featuredRecipe)}
         >
-          <Image source={getRecipeImage(featuredRecipe.coverImageUrl)} resizeMode="cover" style={styles.featuredImage} />
+          <RecipeImage imageUrl={featuredRecipe.coverImageUrl} style={styles.featuredImage} />
           <View style={styles.featuredBody}>
             <View>
               <Text style={styles.featuredKicker}>{copy.featured}</Text>
@@ -392,18 +367,23 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
             </View>
             <Text style={styles.featuredAction}>{copy.openRecipe} →</Text>
           </View>
-        </Pressable>
+        </FeedbackPressable>
+      ) : recipesQuery.isError ? (
+        <ErrorState
+          actionLabel="Retry"
+          description={copy.loadError}
+          title={copy.emptyTitle}
+          onAction={() => void recipesQuery.refetch()}
+        />
       ) : (
-        <View style={styles.emptyState}>
-          <Ionicons color="#c11616" name="book-outline" size={24} />
-          <Text style={styles.emptyTitle}>{loadError || copy.emptyTitle}</Text>
-          <Text style={styles.emptyDetail}>{loadError ? copy.emptyTitle : copy.emptyDetail}</Text>
-        </View>
+        <EmptyState description={copy.emptyDetail} title={copy.emptyTitle} />
       )}
 
       <View style={styles.libraryHeader}>
         <Text style={styles.libraryTitle}>{copy.allRecipes}</Text>
-        <Text style={styles.libraryCount}>{visibleRecipes.length} {copy.count}</Text>
+        <Text style={styles.libraryCount}>
+          {visibleRecipes.length} {copy.count}
+        </Text>
       </View>
       <TextInput
         accessibilityLabel={copy.search}
@@ -420,40 +400,39 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
         contentContainerStyle={styles.categoryRow}
       >
         {categories.map((item) => (
-          <Pressable
+          <FeedbackPressable
             key={item}
             style={[styles.categoryButton, category === item ? styles.categoryButtonActive : null]}
             onPress={() => setCategory(item)}
           >
-            <Text style={[styles.categoryText, category === item ? styles.categoryTextActive : null]}>
+            <Text
+              style={[styles.categoryText, category === item ? styles.categoryTextActive : null]}
+            >
               {item}
             </Text>
-          </Pressable>
+          </FeedbackPressable>
         ))}
       </ScrollView>
       <View style={styles.recipeList}>
         {visibleRecipes.map((recipe) => (
-          <Pressable
+          <FeedbackPressable
             accessibilityRole="button"
             key={recipe.id}
             style={styles.recipeRow}
             onPress={() => openRecipe(recipe)}
           >
-            <Image source={getRecipeImage(recipe.coverImageUrl)} resizeMode="cover" style={styles.recipeRowImage} />
+            <RecipeImage imageUrl={recipe.coverImageUrl} style={styles.recipeRowImage} />
             <View style={styles.recipeRowBody}>
               <RecipeTags language={language} tags={recipe.tags} />
-              <Text style={styles.recipeRowTitle}>
-                {getRecipeText(recipe.name, language)}
-              </Text>
+              <Text style={styles.recipeRowTitle}>{getRecipeText(recipe.name, language)}</Text>
               <Text style={styles.meta}>
-                {getRecipeText(recipe.category, language)} · {copy.prep}{" "}
-                {recipe.preparationMinutes} MIN · {copy.cook}{" "}
-                {recipe.cookingMinutes} MIN
+                {getRecipeText(recipe.category, language)} · {copy.prep} {recipe.preparationMinutes}{" "}
+                MIN · {copy.cook} {recipe.cookingMinutes} MIN
               </Text>
             </View>
-          </Pressable>
+          </FeedbackPressable>
         ))}
-        {!featuredRecipe && !loadError && hasActiveRecipeFilter ? (
+        {!featuredRecipe && !recipesQuery.isError && hasActiveRecipeFilter ? (
           <View style={styles.searchEmptyState}>
             <Ionicons color="#c11616" name="search-outline" size={20} />
             <Text style={styles.searchEmptyText}>{copy.noSearchResults}</Text>

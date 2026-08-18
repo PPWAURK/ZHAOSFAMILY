@@ -1239,34 +1239,26 @@ describe('PermissionsService', () => {
     });
   });
 
-  it('does not push when a registration is rejected', async () => {
+  it('deletes a rejected registration without sending a push', async () => {
     const { service, prismaService, notificationsService } = createService();
-    prismaService.user.findUnique
-      .mockResolvedValueOnce({
-        id: 12,
-        jobRole: 'front-of-house',
-        restaurantId: 7,
-        accountStatus: 'pending',
-        preferredLanguage: 'fr',
-      })
-      .mockResolvedValueOnce({
-        id: 12,
-        name: 'New Staff',
-        email: 'new@zhao.test',
-        accountStatus: 'rejected',
-        jobRole: 'front-of-house',
-        restaurant: { id: 7, name: 'ZHAO Next' },
-        userRoles: [],
-      });
-    prismaService.user.update.mockResolvedValue({
+    prismaService.user.findUnique.mockResolvedValue({
       id: 12,
-      accountStatus: 'rejected',
+      jobRole: 'front-of-house',
+      restaurantId: 7,
+      accountStatus: 'pending',
+      preferredLanguage: 'fr',
     });
 
-    await service.updateUserApproval(adminViewer, 12, {
-      accountStatus: 'rejected',
-    });
+    await expect(
+      service.updateUserApproval(adminViewer, 12, {
+        accountStatus: 'rejected',
+      }),
+    ).resolves.toEqual({ message: 'EMPLOYEE_DELETED' });
 
+    expect(prismaService.user.delete).toHaveBeenCalledWith({
+      where: { id: 12 },
+    });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
     expect(notificationsService.sendToUsers).not.toHaveBeenCalled();
   });
 

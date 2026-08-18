@@ -90,7 +90,7 @@ export async function updatePermissionUserApproval(
     restaurantId?: number;
     jobRole?: string;
   } = {},
-): Promise<PermissionUser> {
+): Promise<PermissionUser | { message: "EMPLOYEE_DELETED" }> {
   return apiClient.patch<PermissionUser>(
     `/permissions/users/${encodeURIComponent(id)}/approval`,
     {

@@ -119,7 +119,7 @@ export class PermissionsController {
     @Headers('authorization') authorization: string | undefined,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserApprovalDto,
-  ): Promise<PermissionUserItem> {
+  ): Promise<PermissionUserItem | { message: 'EMPLOYEE_DELETED' }> {
     const viewer = await this.authService.getCurrentUser(
       parseBearerToken(authorization),
     );

@@ -4,11 +4,18 @@ import { AuthProvider } from "@/features/auth/context/AuthContext";
 import { WebTrafficTracker } from "@/features/traffic/components/WebTrafficTracker";
 
 export const metadata = {
-  title: "ZHAO‘s Family",
+  metadataBase: new URL("https://zhaosfamily.com"),
+
+  title: "ZHAO's Family",
   description: "Plateforme interne ZHAO's Family",
+
+  alternates: {
+    canonical: "/",
+  },
+
   icons: {
-    icon: [{ url: "/logo2024/logozhao正方形.jpg", type: "image/png" }],
-    apple: [{ url: "/logo2024/logozhao正方形.jpg", type: "image/png" }],
+    icon: [{ url: "/logo2024/logozhao正方形.jpg", type: "image/jpeg" }],
+    apple: [{ url: "/logo2024/logozhao正方形.jpg", type: "image/jpeg" }],
   },
 };
 
@@ -17,12 +24,17 @@ export default function RootLayout({ children }) {
     <html lang="zh-CN">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;500;600;700;900&family=Noto+Serif:ital,wght@0,400;0,500;0,600;0,700;0,900;1,400;1,600&display=swap"
         />
       </head>
+
       <body>
         <AppProviders>
           <AuthProvider>

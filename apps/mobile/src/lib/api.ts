@@ -40,6 +40,8 @@ export const mobileApiClient = createApiClient({
   setRefreshToken: syncRefreshToken,
 });
 
+mobileApiClient.axios.defaults.timeout = 15_000;
+
 export const mobileAuthApi = createAuthApi(mobileApiClient);
 
 export const mobileAuthStore = createAuthStore();

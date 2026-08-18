@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { FeedbackPressable } from "@/components/FeedbackPressable";
 
 export type ConfirmOptions = {
   title?: string;
@@ -37,8 +38,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const resolverRef = useRef<((result: boolean) => void) | null>(null);
 
   const confirm = useCallback<ConfirmFn>((options) => {
-    const config: ConfirmOptions =
-      typeof options === "string" ? { message: options } : options;
+    const config: ConfirmOptions = typeof options === "string" ? { message: options } : options;
 
     return new Promise<boolean>((resolve) => {
       resolverRef.current = resolve;
@@ -73,24 +73,22 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       >
         <Pressable style={styles.backdrop} onPress={() => settle(false)}>
           <Pressable style={styles.card} onPress={() => {}}>
-            {dialog?.title ? (
-              <Text style={styles.title}>{dialog.title}</Text>
-            ) : null}
+            {dialog?.title ? <Text style={styles.title}>{dialog.title}</Text> : null}
             <Text style={styles.message}>{dialog?.message}</Text>
 
             <View style={styles.actions}>
-              <Pressable
+              <FeedbackPressable
                 style={[styles.button, styles.cancelButton]}
                 onPress={() => settle(false)}
               >
                 <Text style={styles.cancelLabel}>{dialog?.cancelLabel}</Text>
-              </Pressable>
-              <Pressable
+              </FeedbackPressable>
+              <FeedbackPressable
                 style={[styles.button, styles.confirmButton]}
                 onPress={() => settle(true)}
               >
                 <Text style={styles.confirmLabel}>{dialog?.confirmLabel}</Text>
-              </Pressable>
+              </FeedbackPressable>
             </View>
           </Pressable>
         </Pressable>

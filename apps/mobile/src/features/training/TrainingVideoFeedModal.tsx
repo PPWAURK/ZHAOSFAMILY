@@ -1,17 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  memo,
-  useMemo,
-  useRef,
-  useState,
-  type ReactElement,
-} from "react";
+import { useCallback, useEffect, memo, useMemo, useRef, useState, type ReactElement } from "react";
 import { useEventListener } from "expo";
 import { createVideoPlayer, VideoView, type VideoPlayer } from "expo-video";
+import { FlashList } from "@shopify/flash-list";
 import {
   AppState,
-  FlatList,
   Modal,
   PanResponder,
   Pressable,
@@ -90,19 +82,14 @@ function moveInitialMaterialToFeedStart(
   materials: TrainingPlanMaterial[],
   initialMaterialId: number | null,
 ): TrainingPlanMaterial[] {
-  const initialIndex = materials.findIndex(
-    (material) => material.id === initialMaterialId,
-  );
+  const initialIndex = materials.findIndex((material) => material.id === initialMaterialId);
 
   if (initialIndex <= 0) return materials;
 
   return [...materials.slice(initialIndex), ...materials.slice(0, initialIndex)];
 }
 
-function getVideoProgressLabel(
-  copy: TrainingCopySet,
-  watchedPct: number,
-): string {
+function getVideoProgressLabel(copy: TrainingCopySet, watchedPct: number): string {
   return copy.trackingVideo
     .replace("{watched}", String(Math.round(watchedPct)))
     .replace("{required}", String(VIDEO_COMPLETION_WATCHED_PCT));
@@ -113,10 +100,7 @@ async function createVideoSource(
   canSeek: boolean,
 ): Promise<VideoSource> {
   const streamUrl = await getTrainingMaterialStreamingUrl(material);
-  const resumePct =
-    material.progress.status === "in_progress"
-      ? material.progress.progressPct
-      : 0;
+  const resumePct = material.progress.status === "in_progress" ? material.progress.progressPct : 0;
   const player = createVideoPlayer({ uri: streamUrl });
   player.audioMixingMode = "doNotMix";
   player.muted = true;
@@ -528,9 +512,7 @@ const TrainingVideoFeedSlide = memo(function TrainingVideoFeedSlide({
           <View style={styles.videoFeedTopActions}>
             <Pressable style={styles.videoFeedInfoToggle} onPress={onToggleInfo}>
               <Text style={styles.videoFeedInfoToggleText}>
-                {isInfoCollapsed
-                  ? copy.videoFeedShowDetails
-                  : copy.videoFeedHideDetails}
+                {isInfoCollapsed ? copy.videoFeedShowDetails : copy.videoFeedHideDetails}
               </Text>
             </Pressable>
             <Pressable style={styles.videoFeedCloseButton} onPress={onClose}>
@@ -548,9 +530,7 @@ const TrainingVideoFeedSlide = memo(function TrainingVideoFeedSlide({
               {material.isRequired ? (
                 <Text style={styles.videoFeedRequiredTag}>{copy.required}</Text>
               ) : null}
-              {material.hasQuiz ? (
-                <Text style={styles.videoFeedTag}>{copy.quizTag}</Text>
-              ) : null}
+              {material.hasQuiz ? <Text style={styles.videoFeedTag}>{copy.quizTag}</Text> : null}
             </View>
             <Text style={styles.videoFeedTitle} numberOfLines={2}>
               {material.title}
@@ -559,19 +539,13 @@ const TrainingVideoFeedSlide = memo(function TrainingVideoFeedSlide({
               {material.description || material.originalName}
             </Text>
             <View style={styles.videoFeedProgressTrack}>
-              <View
-                style={[styles.videoFeedProgressFill, { width: `${displayProgress}%` }]}
-              />
+              <View style={[styles.videoFeedProgressFill, { width: `${displayProgress}%` }]} />
             </View>
             <Text style={styles.videoFeedProgressText}>
-              {isCompleted
-                ? copy.completed
-                : getVideoProgressLabel(copy, watchedPct)}
+              {isCompleted ? copy.completed : getVideoProgressLabel(copy, watchedPct)}
             </Text>
             {progressSyncFailed ? (
-              <Text style={styles.videoFeedSyncErrorText}>
-                {copy.progressSyncFailed}
-              </Text>
+              <Text style={styles.videoFeedSyncErrorText}>{copy.progressSyncFailed}</Text>
             ) : null}
             {material.hasQuiz && watchedEnough && !isCompleted ? (
               <Pressable style={styles.videoFeedQuizButton} onPress={onStartQuiz}>
@@ -600,19 +574,15 @@ export function TrainingVideoFeedModal({
   const [activeIndex, setActiveIndex] = useState(0);
   const [settledIndex, setSettledIndex] = useState(0);
   const [resourceCleanupVersion, setResourceCleanupVersion] = useState(0);
-  const [sourcesByMaterialId, setSourcesByMaterialId] = useState<
-    Record<number, VideoSource>
-  >({});
+  const [sourcesByMaterialId, setSourcesByMaterialId] = useState<Record<number, VideoSource>>({});
   const [loadingMaterialIds, setLoadingMaterialIds] = useState<Record<number, true>>({});
   const [readyMaterialIds, setReadyMaterialIds] = useState<Record<number, true>>({});
   const [loadErrorMaterialIds, setLoadErrorMaterialIds] = useState<Record<number, true>>({});
   const [progressByMaterialId, setProgressByMaterialId] = useState<Record<number, number>>({});
-  const [watchedPctByMaterialId, setWatchedPctByMaterialId] = useState<
-    Record<number, number>
-  >({});
-  const [progressSyncFailedMaterialId, setProgressSyncFailedMaterialId] = useState<
-    number | null
-  >(null);
+  const [watchedPctByMaterialId, setWatchedPctByMaterialId] = useState<Record<number, number>>({});
+  const [progressSyncFailedMaterialId, setProgressSyncFailedMaterialId] = useState<number | null>(
+    null,
+  );
   const [isInfoCollapsed, setIsInfoCollapsed] = useState(true);
   const [isAppActive, setIsAppActive] = useState(AppState.currentState === "active");
   const [sourceReloadVersion, setSourceReloadVersion] = useState(0);
@@ -689,12 +659,9 @@ export function TrainingVideoFeedModal({
   }, [activeMaterial?.id]);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      (nextAppState: AppStateStatus) => {
-        setIsAppActive(nextAppState === "active");
-      },
-    );
+    const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      setIsAppActive(nextAppState === "active");
+    });
 
     return () => subscription.remove();
   }, []);
@@ -820,9 +787,7 @@ export function TrainingVideoFeedModal({
     async function prepareWindow(): Promise<void> {
       const currentTask = prepareSource(feedWindow.currentIndex);
       const nextTask =
-        feedWindow.nextIndex === null
-          ? Promise.resolve()
-          : prepareSource(feedWindow.nextIndex);
+        feedWindow.nextIndex === null ? Promise.resolve() : prepareSource(feedWindow.nextIndex);
 
       await Promise.all([currentTask, nextTask]);
       if (sourceRequestVersionRef.current !== requestVersion) return;
@@ -835,15 +800,7 @@ export function TrainingVideoFeedModal({
     if (visible) {
       void prepareWindow();
     }
-
-  }, [
-    feedMaterials,
-    feedWindow,
-    releaseAllPlayers,
-    preloadIndexes,
-    sourceReloadVersion,
-    visible,
-  ]);
+  }, [feedMaterials, feedWindow, releaseAllPlayers, preloadIndexes, sourceReloadVersion, visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -859,29 +816,14 @@ export function TrainingVideoFeedModal({
     });
 
     setSourcesByMaterialId((currentSources) => {
-      const retainedSources = retainMaterialRecords(
-        currentSources,
-        retainedMaterialIds,
-      );
+      const retainedSources = retainMaterialRecords(currentSources, retainedMaterialIds);
       sourcesByMaterialIdRef.current = retainedSources;
       return retainedSources;
     });
-    setLoadingMaterialIds((currentIds) =>
-      retainMaterialRecords(currentIds, retainedMaterialIds),
-    );
-    setReadyMaterialIds((currentIds) =>
-      retainMaterialRecords(currentIds, retainedMaterialIds),
-    );
-    setLoadErrorMaterialIds((currentIds) =>
-      retainMaterialRecords(currentIds, retainedMaterialIds),
-    );
-  }, [
-    feedMaterials,
-    releasePlayer,
-    resourceCleanupVersion,
-    retainedIndexes,
-    visible,
-  ]);
+    setLoadingMaterialIds((currentIds) => retainMaterialRecords(currentIds, retainedMaterialIds));
+    setReadyMaterialIds((currentIds) => retainMaterialRecords(currentIds, retainedMaterialIds));
+    setLoadErrorMaterialIds((currentIds) => retainMaterialRecords(currentIds, retainedMaterialIds));
+  }, [feedMaterials, releasePlayer, resourceCleanupVersion, retainedIndexes, visible]);
 
   useEffect(() => {
     const activeMaterialId = visible && isAppActive ? activeMaterial?.id : null;
@@ -896,9 +838,12 @@ export function TrainingVideoFeedModal({
     });
   }, [activeMaterial?.id, isAppActive, sourcesByMaterialId, visible]);
 
-  useEffect(() => () => {
-    releaseAllPlayers();
-  }, [releaseAllPlayers]);
+  useEffect(
+    () => () => {
+      releaseAllPlayers();
+    },
+    [releaseAllPlayers],
+  );
 
   const handleMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
@@ -911,12 +856,8 @@ export function TrainingVideoFeedModal({
           Math.round(event.nativeEvent.contentOffset.y / slideHeight),
         ),
       );
-      setActiveIndex((currentIndex) =>
-        currentIndex === nextIndex ? currentIndex : nextIndex,
-      );
-      setSettledIndex((currentIndex) =>
-        currentIndex === nextIndex ? currentIndex : nextIndex,
-      );
+      setActiveIndex((currentIndex) => (currentIndex === nextIndex ? currentIndex : nextIndex));
+      setSettledIndex((currentIndex) => (currentIndex === nextIndex ? currentIndex : nextIndex));
       setResourceCleanupVersion((currentVersion) => currentVersion + 1);
     },
     [feedMaterials.length, slideHeight],
@@ -977,10 +918,7 @@ export function TrainingVideoFeedModal({
     });
   }
 
-  function syncVideoProgress(
-    material: TrainingPlanMaterial,
-    message: VideoViewerMessage,
-  ): void {
+  function syncVideoProgress(material: TrainingPlanMaterial, message: VideoViewerMessage): void {
     const assessment = assessViewerStats(message);
     updateWatchedProgress(material.id, message.watchedPct);
     const currentProgress = Math.max(
@@ -991,8 +929,7 @@ export function TrainingVideoFeedModal({
     updateDisplayedProgress(material.id, currentProgress);
 
     const lastSyncedPct =
-      lastSyncedPctByMaterialIdRef.current.get(material.id) ??
-      material.progress.progressPct;
+      lastSyncedPctByMaterialIdRef.current.get(material.id) ?? material.progress.progressPct;
 
     if (
       assessment.shouldAutoComplete &&
@@ -1056,8 +993,7 @@ export function TrainingVideoFeedModal({
       maxPosition: 0,
       watchedSeconds: 0,
     };
-    const delta =
-      progressState.lastTime === null ? 0 : currentTime - progressState.lastTime;
+    const delta = progressState.lastTime === null ? 0 : currentTime - progressState.lastTime;
 
     if (delta > 0 && delta < 2) {
       progressState.watchedSeconds += delta;
@@ -1090,8 +1026,7 @@ export function TrainingVideoFeedModal({
       progressByMaterialId[material.id] ?? 0,
     );
     const isCompleted =
-      material.progress.status === "completed" ||
-      completedMaterialIdsRef.current.has(material.id);
+      material.progress.status === "completed" || completedMaterialIdsRef.current.has(material.id);
     const watchedPct = watchedPctByMaterialId[material.id] ?? 0;
     const watchedEnough = watchedPct >= VIDEO_COMPLETION_WATCHED_PCT;
 
@@ -1126,9 +1061,7 @@ export function TrainingVideoFeedModal({
             return nextIds;
           });
           setLoadErrorMaterialIds((currentIds) =>
-            currentIds[material.id]
-              ? currentIds
-              : { ...currentIds, [material.id]: true },
+            currentIds[material.id] ? currentIds : { ...currentIds, [material.id]: true },
           );
         }}
         onPlayerProgress={(currentTime, duration, ended) => {
@@ -1136,9 +1069,7 @@ export function TrainingVideoFeedModal({
         }}
         onPlayerReady={() => {
           setReadyMaterialIds((currentIds) =>
-            currentIds[material.id]
-              ? currentIds
-              : { ...currentIds, [material.id]: true },
+            currentIds[material.id] ? currentIds : { ...currentIds, [material.id]: true },
           );
           setLoadingMaterialIds((currentIds) => {
             if (!currentIds[material.id]) return currentIds;
@@ -1170,30 +1101,19 @@ export function TrainingVideoFeedModal({
     >
       <SafeAreaView
         edges={["left", "right"]}
-        style={[
-          styles.videoFeedRoot,
-          { paddingBottom: bottomInset, paddingTop: topInset },
-        ]}
+        style={[styles.videoFeedRoot, { paddingBottom: bottomInset, paddingTop: topInset }]}
       >
-        <FlatList
+        <FlashList
           data={feedMaterials}
+          drawDistance={slideHeight * 2}
           extraData={feedExtraData}
           decelerationRate="fast"
-          getItemLayout={(_data, index) => ({
-            index,
-            length: slideHeight,
-            offset: slideHeight * index,
-          })}
-          initialNumToRender={3}
           keyExtractor={(material) => String(material.id)}
-          maxToRenderPerBatch={3}
           onLayout={handleFeedLayout}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           pagingEnabled
           renderItem={renderVideoSlide}
-          removeClippedSubviews={false}
           showsVerticalScrollIndicator={false}
-          windowSize={3}
         />
       </SafeAreaView>
     </Modal>

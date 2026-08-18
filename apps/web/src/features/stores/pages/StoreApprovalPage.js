@@ -520,7 +520,7 @@ export default function StoreApprovalPage() {
     setErrorMessage("");
 
     try {
-      const updatedUser = await updatePermissionUserApproval(
+      const result = await updatePermissionUserApproval(
         String(userId),
         accountStatus,
         accountStatus === "approved"
@@ -531,6 +531,20 @@ export default function StoreApprovalPage() {
             }
           : {},
       );
+
+      if (isDeletedApprovalResult(result)) {
+        setUsers((current) =>
+          current.filter((item) => String(item.id) !== String(userId)),
+        );
+        setReviewDrafts((current) => {
+          const nextDrafts = { ...current };
+          delete nextDrafts[String(userId)];
+          return nextDrafts;
+        });
+        return;
+      }
+
+      const updatedUser = result;
 
       setUsers((current) =>
         current.map((item) => (String(item.id) === String(userId) ? updatedUser : item)),
@@ -982,4 +996,8 @@ export default function StoreApprovalPage() {
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} lang={lang} />
     </main>
   );
+}
+
+function isDeletedApprovalResult(result) {
+  return Boolean(result && typeof result === "object" && "message" in result);
 }

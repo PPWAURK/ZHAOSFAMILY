@@ -7,8 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FeedbackPressable } from "@/components/FeedbackPressable";
 
 type ToastTone = "success" | "error" | "info";
 
@@ -51,10 +52,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const id = (idRef.current += 1);
       const duration = options.duration ?? DEFAULT_DURATION;
 
-      setToasts((current) => [
-        ...current,
-        { id, message, tone: options.tone ?? "info" },
-      ]);
+      setToasts((current) => [...current, { id, message, tone: options.tone ?? "info" }]);
 
       if (duration > 0) {
         setTimeout(() => dismiss(id), duration);
@@ -79,13 +77,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {toasts.length > 0 ? (
         <SafeAreaView style={styles.viewport} pointerEvents="box-none">
           {toasts.map((toast) => (
-            <Pressable
+            <FeedbackPressable
               key={toast.id}
               style={[styles.toast, toneStyles[toast.tone]]}
               onPress={() => dismiss(toast.id)}
             >
               <Text style={styles.message}>{toast.message}</Text>
-            </Pressable>
+            </FeedbackPressable>
           ))}
         </SafeAreaView>
       ) : null}

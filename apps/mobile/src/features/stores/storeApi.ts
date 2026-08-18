@@ -93,6 +93,10 @@ export async function sendEmployeeInvitation(input: {
   return mobileApiClient.post<InvitationResponse>("/permissions/invitations", input);
 }
 
+export type UpdateUserApprovalResult =
+  | MobilePermissionUser
+  | { message: "EMPLOYEE_DELETED" };
+
 export async function updateUserApproval(
   userId: number,
   accountStatus: "approved" | "rejected",
@@ -100,8 +104,10 @@ export async function updateUserApproval(
     jobRole?: string;
     restaurantId?: number;
   } = {},
-): Promise<MobilePermissionUser> {
-  const user = await mobileApiClient.patch<PermissionUserResponse>(
+): Promise<UpdateUserApprovalResult> {
+  const response = await mobileApiClient.patch<
+    PermissionUserResponse | { message: "EMPLOYEE_DELETED" }
+  >(
     `/permissions/users/${encodeURIComponent(userId)}/approval`,
     {
       accountStatus,
@@ -109,7 +115,11 @@ export async function updateUserApproval(
     },
   );
 
-  return mapPermissionUser(user);
+  if ("message" in response) {
+    return response;
+  }
+
+  return mapPermissionUser(response);
 }
 
 export async function updateUserJobRole(

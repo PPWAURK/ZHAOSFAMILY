@@ -5,17 +5,13 @@ import { useToast } from "@/components/toast/ToastProvider";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
-import {
-  INVITE_PARTNER_COPY,
-} from "@/features/stores/storeCopy";
+import { INVITE_PARTNER_COPY } from "@/features/stores/storeCopy";
 import { getStoreManagerInvitationRoleOptions } from "@/features/stores/invitationRoleOptions";
-import {
-  fetchTrainingPositions,
-  sendEmployeeInvitation,
-} from "@/features/stores/storeApi";
+import { fetchTrainingPositions, sendEmployeeInvitation } from "@/features/stores/storeApi";
 import { storeStyles as styles } from "@/features/stores/storeStyles";
 import type { TrainingPositionOption } from "@/features/stores/storeTypes";
 import { useScreenName } from "@/lib/useScreenName";
+import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
 
 type InvitePartnerScreenProps = {
   language: AuthLanguage;
@@ -105,6 +101,7 @@ export function InvitePartnerScreen({ language, user }: InvitePartnerScreenProps
       setEmail("");
       setJobRole("");
       toast.success(copy.success);
+      triggerSuccessFeedback();
     } catch (error) {
       const message = getInvitationErrorMessage(error, copy);
       setFormError(message);

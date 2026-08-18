@@ -441,9 +441,17 @@ export class PermissionsService {
     viewer: AuthUser,
     userId: number,
     dto: UpdateUserApprovalDto,
-  ): Promise<PermissionUserItem> {
+  ): Promise<PermissionUserItem | { message: 'EMPLOYEE_DELETED' }> {
     const targetUser = await this.getUserRoleScope(userId);
     await this.assertApprovalAllowed(viewer, targetUser);
+
+    // Rejected registrations have not joined the team yet, so keeping their
+    // profile serves no operational purpose. Delete it immediately so the
+    // email address can be used for a future application.
+    if (dto.accountStatus === ACCOUNT_STATUS.rejected) {
+      return this.hardDeleteUser(userId);
+    }
+
     await this.assertApprovalRestaurantAllowed(
       viewer,
       targetUser,
@@ -472,15 +480,6 @@ export class PermissionsService {
         ? { jobRole: normalizedJobRole }
         : {}),
     };
-
-    if (dto.accountStatus === ACCOUNT_STATUS.rejected) {
-      await this.prismaService.user.update({
-        where: { id: userId },
-        data: reviewData,
-      });
-
-      return this.getUser(userId);
-    }
 
     await this.prismaService.$transaction(async (tx) => {
       const trainingViewerRole = await tx.role.findUnique({

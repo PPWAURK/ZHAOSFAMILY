@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
 import { useScreenName } from "@/lib/useScreenName";
+import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
 import type {
   AuthUser,
   ChangePasswordRequest,
@@ -180,10 +182,15 @@ export function ProfileScreen({
   const [passwordMessage, setPasswordMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [showSaved, setShowSaved] = useState(false);
-  const [myTitles, setMyTitles] = useState<TrainingMyTitles>(EMPTY_MY_TITLES);
-  const [isLoadingTitles, setIsLoadingTitles] = useState(false);
   const [savingTitleCode, setSavingTitleCode] = useState("");
   const [titleMessage, setTitleMessage] = useState("");
+  const queryClient = useQueryClient();
+  const titlesQuery = useQuery({
+    placeholderData: (previousData) => previousData,
+    queryFn: fetchTrainingMyTitles,
+    queryKey: ["training", "my-titles", user.id],
+  });
+  const myTitles = titlesQuery.data ?? EMPTY_MY_TITLES;
 
   const identityFields = useMemo(
     () => [
@@ -203,30 +210,6 @@ export function ProfileScreen({
     setContact(nextContact);
     setDraft(nextContact);
   }, [user]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    async function loadMyTitles(): Promise<void> {
-      setIsLoadingTitles(true);
-      setTitleMessage("");
-
-      try {
-        const nextTitles = await fetchTrainingMyTitles();
-        if (isActive) setMyTitles(nextTitles);
-      } catch {
-        if (isActive) setTitleMessage(resolveTitleCopy(language).loadError);
-      } finally {
-        if (isActive) setIsLoadingTitles(false);
-      }
-    }
-
-    void loadMyTitles();
-
-    return () => {
-      isActive = false;
-    };
-  }, [language, user.id]);
 
   function startEditing(): void {
     setDraft(contact);
@@ -259,6 +242,7 @@ export function ProfileScreen({
       setDraft(nextContact);
       setIsEditing(false);
       setShowSaved(true);
+      triggerSuccessFeedback();
     } catch {
       setSaveError(copy.updateError);
     } finally {
@@ -297,6 +281,7 @@ export function ProfileScreen({
       await onUpdateProfile({ profilePhotoDataUrl });
       setAvatar(profilePhotoDataUrl);
       setAvatarMessage(copy.avatarSaved);
+      triggerSuccessFeedback();
     } catch {
       setAvatarMessage(copy.avatarError);
     } finally {
@@ -326,6 +311,7 @@ export function ProfileScreen({
       await onChangePassword({ currentPassword, nextPassword });
       setPasswordDraft({ currentPassword: "", nextPassword: "" });
       setPasswordMessage(copy.passwordChanged);
+      triggerSuccessFeedback();
     } catch {
       setPasswordMessage(copy.passwordError);
     } finally {
@@ -348,7 +334,9 @@ export function ProfileScreen({
     setTitleMessage("");
 
     try {
-      setMyTitles(await equipTrainingTitle(code));
+      const nextTitles = await equipTrainingTitle(code);
+      queryClient.setQueryData<TrainingMyTitles>(["training", "my-titles", user.id], nextTitles);
+      triggerSuccessFeedback();
     } catch {
       setTitleMessage(resolveTitleCopy(language).saveError);
     } finally {
@@ -436,7 +424,7 @@ export function ProfileScreen({
             <Text style={styles.sectionHint}>{resolveTitleCopy(language).hint}</Text>
           </View>
         </View>
-        {isLoadingTitles ? (
+        {titlesQuery.isPending && !titlesQuery.data ? (
           <Text style={styles.sectionHint}>{resolveTitleCopy(language).loading}</Text>
         ) : myTitles.earned.length > 0 ? (
           <View style={styles.titleList}>
@@ -475,7 +463,11 @@ export function ProfileScreen({
         ) : (
           <Text style={styles.sectionHint}>{resolveTitleCopy(language).empty}</Text>
         )}
-        {titleMessage ? <Text style={styles.inlineMessage}>{titleMessage}</Text> : null}
+        {titleMessage || titlesQuery.isError ? (
+          <Text style={styles.inlineMessage}>
+            {titleMessage || resolveTitleCopy(language).loadError}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.section}>

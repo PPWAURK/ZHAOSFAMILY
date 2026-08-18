@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { useMemo, useState } from "react";
+import { Text, TextInput, View } from "react-native";
+import { recruitmentQueryKeys } from "@zhao/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateRecruitmentRequestRequest,
   RecruitmentContractType,
@@ -12,6 +9,9 @@ import type {
   RecruitmentRequestItem,
 } from "@zhao/types";
 import { useScreenName } from "@/lib/useScreenName";
+import { EmptyState, ErrorState } from "@/components/ContentState";
+import { FeedbackPressable } from "@/components/FeedbackPressable";
+import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
@@ -33,10 +33,7 @@ type RecruitmentModuleScreenProps = {
 };
 
 type RecruitmentCombo = Partial<
-  Record<
-    RecruitmentPosition,
-    Partial<Record<RecruitmentContractType, string>>
-  >
+  Record<RecruitmentPosition, Partial<Record<RecruitmentContractType, string>>>
 >;
 
 const CONTRACT_TYPES: RecruitmentContractType[] = ["full_time", "part_time"];
@@ -60,20 +57,23 @@ function isActivePosition(
   return !!combo[pos] && Object.keys(combo[pos]).length > 0;
 }
 
-export function RecruitmentModuleScreen({
-  language,
-}: RecruitmentModuleScreenProps) {
+export function RecruitmentModuleScreen({ language }: RecruitmentModuleScreenProps) {
   useScreenName("recruitment");
   const copy = RECRUITMENT_COPY[language];
   const contractLabels = RECRUITMENT_CONTRACT_LABELS[language];
   const positionLabels = RECRUITMENT_POSITION_LABELS[language];
   const statusLabels = RECRUITMENT_STATUS_LABELS[language];
-  const [requests, setRequests] = useState<RecruitmentRequestItem[]>([]);
+  const queryClient = useQueryClient();
+  const requestsQuery = useQuery({
+    placeholderData: (previousData) => previousData,
+    queryFn: fetchRecruitmentRequests,
+    queryKey: recruitmentQueryKeys.requests(),
+  });
+  const requests = requestsQuery.data ?? [];
   const [combo, setCombo] = useState<RecruitmentCombo>({
     waiter: { full_time: DEFAULT_HEADCOUNT },
   });
   const [notes, setNotes] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -85,37 +85,6 @@ export function RecruitmentModuleScreen({
       ),
     [requests],
   );
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadRequests(): Promise<void> {
-      try {
-        setIsLoading(true);
-        setErrorMessage("");
-        const nextRequests = await fetchRecruitmentRequests();
-
-        if (!isCancelled) {
-          setRequests(nextRequests);
-        }
-      } catch {
-        if (!isCancelled) {
-          setRequests([]);
-          setErrorMessage(copy.loadError);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadRequests();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [copy.loadError]);
 
   function resetMessages(): void {
     setMessage("");
@@ -138,10 +107,7 @@ export function RecruitmentModuleScreen({
     }
   }
 
-  function toggleContractForPosition(
-    pos: RecruitmentPosition,
-    ct: RecruitmentContractType,
-  ): void {
+  function toggleContractForPosition(pos: RecruitmentPosition, ct: RecruitmentContractType): void {
     resetMessages();
     setCombo((prev) => {
       const currentContracts = prev[pos] || {};
@@ -179,7 +145,8 @@ export function RecruitmentModuleScreen({
   async function handleSubmit(): Promise<void> {
     resetMessages();
 
-    const entries: { pos: RecruitmentPosition; ct: RecruitmentContractType; headcount: number }[] = [];
+    const entries: { pos: RecruitmentPosition; ct: RecruitmentContractType; headcount: number }[] =
+      [];
 
     for (const [pos, contracts] of Object.entries(combo)) {
       for (const [ct, raw] of Object.entries(contracts)) {
@@ -202,23 +169,25 @@ export function RecruitmentModuleScreen({
     try {
       setIsSubmitting(true);
 
-      const payloads: CreateRecruitmentRequestRequest[] = entries.map(
-        ({ pos, ct, headcount }) => ({
-          contractType: ct,
-          position: pos,
-          headcount,
-          notes: notes.trim() || undefined,
-        }),
-      );
+      const payloads: CreateRecruitmentRequestRequest[] = entries.map(({ pos, ct, headcount }) => ({
+        contractType: ct,
+        position: pos,
+        headcount,
+        notes: notes.trim() || undefined,
+      }));
 
       const createdRequests = await Promise.all(
         payloads.map((payload) => createRecruitmentRequest(payload)),
       );
 
-      setRequests((current) => [...createdRequests, ...current]);
+      queryClient.setQueryData<RecruitmentRequestItem[]>(
+        recruitmentQueryKeys.requests(),
+        (current) => [...createdRequests, ...(current ?? [])],
+      );
       setCombo({ waiter: { full_time: DEFAULT_HEADCOUNT } });
       setNotes("");
       setMessage(copy.submitSuccess);
+      triggerSuccessFeedback();
     } catch {
       setErrorMessage(copy.submitError);
     } finally {
@@ -231,7 +200,11 @@ export function RecruitmentModuleScreen({
     setDeletingId(id);
     try {
       await deleteRecruitmentRequest(id);
-      setRequests((current) => current.filter((r) => r.id !== Number(id)));
+      queryClient.setQueryData<RecruitmentRequestItem[]>(
+        recruitmentQueryKeys.requests(),
+        (current) => (current ?? []).filter((request) => request.id !== Number(id)),
+      );
+      triggerSuccessFeedback();
     } catch {
       setErrorMessage(copy.deleteError);
     } finally {
@@ -264,20 +237,15 @@ export function RecruitmentModuleScreen({
             const active = isActivePosition(combo, pos);
 
             return (
-              <Pressable
+              <FeedbackPressable
                 key={pos}
                 style={[styles.rolePill, active ? styles.rolePillActive : null]}
                 onPress={() => togglePosition(pos)}
               >
-                <Text
-                  style={[
-                    styles.rolePillText,
-                    active ? styles.rolePillTextActive : null,
-                  ]}
-                >
+                <Text style={[styles.rolePillText, active ? styles.rolePillTextActive : null]}>
                   {positionLabels[pos]}
                 </Text>
-              </Pressable>
+              </FeedbackPressable>
             );
           })}
         </View>
@@ -294,12 +262,12 @@ export function RecruitmentModuleScreen({
 
                   return isOn ? (
                     <View key={ct} style={styles.contractChip}>
-                      <Pressable
+                      <FeedbackPressable
                         style={styles.contractChipToggle}
                         onPress={() => toggleContractForPosition(pos, ct)}
                       >
                         <Text style={styles.contractChipLabel}>{contractLabels[ct]}</Text>
-                      </Pressable>
+                      </FeedbackPressable>
                       <TextInput
                         keyboardType="number-pad"
                         style={styles.contractChipInput}
@@ -308,13 +276,13 @@ export function RecruitmentModuleScreen({
                       />
                     </View>
                   ) : (
-                    <Pressable
+                    <FeedbackPressable
                       key={ct}
                       style={[styles.rolePill, styles.contractAddPill]}
                       onPress={() => toggleContractForPosition(pos, ct)}
                     >
                       <Text style={styles.rolePillText}>+{contractLabels[ct]}</Text>
-                    </Pressable>
+                    </FeedbackPressable>
                   );
                 })}
               </View>
@@ -339,7 +307,7 @@ export function RecruitmentModuleScreen({
         {message ? <Text style={[styles.message, { color: "#1a7f3d" }]}>{message}</Text> : null}
         {errorMessage ? <Text style={styles.message}>{errorMessage}</Text> : null}
 
-        <Pressable
+        <FeedbackPressable
           disabled={isSubmitting}
           style={[styles.actionButton, styles.actionButtonPrimary]}
           onPress={() => void handleSubmit()}
@@ -347,7 +315,7 @@ export function RecruitmentModuleScreen({
           <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
             {isSubmitting ? copy.submitting : copy.submit}
           </Text>
-        </Pressable>
+        </FeedbackPressable>
       </View>
 
       <View style={styles.section}>
@@ -355,38 +323,45 @@ export function RecruitmentModuleScreen({
           <Text style={styles.sectionTitle}>{copy.listTitle}</Text>
         </View>
 
-        {isLoading ? <ZhaoLoadingIndicator label={copy.loading} /> : null}
-
-        {!isLoading && sortedRequests.length === 0 && !errorMessage ? (
-          <Text style={styles.emptyText}>{copy.empty}</Text>
+        {requestsQuery.isPending && !requestsQuery.data ? (
+          <ZhaoLoadingIndicator label={copy.loading} />
         ) : null}
 
-        {!isLoading && sortedRequests.length > 0 ? (
+        {requestsQuery.isError && !requestsQuery.data ? (
+          <ErrorState
+            actionLabel="Retry"
+            description={copy.loadError}
+            title={copy.listTitle}
+            onAction={() => void requestsQuery.refetch()}
+          />
+        ) : null}
+
+        {!requestsQuery.isPending && sortedRequests.length === 0 && !requestsQuery.isError ? (
+          <EmptyState description={copy.empty} title={copy.listTitle} />
+        ) : null}
+
+        {sortedRequests.length > 0 ? (
           <View style={styles.list}>
             {sortedRequests.map((request) => (
               <View key={request.id} style={styles.card}>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardName}>
-                    {positionLabels[request.position]} ·{" "}
-                    {contractLabels[request.contractType]}
+                    {positionLabels[request.position]} · {contractLabels[request.contractType]}
                   </Text>
                   <Text style={styles.cardMeta}>
-                    {request.headcount} {copy.peopleUnit} ·{" "}
-                    {formatDate(request.createdAt)}
+                    {request.headcount} {copy.peopleUnit} · {formatDate(request.createdAt)}
                   </Text>
                   <Text style={styles.cardMeta}>
                     {copy.statusLabel}: {statusLabels[request.status]}
                   </Text>
-                  {request.notes ? (
-                    <Text style={styles.emptyText}>{request.notes}</Text>
-                  ) : null}
+                  {request.notes ? <Text style={styles.emptyText}>{request.notes}</Text> : null}
                   {request.handledNotes ? (
                     <Text style={styles.emptyText}>
                       {copy.handledNotesLabel}: {request.handledNotes}
                     </Text>
                   ) : null}
                 </View>
-                <Pressable
+                <FeedbackPressable
                   disabled={deletingId === request.id}
                   onPress={() => void handleDelete(request.id)}
                   style={{ alignSelf: "flex-end", paddingVertical: 4, paddingHorizontal: 4 }}
@@ -402,7 +377,7 @@ export function RecruitmentModuleScreen({
                   >
                     {"删除"}
                   </Text>
-                </Pressable>
+                </FeedbackPressable>
               </View>
             ))}
           </View>

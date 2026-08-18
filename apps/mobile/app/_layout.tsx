@@ -6,9 +6,12 @@ import { usePushTokenRegistration } from "@/lib/usePushTokenRegistration";
 import { useMobilePresence } from "@/lib/useMobilePresence";
 import { useFirebaseAnalyticsIdentity } from "@/lib/useFirebaseAnalyticsIdentity";
 import { mobileAuthActions } from "@/lib/api";
+import { NetworkStatusBanner } from "@/components/NetworkStatusBanner";
+import { MobileQueryProvider } from "@/providers/MobileQueryProvider";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { Image, StatusBar, StyleSheet, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { isAndroid } from "@/lib/platform";
 import privacyLogo from "../assets/logo2024/100%chinese.jpg";
 
@@ -26,33 +29,33 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <View style={{ flex: 1 }}>
-      <SplashCompletionProvider>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor="#ffffff"
-          translucent={isAndroid ? false : undefined}
-        />
-        <ConfirmProvider>
-          <ToastProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-          </ToastProvider>
-        </ConfirmProvider>
-      </SplashCompletionProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <MobileQueryProvider>
+        <SplashCompletionProvider>
+          <StatusBar
+            barStyle="dark-content"
+            backgroundColor="#ffffff"
+            translucent={isAndroid ? false : undefined}
+          />
+          <ConfirmProvider>
+            <ToastProvider>
+              <NetworkStatusBanner />
+              <Stack screenOptions={{ headerShown: false }} />
+            </ToastProvider>
+          </ConfirmProvider>
+        </SplashCompletionProvider>
+      </MobileQueryProvider>
       {isPrivacyOverlayVisible ? (
         <View pointerEvents="none" style={styles.privacyOverlay}>
-          <Image
-            resizeMode="contain"
-            source={privacyLogo}
-            style={styles.privacyLogo}
-          />
+          <Image resizeMode="contain" source={privacyLogo} style={styles.privacyLogo} />
         </View>
       ) : null}
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   privacyOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#fff",
