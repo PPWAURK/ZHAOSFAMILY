@@ -377,7 +377,8 @@ export default function StepProducts({
             const categoryLabel = rawCategory ? getProductCategoryLabel(rawCategory, copy) : "";
             const variants = getOrderProductVariants(product);
             const stock = stockEnforced ? Number(stockMap?.[String(product.id)] ?? 0) : null;
-            const isOutOfStock = stockEnforced && stock <= 0;
+            const isOutOfStock = product.isInStock === false || (stockEnforced && stock <= 0);
+            const shouldShowStockStatus = stockEnforced || product.isInStock === false;
 
             return (
               <div key={product.id} className={styles.productRow}>
@@ -391,7 +392,7 @@ export default function StepProducts({
                 <span className={styles.productNameCell}>
                   <span className={styles.productName}>{productName}</span>
                   {productMeta ? <span className={styles.productMeta}>{productMeta}</span> : null}
-                  {stockEnforced ? (
+                  {shouldShowStockStatus ? (
                     <span className={isOutOfStock ? styles.productStockOut : styles.productStockOk}>
                       {isOutOfStock ? copy.outOfStock : copy.inStock}
                     </span>

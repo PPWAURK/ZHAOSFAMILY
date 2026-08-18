@@ -3,6 +3,7 @@ import type {
   ListProductsQuery,
   ProductDetail,
   ProductSummary,
+  ReorderProductsRequest,
   UpdateProductRequest,
 } from "@zhao/types";
 import type { ApiClient } from "../client";
@@ -12,6 +13,7 @@ export type ProductsApi = {
   getById: (id: string) => Promise<ProductDetail>;
   create: (input: CreateProductRequest) => Promise<ProductDetail>;
   update: (id: string, input: UpdateProductRequest) => Promise<ProductDetail>;
+  reorder: (input: ReorderProductsRequest) => Promise<void>;
   remove: (id: string) => Promise<void>;
 };
 
@@ -33,6 +35,7 @@ export function createProductsApi(apiClient: ApiClient): ProductsApi {
     create: (input) => apiClient.post<ProductDetail>("/products", input),
     update: (id, input) =>
       apiClient.patch<ProductDetail>(`/products/${encodeURIComponent(id)}`, input),
+    reorder: (input) => apiClient.patch<void>("/products/reorder", input),
     remove: (id) => apiClient.delete<void>(`/products/${encodeURIComponent(id)}`),
   };
 }

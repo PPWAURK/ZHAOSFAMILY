@@ -54,7 +54,13 @@ export default function ProductEditRow({
   onCancelEdit,
   onSave,
   onToggleActive,
+  onToggleStock,
   onRequestDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+  isReordering,
 }) {
   const [draft, setDraft] = useState(() => toInputValue(product));
   const [error, setError] = useState("");
@@ -340,6 +346,9 @@ export default function ProductEditRow({
           {product.isActive === false ? (
             <span className={styles.inactiveBadge}>{copy.inactiveBadge}</span>
           ) : null}
+          {product.isInStock === false ? (
+            <span className={styles.inactiveBadge}>{copy.outOfStock}</span>
+          ) : null}
         </div>
       </td>
       <td>{product.designationFr || "—"}</td>
@@ -376,20 +385,51 @@ export default function ProductEditRow({
             type="button"
             className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
             onClick={onStartEdit}
+            disabled={isReordering}
           >
             {copy.edit}
           </button>
           <button
             type="button"
             className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
+            onClick={onMoveUp}
+            disabled={!canMoveUp || isReordering}
+            aria-label={copy.moveProductUp}
+            title={copy.moveProductUp}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
+            onClick={onMoveDown}
+            disabled={!canMoveDown || isReordering}
+            aria-label={copy.moveProductDown}
+            title={copy.moveProductDown}
+          >
+            ↓
+          </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
             onClick={onToggleActive}
+            disabled={isReordering}
           >
             {product.isActive === false ? copy.activate : copy.deactivate}
           </button>
           <button
             type="button"
+            className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
+            onClick={onToggleStock}
+            disabled={isReordering}
+          >
+            {product.isInStock === false ? copy.markInStock : copy.markOutOfStock}
+          </button>
+          <button
+            type="button"
             className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`}
             onClick={onRequestDelete}
+            disabled={isReordering}
           >
             {copy.deleteBtn}
           </button>

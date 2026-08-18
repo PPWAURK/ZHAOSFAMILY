@@ -43,6 +43,7 @@ export type OrderProductVariant = {
 export type OrderProduct = {
   id: string;
   supplierId: string;
+  isInStock: boolean;
   reference?: string | null;
   category?: string | null;
   nameCn?: string | null;
@@ -66,6 +67,7 @@ export type OrderProduct = {
 export type OrderProductApiRecord = {
   id: number | string;
   supplierId: number | string;
+  isInStock?: boolean | null;
   reference?: string | null;
   category?: string | null;
   nameCn?: string | null;

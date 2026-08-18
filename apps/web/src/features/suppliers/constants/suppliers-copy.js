@@ -44,6 +44,12 @@ export const SUPPLIERS_COPY = {
     deleteBtn: "删除",
     deactivate: "下架",
     activate: "上架",
+    inStock: "有货",
+    outOfStock: "缺货",
+    markInStock: "标记有货",
+    markOutOfStock: "标记缺货",
+    moveProductUp: "上移商品",
+    moveProductDown: "下移商品",
     inactiveBadge: "已下架",
     open: "打开",
 
@@ -58,7 +64,7 @@ export const SUPPLIERS_COPY = {
     editing: "编辑中",
 
     productsHeading: "商品目录",
-    productsHint: "所有字段可编辑；行尾的按钮用于保存、取消或删除。",
+    productsHint: "使用行尾的上下箭头调整下单界面的展示顺序；筛选商品时不可调整。",
     productsCount: "件商品",
     addProduct: "+ 添加商品",
     noProducts: "还没有商品，点击上方按钮添加第一个。",
@@ -152,6 +158,12 @@ export const SUPPLIERS_COPY = {
     deleteBtn: "Delete",
     deactivate: "Take off shelf",
     activate: "Put on shelf",
+    inStock: "In stock",
+    outOfStock: "Out of stock",
+    markInStock: "Mark in stock",
+    markOutOfStock: "Mark out of stock",
+    moveProductUp: "Move product up",
+    moveProductDown: "Move product down",
     inactiveBadge: "Off shelf",
     open: "Open",
 
@@ -166,7 +178,8 @@ export const SUPPLIERS_COPY = {
     editing: "Editing",
 
     productsHeading: "Product catalog",
-    productsHint: "Every field is editable; the trailing buttons save, cancel or delete the row.",
+    productsHint:
+      "Use the trailing arrows to set the display order in ordering; clear filters before reordering.",
     productsCount: "products",
     addProduct: "+ Add product",
     noProducts: "No products yet. Click the button above to add the first one.",
@@ -259,6 +272,12 @@ export const SUPPLIERS_COPY = {
     deleteBtn: "Supprimer",
     deactivate: "Retirer",
     activate: "Remettre",
+    inStock: "En stock",
+    outOfStock: "Rupture de stock",
+    markInStock: "Marquer en stock",
+    markOutOfStock: "Marquer en rupture",
+    moveProductUp: "Monter le produit",
+    moveProductDown: "Descendre le produit",
     inactiveBadge: "Retiré",
     open: "Ouvrir",
 
@@ -275,7 +294,7 @@ export const SUPPLIERS_COPY = {
 
     productsHeading: "Catalogue produits",
     productsHint:
-      "Tous les champs sont éditables ; les boutons en fin de ligne enregistrent, annulent ou suppriment.",
+      "Utilisez les flèches en fin de ligne pour définir l'ordre de commande ; effacez les filtres avant de réorganiser.",
     productsCount: "produits",
     addProduct: "+ Ajouter un produit",
     noProducts: "Aucun produit pour l'instant. Cliquez sur le bouton pour en ajouter un.",

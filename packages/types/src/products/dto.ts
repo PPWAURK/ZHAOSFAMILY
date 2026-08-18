@@ -19,4 +19,11 @@ export type CreateProductRequest = {
   specification?: string;
 };
 
-export type UpdateProductRequest = Partial<CreateProductRequest>;
+export type UpdateProductRequest = Partial<CreateProductRequest> & {
+  isInStock?: boolean;
+};
+
+export type ReorderProductsRequest = {
+  supplierId: number;
+  productIds: string[];
+};

@@ -10,6 +10,7 @@ import {
   fetchSupplier,
   fetchProductsBySupplier,
   fetchSuppliers,
+  reorderProductsApi,
   updateProductApi,
   updateSupplierApi,
 } from "@/features/suppliers/services/suppliersApi";
@@ -136,6 +137,30 @@ export function useSupplierDetail(supplierId) {
     setProducts((prev) => prev.filter((p) => p.id !== String(productId)));
   }, []);
 
+  const reorderProducts = useCallback(
+    async (productId, direction) => {
+      const currentIndex = products.findIndex((product) => product.id === productId);
+      const targetIndex = currentIndex + direction;
+
+      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= products.length) {
+        return;
+      }
+
+      const nextProducts = [...products];
+      [nextProducts[currentIndex], nextProducts[targetIndex]] = [
+        nextProducts[targetIndex],
+        nextProducts[currentIndex],
+      ];
+
+      await reorderProductsApi(
+        supplierId,
+        nextProducts.map((product) => product.id),
+      );
+      setProducts(nextProducts);
+    },
+    [products, supplierId],
+  );
+
   return {
     supplier,
     products,
@@ -146,5 +171,6 @@ export function useSupplierDetail(supplierId) {
     addProduct,
     updateProduct,
     removeProduct,
+    reorderProducts,
   };
 }

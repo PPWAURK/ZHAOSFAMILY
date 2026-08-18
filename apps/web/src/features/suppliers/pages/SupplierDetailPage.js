@@ -50,6 +50,7 @@ export default function SupplierDetailPage({ supplierId }) {
   const [editingProductId, setEditingProductId] = useState(null);
   const [newDraft, setNewDraft] = useState(null);
   const [savingProduct, setSavingProduct] = useState(false);
+  const [reorderingProductId, setReorderingProductId] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [pageError, setPageError] = useState("");
@@ -65,6 +66,7 @@ export default function SupplierDetailPage({ supplierId }) {
     addProduct,
     updateProduct,
     removeProduct,
+    reorderProducts,
   } = useSupplierDetail(supplierId);
 
   const t = SUPPLIERS_COPY[lang];
@@ -98,6 +100,7 @@ export default function SupplierDetailPage({ supplierId }) {
     });
   }, [categoryFilter, products, search]);
   const hasActiveProductFilters = Boolean(search || categoryFilter !== ALL_CATEGORIES);
+  const canReorderProducts = !hasActiveProductFilters && editingProductId === null;
 
   async function handleSaveInfo(data) {
     setSavingInfo(true);
@@ -149,6 +152,15 @@ export default function SupplierDetailPage({ supplierId }) {
     }
   }
 
+  async function toggleProductStock(product) {
+    setPageError("");
+    try {
+      await updateProduct(product.id, { isInStock: !product.isInStock });
+    } catch (err) {
+      setPageError(err?.message || t.saveError);
+    }
+  }
+
   async function confirmDeleteProduct() {
     if (!pendingDelete) return;
     setDeleting(true);
@@ -160,6 +172,18 @@ export default function SupplierDetailPage({ supplierId }) {
       setPageError(err?.message || t.deleteError);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function moveProduct(productId, direction) {
+    setReorderingProductId(productId);
+    setPageError("");
+    try {
+      await reorderProducts(productId, direction);
+    } catch (err) {
+      setPageError(err?.message || t.saveError);
+    } finally {
+      setReorderingProductId(null);
     }
   }
 
@@ -410,7 +434,19 @@ export default function SupplierDetailPage({ supplierId }) {
                         onCancelEdit={cancelEdit}
                         onSave={saveProduct}
                         onToggleActive={() => toggleProductActive(product)}
+                        onToggleStock={() => toggleProductStock(product)}
                         onRequestDelete={() => setPendingDelete(product)}
+                        onMoveUp={() => moveProduct(product.id, -1)}
+                        onMoveDown={() => moveProduct(product.id, 1)}
+                        canMoveUp={
+                          canReorderProducts &&
+                          products.findIndex((item) => item.id === product.id) > 0
+                        }
+                        canMoveDown={
+                          canReorderProducts &&
+                          products.findIndex((item) => item.id === product.id) < products.length - 1
+                        }
+                        isReordering={reorderingProductId !== null}
                       />
                     ))}
                   </tbody>
@@ -446,6 +482,7 @@ export default function SupplierDetailPage({ supplierId }) {
         onConfirm={confirmDeleteProduct}
         onCancel={() => (deleting ? null : setPendingDelete(null))}
       />
+
     </main>
   );
 }

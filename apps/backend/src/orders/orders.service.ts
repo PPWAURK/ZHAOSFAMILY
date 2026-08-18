@@ -55,6 +55,7 @@ type ProductOrderStats = {
 type OrderProduct = {
   id: bigint;
   supplierId: number;
+  isInStock: boolean;
   category: string;
   nameCn: string;
   designationFr: string | null;
@@ -1071,6 +1072,10 @@ export class OrdersService {
 
       if (!product) {
         throw new BadRequestException('PRODUCT_NOT_FOUND');
+      }
+
+      if (!product.isInStock) {
+        throw new BadRequestException('PRODUCT_OUT_OF_STOCK');
       }
 
       return this.prepareOrderItem(

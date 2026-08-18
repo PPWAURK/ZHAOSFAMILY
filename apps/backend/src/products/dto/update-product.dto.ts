@@ -16,6 +16,10 @@ export class UpdateProductDto {
   isActive?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  isInStock?: boolean;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'INVALID_SUPPLIER_ID' })
   @Min(1, { message: 'INVALID_SUPPLIER_ID' })

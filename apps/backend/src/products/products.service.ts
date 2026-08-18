@@ -1,12 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateProductDto } from './dto/create-product.dto';
+import type { ReorderProductsDto } from './dto/reorder-products.dto';
 import type { UpdateProductDto } from './dto/update-product.dto';
 
 export type ProductListItem = {
   id: string;
   supplierId: number;
   isActive: boolean;
+  isInStock: boolean;
+  sortOrder: number;
   reference: string | null;
   category: string;
   nameCn: string;
@@ -100,6 +107,8 @@ const PRODUCT_SELECT = {
   id: true,
   supplierId: true,
   isActive: true,
+  isInStock: true,
+  sortOrder: true,
   reference: true,
   category: true,
   nameCn: true,
@@ -123,6 +132,8 @@ type PrismaProductRow = {
   id: bigint;
   supplierId: number;
   isActive: boolean;
+  isInStock: boolean;
+  sortOrder: number;
   reference: string | null;
   category: string;
   nameCn: string;
@@ -147,6 +158,8 @@ function toProductListItem(product: PrismaProductRow): ProductListItem {
     id: product.id.toString(),
     supplierId: product.supplierId,
     isActive: product.isActive,
+    isInStock: product.isInStock,
+    sortOrder: product.sortOrder,
     reference: fixMojibake(product.reference),
     category: fixMojibake(product.category),
     nameCn: fixMojibake(product.nameCn),
@@ -186,7 +199,7 @@ export class ProductsService {
     const products = await this.prismaService.product.findMany({
       where: { supplierId, ...(includeInactive ? {} : { isActive: true }) },
       select: PRODUCT_SELECT,
-      orderBy: { id: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
     return products.map(toProductListItem);
@@ -208,10 +221,12 @@ export class ProductsService {
 
   async createProduct(dto: CreateProductDto): Promise<ProductListItem> {
     await this.assertSupplierExists(dto.supplierId);
+    const sortOrder = await this.getNextSortOrder(dto.supplierId);
 
     const product = await this.prismaService.product.create({
       data: {
         supplierId: dto.supplierId,
+        sortOrder,
         reference: dto.reference ?? null,
         category: dto.category,
         nameCn: dto.nameCn,
@@ -265,6 +280,7 @@ export class ProductsService {
           ? { specification: dto.specification || null }
           : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        ...(dto.isInStock !== undefined ? { isInStock: dto.isInStock } : {}),
       },
       select: PRODUCT_SELECT,
     });
@@ -276,6 +292,43 @@ export class ProductsService {
     const productId = parseProductId(id);
     await this.getProduct(id);
     await this.prismaService.product.delete({ where: { id: productId } });
+  }
+
+  async reorderProducts(dto: ReorderProductsDto): Promise<void> {
+    await this.assertSupplierExists(dto.supplierId);
+
+    const productIds = dto.productIds.map(parseProductId);
+    const products = await this.prismaService.product.findMany({
+      where: { supplierId: dto.supplierId },
+      select: { id: true },
+    });
+
+    if (
+      products.length !== productIds.length ||
+      !productIds.every((productId) =>
+        products.some((product) => product.id === productId),
+      )
+    ) {
+      throw new BadRequestException('INVALID_PRODUCT_ORDER');
+    }
+
+    await this.prismaService.$transaction(
+      productIds.map((productId, index) =>
+        this.prismaService.product.update({
+          where: { id: productId },
+          data: { sortOrder: index + 1 },
+        }),
+      ),
+    );
+  }
+
+  private async getNextSortOrder(supplierId: number): Promise<number> {
+    const result = await this.prismaService.product.aggregate({
+      where: { supplierId },
+      _max: { sortOrder: true },
+    });
+
+    return (result._max.sortOrder ?? 0) + 1;
   }
 
   private async assertSupplierExists(supplierId: number): Promise<void> {

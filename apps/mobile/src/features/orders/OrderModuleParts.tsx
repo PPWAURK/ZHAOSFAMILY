@@ -189,7 +189,9 @@ export function ProductQuantityRow({
   const productName = getOrderProductName(product, language);
   const imageSource = buildProductImageSource(product.image);
   const variants = getOrderProductVariants(product);
-  const isInStock = (stockMap[product.id] ?? 0) > 0;
+  const isInStock =
+    product.isInStock !== false && (!showStock || (stockMap[product.id] ?? 0) > 0);
+  const shouldShowStockStatus = showStock || product.isInStock === false;
   const hasSingleVariant = variants.length === 1;
   const primaryVariant = variants[0];
 
@@ -221,7 +223,7 @@ export function ProductQuantityRow({
               {primaryVariant?.specification || product.specification || product.reference || "-"}
             </Text>
           ) : null}
-          {showStock ? (
+          {shouldShowStockStatus ? (
             <View
               style={[
                 styles.stockStatus,
@@ -274,6 +276,7 @@ export function ProductQuantityRow({
                   onPress={() =>
                     onChangeQuantity(variant.id, stepQuantity(quantities[variant.id], -1))
                   }
+                  disabled={!isInStock}
                 >
                   <Text style={styles.stepperButtonText}>−</Text>
                 </Pressable>
@@ -283,6 +286,7 @@ export function ProductQuantityRow({
                   style={styles.quantityInput}
                   value={quantities[variant.id] || ""}
                   onChangeText={(value) => onChangeQuantity(variant.id, value)}
+                  editable={isInStock}
                 />
                 <Pressable
                   accessibilityRole="button"
@@ -296,6 +300,7 @@ export function ProductQuantityRow({
                   onPress={() =>
                     onChangeQuantity(variant.id, stepQuantity(quantities[variant.id], 1))
                   }
+                  disabled={!isInStock}
                 >
                   <Text style={styles.stepperButtonText}>+</Text>
                 </Pressable>

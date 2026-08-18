@@ -1,7 +1,7 @@
 import { ProductsService } from './products.service';
 
 describe('ProductsService', () => {
-  it('returns only on-shelf products for one supplier ordered by id', async () => {
+  it('returns only on-shelf products for one supplier in display order', async () => {
     const prismaService = {
       product: {
         findMany: jest.fn().mockResolvedValue([
@@ -9,6 +9,8 @@ describe('ProductsService', () => {
             id: BigInt(4),
             supplierId: 1,
             isActive: true,
+            isInStock: true,
+            sortOrder: 1,
             reference: 'VEG-004',
             category: 'frais',
             nameCn: '白萝卜',
@@ -43,6 +45,8 @@ describe('ProductsService', () => {
         id: true,
         supplierId: true,
         isActive: true,
+        isInStock: true,
+        sortOrder: true,
         reference: true,
         category: true,
         nameCn: true,
@@ -61,15 +65,15 @@ describe('ProductsService', () => {
         caseSize2: true,
         caseSize3: true,
       },
-      orderBy: {
-        id: 'asc',
-      },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
     expect(result).toEqual([
       {
         id: '4',
         supplierId: 1,
         isActive: true,
+        isInStock: true,
+        sortOrder: 1,
         reference: 'VEG-004',
         category: 'frais',
         nameCn: '白萝卜',
@@ -89,6 +93,38 @@ describe('ProductsService', () => {
         caseSize3: null,
       },
     ]);
+  });
+
+  it('replaces one supplier product order atomically', async () => {
+    const product = {
+      findMany: jest
+        .fn()
+        .mockResolvedValue([{ id: BigInt(1) }, { id: BigInt(2) }]),
+      update: jest.fn().mockReturnValue(undefined),
+    };
+    const prismaService = {
+      product,
+      supplier: {
+        findUnique: jest.fn().mockResolvedValue({ id: 1 }),
+      },
+      $transaction: jest.fn().mockResolvedValue([]),
+    };
+    const productsService = new ProductsService(prismaService as never);
+
+    await productsService.reorderProducts({
+      supplierId: 1,
+      productIds: ['2', '1'],
+    });
+
+    expect(product.update).toHaveBeenNthCalledWith(1, {
+      where: { id: BigInt(2) },
+      data: { sortOrder: 1 },
+    });
+    expect(product.update).toHaveBeenNthCalledWith(2, {
+      where: { id: BigInt(1) },
+      data: { sortOrder: 2 },
+    });
+    expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
   });
 
   it('includes off-shelf products when includeInactive is set', async () => {

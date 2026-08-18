@@ -28,6 +28,8 @@ export type ProductApiRecord = {
   id: number | string;
   supplierId?: number | string | null;
   isActive?: boolean | null;
+  isInStock?: boolean | null;
+  sortOrder?: number | null;
   reference?: string | null;
   category?: string | null;
   nameCn?: string | null;
@@ -43,6 +45,8 @@ export type SupplierProduct = {
   id: string;
   supplierId: number;
   isActive: boolean;
+  isInStock: boolean;
+  sortOrder: number;
   reference: string;
   category: string;
   nameCn: string;
@@ -56,6 +60,7 @@ export type SupplierProduct = {
 
 export type SupplierProductInput = {
   isActive?: boolean;
+  isInStock?: boolean;
   reference?: string;
   category?: string;
   nameCn?: string;

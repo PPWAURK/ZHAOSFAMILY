@@ -21,6 +21,7 @@ import type { Response } from 'express';
 
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
+import { ReorderProductsDto } from './dto/reorder-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService, type ProductListItem } from './products.service';
 import {
@@ -107,6 +108,13 @@ export class ProductsController {
   @RequirePermissions(CATALOG_PERMISSIONS.manageProducts)
   createProduct(@Body() dto: CreateProductDto): Promise<ProductListItem> {
     return this.productsService.createProduct(dto);
+  }
+
+  @Patch('reorder')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(CATALOG_PERMISSIONS.manageProducts)
+  async reorderProducts(@Body() dto: ReorderProductsDto): Promise<void> {
+    await this.productsService.reorderProducts(dto);
   }
 
   @Patch(':id')

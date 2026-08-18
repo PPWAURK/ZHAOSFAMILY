@@ -286,6 +286,8 @@ model Product {
   caseSize2         Int?     @map("case_size_2")
   caseSize3         Int?     @map("case_size_3")
   isActive          Boolean  @default(true) @map("is_active")
+  isInStock         Boolean  @default(true) @map("is_in_stock")
+  sortOrder         Int      @default(0) @map("sort_order")
   productCategoryId Int?     @map("product_category_id")
 
   supplier            Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
@@ -294,6 +296,7 @@ model Product {
   purchaseReturnItems PurchaseReturnItem[]
 
   @@index([supplierId])
+  @@index([supplierId, sortOrder])
   @@map("products")
 }
 

@@ -123,6 +123,7 @@ export async function fetchOrderProducts(supplierId: string): Promise<OrderProdu
   return products.map((product) => ({
     id: String(product.id),
     supplierId: String(product.supplierId),
+    isInStock: product.isInStock !== false,
     reference: product.reference,
     category: product.category,
     nameCn: product.nameCn,

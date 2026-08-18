@@ -6,6 +6,7 @@ import { OrdersService } from './orders.service';
 type ProductFixture = {
   id: bigint;
   supplierId: number;
+  isInStock: boolean;
   category: string;
   nameCn: string;
   designationFr: string;
@@ -91,6 +92,7 @@ function createProduct(
   return {
     id: BigInt(11),
     supplierId: 1,
+    isInStock: true,
     category: 'dry',
     nameCn: '面条',
     designationFr: 'Nouilles',
@@ -237,6 +239,23 @@ describe('OrdersService', () => {
         totalAmount: 5,
       }),
     );
+  });
+
+  it('rejects an order for an out-of-stock product', async () => {
+    prismaService.product.findMany.mockResolvedValue([
+      createProduct({ isInStock: false }),
+    ]);
+
+    await expect(
+      service.createOrder(
+        { id: 7, restaurantId: 3 },
+        {
+          deliveryDate: '2026-04-30',
+          items: [{ productId: 11, quantity: 2, specificationSlot: 1 }],
+        },
+        { protocol: 'http', get: () => 'localhost:3002' },
+      ),
+    ).rejects.toEqual(new BadRequestException('PRODUCT_OUT_OF_STOCK'));
   });
 
   it('renders configured case quantities with their individual remainder', async () => {

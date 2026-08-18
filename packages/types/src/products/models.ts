@@ -2,6 +2,8 @@ export type ProductSummary = {
   id: string;
   supplierId: number;
   isActive: boolean;
+  isInStock: boolean;
+  sortOrder: number;
   reference: string | null;
   category: string;
   nameCn: string;

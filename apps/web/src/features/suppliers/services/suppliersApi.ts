@@ -10,6 +10,7 @@ import type {
   CreateProductRequest,
   CreateSupplierRequest,
   ProductSummary as ProductApiRecord,
+  ReorderProductsRequest,
   SupplierSummary as SupplierApiRecord,
   UpdateProductRequest,
 } from "@zhao/types";
@@ -47,6 +48,8 @@ function normalizeProduct(raw: ProductApiRecord | null): SupplierProduct | null 
     id: String(raw.id),
     supplierId: Number(raw.supplierId),
     isActive: raw.isActive !== false,
+    isInStock: raw.isInStock !== false,
+    sortOrder: Number.isFinite(raw.sortOrder) ? Number(raw.sortOrder) : 0,
     reference: raw.reference ?? "",
     category: raw.category ?? "",
     nameCn: raw.nameCn ?? "",
@@ -156,6 +159,7 @@ export async function updateProductApi(
 ): Promise<SupplierProduct | null> {
   const body: UpdateProductRequest = {};
   if (input.isActive !== undefined) body.isActive = input.isActive;
+  if (input.isInStock !== undefined) body.isInStock = input.isInStock;
   if (input.reference !== undefined) body.reference = input.reference || "";
   if (input.category !== undefined) body.category = input.category || "";
   if (input.nameCn !== undefined) body.nameCn = input.nameCn || "";
@@ -170,6 +174,15 @@ export async function updateProductApi(
   if (caseSize !== undefined) body.caseSize = caseSize;
   const data = await productsApi.update(productId, body);
   return normalizeProduct(data);
+}
+
+export async function reorderProductsApi(supplierId: string, productIds: string[]): Promise<void> {
+  const body: ReorderProductsRequest = {
+    supplierId: Number(supplierId),
+    productIds,
+  };
+
+  await productsApi.reorder(body);
 }
 
 export async function deleteProductApi(productId: string): Promise<void> {
