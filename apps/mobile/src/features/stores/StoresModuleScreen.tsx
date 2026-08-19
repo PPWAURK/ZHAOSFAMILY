@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { storeManagementQueryKeys } from "@zhao/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@zhao/types";
 import { useScreenName } from "@/lib/useScreenName";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
@@ -17,18 +19,14 @@ import {
   STORE_COPY,
   STORE_JOB_ROLE_OPTIONS,
 } from "@/features/stores/storeCopy";
+import { updateUserApproval, updateUserJobRole, type UpdateUserApprovalResult } from "@/features/stores/storeApi";
 import {
-  fetchApprovableUsers,
-  fetchManageableStores,
-  fetchTrainingPositions,
-  updateUserApproval,
-  updateUserJobRole,
-  type UpdateUserApprovalResult,
-} from "@/features/stores/storeApi";
+  fetchStoreManagementData,
+  type StoreManagementData,
+} from "@/features/stores/storeQueries";
 import { storeStyles as styles } from "@/features/stores/storeStyles";
 import type {
   MobilePermissionUser,
-  MobileStore,
   StoreApprovalDraft,
   StoreJobRoleOption,
   StoreTeamDraft,
@@ -36,13 +34,9 @@ import type {
 } from "@/features/stores/storeTypes";
 
 type StoresModuleScreenProps = {
+  isActive?: boolean;
   language: AuthLanguage;
   user: AuthUser;
-};
-
-type StoresState = {
-  stores: MobileStore[];
-  users: MobilePermissionUser[];
 };
 
 type StoreDetailView = "overview" | "pending" | "team" | "stats";
@@ -181,28 +175,52 @@ function userHasRole(user: MobilePermissionUser, roleValue: string): boolean {
   return parseRoleValues(user.jobRole).includes(roleValue);
 }
 
-export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) {
+export function StoresModuleScreen({ isActive = true, language, user }: StoresModuleScreenProps) {
   useScreenName("stores");
   const confirm = useConfirm();
   const toast = useToast();
   const copy = STORE_COPY[language];
-  const [trainingPositions, setTrainingPositions] = useState<TrainingPositionOption[]>([]);
+  const queryClient = useQueryClient();
+  const storeManagementQueryKey = storeManagementQueryKeys.overview(user.id);
+  const storesQuery = useQuery({
+    enabled: isActive,
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: fetchStoreManagementData,
+    queryKey: storeManagementQueryKey,
+  });
+  const data = storesQuery.data ?? { stores: [], users: [] };
+  const trainingPositions = storesQuery.data?.trainingPositions ?? [];
+  const isLoading = storesQuery.isPending;
+  const loadErrorMessage = storesQuery.isError
+    ? (storesQuery.error instanceof Error && storesQuery.error.message === "INSUFFICIENT_PERMISSIONS"
+        ? copy.unavailable
+        : copy.error)
+    : "";
   const roleOptions = useMemo(
     () => getVisibleRoleOptions(language, user, trainingPositions),
     [language, trainingPositions, user],
   );
-  const [data, setData] = useState<StoresState>({ stores: [], users: [] });
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [detailView, setDetailView] = useState<StoreDetailView>("overview");
   const [approvalDrafts, setApprovalDrafts] = useState<Record<number, StoreApprovalDraft>>({});
   const [teamDrafts, setTeamDrafts] = useState<Record<number, StoreTeamDraft>>({});
   const [errorMessage, setErrorMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [reviewingUserId, setReviewingUserId] = useState<number | null>(null);
   const [savingUserId, setSavingUserId] = useState<number | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [teamSearchTerm, setTeamSearchTerm] = useState("");
   const [teamRoleFilter, setTeamRoleFilter] = useState("");
+  const visibleErrorMessage = errorMessage || loadErrorMessage;
+
+  const updateStoreManagementData = useCallback(
+    (updater: (current: StoreManagementData) => StoreManagementData): void => {
+      queryClient.setQueryData<StoreManagementData>(storeManagementQueryKey, (current) =>
+        current ? updater(current) : current,
+      );
+    },
+    [queryClient, storeManagementQueryKey],
+  );
 
   const selectedStore = data.stores.find((store) => store.id === selectedStoreId) || null;
   const selectedStoreUsers = selectedStore ? getUsersForStore(data.users, selectedStore.id) : [];
@@ -222,47 +240,11 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
   }));
 
   useEffect(() => {
-    let isCancelled = false;
+    if (!storesQuery.data) return;
 
-    async function loadStores(): Promise<void> {
-      setIsLoading(true);
-      setErrorMessage("");
-
-      try {
-        const [stores, users, positions] = await Promise.all([
-          fetchManageableStores(),
-          fetchApprovableUsers(),
-          fetchTrainingPositions(),
-        ]);
-
-        if (isCancelled) return;
-
-        setData({ stores, users });
-        setTrainingPositions(positions);
-        setApprovalDrafts(buildApprovalDrafts(users));
-        setTeamDrafts(buildTeamDrafts(users));
-      } catch (error) {
-        if (isCancelled) return;
-
-        setData({ stores: [], users: [] });
-        setErrorMessage(
-          error instanceof Error && error.message === "INSUFFICIENT_PERMISSIONS"
-            ? copy.unavailable
-            : copy.error,
-        );
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadStores();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [copy.error, copy.unavailable]);
+    setApprovalDrafts(buildApprovalDrafts(storesQuery.data.users));
+    setTeamDrafts(buildTeamDrafts(storesQuery.data.users));
+  }, [storesQuery.data]);
 
   function buildApprovalDrafts(users: MobilePermissionUser[]): Record<number, StoreApprovalDraft> {
     return users.reduce<Record<number, StoreApprovalDraft>>((drafts, item) => {
@@ -327,7 +309,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
       );
 
       if (isDeletedApprovalResult(result)) {
-        setData((current) => ({
+        updateStoreManagementData((current) => ({
           ...current,
           users: current.users.filter((user) => user.id !== permissionUser.id),
         }));
@@ -341,7 +323,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
 
       const updatedUser = result;
 
-      setData((current) => ({
+      updateStoreManagementData((current) => ({
         ...current,
         users: upsertUser(current.users, updatedUser),
       }));
@@ -376,7 +358,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
     try {
       const updatedUser = await updateUserJobRole(permissionUser.id, jobRole);
 
-      setData((current) => ({
+      updateStoreManagementData((current) => ({
         ...current,
         users: upsertUser(current.users, updatedUser),
       }));
@@ -405,7 +387,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
         throw new Error("EMPLOYEE_DELETION_FAILED");
       }
 
-      setData((current) => ({
+      updateStoreManagementData((current) => ({
         ...current,
         users: current.users.filter((user) => user.id !== permissionUser.id),
       }));
@@ -482,7 +464,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
           </View>
         </View>
 
-        {errorMessage ? <Text style={styles.message}>{errorMessage}</Text> : null}
+        {visibleErrorMessage ? <Text style={styles.message}>{visibleErrorMessage}</Text> : null}
 
         {detailView === "overview" ? (
           <View style={styles.list}>
@@ -671,15 +653,17 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
         </View>
       ) : null}
 
-      {!isLoading && errorMessage ? <Text style={styles.message}>{errorMessage}</Text> : null}
+      {!isLoading && visibleErrorMessage ? (
+        <Text style={styles.message}>{visibleErrorMessage}</Text>
+      ) : null}
 
-      {!isLoading && !errorMessage && data.stores.length === 0 ? (
+      {!isLoading && !visibleErrorMessage && data.stores.length === 0 ? (
         <Text style={styles.emptyText}>{copy.empty}</Text>
       ) : null}
 
-      {!isLoading && !errorMessage && data.stores.length > 0 ? (
+      {!isLoading && data.stores.length > 0 ? (
         <View style={styles.list}>
-          {data.stores.map((store) => {
+          {data.stores.map((store, index) => {
             const storeUsers = getUsersForStore(data.users, store.id);
             const pendingCount = storeUsers.filter(
               (item) => item.accountStatus === "pending",
@@ -690,6 +674,7 @@ export function StoresModuleScreen({ language, user }: StoresModuleScreenProps) 
               <StoreCard
                 key={store.id}
                 copy={copy}
+                imageLoadPriority={index < 3 ? "critical" : "lazy"}
                 pendingCount={pendingCount}
                 store={store}
                 teamCount={teamCount}

@@ -9,10 +9,11 @@ import {
 } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { useStore } from "zustand";
 import { mobileAuthStore } from "@/lib/api";
+import { clearUserMediaCache } from "@/lib/mediaCache";
 
 const CACHE_KEY_PREFIX = "zhao-mobile-query-cache-v1";
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -53,7 +54,7 @@ function createMobileQueryClient(): QueryClient {
       queries: {
         gcTime: CACHE_MAX_AGE_MS,
         refetchOnReconnect: true,
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: "always",
         retry: shouldRetryQuery,
         staleTime: 5 * 60 * 1000,
       },
@@ -66,6 +67,7 @@ type MobileQueryProviderProps = { children: ReactNode };
 export function MobileQueryProvider({ children }: MobileQueryProviderProps): ReactNode {
   const [queryClient] = useState(createMobileQueryClient);
   const userId = useStore(mobileAuthStore, (state) => state.user?.id ?? null);
+  const previousUserIdRef = useRef<number | string | null>(null);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state: AppStateStatus) => {
@@ -84,6 +86,14 @@ export function MobileQueryProvider({ children }: MobileQueryProviderProps): Rea
   }, []);
 
   useEffect(() => {
+    const previousUserId = previousUserIdRef.current;
+
+    if (previousUserId !== null && previousUserId !== userId) {
+      void clearUserMediaCache(previousUserId);
+    }
+
+    previousUserIdRef.current = userId;
+
     if (!userId) {
       queryClient.clear();
       return undefined;

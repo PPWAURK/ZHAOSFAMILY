@@ -10,6 +10,7 @@ function toInitial(initial) {
     sortOrder: initial && Number.isFinite(initial.sortOrder) ? String(initial.sortOrder) : "",
     includeAllProductsInOrder: !!initial?.includeAllProductsInOrder,
     orderNotice: initial?.orderNotice || "",
+    orderNoticeFr: initial?.orderNoticeFr || "",
   };
 }
 
@@ -35,6 +36,7 @@ export default function SupplierForm({ initial, copy, submitting, onCancel, onSu
         sortOrder: Number.isFinite(sort) ? sort : undefined,
         includeAllProductsInOrder: form.includeAllProductsInOrder,
         orderNotice: form.orderNotice.trim(),
+        orderNoticeFr: form.orderNoticeFr.trim(),
       });
     } catch (err) {
       setError(err?.message || copy.saveError);
@@ -91,6 +93,19 @@ export default function SupplierForm({ initial, copy, submitting, onCancel, onSu
             value={form.orderNotice}
             onChange={(e) => patch("orderNotice", e.target.value)}
             placeholder={copy.orderNoticePlaceholder}
+            rows={4}
+            maxLength={2000}
+            disabled={submitting}
+          />
+        </div>
+
+        <div className={`${styles.field} ${styles.fieldFull}`}>
+          <label className={styles.fieldLabel}>{copy.fieldOrderNoticeFr}</label>
+          <textarea
+            className={styles.textarea}
+            value={form.orderNoticeFr}
+            onChange={(e) => patch("orderNoticeFr", e.target.value)}
+            placeholder={copy.orderNoticeFrPlaceholder}
             rows={4}
             maxLength={2000}
             disabled={submitting}

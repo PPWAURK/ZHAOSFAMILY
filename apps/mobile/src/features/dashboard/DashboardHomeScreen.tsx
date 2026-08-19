@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,6 +12,7 @@ import {
   AccessibilityInfo,
   Easing,
   Image,
+  InteractionManager,
   Linking,
   Modal,
   Platform,
@@ -43,6 +43,7 @@ import { SidebarMenuToggle } from "@/components/SidebarMenuToggle";
 import { FeedbackPressable } from "@/components/FeedbackPressable";
 import { ProtectedScreen } from "@/components/ProtectedScreen";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { RemoteImage } from "@/components/RemoteImage";
 import { StoreGradeLeaderboard } from "@/features/dashboard/StoreGradeLeaderboard";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import { crossPlatformShadow } from "@/lib/platform";
@@ -64,6 +65,7 @@ import {
   type DashboardNewsPost,
 } from "@/features/dashboard/dashboardNewsApi";
 import { DashboardNewsBoard } from "@/features/dashboard/DashboardNewsBoard";
+import { DashboardRefreshProvider } from "@/features/dashboard/DashboardRefreshContext";
 import { createDashboardNewsPdfViewer } from "@/features/dashboard/dashboardNewsPdfPreview";
 import {
   formatDashboardNewsDate as formatDate,
@@ -97,6 +99,7 @@ import {
   type MobileOnboardingTargets,
 } from "@/features/onboarding/mobileOnboardingState";
 import { useSplashCompletion } from "@/features/splash/SplashCompletionProvider";
+import { prepareHighFrequencyPages } from "@/lib/pagePreloadManager";
 
 type DashboardHomeScreenProps = {
   language: AuthLanguage;
@@ -121,20 +124,26 @@ const EMPTY_ONBOARDING_TARGETS: MobileOnboardingTargets = {
 const PDF_LOADING_MIN_DURATION_MS = 2000;
 const MAX_NEWS_PER_CATEGORY = 20;
 
-type DashboardContentTransitionProps = {
+type DashboardContentContainerProps = {
   children: ReactNode;
-  loadingLabel: string;
-  transitionKey: string;
 };
 
-function DashboardContentTransition({
+function DashboardContentContainer({
   children,
-  loadingLabel,
-  transitionKey,
-}: DashboardContentTransitionProps): ReactNode {
-  const progress = useRef(new Animated.Value(1)).current;
+}: DashboardContentContainerProps): ReactNode {
+  return <View>{children}</View>;
+}
+
+function DashboardNavigationLoadingOverlay({
+  label,
+  visible,
+}: {
+  label: string;
+  visible: boolean;
+}): ReactNode {
+  const progress = useRef(new Animated.Value(0)).current;
+  const [isRendered, setIsRendered] = useState(visible);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [isTransitionLoading, setIsTransitionLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -151,43 +160,49 @@ function DashboardContentTransition({
     };
   }, []);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     progress.stopAnimation();
-    progress.setValue(reduceMotion ? 1 : 0);
 
-    if (reduceMotion) {
-      setIsTransitionLoading(false);
-      return;
+    if (visible) {
+      setIsRendered(true);
+      progress.setValue(0);
+      Animated.timing(progress, {
+        duration: reduceMotion ? 0 : 160,
+        easing: Easing.out(Easing.cubic),
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+      return undefined;
     }
 
-    setIsTransitionLoading(true);
-
     Animated.timing(progress, {
-      duration: 220,
+      duration: reduceMotion ? 0 : 110,
       easing: Easing.out(Easing.cubic),
-      toValue: 1,
+      toValue: 0,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      if (finished) setIsTransitionLoading(false);
+      if (finished) setIsRendered(false);
     });
-  }, [progress, reduceMotion, transitionKey]);
+
+    return undefined;
+  }, [progress, reduceMotion, visible]);
+
+  if (!isRendered) return null;
 
   const translateY = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [12, 0],
+    outputRange: [10, 0],
   });
 
   return (
-    <View>
-      <Animated.View style={{ opacity: progress, transform: [{ translateY }] }}>
-        {children}
+    <Animated.View
+      pointerEvents={visible ? "auto" : "none"}
+      style={[styles.navigationLoadingOverlay, { opacity: progress }]}
+    >
+      <Animated.View style={{ transform: [{ translateY }] }}>
+        <ZhaoLoadingIndicator label={label} variant="overlay" />
       </Animated.View>
-      {isTransitionLoading ? (
-        <View pointerEvents="none" style={styles.pageTransitionLoader}>
-          <ZhaoLoadingIndicator label={loadingLabel} variant="overlay" />
-        </View>
-      ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -317,6 +332,8 @@ export function DashboardHomeScreen({
   const orderCopy = ORDER_COPY[language];
   const isSplashComplete = useSplashCompletion();
   const [activeEntry, setActiveEntry] = useState("home");
+  const [mountedEntries, setMountedEntries] = useState<string[]>(["home"]);
+  const [isNavigationPending, setIsNavigationPending] = useState(false);
   const [isOnboardingReplay, setIsOnboardingReplay] = useState(false);
   const [isOnboardingVisible, setIsOnboardingVisible] = useState(false);
   const [isOnboardingReplayPending, setIsOnboardingReplayPending] = useState(false);
@@ -338,6 +355,9 @@ export function DashboardHomeScreen({
     queryKey: dashboardNewsQueryKeys.lists(),
   });
   const newsPosts = dashboardNewsQuery.data ?? [];
+  const refreshDashboardNews = useCallback((): void => {
+    void dashboardNewsQuery.refetch();
+  }, [dashboardNewsQuery.refetch]);
   const newsError = dashboardNewsQuery.isError ? copy.newsError : "";
   const isLoadingNews = dashboardNewsQuery.isPending && !dashboardNewsQuery.data;
   const [newsSearchTerm, setNewsSearchTerm] = useState("");
@@ -367,6 +387,9 @@ export function DashboardHomeScreen({
   const [actionMessage, setActionMessage] = useState("");
   const [equippedTitle, setEquippedTitle] = useState<TrainingTitle | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const navigationFrameRef = useRef<number | null>(null);
+  const navigationFinishFrameRef = useRef<number | null>(null);
+  const preloadedHomeUserRef = useRef<string | null>(null);
   const pdfLoadingStartedAtRef = useRef(0);
   const pdfLoadingTokenRef = useRef(0);
   const [newsCarouselIndex, setNewsCarouselIndex] = useState(0);
@@ -388,6 +411,75 @@ export function DashboardHomeScreen({
   const orderNavigationRef = useRef<View>(null);
   const trainingNavigationRef = useRef<View>(null);
   const moreDrawerWidth = Math.min(360, Math.round(screenWidth * 0.88));
+
+  const scrollDashboardToTop = useCallback((): void => {
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
+    });
+  }, []);
+
+  const navigateToEntry = useCallback(
+    (nextEntry: string): void => {
+      if (nextEntry === activeEntry) {
+        scrollDashboardToTop();
+        return;
+      }
+
+      if (navigationFrameRef.current !== null) {
+        cancelAnimationFrame(navigationFrameRef.current);
+      }
+      if (navigationFinishFrameRef.current !== null) {
+        cancelAnimationFrame(navigationFinishFrameRef.current);
+      }
+
+      setIsNavigationPending(true);
+      navigationFrameRef.current = requestAnimationFrame(() => {
+        navigationFrameRef.current = null;
+        setActiveEntry(nextEntry);
+        scrollDashboardToTop();
+
+        navigationFinishFrameRef.current = requestAnimationFrame(() => {
+          navigationFinishFrameRef.current = null;
+          setIsNavigationPending(false);
+        });
+      });
+    },
+    [activeEntry, scrollDashboardToTop],
+  );
+
+  useEffect(
+    () => () => {
+      if (navigationFrameRef.current !== null) {
+        cancelAnimationFrame(navigationFrameRef.current);
+      }
+      if (navigationFinishFrameRef.current !== null) {
+        cancelAnimationFrame(navigationFinishFrameRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setMountedEntries((currentEntries) =>
+      currentEntries.includes(activeEntry) ? currentEntries : [...currentEntries, activeEntry],
+    );
+  }, [activeEntry]);
+
+  useEffect(() => {
+    if (activeEntry === "home") return;
+
+    setSelectedNewsPost(null);
+    setPdfPreviewPost(null);
+    setPdfPreviewFileUri(null);
+    setPdfPreviewBaseUri(null);
+    setIsLoadingPdfPreview(false);
+    pdfLoadingTokenRef.current += 1;
+  }, [activeEntry]);
+
+  const renderedEntries = mountedEntries.includes(activeEntry)
+    ? mountedEntries
+    : [...mountedEntries, activeEntry];
+
   const moreDrawerTranslateX = moreDrawerProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [moreDrawerWidth, 0],
@@ -519,6 +611,21 @@ export function DashboardHomeScreen({
     }
   }, [isSplashComplete, user.id, user.mobileOnboardingCompletedAt]);
 
+  useEffect(() => {
+    if (!isSplashComplete || isOnboardingVisible) return undefined;
+
+    const preloadKey = `${user.id}:${language}`;
+
+    if (preloadedHomeUserRef.current === preloadKey) return undefined;
+
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      preloadedHomeUserRef.current = preloadKey;
+      void prepareHighFrequencyPages({ language, queryClient, userId: user.id });
+    });
+
+    return () => interaction.cancel();
+  }, [isOnboardingVisible, isSplashComplete, language, queryClient, user.id]);
+
   const updateOnboardingTarget = useCallback(
     (target: MobileOnboardingTargetId, nextBounds: MobileOnboardingTargetBounds): void => {
       setOnboardingTargets((current) => {
@@ -599,8 +706,7 @@ export function DashboardHomeScreen({
     }
 
     const nextEntry = resolveDashboardEntryId(item.id);
-    setActiveEntry(nextEntry);
-    scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
+    navigateToEntry(nextEntry);
 
     if (!isConnectedDashboardEntry(nextEntry)) {
       setActionMessage(copy.unavailable);
@@ -611,13 +717,12 @@ export function DashboardHomeScreen({
     const nextEntry = resolveDashboardEntryId(item.id);
 
     setIsMoreOpen(false);
-    setActiveEntry(nextEntry);
+    navigateToEntry(nextEntry);
     setActionMessage(isConnectedDashboardEntry(nextEntry) ? "" : copy.unavailable);
   }
 
   function openOnboardingReplay(): void {
-    setActiveEntry("home");
-    scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
+    navigateToEntry("home");
     setIsMoreOpen(false);
     setIsOnboardingReplayPending(true);
   }
@@ -634,8 +739,7 @@ export function DashboardHomeScreen({
     setIsOnboardingReplay(false);
 
     if (destination === "training") {
-      setActiveEntry("training");
-      scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
+      navigateToEntry("training");
     }
   }
 
@@ -644,7 +748,7 @@ export function DashboardHomeScreen({
     await onLogout();
   }
 
-  async function loadNewsReadStatus(postId: string): Promise<void> {
+  const loadNewsReadStatus = useCallback(async (postId: string): Promise<void> => {
     try {
       setReadStatusState({ postId, status: null, error: "", isLoading: true });
       const status = await fetchDashboardNewsReadStatus(postId);
@@ -657,9 +761,9 @@ export function DashboardHomeScreen({
         isLoading: false,
       });
     }
-  }
+  }, [copy.newsReadStatusError]);
 
-  async function handleOpenNewsPost(post: DashboardNewsPost): Promise<void> {
+  const handleOpenNewsPost = useCallback(async (post: DashboardNewsPost): Promise<void> => {
     setReaderError("");
     setSelectedNewsPost(post);
     setIsLoadingSelectedNews(true);
@@ -676,7 +780,7 @@ export function DashboardHomeScreen({
     } finally {
       setIsLoadingSelectedNews(false);
     }
-  }
+  }, [canViewNewsReadStats, copy.readerError, loadNewsReadStatus]);
 
   function handleCloseNewsReader(): void {
     setSelectedNewsPost(null);
@@ -686,7 +790,7 @@ export function DashboardHomeScreen({
     setReadStatusState({ postId: "", status: null, error: "", isLoading: false });
   }
 
-  async function handleConfirmNewsRead(postId: string): Promise<void> {
+  const handleConfirmNewsRead = useCallback(async (postId: string): Promise<void> => {
     try {
       setReadConfirmationState({ postId, message: "" });
       const confirmation = await confirmDashboardNewsRead(postId);
@@ -709,7 +813,13 @@ export function DashboardHomeScreen({
     } catch {
       setReadConfirmationState({ postId: "", message: copy.newsReadConfirmError });
     }
-  }
+  }, [
+    canViewNewsReadStats,
+    copy.newsReadConfirmError,
+    copy.newsReadConfirmed,
+    loadNewsReadStatus,
+    queryClient,
+  ]);
 
   function handleMandatoryNewsScroll(event: {
     nativeEvent: {
@@ -746,7 +856,7 @@ export function DashboardHomeScreen({
       setPdfPreviewBaseUri(null);
 
       try {
-        const viewer = await createDashboardNewsPdfViewer(attachment);
+        const viewer = await createDashboardNewsPdfViewer(attachment, user.id);
 
         if (token !== pdfLoadingTokenRef.current) {
           return;
@@ -792,7 +902,7 @@ export function DashboardHomeScreen({
     }, remaining);
   }
 
-  function moveNewsPost(direction: "previous" | "next"): void {
+  const moveNewsPost = useCallback((direction: "previous" | "next"): void => {
     setNewsCarouselIndex((currentIndex) => {
       if (direction === "next") {
         return Math.min(currentIndex + 1, visibleNewsPosts.length - 1);
@@ -800,7 +910,7 @@ export function DashboardHomeScreen({
 
       return Math.max(currentIndex - 1, 0);
     });
-  }
+  }, [visibleNewsPosts.length]);
 
   function renderNewsReaderBody(post: DashboardNewsPost): ReactNode {
     const body = post.body || post.summary;
@@ -817,9 +927,10 @@ export function DashboardHomeScreen({
             accessibilityLabel={image.alt}
             onPress={() => void Linking.openURL(image.src)}
           >
-            <Image
+            <RemoteImage
+              cacheKey={`dashboard-news-body-${image.src}`}
+              contentFit="contain"
               source={{ uri: image.src }}
-              resizeMode="contain"
               style={styles.readerBodyImage}
             />
           </Pressable>
@@ -884,19 +995,27 @@ export function DashboardHomeScreen({
             </View>
           </View>
 
-          <DashboardContentTransition loadingLabel={copy.loadingModule} transitionKey={activeEntry}>
-            {activeEntry === "orders" ? (
+          <DashboardRefreshProvider onForegroundRefresh={refreshDashboardNews}>
+            <DashboardContentContainer>
+              {renderedEntries.map((entryId) => (
+                <View
+                  key={entryId}
+                  style={entryId === activeEntry ? null : styles.keepAliveEntryHidden}
+                >
+            {entryId === "orders" ? (
               <OrderModuleScreen
+                isActive={entryId === activeEntry}
                 language={language}
                 storeName={user.store?.name || user.storeName || user.establishment || undefined}
                 onProductViewChange={setIsOrderProductView}
               />
-            ) : activeEntry === "stores" ? (
-              <StoresModuleScreen language={language} user={user} />
-            ) : activeEntry === "store-grade-ranking" ? (
-              <StoreGradeLeaderboard language={language} />
-            ) : activeEntry === "profile" ? (
+            ) : entryId === "stores" ? (
+              <StoresModuleScreen isActive={entryId === activeEntry} language={language} user={user} />
+            ) : entryId === "store-grade-ranking" ? (
+              <StoreGradeLeaderboard isActive={entryId === activeEntry} language={language} />
+            ) : entryId === "profile" ? (
               <ProfileScreen
+                isActive={entryId === activeEntry}
                 language={language}
                 user={user}
                 onChangeLanguage={onChangeLanguage}
@@ -905,30 +1024,36 @@ export function DashboardHomeScreen({
                 onUpdateProfile={onUpdateProfile}
                 onDeleteAccount={onDeleteAccount}
               />
-            ) : activeEntry === "invite-partner" ? (
+            ) : entryId === "invite-partner" ? (
               <InvitePartnerScreen language={language} user={user} />
-            ) : activeEntry === "recruitment-requests" ? (
+            ) : entryId === "recruitment-requests" ? (
               <RecruitmentModuleScreen language={language} />
-            ) : activeEntry === "recipes" ? (
+            ) : entryId === "recipes" ? (
               <RecipeModuleScreen language={language} user={user} />
-            ) : activeEntry === "case-shares" ? (
+            ) : entryId === "case-shares" ? (
               <CaseSharesModuleScreen
                 language={language}
                 mode="public"
+                isActive={entryId === activeEntry}
                 onRegisterPublishAction={handleCaseSharePublishActionChange}
-                onOpenMyCases={() => setActiveEntry("my-case-shares")}
+                onOpenMyCases={() => navigateToEntry("my-case-shares")}
               />
-            ) : activeEntry === "my-case-shares" ? (
+            ) : entryId === "my-case-shares" ? (
               <CaseSharesModuleScreen
                 language={language}
                 mode="mine"
+                isActive={entryId === activeEntry}
                 onRegisterPublishAction={handleCaseSharePublishActionChange}
-                onOpenMyCases={() => setActiveEntry("my-case-shares")}
+                onOpenMyCases={() => navigateToEntry("my-case-shares")}
               />
-            ) : activeEntry === "training" ? (
-              <TrainingModuleScreen language={language} user={user} />
-            ) : activeEntry === "training-records" ? (
-              <TrainingHistoryView copy={TRAINING_COPY[language]} language={language} />
+            ) : entryId === "training" ? (
+              <TrainingModuleScreen isActive={entryId === activeEntry} language={language} user={user} />
+            ) : entryId === "training-records" ? (
+              <TrainingHistoryView
+                copy={TRAINING_COPY[language]}
+                isActive={entryId === activeEntry}
+                language={language}
+              />
             ) : (
               <>
                 <View style={styles.intro}>
@@ -954,13 +1079,12 @@ export function DashboardHomeScreen({
                   isLoading={isLoadingNews}
                   posts={newsPosts}
                   searchTerm={newsSearchTerm}
+                  userId={user.id}
                   visiblePosts={visibleNewsPosts}
                   onMove={moveNewsPost}
-                  onConfirmRead={(postId) => void handleConfirmNewsRead(postId)}
-                  onOpenPost={(post) => void handleOpenNewsPost(post)}
-                  onCategoryTargetMeasure={(category, bounds) =>
-                    updateOnboardingTarget(category, bounds)
-                  }
+                  onConfirmRead={handleConfirmNewsRead}
+                  onOpenPost={handleOpenNewsPost}
+                  onCategoryTargetMeasure={updateOnboardingTarget}
                   onSearchChange={setNewsSearchTerm}
                   onSelectCategory={setSelectedNewsCategory}
                 />
@@ -996,9 +1120,10 @@ export function DashboardHomeScreen({
                         </Text>
                         {mandatoryNewsPost.attachment?.href &&
                         isImageAttachment(mandatoryNewsPost) ? (
-                          <Image
+                          <RemoteImage
+                            cacheKey={`dashboard-news-attachment-${mandatoryNewsPost.attachment.objectKey}`}
+                            contentFit="contain"
                             source={{ uri: mandatoryNewsPost.attachment.href }}
-                            resizeMode="contain"
                             style={styles.mandatoryNewsAttachmentImage}
                           />
                         ) : null}
@@ -1348,8 +1473,16 @@ export function DashboardHomeScreen({
                 {actionMessage ? <Text style={styles.actionMessage}>{actionMessage}</Text> : null}
               </>
             )}
-          </DashboardContentTransition>
+                </View>
+              ))}
+            </DashboardContentContainer>
+          </DashboardRefreshProvider>
         </ScrollView>
+
+        <DashboardNavigationLoadingOverlay
+          label={copy.loadingModule}
+          visible={isNavigationPending}
+        />
 
         {!isMoreOpen ? (
           <BlurView intensity={80} tint="light" style={styles.bottomNav}>
@@ -1481,10 +1614,10 @@ export function DashboardHomeScreen({
                     <View style={styles.sheetUserBody}>
                       <View style={styles.sheetUserAvatar}>
                         {userCard.avatar ? (
-                          <Image
+                          <RemoteImage
+                            cacheKey={`dashboard-user-avatar-${user.id}`}
                             source={{ uri: userCard.avatar }}
                             style={styles.sheetUserAvatarImage}
-                            resizeMode="cover"
                           />
                         ) : (
                           <Text style={styles.sheetUserInitials}>{userCard.initials || "Z"}</Text>
@@ -1911,14 +2044,15 @@ const styles = StyleSheet.create(
       backgroundColor: "#ffffff",
       flex: 1,
     },
-    pageTransitionLoader: {
+    navigationLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
       alignItems: "center",
-      left: 0,
-      paddingTop: 32,
-      position: "absolute",
-      right: 0,
-      top: 0,
-      zIndex: 1,
+      backgroundColor: "rgba(255, 255, 255, 0.94)",
+      justifyContent: "center",
+      zIndex: 3,
+    },
+    keepAliveEntryHidden: {
+      display: "none",
     },
     mandatoryNewsScroll: {
       flex: 1,

@@ -13,6 +13,7 @@ import type { AuthLanguage } from "@/features/auth/authCopy";
 import { fetchRecipes } from "@/features/recipes/recipesApi";
 import { recipeStyles as styles } from "@/features/recipes/recipeStyles";
 import { MOBILE_API_URL } from "@/lib/env";
+import type { AppImageLoadPriority } from "@/lib/imagePriority";
 import fallbackRecipeImage from "../../../assets/四大天王/1411631517542_.pic_hd.jpg";
 
 type RecipeModuleScreenProps = {
@@ -121,14 +122,17 @@ function getRecipeImageSource(imageUrl: string | null) {
 
 function RecipeImage({
   imageUrl,
+  loadPriority = "important",
   style,
 }: {
   imageUrl: string | null;
+  loadPriority?: AppImageLoadPriority;
   style: object;
 }): React.JSX.Element {
   return (
     <RemoteImage
       fallback={<Image resizeMode="cover" source={fallbackRecipeImage} style={style} />}
+      loadPriority={loadPriority}
       source={getRecipeImageSource(imageUrl)}
       style={style}
     />
@@ -243,7 +247,11 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
           <Ionicons color="#c11616" name="arrow-back" size={18} />
           <Text style={styles.backButtonText}>{copy.back}</Text>
         </FeedbackPressable>
-        <RecipeImage imageUrl={selectedRecipe.finishedImageUrl} style={styles.heroImage} />
+        <RecipeImage
+          imageUrl={selectedRecipe.finishedImageUrl}
+          loadPriority="critical"
+          style={styles.heroImage}
+        />
         <View style={styles.detailIntro}>
           <RecipeTags language={language} tags={selectedRecipe.tags} />
           <Text style={styles.detailTitle}>{getRecipeText(selectedRecipe.name, language)}</Text>
@@ -353,7 +361,11 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
           style={styles.featuredRecipe}
           onPress={() => openRecipe(featuredRecipe)}
         >
-          <RecipeImage imageUrl={featuredRecipe.coverImageUrl} style={styles.featuredImage} />
+          <RecipeImage
+            imageUrl={featuredRecipe.coverImageUrl}
+            loadPriority="critical"
+            style={styles.featuredImage}
+          />
           <View style={styles.featuredBody}>
             <View>
               <Text style={styles.featuredKicker}>{copy.featured}</Text>
@@ -414,14 +426,18 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
         ))}
       </ScrollView>
       <View style={styles.recipeList}>
-        {visibleRecipes.map((recipe) => (
+        {visibleRecipes.map((recipe, index) => (
           <FeedbackPressable
             accessibilityRole="button"
             key={recipe.id}
             style={styles.recipeRow}
             onPress={() => openRecipe(recipe)}
           >
-            <RecipeImage imageUrl={recipe.coverImageUrl} style={styles.recipeRowImage} />
+            <RecipeImage
+              imageUrl={recipe.coverImageUrl}
+              loadPriority={index < 3 ? "important" : "lazy"}
+              style={styles.recipeRowImage}
+            />
             <View style={styles.recipeRowBody}>
               <RecipeTags language={language} tags={recipe.tags} />
               <Text style={styles.recipeRowTitle}>{getRecipeText(recipe.name, language)}</Text>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { CaseShareAuthorProfile } from "@zhao/types";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { RemoteImage } from "@/components/RemoteImage";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { TrainingBadgeSvg } from "@/features/training/TrainingBadgeSvg";
@@ -80,7 +81,11 @@ function AuthorProfileContent({
       <View style={styles.identityCard}>
         <View style={styles.avatar}>
           {profile.avatarUrl ? (
-            <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+            <RemoteImage
+              cacheKey={`case-author-${profile.id}`}
+              source={{ uri: profile.avatarUrl }}
+              style={styles.avatarImage}
+            />
           ) : (
             <Text style={styles.avatarInitial}>{resolveInitial(profile.name)}</Text>
           )}

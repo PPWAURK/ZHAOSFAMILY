@@ -1665,6 +1665,12 @@ export const trainingStyles = StyleSheet.create(
       fontSize: 14,
       lineHeight: 21,
     },
+    mapHeroErrorRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
+    },
     mapHeroRefreshButton: {
       alignItems: "center",
       borderColor: "rgba(193, 22, 22, 0.32)",

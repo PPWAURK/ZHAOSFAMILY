@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Alert,
@@ -14,6 +14,8 @@ import {
 } from "react-native";
 import type { ShareAction } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { ordersQueryKeys } from "@zhao/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Sharing from "expo-sharing";
 import { useScreenName } from "@/lib/useScreenName";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
@@ -70,29 +72,55 @@ import type {
 } from "@/features/orders/orderTypes";
 
 type OrderModuleScreenProps = {
+  isActive?: boolean;
   language: AuthLanguage;
   storeName?: string;
   onProductViewChange?: (visible: boolean) => void;
 };
 
 type OrderModuleMode = "new" | "history";
+type SupplierIconName = ComponentProps<typeof Ionicons>["name"];
 
 type SupplierListItemProps = {
   index: number;
+  noticeLabel: string;
   reduceMotion: boolean;
   supplier: OrderSupplier;
+  language: AuthLanguage;
   onSelect: (supplierId: string) => void;
 };
 
+function getSupplierIconName(supplierName: string): SupplierIconName {
+  const normalizedName = supplierName.toLowerCase();
+
+  if (normalizedName.includes("labo")) return "cube-outline";
+  if (normalizedName.includes("boisson")) return "wine-outline";
+  if (normalizedName.includes("verger")) return "nutrition-outline";
+  if (normalizedName.includes("emballage") || normalizedName.includes("pack")) {
+    return "cube-outline";
+  }
+  if (normalizedName.includes("bureau")) return "shirt-outline";
+  if (normalizedName.includes("jfc")) return "restaurant-outline";
+  if (normalizedName.includes("store")) return "cart-outline";
+
+  return "storefront-outline";
+}
+
 function SupplierListItem({
   index,
+  noticeLabel,
   reduceMotion,
   supplier,
+  language,
   onSelect,
 }: SupplierListItemProps) {
   const entryProgress = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
   const pressProgress = useRef(new Animated.Value(0)).current;
   const [isPressed, setIsPressed] = useState(false);
+  const orderNotice =
+    language === "fr"
+      ? supplier.orderNoticeFr || supplier.orderNotice || ""
+      : supplier.orderNotice || supplier.orderNoticeFr || "";
 
   useEffect(() => {
     entryProgress.stopAnimation();
@@ -137,8 +165,8 @@ function SupplierListItem({
     >
       <Animated.View
         style={[
-          styles.supplierRow,
-          isPressed ? styles.supplierRowActive : null,
+          styles.supplierCard,
+          isPressed ? styles.supplierCardPressed : null,
           {
             opacity: entryProgress,
             transform: [
@@ -158,34 +186,53 @@ function SupplierListItem({
           },
         ]}
       >
-        <Text
-          numberOfLines={1}
-          style={[styles.supplierRowText, isPressed ? styles.supplierRowTextActive : null]}
-        >
-          {supplier.name}
-        </Text>
-        <Ionicons
-          color={isPressed ? authControlStyles.colors.red : authControlStyles.colors.ink40}
-          name="chevron-forward"
-          size={18}
-        />
+        <View style={styles.supplierCardHeader}>
+          <View style={styles.supplierIconBadge}>
+            <Ionicons
+              color={authControlStyles.colors.paper}
+              name={getSupplierIconName(supplier.name)}
+              size={20}
+            />
+          </View>
+          <Text
+            numberOfLines={1}
+            style={[styles.supplierCardTitle, isPressed ? styles.supplierCardTitlePressed : null]}
+          >
+            {supplier.name}
+          </Text>
+        </View>
+        <View style={styles.supplierNotice}>
+          {orderNotice ? (
+            <>
+              <Text style={styles.supplierNoticeLabel}>{noticeLabel}</Text>
+              <Text ellipsizeMode="tail" numberOfLines={2} style={styles.supplierNoticeText}>
+                {orderNotice}
+              </Text>
+            </>
+          ) : null}
+        </View>
+        <View style={styles.supplierCardChevron}>
+          <Ionicons
+            color={authControlStyles.colors.red}
+            name="chevron-forward"
+            size={16}
+          />
+        </View>
       </Animated.View>
     </Pressable>
   );
 }
 
 export function OrderModuleScreen({
+  isActive = true,
   language,
   storeName,
   onProductViewChange,
 }: OrderModuleScreenProps) {
   useScreenName("orders");
   const copy = ORDER_COPY[language];
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<OrderModuleMode>("new");
-  const [suppliers, setSuppliers] = useState<OrderSupplier[]>([]);
-  const [orderHistory, setOrderHistory] = useState<OrderHistoryItem[]>([]);
-  const [products, setProducts] = useState<OrderProduct[]>([]);
-  const [stockMap, setStockMap] = useState<OrderStockMap>({});
   const [originalStockMap, setOriginalStockMap] = useState<OrderStockMap>({});
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [selectedHistorySupplierId, setSelectedHistorySupplierId] = useState("");
@@ -206,9 +253,7 @@ export function OrderModuleScreen({
   const [createdOrder, setCreatedOrder] = useState<PurchaseOrder | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [shareMessage, setShareMessage] = useState("");
-  const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isLoadingOrderDetail, setIsLoadingOrderDetail] = useState(false);
   const [isLoadingReturnDraft, setIsLoadingReturnDraft] = useState(false);
   const [isSharingPdf, setIsSharingPdf] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -219,7 +264,52 @@ export function OrderModuleScreen({
   );
   const [reduceMotion, setReduceMotion] = useState(false);
 
+  const suppliersQuery = useQuery({
+    enabled: isActive,
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: fetchOrderSuppliers,
+    queryKey: ordersQueryKeys.suppliers(),
+  });
+  const orderHistoryQuery = useQuery({
+    enabled: isActive && mode === "history",
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: fetchOrderHistory,
+    queryKey: ordersQueryKeys.history(),
+  });
+  const orderProductsQuery = useQuery({
+    enabled: isActive && Boolean(selectedSupplierId),
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: async (): Promise<{ products: OrderProduct[]; stockMap: OrderStockMap }> => {
+      const [products, stockMap] = await Promise.all([
+        fetchOrderProducts(selectedSupplierId),
+        fetchOrderInventory(selectedSupplierId),
+      ]);
+
+      return { products, stockMap };
+    },
+    queryKey: ordersQueryKeys.products(selectedSupplierId),
+  });
+  const suppliers = suppliersQuery.data ?? [];
+  const orderHistory = orderHistoryQuery.data ?? [];
+  const products = orderProductsQuery.data?.products ?? [];
+  const stockMap = orderProductsQuery.data?.stockMap ?? {};
+  const isLoadingSuppliers = suppliersQuery.isPending;
+  const isLoadingHistory = orderHistoryQuery.isPending;
+  const isLoadingProducts = isLoadingOrderDetail || orderProductsQuery.isPending;
+  const queryLoadError =
+    suppliersQuery.isError || orderHistoryQuery.isError || orderProductsQuery.isError
+      ? copy.loadError
+      : "";
+  const visibleErrorMessage = errorMessage || queryLoadError;
+
   const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
+  const orderNotice =
+    language === "fr"
+      ? selectedSupplier?.orderNoticeFr || selectedSupplier?.orderNotice || ""
+      : selectedSupplier?.orderNotice || selectedSupplier?.orderNoticeFr || "";
   // The product-selection page (supplier chosen, editing a new order) is the
   // only long-scrolling view — let the host show its scroll-to helpers there.
   const isProductView =
@@ -293,111 +383,6 @@ export function OrderModuleScreen({
   const stockViolation = isStockEnforced
     ? getStockViolation(products, quantities, availableStockMap, language)
     : null;
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadSuppliers(): Promise<void> {
-      try {
-        setIsLoadingSuppliers(true);
-        setErrorMessage("");
-        const nextSuppliers = await fetchOrderSuppliers();
-
-        if (!isCancelled) {
-          setSuppliers(nextSuppliers);
-        }
-      } catch {
-        if (!isCancelled) {
-          setErrorMessage(copy.loadError);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingSuppliers(false);
-        }
-      }
-    }
-
-    void loadSuppliers();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [copy.loadError]);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadHistory(): Promise<void> {
-      if (mode !== "history") return;
-
-      try {
-        setIsLoadingHistory(true);
-        setErrorMessage("");
-        const orders = await fetchOrderHistory();
-
-        if (!isCancelled) {
-          setOrderHistory(orders);
-        }
-      } catch {
-        if (!isCancelled) {
-          setOrderHistory([]);
-          setErrorMessage(copy.loadError);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingHistory(false);
-        }
-      }
-    }
-
-    void loadHistory();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [copy.loadError, mode]);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadProducts(): Promise<void> {
-      if (!selectedSupplierId) {
-        setProducts([]);
-        setStockMap({});
-        return;
-      }
-
-      try {
-        setIsLoadingProducts(true);
-        setErrorMessage("");
-        const [nextProducts, nextStockMap] = await Promise.all([
-          fetchOrderProducts(selectedSupplierId),
-          fetchOrderInventory(selectedSupplierId),
-        ]);
-
-        if (!isCancelled) {
-          setProducts(nextProducts);
-          setStockMap(nextStockMap);
-        }
-      } catch {
-        if (!isCancelled) {
-          setProducts([]);
-          setStockMap({});
-          setErrorMessage(copy.loadError);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingProducts(false);
-        }
-      }
-    }
-
-    void loadProducts();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [copy.loadError, selectedSupplierId]);
-
   function updateQuantity(variantId: string, value: string): void {
     const sanitizedValue = value.replace(/[^0-9]/g, "");
     setQuantities((current) => ({ ...current, [variantId]: sanitizedValue }));
@@ -447,7 +432,7 @@ export function OrderModuleScreen({
         ? await updatePurchaseOrder(editingOrder.id, deliveryDate, quantities)
         : await createPurchaseOrder(deliveryDate, quantities);
       setCreatedOrder(order);
-      setOrderHistory([]);
+      await queryClient.invalidateQueries({ queryKey: ordersQueryKeys.history() });
       setStep("complete");
     } catch {
       setErrorMessage(editingOrder ? copy.updateError : copy.submitError);
@@ -554,8 +539,7 @@ export function OrderModuleScreen({
   }
 
   async function refreshOrderHistory(): Promise<void> {
-    const orders = await fetchOrderHistory();
-    setOrderHistory(orders);
+    await queryClient.refetchQueries({ queryKey: ordersQueryKeys.history() });
   }
 
   async function handleDeleteHistoryOrder(order: OrderHistoryItem): Promise<void> {
@@ -709,7 +693,7 @@ export function OrderModuleScreen({
     }
 
     try {
-      setIsLoadingProducts(true);
+      setIsLoadingOrderDetail(true);
       setErrorMessage("");
       const detail = await fetchOrderDetail(order.id);
 
@@ -734,7 +718,7 @@ export function OrderModuleScreen({
     } catch {
       setErrorMessage(copy.loadError);
     } finally {
-      setIsLoadingProducts(false);
+      setIsLoadingOrderDetail(false);
     }
   }
 
@@ -983,7 +967,7 @@ export function OrderModuleScreen({
             })}
           </View>
           {shareMessage ? <Text style={styles.stateText}>{shareMessage}</Text> : null}
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {visibleErrorMessage ? <Text style={styles.errorText}>{visibleErrorMessage}</Text> : null}
         </View>
       ) : null}
 
@@ -993,11 +977,13 @@ export function OrderModuleScreen({
           {isLoadingSuppliers ? (
             <StateRow label={copy.loadingSuppliers} />
           ) : (
-            <View style={styles.optionGrid}>
+            <View style={styles.supplierGrid}>
               {suppliers.map((supplier, index) => (
                 <SupplierListItem
                   key={supplier.id}
                   index={index}
+                  language={language}
+                  noticeLabel={copy.orderNotice}
                   reduceMotion={reduceMotion}
                   supplier={supplier}
                   onSelect={handleSelectSupplier}
@@ -1005,7 +991,7 @@ export function OrderModuleScreen({
               ))}
             </View>
           )}
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {visibleErrorMessage ? <Text style={styles.errorText}>{visibleErrorMessage}</Text> : null}
         </View>
       ) : null}
 
@@ -1129,6 +1115,12 @@ export function OrderModuleScreen({
               </Pressable>
             ))}
           </ScrollView>
+          {orderNotice ? (
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryLabel}>{copy.orderNotice}</Text>
+              <Text style={styles.summaryValue}>{orderNotice}</Text>
+            </View>
+          ) : null}
           <SectionTitle label={copy.products} />
           {isLoadingProducts ? <StateRow label={copy.loadingProducts} /> : null}
           {!isLoadingProducts && selectedSupplierId && products.length === 0 ? (
@@ -1143,9 +1135,10 @@ export function OrderModuleScreen({
               isTablet ? { justifyContent: "flex-start" } : null,
             ]}
           >
-            {filteredProducts.map((product) => (
+            {filteredProducts.map((product, index) => (
               <ProductQuantityRow
                 key={product.id}
+                imageLoadPriority={index < 3 ? "critical" : "lazy"}
                 language={language}
                 product={product}
                 quantities={quantities}
@@ -1157,7 +1150,7 @@ export function OrderModuleScreen({
               />
             ))}
           </View>
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {visibleErrorMessage ? <Text style={styles.errorText}>{visibleErrorMessage}</Text> : null}
           <PrimaryButton label={copy.confirm} onPress={handleGoToConfirm} />
         </View>
       ) : null}
@@ -1172,7 +1165,7 @@ export function OrderModuleScreen({
             totalItems={totalItems}
           />
           <SelectedLinesList language={language} lines={selectedLines} />
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {visibleErrorMessage ? <Text style={styles.errorText}>{visibleErrorMessage}</Text> : null}
           <PrimaryButton
             disabled={isSubmitting}
             label={isSubmitting ? "..." : editingOrder ? copy.update : copy.submit}

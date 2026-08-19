@@ -1,8 +1,10 @@
-import { Image, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { RemoteImage } from "@/components/RemoteImage";
 import { authControlStyles, TrackingText } from "@/features/auth/AuthFormControls";
 import { STORE_COPY } from "@/features/stores/storeCopy";
 import { storeStyles as styles } from "@/features/stores/storeStyles";
+import type { AppImageLoadPriority } from "@/lib/imagePriority";
 import type {
   MobilePermissionUser,
   MobileStore,
@@ -126,12 +128,14 @@ export function StoreDetailActionCard({
 
 export function StoreCard({
   copy,
+  imageLoadPriority = "important",
   pendingCount,
   store,
   teamCount,
   onPress,
 }: {
   copy: typeof STORE_COPY.zh;
+  imageLoadPriority?: AppImageLoadPriority;
   pendingCount: number;
   store: MobileStore;
   teamCount: number;
@@ -141,7 +145,12 @@ export function StoreCard({
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.cardImage}>
         {store.photoUri ? (
-          <Image source={{ uri: store.photoUri }} style={styles.cardImageMedia} />
+          <RemoteImage
+            cacheKey={`store-photo-${store.id}`}
+            loadPriority={imageLoadPriority}
+            source={{ uri: store.photoUri }}
+            style={styles.cardImageMedia}
+          />
         ) : (
           <Text style={styles.cardImageText}>{copy.imageFallback}</Text>
         )}

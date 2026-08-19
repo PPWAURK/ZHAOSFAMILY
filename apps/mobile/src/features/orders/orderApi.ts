@@ -108,6 +108,8 @@ export async function fetchOrderSuppliers(): Promise<OrderSupplier[]> {
     name: supplier.name,
     sortOrder: supplier.sortOrder,
     includeAllProductsInOrder: supplier.includeAllProductsInOrder,
+    orderNotice: supplier.orderNotice ?? null,
+    orderNoticeFr: supplier.orderNoticeFr ?? null,
   }));
 }
 

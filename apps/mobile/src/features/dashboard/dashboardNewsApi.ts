@@ -1,8 +1,9 @@
-import { Directory, File, Paths } from "expo-file-system";
+import { File } from "expo-file-system";
 import { getAccessToken } from "@zhao/api";
 import { mobileApiClient } from "@/lib/api";
 import { MOBILE_API_URL } from "@/lib/env";
 import { secureTokenStorage } from "@/lib/tokenStorage";
+import { createUserMediaCacheDirectory } from "@/lib/mediaCache";
 
 export type DashboardNewsAttachment = {
   name: string;
@@ -188,6 +189,7 @@ export async function confirmDashboardNewsRead(id: string): Promise<DashboardNew
 
 export async function downloadDashboardNewsAttachmentToCache(
   attachment: DashboardNewsAttachment,
+  userId: number | string,
 ): Promise<{ directoryUri: string; fileUri: string }> {
   const accessToken = getAccessToken() || (await secureTokenStorage.getAccessToken());
 
@@ -195,13 +197,22 @@ export async function downloadDashboardNewsAttachmentToCache(
     throw new Error("ACCESS_TOKEN_REQUIRED");
   }
 
-  const cacheDirectory = new Directory(
-    Paths.cache,
-    `dashboard-news-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  const cacheDirectory = createUserMediaCacheDirectory(
+    userId,
+    "dashboard-news",
+    attachment.objectKey,
   );
   cacheDirectory.create({ idempotent: true, intermediates: true });
 
   const file = new File(cacheDirectory, getDashboardNewsAttachmentFileName(attachment));
+
+  if (file.exists && file.size > 0) {
+    return {
+      directoryUri: cacheDirectory.uri,
+      fileUri: file.uri,
+    };
+  }
+
   const downloadedFile = await File.downloadFileAsync(attachment.href, file, {
     headers: {
       Authorization: `Bearer ${accessToken}`,

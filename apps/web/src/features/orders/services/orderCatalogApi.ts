@@ -76,6 +76,7 @@ export async function fetchOrderSuppliers(): Promise<OrderSupplier[]> {
     sortOrder: supplier.sortOrder,
     includeAllProductsInOrder: supplier.includeAllProductsInOrder,
     orderNotice: supplier.orderNotice ?? null,
+    orderNoticeFr: supplier.orderNoticeFr ?? null,
   }));
 }
 

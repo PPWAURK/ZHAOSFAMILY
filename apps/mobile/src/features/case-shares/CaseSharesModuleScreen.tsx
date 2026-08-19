@@ -23,8 +23,10 @@ import type {
   CaseShareType,
 } from "@zhao/types";
 import { useScreenName } from "@/lib/useScreenName";
+import { useDashboardRefreshVersion } from "@/features/dashboard/DashboardRefreshContext";
 import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { RemoteImage } from "@/components/RemoteImage";
 import { useConfirm } from "@/components/confirm/ConfirmProvider";
 import { useToast } from "@/components/toast/ToastProvider";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
@@ -47,6 +49,7 @@ import { CaseShareAuthorProfileModal } from "@/features/case-shares/CaseShareAut
 import { CASE_SHARES_COPY } from "@/features/case-shares/caseSharesCopy";
 
 type CaseSharesModuleScreenProps = {
+  isActive?: boolean;
   language: AuthLanguage;
   mode?: "public" | "mine";
   onRegisterPublishAction?: (action: (() => void) | null) => void;
@@ -76,6 +79,7 @@ function assetToUpload(asset: ImagePicker.ImagePickerAsset): CaseImageUpload | n
 }
 
 export function CaseSharesModuleScreen({
+  isActive = true,
   language,
   mode = "public",
   onRegisterPublishAction,
@@ -86,6 +90,7 @@ export function CaseSharesModuleScreen({
   const confirm = useConfirm();
   const toast = useToast();
   const insets = useSafeAreaInsets();
+  const refreshVersion = useDashboardRefreshVersion({ isActive, deferMs: 400 });
 
   const [feed, setFeed] = useState<CaseShareItem[]>([]);
   const [mine, setMine] = useState<CaseShareItem[]>([]);
@@ -114,7 +119,6 @@ export function CaseSharesModuleScreen({
     let isCancelled = false;
 
     async function load(): Promise<void> {
-      setIsLoading(true);
       setLoadError("");
 
       try {
@@ -143,7 +147,7 @@ export function CaseSharesModuleScreen({
     return () => {
       isCancelled = true;
     };
-  }, [copy.loadError]);
+  }, [copy.loadError, refreshVersion]);
 
   const openComposer = useCallback((): void => {
     setComposerType("personal");
@@ -155,7 +159,7 @@ export function CaseSharesModuleScreen({
   }, []);
 
   useEffect(() => {
-    if (!onRegisterPublishAction) {
+    if (!isActive || !onRegisterPublishAction) {
       return undefined;
     }
 
@@ -164,7 +168,15 @@ export function CaseSharesModuleScreen({
     return () => {
       onRegisterPublishAction(null);
     };
-  }, [onRegisterPublishAction, openComposer]);
+  }, [isActive, onRegisterPublishAction, openComposer]);
+
+  useEffect(() => {
+    if (isActive) return;
+
+    setComposerOpen(false);
+    setCommentsCase(null);
+    setAuthorProfileId(null);
+  }, [isActive]);
 
   useEffect(() => {
     function handleAppStateChange(nextAppState: AppStateStatus): void {
@@ -368,7 +380,11 @@ export function CaseSharesModuleScreen({
           >
             <View style={styles.authorMark}>
               {item.author.avatarUrl ? (
-                <Image source={{ uri: item.author.avatarUrl }} style={styles.authorAvatarImage} />
+                <RemoteImage
+                  cacheKey={`case-author-${item.author.id}`}
+                  source={{ uri: item.author.avatarUrl }}
+                  style={styles.authorAvatarImage}
+                />
               ) : (
                 <Text style={styles.authorMarkText}>
                   {item.author.name.slice(0, 1).toUpperCase()}
@@ -399,8 +415,8 @@ export function CaseSharesModuleScreen({
         <Text style={styles.cardContent}>{item.content}</Text>
 
         {item.image ? (
-          <Image
-            resizeMode="cover"
+          <RemoteImage
+            cacheKey={`case-image-${item.image.objectKey}`}
             source={{ uri: buildCaseImageUrl(item.image.objectKey) }}
             style={styles.cardImage}
           />
@@ -497,7 +513,7 @@ export function CaseSharesModuleScreen({
         </View>
       ) : null}
 
-      {!isLoading && !loadError && visibleList.length > 0 ? (
+      {!isLoading && visibleList.length > 0 ? (
         <View style={shared.list}>{visibleList.map((item) => renderCard(item, isMineMode))}</View>
       ) : null}
 

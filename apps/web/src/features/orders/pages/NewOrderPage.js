@@ -57,6 +57,16 @@ function getEditOrderIdFromLocation() {
   return new URLSearchParams(window.location.search).get("editOrderId") || "";
 }
 
+function getLocalizedOrderNotice(supplier, language) {
+  if (!supplier) return "";
+
+  if (language === "fr") {
+    return supplier.orderNoticeFr || supplier.orderNotice || "";
+  }
+
+  return supplier.orderNotice || supplier.orderNoticeFr || "";
+}
+
 function buildQuantitiesFromOrderItems(items) {
   if (!Array.isArray(items)) {
     return {};
@@ -556,9 +566,10 @@ export default function NewOrderPage() {
             <StepProducts
               lang={lang}
               supplierId={supplierId}
-              orderNotice={
-                suppliers.find((item) => String(item.id) === String(supplierId))?.orderNotice || ""
-              }
+              orderNotice={getLocalizedOrderNotice(
+                suppliers.find((item) => String(item.id) === String(supplierId)),
+                lang,
+              )}
               products={products}
               isLoading={isLoadingProducts}
               loadError={productsError}

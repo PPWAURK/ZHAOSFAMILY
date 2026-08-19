@@ -25,6 +25,14 @@ function normalizeSearchText(value) {
     .toLowerCase();
 }
 
+function getLocalizedOrderNotice(supplier, language) {
+  if (language === "fr") {
+    return supplier.orderNoticeFr || supplier.orderNotice;
+  }
+
+  return supplier.orderNotice || supplier.orderNoticeFr;
+}
+
 function emptyProduct(supplierId) {
   return {
     id: NEW_PRODUCT_ID,
@@ -101,6 +109,7 @@ export default function SupplierDetailPage({ supplierId }) {
   }, [categoryFilter, products, search]);
   const hasActiveProductFilters = Boolean(search || categoryFilter !== ALL_CATEGORIES);
   const canReorderProducts = !hasActiveProductFilters && editingProductId === null;
+  const orderNotice = supplier ? getLocalizedOrderNotice(supplier, lang) : "";
 
   async function handleSaveInfo(data) {
     setSavingInfo(true);
@@ -273,10 +282,10 @@ export default function SupplierDetailPage({ supplierId }) {
           <>
             <h1 className={styles.title}>{supplier.name}</h1>
 
-            {supplier.orderNotice ? (
+            {orderNotice ? (
               <div className={styles.orderNotice}>
                 <span className={styles.orderNoticeLabel}>{t.fieldOrderNotice}</span>
-                {supplier.orderNotice}
+                {orderNotice}
               </div>
             ) : null}
 

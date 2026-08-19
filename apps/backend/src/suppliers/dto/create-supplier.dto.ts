@@ -27,4 +27,9 @@ export class CreateSupplierDto {
   @IsString({ message: 'ORDER_NOTICE_INVALID' })
   @Length(0, 2000, { message: 'ORDER_NOTICE_INVALID_LENGTH' })
   orderNotice?: string;
+
+  @IsOptional()
+  @IsString({ message: 'ORDER_NOTICE_FR_INVALID' })
+  @Length(0, 2000, { message: 'ORDER_NOTICE_FR_INVALID_LENGTH' })
+  orderNoticeFr?: string;
 }

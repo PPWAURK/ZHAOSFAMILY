@@ -39,6 +39,7 @@ function normalizeSupplier(raw: SupplierApiRecord | null): SupplierSummary | nul
     sortOrder: Number.isFinite(raw.sortOrder) ? Number(raw.sortOrder) : 0,
     includeAllProductsInOrder: !!raw.includeAllProductsInOrder,
     orderNotice: raw.orderNotice ?? "",
+    orderNoticeFr: raw.orderNoticeFr ?? "",
   };
 }
 
@@ -98,6 +99,7 @@ export async function createSupplierApi(input: SupplierInput): Promise<SupplierS
   };
   if (Number.isFinite(input.sortOrder)) body.sortOrder = input.sortOrder;
   if (input.orderNotice !== undefined) body.orderNotice = input.orderNotice;
+  if (input.orderNoticeFr !== undefined) body.orderNoticeFr = input.orderNoticeFr;
   const data = await suppliersApi.create(body);
   return normalizeSupplier(data);
 }
@@ -113,6 +115,7 @@ export async function updateSupplierApi(
   if (patch.includeAllProductsInOrder !== undefined)
     body.includeAllProductsInOrder = !!patch.includeAllProductsInOrder;
   if (patch.orderNotice !== undefined) body.orderNotice = patch.orderNotice;
+  if (patch.orderNoticeFr !== undefined) body.orderNoticeFr = patch.orderNoticeFr;
   const data = await suppliersApi.update(id, body);
   return normalizeSupplier(data);
 }

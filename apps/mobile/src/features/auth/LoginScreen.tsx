@@ -35,6 +35,7 @@ import { AUTH_COPY } from "@/features/auth/authCopy";
 import { mobileApiClient, mobileAuthActions, mobileAuthApi, mobileAuthStore } from "@/lib/api";
 import { secureTokenStorage } from "@/lib/tokenStorage";
 import { unregisterPushToken } from "@/lib/pushNotifications";
+import { clearUserMediaCache } from "@/lib/mediaCache";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SUPPORT_URL = "https://zhaosfamily.com/support";
@@ -248,6 +249,9 @@ export function LoginScreen() {
     // Revoke the push token while still authenticated; ignore failures so a
     // network hiccup never blocks logout.
     await unregisterPushToken().catch(() => undefined);
+    if (authUser) {
+      await clearUserMediaCache(authUser.id).catch(() => undefined);
+    }
     await mobileAuthActions.logout();
   }
 

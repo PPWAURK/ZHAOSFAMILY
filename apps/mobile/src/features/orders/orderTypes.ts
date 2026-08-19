@@ -5,6 +5,8 @@ export type OrderSupplier = {
   name: string;
   sortOrder?: number | null;
   includeAllProductsInOrder?: boolean | null;
+  orderNotice?: string | null;
+  orderNoticeFr?: string | null;
 };
 
 export type OrderProductVariant = {

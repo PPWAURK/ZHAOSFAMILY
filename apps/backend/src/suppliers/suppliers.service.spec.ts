@@ -11,6 +11,7 @@ describe('SuppliersService', () => {
             sortOrder: 2,
             includeAllProductsInOrder: false,
             orderNotice: null,
+            orderNoticeFr: null,
           },
         ]),
       },
@@ -26,6 +27,7 @@ describe('SuppliersService', () => {
         sortOrder: true,
         includeAllProductsInOrder: true,
         orderNotice: true,
+        orderNoticeFr: true,
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
@@ -36,6 +38,7 @@ describe('SuppliersService', () => {
         sortOrder: 2,
         includeAllProductsInOrder: false,
         orderNotice: null,
+        orderNoticeFr: null,
       },
     ]);
   });

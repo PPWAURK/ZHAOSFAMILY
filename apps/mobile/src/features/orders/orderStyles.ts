@@ -186,33 +186,84 @@ export const orderStyles = StyleSheet.create(scaleStyles({
   optionTextActive: {
     color: authControlStyles.colors.red,
   },
-  supplierRow: {
-    alignItems: "center",
+  supplierCard: {
     borderColor: authControlStyles.colors.ink10,
     borderWidth: 1,
+    minHeight: 150,
+    position: "relative",
+  },
+  supplierCardChevron: {
+    alignItems: "center",
+    backgroundColor: "rgba(193, 22, 22, 0.12)",
+    bottom: 10,
+    borderRadius: 14,
+    height: 28,
+    justifyContent: "center",
+    position: "absolute",
+    right: 10,
+    width: 28,
+  },
+  supplierCardHeader: {
+    alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 58,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  supplierPressable: {
-    width: "100%",
-  },
-  supplierRowActive: {
+  supplierCardPressed: {
     backgroundColor: "rgba(193, 22, 22, 0.05)",
     borderColor: authControlStyles.colors.red,
   },
-  supplierRowText: {
+  supplierCardTitle: {
     color: authControlStyles.colors.ink,
     flex: 1,
+    flexShrink: 1,
     fontFamily: "serif",
     fontSize: 16,
-    marginRight: 12,
-  },
-  supplierRowTextActive: {
-    color: authControlStyles.colors.red,
     fontWeight: "600",
+  },
+  supplierCardTitlePressed: {
+    fontWeight: "800",
+  },
+  supplierGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "space-between",
+  },
+  supplierIconBadge: {
+    alignItems: "center",
+    backgroundColor: authControlStyles.colors.red,
+    height: 35,
+    justifyContent: "center",
+    width: 35,
+    borderRadius: 12,
+  },
+  supplierNotice: {
+    borderTopColor: authControlStyles.colors.ink10,
+    borderTopWidth: 1,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingRight: 34,
+    paddingVertical: 8,
+  },
+  supplierNoticeLabel: {
+    color: authControlStyles.colors.ink40,
+    fontFamily: "monospace",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  supplierNoticeText: {
+    color: authControlStyles.colors.ink60,
+    fontFamily: "serif",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  supplierPressable: {
+    width: "48%",
   },
   orderCard: {
     borderColor: "rgba(193, 22, 22, 0.16)",

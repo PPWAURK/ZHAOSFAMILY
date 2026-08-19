@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createVideoPlayer, VideoView } from "expo-video";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Image, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -44,6 +44,7 @@ type DashboardNewsBoardProps = {
   ) => void;
   posts: DashboardNewsPost[];
   searchTerm: string;
+  userId: number | string;
   visiblePosts: DashboardNewsPost[];
 };
 
@@ -124,17 +125,19 @@ function NewsPdf({
   attachment,
   isFullscreen = false,
   onError,
+  userId,
 }: {
   attachment: DashboardNewsAttachment;
   isFullscreen?: boolean;
   onError: () => void;
+  userId: number | string;
 }) {
   const [viewer, setViewer] = useState<{ baseUri: string; fileUri: string } | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
 
-    void createDashboardNewsPdfViewer(attachment)
+    void createDashboardNewsPdfViewer(attachment, userId)
       .then((nextViewer) => {
         if (!isCancelled) setViewer(nextViewer);
       })
@@ -145,7 +148,7 @@ function NewsPdf({
     return () => {
       isCancelled = true;
     };
-  }, [attachment, onError]);
+  }, [attachment, onError, userId]);
 
   if (!viewer) {
     return <ZhaoLoadingIndicator />;
@@ -177,9 +180,11 @@ function NewsPdf({
 function NewsFeaturedMedia({
   isFullscreen = false,
   media,
+  userId,
 }: {
   isFullscreen?: boolean;
   media: FeaturedMedia;
+  userId: number | string;
 }) {
   const [hasError, setHasError] = useState(false);
 
@@ -205,6 +210,7 @@ function NewsFeaturedMedia({
           attachment={media.attachment}
           isFullscreen={isFullscreen}
           onError={() => setHasError(true)}
+          userId={userId}
         />
       </View>
     );
@@ -237,11 +243,13 @@ function NewsFullscreenModal({
   copy,
   media,
   onClose,
+  userId,
   visible,
 }: {
   copy: DashboardCopy;
   media: FeaturedMedia;
   onClose: () => void;
+  userId: number | string;
   visible: boolean;
 }) {
   return (
@@ -268,7 +276,7 @@ function NewsFullscreenModal({
           </Pressable>
         </View>
         <View style={styles.fullscreenMedia}>
-          <NewsFeaturedMedia isFullscreen media={media} />
+          <NewsFeaturedMedia isFullscreen media={media} userId={userId} />
         </View>
       </View>
     </Modal>
@@ -279,7 +287,7 @@ function replacePositionTokens(template: string, current: number, total: number)
   return template.replace("{current}", String(current)).replace("{total}", String(total));
 }
 
-export function DashboardNewsBoard({
+export const DashboardNewsBoard = memo(function DashboardNewsBoard({
   activeCategory,
   activeIndex,
   copy,
@@ -294,10 +302,12 @@ export function DashboardNewsBoard({
   onCategoryTargetMeasure,
   posts,
   searchTerm,
+  userId,
   visiblePosts,
 }: DashboardNewsBoardProps) {
   const categoryTargetRefs = useRef<Partial<Record<NewsDeskCategory, View | null>>>({});
   const [isFullscreen, setIsFullscreen] = useState(false);
+
   const categoryCounts = useMemo(
     () =>
       NEWS_CATEGORY_FILTERS.reduce<Record<NewsDeskCategory, number>>(
@@ -460,6 +470,7 @@ export function DashboardNewsBoard({
             <NewsFeaturedMedia
               key={`${activePost.id}-${featuredMedia?.src || "fallback"}`}
               media={featuredMedia}
+              userId={userId}
             />
             {featuredMedia ? (
               <Pressable
@@ -477,6 +488,7 @@ export function DashboardNewsBoard({
             copy={copy}
             media={featuredMedia}
             visible={isFullscreen}
+            userId={userId}
             onClose={() => setIsFullscreen(false)}
           />
 
@@ -522,4 +534,4 @@ export function DashboardNewsBoard({
       ) : null}
     </View>
   );
-}
+});

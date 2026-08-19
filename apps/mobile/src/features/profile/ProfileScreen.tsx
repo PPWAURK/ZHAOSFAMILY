@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
 import { useScreenName } from "@/lib/useScreenName";
 import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
@@ -18,10 +18,12 @@ import { LANGUAGE_OPTIONS } from "@/features/auth/authCopy";
 import { PROFILE_COPY } from "@/features/profile/profileCopy";
 import { CertificationWall } from "@/features/profile/CertificationWall";
 import { TrainingTitleFrame } from "@/features/training/TrainingTitleFrame";
+import { RemoteImage } from "@/components/RemoteImage";
 import { equipTrainingTitle, fetchTrainingMyTitles } from "@/features/training/trainingApi";
 import type { TrainingMyTitles } from "@/features/training/trainingTypes";
 
 type ProfileScreenProps = {
+  isActive?: boolean;
   language: AuthLanguage;
   user: AuthUser;
   onChangeLanguage: (language: AuthLanguage) => void;
@@ -151,6 +153,7 @@ function ProfileFieldList({ fields }: { fields: ProfileField[] }) {
 }
 
 export function ProfileScreen({
+  isActive = true,
   language,
   user,
   onChangeLanguage,
@@ -391,7 +394,11 @@ export function ProfileScreen({
         <View style={styles.profileSummary}>
           <View style={styles.avatar}>
             {avatar ? (
-              <Image source={{ uri: avatar }} style={styles.avatarImage} resizeMode="cover" />
+              <RemoteImage
+                cacheKey={`profile-avatar-${user.id}`}
+                source={{ uri: avatar }}
+                style={styles.avatarImage}
+              />
             ) : (
               <Text style={styles.avatarInitials}>{resolveInitials(displayName)}</Text>
             )}
@@ -472,6 +479,7 @@ export function ProfileScreen({
 
       <View style={styles.section}>
         <CertificationWall
+          isActive={isActive}
           language={language}
           labels={{
             heading: copy.certificationHeading,

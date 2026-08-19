@@ -1,22 +1,48 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View, type ImageStyle, type StyleProp, type ViewStyle } from "react-native";
 import { Image, type ImageProps, type ImageSource } from "expo-image";
+import { useStore } from "zustand";
 import { Skeleton } from "@/components/Skeleton";
+import { mobileAuthStore } from "@/lib/api";
+import {
+  APP_IMAGE_LOAD_PRIORITIES,
+  type AppImageLoadPriority,
+} from "@/lib/imagePriority";
+import { buildUserMediaCacheKey } from "@/lib/mediaCache";
 
-type RemoteImageProps = Omit<ImageProps, "source" | "style"> & {
+type AppImageProps = Omit<ImageProps, "priority" | "source" | "style"> & {
+  cacheKey?: string;
   fallback?: ReactNode;
+  loadPriority?: AppImageLoadPriority;
   source: ImageSource | null;
   style: StyleProp<ImageStyle>;
 };
 
-export function RemoteImage({ fallback, source, style, ...props }: RemoteImageProps): ReactNode {
+export function AppImage({
+  cacheKey,
+  contentFit = "cover",
+  fallback,
+  loadPriority = "important",
+  onError,
+  onLoadEnd,
+  source,
+  style,
+  ...props
+}: AppImageProps): ReactNode {
+  const userId = useStore(mobileAuthStore, (state) => state.user?.id ?? null);
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(source));
   const hasSource = Boolean(source);
-  const sourceKey =
+  const sourceUri =
     typeof source === "object" && source !== null && "uri" in source
       ? String(source.uri)
       : String(source);
+  const resourceKey = cacheKey || sourceUri;
+  const sourceKey = userId === null ? resourceKey : buildUserMediaCacheKey(userId, resourceKey);
+  const imageSource =
+    typeof source === "object" && source !== null && "uri" in source
+      ? { ...source, cacheKey: sourceKey }
+      : source;
 
   useEffect(() => {
     setHasError(false);
@@ -36,17 +62,28 @@ export function RemoteImage({ fallback, source, style, ...props }: RemoteImagePr
       <Image
         {...props}
         cachePolicy="memory-disk"
-        contentFit="cover"
-        source={source}
+        contentFit={contentFit}
+        priority={APP_IMAGE_LOAD_PRIORITIES[loadPriority]}
+        recyclingKey={sourceKey}
+        source={imageSource}
         style={styles.fill}
-        transition={180}
-        onError={() => setHasError(true)}
-        onLoadEnd={() => setIsLoading(false)}
+        transition={0}
+        onError={(event) => {
+          setHasError(true);
+          onError?.(event);
+        }}
+        onLoadEnd={() => {
+          setIsLoading(false);
+          onLoadEnd?.();
+        }}
       />
       {isLoading ? <Skeleton style={styles.fill} /> : null}
     </View>
   );
 }
+
+// Keep the previous name available while feature modules migrate to the shared image API.
+export const RemoteImage = AppImage;
 
 const styles = StyleSheet.create({
   fallback: {

@@ -4,6 +4,8 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { scaleStyles } from "@/lib/responsive";
 import type { ImageSourcePropType } from "react-native";
 import type { RestaurantSummary } from "@zhao/types";
+import type { ImageSource } from "expo-image";
+import { AppImage } from "@/components/RemoteImage";
 import {
   AuthTextField,
   CheckboxRow,
@@ -54,6 +56,27 @@ function buildRestaurantImageSource(photoObjectKey: string | null): ImageSourceP
 
   if (!resolvedPhotoUrl) {
     return zhaoLogo;
+  }
+
+  if (resolvedPhotoUrl.startsWith(ZHAO_GROUPE_ORIGIN)) {
+    return {
+      uri: resolvedPhotoUrl,
+      headers: {
+        Referer: `${ZHAO_GROUPE_ORIGIN}/`,
+        "User-Agent":
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+      },
+    };
+  }
+
+  return { uri: resolvedPhotoUrl };
+}
+
+function buildStorePhotoSource(photoObjectKey: string | null): ImageSource | null {
+  const resolvedPhotoUrl = resolveRestaurantPhotoUrl(photoObjectKey);
+
+  if (!resolvedPhotoUrl) {
+    return null;
   }
 
   if (resolvedPhotoUrl.startsWith(ZHAO_GROUPE_ORIGIN)) {
@@ -475,8 +498,8 @@ function StorePicker({
           {restaurants.map((restaurant, index) => {
             const isSelected = selectedRestaurantId === restaurant.id;
             const imageSource = failedRestaurantImageIds.has(restaurant.id)
-              ? zhaoLogo
-              : buildRestaurantImageSource(restaurant.photoObjectKey);
+              ? null
+              : buildStorePhotoSource(restaurant.photoObjectKey);
 
             return (
               <Pressable
@@ -489,10 +512,10 @@ function StorePicker({
                 onPress={() => onSelectRestaurant(restaurant.id)}
               >
                 <View style={styles.storeImageFrame}>
-                  <Image
+                  <AppImage
+                    fallback={<Image source={zhaoLogo} style={styles.storeImage} resizeMode="cover" />}
                     source={imageSource}
                     style={styles.storeImage}
-                    resizeMode="cover"
                     onError={() => markRestaurantImageFailed(restaurant.id)}
                   />
                 </View>

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Directory, File } from "expo-file-system";
+import { trainingQueryKeys } from "@zhao/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@zhao/types";
 import {
   Pressable,
@@ -14,8 +16,6 @@ import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
   downloadTrainingMaterialToCache,
   fetchTrainingMyBadges,
-  fetchTrainingMyPlan,
-  fetchTrainingPositions,
   updateTrainingMaterialProgress,
 } from "@/features/training/trainingApi";
 import {
@@ -23,10 +23,7 @@ import {
 } from "@/features/training/trainingMapActions";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { buildTrainingMapData } from "@/features/training/trainingMapState";
-import {
-  applyTrainingPositionLabels,
-  buildTrainingPositionLabels,
-} from "@/features/training/trainingPositionLabels";
+import { fetchLocalizedTrainingPlan } from "@/features/training/trainingQueries";
 import { TrainingBadgeUnlockModal } from "@/features/training/TrainingBadgeUnlockModal";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
 import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
@@ -49,6 +46,7 @@ import type {
 } from "@/features/training/trainingTypes";
 
 type TrainingModuleScreenProps = {
+  isActive?: boolean;
   language: AuthLanguage;
   user: AuthUser;
 };
@@ -159,14 +157,13 @@ function buildPdfWatermarkIdentity(user: AuthUser): PdfWatermarkIdentity {
  *
  * 成就/称号由底部入口进入单独页面
  */
-export function TrainingModuleScreen({ language, user }: TrainingModuleScreenProps) {
+export function TrainingModuleScreen({ isActive = true, language, user }: TrainingModuleScreenProps) {
   const copy = TRAINING_COPY[language];
   const pdfWatermarkIdentity = buildPdfWatermarkIdentity(user);
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
+  const trainingPlanQueryKey = trainingQueryKeys.myPlan(user.id, language);
 
-  const [localLoading, setLocalLoading] = useState(false);
-  const [plan, setPlan] = useState<TrainingPlan | null>(null);
-  const [planError, setPlanError] = useState<string | null>(null);
   const [previewMaterial, setPreviewMaterial] = useState<TrainingPlanMaterial | null>(null);
   const [quizMaterial, setQuizMaterial] = useState<TrainingPlanMaterial | null>(null);
   const [videoFeedInitialMaterialId, setVideoFeedInitialMaterialId] = useState<number | null>(
@@ -180,26 +177,27 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [expandedPositions, setExpandedPositions] = useState<Record<string, boolean>>({});
 
-  const loadPlan = useCallback(async () => {
-    setLocalLoading(true);
-    setPlanError(null);
-    try {
-      const [data, positions] = await Promise.all([
-        fetchTrainingMyPlan(),
-        fetchTrainingPositions().catch(() => []),
-      ]);
-      const positionLabels = buildTrainingPositionLabels(positions, language);
-      setPlan(applyTrainingPositionLabels(data, positionLabels, copy));
-    } catch {
-      setPlanError(copy.error);
-    } finally {
-      setLocalLoading(false);
-    }
-  }, [copy, language]);
+  const trainingPlanQuery = useQuery({
+    enabled: isActive,
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: () => fetchLocalizedTrainingPlan(language),
+    queryKey: trainingPlanQueryKey,
+  });
+  const plan = trainingPlanQuery.data ?? null;
+  const localLoading = trainingPlanQuery.isPending;
+  const planError = trainingPlanQuery.isError ? copy.error : null;
+  const loadPlan = useCallback(async (): Promise<void> => {
+    await trainingPlanQuery.refetch();
+  }, [trainingPlanQuery]);
 
   useEffect(() => {
-    void loadPlan();
-  }, [loadPlan]);
+    if (isActive) return;
+
+    setPreviewMaterial(null);
+    setQuizMaterial(null);
+    setVideoFeedInitialMaterialId(null);
+  }, [isActive]);
 
   const mapData: TrainingMapData | null = useMemo(() => {
     if (!plan) return null;
@@ -305,7 +303,7 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
 
       try {
         const progress = await updateTrainingMaterialProgress(materialId, input);
-        setPlan((previous) =>
+        queryClient.setQueryData<TrainingPlan>(trainingPlanQueryKey, (previous) =>
           previous ? applyMaterialProgress(previous, materialId, progress) : previous,
         );
 
@@ -332,7 +330,7 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
         return null;
       }
     },
-    [handleClosePreview, handleCloseVideoFeed],
+    [handleClosePreview, handleCloseVideoFeed, queryClient, trainingPlanQueryKey],
   );
 
   const handleStartQuiz = useCallback((material: TrainingPlanMaterial) => {
@@ -398,7 +396,7 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
     );
   }
 
-  if (planError) {
+  if (planError && !plan) {
     return (
       <View
         style={{
@@ -457,6 +455,14 @@ export function TrainingModuleScreen({ language, user }: TrainingModuleScreenPro
           </Pressable>
         </View>
         <Text style={trainingStyles.mapHeroIntro}>{copy.intro}</Text>
+        {planError ? (
+          <View style={trainingStyles.mapHeroErrorRow}>
+            <Text style={trainingStyles.message}>{planError}</Text>
+            <Pressable style={trainingStyles.refreshButton} onPress={() => void loadPlan()}>
+              <Text style={trainingStyles.refreshButtonText}>{copy.refresh}</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={trainingStyles.mapHeroProgressRow}>
           <View style={trainingStyles.mapHeroProgressCopy}>

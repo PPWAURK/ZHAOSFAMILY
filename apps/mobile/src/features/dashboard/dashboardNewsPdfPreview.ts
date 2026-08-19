@@ -15,14 +15,18 @@ export type DashboardNewsPdfViewer = {
 
 export async function createDashboardNewsPdfViewer(
   attachment: DashboardNewsAttachment,
+  userId: number | string,
 ): Promise<DashboardNewsPdfViewer> {
-  const { directoryUri, fileUri } = await downloadDashboardNewsAttachmentToCache(attachment);
+  const { directoryUri, fileUri } = await downloadDashboardNewsAttachmentToCache(attachment, userId);
   const pdfDirectory = new Directory(directoryUri);
   const viewerFile = new File(pdfDirectory, "pdf-viewer.html");
-  const downloadedFile = new File(fileUri);
-  const base64Data = await downloadedFile.base64();
 
-  await viewerFile.write(buildPdfViewerHtml(base64Data));
+  if (!viewerFile.exists || viewerFile.size === 0) {
+    const downloadedFile = new File(fileUri);
+    const base64Data = await downloadedFile.base64();
+
+    await viewerFile.write(buildPdfViewerHtml(base64Data));
+  }
 
   return {
     baseUri: pdfDirectory.uri,

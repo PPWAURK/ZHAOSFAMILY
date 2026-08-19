@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { useDashboardRefreshVersion } from "@/features/dashboard/DashboardRefreshContext";
 import {
   fetchTrainingMyRecords,
   fetchTrainingPositions,
@@ -48,6 +49,7 @@ const RECORD_LABELS: Record<
 
 type TrainingHistoryViewProps = {
   copy: TrainingCopySet;
+  isActive?: boolean;
   language: TrainingLanguage;
   onOpenRecord?: (record: TrainingRecord) => void;
   refreshToken?: number;
@@ -79,6 +81,7 @@ function matchesRecordFilter(record: TrainingRecord, filter: RecordFilter): bool
 
 export function TrainingHistoryView({
   copy,
+  isActive = true,
   language,
   onOpenRecord,
   refreshToken = 0,
@@ -88,10 +91,12 @@ export function TrainingHistoryView({
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [activeFilter, setActiveFilter] = useState<RecordFilter>("all");
+  const hasLoadedRecordsRef = useRef(false);
+  const refreshVersion = useDashboardRefreshVersion({ isActive, deferMs: 1600 });
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      setIsLoading(true);
+      setIsLoading(!hasLoadedRecordsRef.current);
       setErrorMessage("");
       const [nextRecords, positions] = await Promise.all([
         fetchTrainingMyRecords(),
@@ -102,13 +107,14 @@ export function TrainingHistoryView({
     } catch {
       setErrorMessage(copy.error);
     } finally {
+      hasLoadedRecordsRef.current = true;
       setIsLoading(false);
     }
   }, [copy.error, language]);
 
   useEffect(() => {
     void load();
-  }, [load, refreshToken]);
+  }, [load, refreshToken, refreshVersion]);
 
   const completed = records?.records ?? [];
   const labels = RECORD_LABELS[language];
@@ -137,7 +143,7 @@ export function TrainingHistoryView({
     return <ZhaoLoadingIndicator label={copy.loading} />;
   }
 
-  if (errorMessage) {
+  if (errorMessage && !records) {
     return (
       <View style={styles.section}>
         <Text style={styles.message}>{errorMessage}</Text>
@@ -157,6 +163,15 @@ export function TrainingHistoryView({
         </View>
         <Text style={styles.achievementHeroBody}>{labels.historyBody}</Text>
       </View>
+
+      {errorMessage ? (
+        <View style={styles.section}>
+          <Text style={styles.message}>{errorMessage}</Text>
+          <Pressable style={styles.refreshButton} onPress={() => void load()}>
+            <Text style={styles.refreshButtonText}>{copy.refresh}</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {completed.length > 0 ? (
         <>

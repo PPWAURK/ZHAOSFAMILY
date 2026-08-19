@@ -4,10 +4,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Image } from "expo-image";
 import type { ImageSource } from "expo-image";
 import { convertOrderQuantityToCases } from "@zhao/utils";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
+import { AppImage } from "@/components/RemoteImage";
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import {
@@ -24,6 +24,7 @@ import type {
   QuantityMap,
 } from "@/features/orders/orderTypes";
 import { MOBILE_API_URL } from "@/lib/env";
+import type { AppImageLoadPriority } from "@/lib/imagePriority";
 
 const API_ORIGIN = resolveApiOrigin();
 
@@ -173,6 +174,7 @@ export function ProductQuantityRow({
   quantities,
   showStock,
   inStockLabel,
+  imageLoadPriority = "important",
   outOfStockLabel,
   stockMap,
   onChangeQuantity,
@@ -182,6 +184,7 @@ export function ProductQuantityRow({
   quantities: QuantityMap;
   showStock: boolean;
   inStockLabel: string;
+  imageLoadPriority?: AppImageLoadPriority;
   outOfStockLabel: string;
   stockMap: OrderStockMap;
   onChangeQuantity: (variantId: string, value: string) => void;
@@ -199,20 +202,16 @@ export function ProductQuantityRow({
     <View style={[styles.productCard, productCardTabletStyle]}>
       <View style={styles.productHeader}>
         <View style={styles.productImageFrame}>
-          {imageSource ? (
-            <Image
-              source={imageSource}
-              style={styles.productImage}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              transition={0}
-              recyclingKey={String(product.id)}
-            />
-          ) : (
-            <View style={[styles.productImage, styles.imagePlaceholder]}>
-              <Text style={styles.imagePlaceholderText}>{productName.slice(0, 1)}</Text>
-            </View>
-          )}
+          <AppImage
+            fallback={
+              <View style={[styles.productImage, styles.imagePlaceholder]}>
+                <Text style={styles.imagePlaceholderText}>{productName.slice(0, 1)}</Text>
+              </View>
+            }
+            loadPriority={imageLoadPriority}
+            source={imageSource}
+            style={styles.productImage}
+          />
         </View>
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>

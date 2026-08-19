@@ -34,9 +34,12 @@ export const SUPPLIERS_COPY = {
     fieldSortOrder: "排序",
     fieldIncludeAll: "默认全部商品",
     fieldOrderNotice: "下单须知",
+    fieldOrderNoticeFr: "下单须知（法语）",
 
     namePlaceholder: "如：Metro 法国",
     orderNoticePlaceholder: "填写下单须知，例如截单时间、起送金额、配送说明等。",
+    orderNoticeFrPlaceholder:
+      "填写法语下单须知；法语用户下单时优先显示此内容。",
 
     save: "保存",
     cancel: "取消",
@@ -147,10 +150,13 @@ export const SUPPLIERS_COPY = {
     fieldSortOrder: "Sort order",
     fieldIncludeAll: "Include all products",
     fieldOrderNotice: "Order notice",
+    fieldOrderNoticeFr: "Order notice (French)",
 
     namePlaceholder: "e.g., Metro France",
     orderNoticePlaceholder:
       "Add an order notice, e.g. cut-off time, minimum order, delivery notes.",
+    orderNoticeFrPlaceholder:
+      "Add the French notice. It is shown first to French-language users.",
 
     save: "Save",
     cancel: "Cancel",
@@ -262,9 +268,12 @@ export const SUPPLIERS_COPY = {
     fieldSortOrder: "Ordre",
     fieldIncludeAll: "Tous les produits par défaut",
     fieldOrderNotice: "Consignes de commande",
+    fieldOrderNoticeFr: "Consignes de commande (français)",
 
     namePlaceholder: "ex. Metro France",
     orderNoticePlaceholder: "Consignes de commande : heure limite, minimum de commande, livraison…",
+    orderNoticeFrPlaceholder:
+      "Saisissez les consignes en français ; elles seront affichées en priorité aux utilisateurs francophones.",
 
     save: "Enregistrer",
     cancel: "Annuler",

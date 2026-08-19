@@ -9,6 +9,7 @@ export type SupplierListItem = {
   sortOrder: number;
   includeAllProductsInOrder: boolean;
   orderNotice: string | null;
+  orderNoticeFr: string | null;
 };
 
 const SUPPLIER_SELECT = {
@@ -17,6 +18,7 @@ const SUPPLIER_SELECT = {
   sortOrder: true,
   includeAllProductsInOrder: true,
   orderNotice: true,
+  orderNoticeFr: true,
 } as const;
 
 type SupplierRow = SupplierListItem;
@@ -28,6 +30,7 @@ function toSupplierListItem(supplier: SupplierRow): SupplierListItem {
     sortOrder: supplier.sortOrder,
     includeAllProductsInOrder: supplier.includeAllProductsInOrder,
     orderNotice: supplier.orderNotice ?? null,
+    orderNoticeFr: supplier.orderNoticeFr ?? null,
   };
 }
 
@@ -74,6 +77,7 @@ export class SuppliersService {
         sortOrder: nextSortOrder,
         includeAllProductsInOrder: dto.includeAllProductsInOrder ?? false,
         orderNotice: normalizeOrderNotice(dto.orderNotice),
+        orderNoticeFr: normalizeOrderNotice(dto.orderNoticeFr),
       },
       select: SUPPLIER_SELECT,
     });
@@ -97,6 +101,9 @@ export class SuppliersService {
           : {}),
         ...(dto.orderNotice !== undefined
           ? { orderNotice: normalizeOrderNotice(dto.orderNotice) }
+          : {}),
+        ...(dto.orderNoticeFr !== undefined
+          ? { orderNoticeFr: normalizeOrderNotice(dto.orderNoticeFr) }
           : {}),
       },
       select: SUPPLIER_SELECT,

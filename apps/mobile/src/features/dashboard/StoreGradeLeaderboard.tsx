@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
+import { abcGradeQueryKeys } from "@zhao/api";
+import { useQuery } from "@tanstack/react-query";
 
 import { TrackingText, authControlStyles } from "@/features/auth/AuthFormControls";
+import { RemoteImage } from "@/components/RemoteImage";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import zhaoLogo from "@/features/auth/assets/logozhao正方形.jpg";
 import {
   fetchPublishedGradeBoard,
   fetchPublishedGradeCycles,
-  type PublishedGradeBoard,
   type StoreGradeEntry,
 } from "@/features/dashboard/abcGradeBoardApi";
 
 const colors = authControlStyles.colors;
 const GRADES = ["A", "B", "C"] as const;
 const GRADE_TIERS = [...GRADES, null] as const;
+const MAX_INITIAL_ENTRIES_PER_GRADE = 2;
 const GRADE_COLORS = {
   A: "#c79a1e",
   B: "#8c93a0",
@@ -30,6 +33,8 @@ const COPY = {
     cycleLabel: "检查周期",
     previousCycle: "查看较新周期",
     nextCycle: "查看较早周期",
+    showAll: "查看完整榜单",
+    showLess: "收起完整榜单",
     loading: "正在加载门店评级…",
     empty: "暂无已发布的门店评级周期。",
     error: "门店评级加载失败，请稍后重试。",
@@ -44,6 +49,8 @@ const COPY = {
     cycleLabel: "Inspection cycle",
     previousCycle: "View newer cycle",
     nextCycle: "View older cycle",
+    showAll: "View full ranking",
+    showLess: "Collapse full ranking",
     loading: "Loading store grades…",
     empty: "No published store grade cycle yet.",
     error: "Store grades could not be loaded. Please try again later.",
@@ -58,15 +65,16 @@ const COPY = {
     cycleLabel: "Cycle d'inspection",
     previousCycle: "Voir le cycle plus récent",
     nextCycle: "Voir le cycle plus ancien",
+    showAll: "Voir le classement complet",
+    showLess: "Réduire le classement",
     loading: "Chargement des niveaux…",
     empty: "Aucun cycle de niveaux publié pour le moment.",
     error: "Impossible de charger les niveaux. Réessayez plus tard.",
   },
 };
 
-type LeaderboardStatus = "loading" | "ready" | "empty" | "error";
-
 type StoreGradeLeaderboardProps = {
+  isActive?: boolean;
   language: AuthLanguage;
 };
 
@@ -113,91 +121,58 @@ function RankMedal({ rank }: { rank: number }) {
   );
 }
 
-export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) {
+export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeLeaderboardProps) {
   const copy = COPY[language];
-  const [board, setBoard] = useState<PublishedGradeBoard | null>(null);
-  const [cycles, setCycles] = useState<PublishedGradeBoard["cycle"][]>([]);
   const [cycleIndex, setCycleIndex] = useState(0);
-  const [status, setStatus] = useState<LeaderboardStatus>("loading");
+  const [isFullRankingVisible, setIsFullRankingVisible] = useState(false);
+  const cyclesQuery = useQuery({
+    enabled: isActive,
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: fetchPublishedGradeCycles,
+    queryKey: abcGradeQueryKeys.cycles(),
+  });
+  const cycles = cyclesQuery.data ?? [];
   const selectedCycle = cycles[cycleIndex] ?? null;
+  const latestBoardQuery = useQuery({
+    enabled: isActive,
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: () => fetchPublishedGradeBoard(),
+    queryKey: abcGradeQueryKeys.latest(),
+  });
+  const latestBoard = latestBoardQuery.data ?? null;
+  const selectedBoardQuery = useQuery({
+    enabled:
+      isActive &&
+      selectedCycle !== null &&
+      selectedCycle.id !== latestBoard?.cycle.id,
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: () => fetchPublishedGradeBoard(selectedCycle?.id),
+    queryKey: abcGradeQueryKeys.board(selectedCycle?.id ?? "unselected"),
+  });
+  const board =
+    selectedCycle === null || selectedCycle.id === latestBoard?.cycle.id
+      ? latestBoard
+      : selectedBoardQuery.data ?? null;
+  const isLoading =
+    board === null &&
+    (latestBoardQuery.isPending || (selectedCycle !== null && selectedBoardQuery.isPending));
+  const isReady = board !== null;
+  const isError =
+    !isReady &&
+    latestBoardQuery.isError &&
+    (selectedCycle === null || selectedBoardQuery.isError);
   const entries = board?.entries ?? [];
 
   useEffect(() => {
-    let isCancelled = false;
-
-    async function loadCycles(): Promise<void> {
-      setStatus("loading");
-
-      try {
-        const publishedCycles = await fetchPublishedGradeCycles();
-
-        if (isCancelled) {
-          return;
-        }
-
-        if (publishedCycles.length === 0) {
-          setCycles([]);
-          setStatus("empty");
-          return;
-        }
-
-        setCycles(publishedCycles);
-        setCycleIndex(0);
-      } catch {
-        if (!isCancelled) {
-          setCycles([]);
-          setBoard(null);
-          setStatus("error");
-        }
-      }
-    }
-
-    void loadCycles();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
+    setCycleIndex((index) => Math.min(index, Math.max(cycles.length - 1, 0)));
+  }, [cycles.length]);
 
   useEffect(() => {
-    if (!selectedCycle) {
-      return undefined;
-    }
-
-    let isCancelled = false;
-
-    async function loadBoard(): Promise<void> {
-      setStatus("loading");
-
-      try {
-        const nextBoard = await fetchPublishedGradeBoard(selectedCycle.id);
-
-        if (isCancelled) {
-          return;
-        }
-
-        if (!nextBoard) {
-          setBoard(null);
-          setStatus("empty");
-          return;
-        }
-
-        setBoard(nextBoard);
-        setStatus("ready");
-      } catch {
-        if (!isCancelled) {
-          setBoard(null);
-          setStatus("error");
-        }
-      }
-    }
-
-    void loadBoard();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [selectedCycle]);
+    setIsFullRankingVisible(false);
+  }, [board?.cycle.id]);
 
   const showPreviousCycle = useCallback(() => {
     setCycleIndex((index) => Math.max(0, index - 1));
@@ -235,13 +210,13 @@ export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) 
         <Text style={styles.subtitle}>{copy.subtitle}</Text>
       </View>
 
-      {status !== "ready" ? (
+      {!isReady ? (
         <Text style={styles.stateText}>
-          {status === "loading" ? copy.loading : status === "error" ? copy.error : copy.empty}
+          {isLoading ? copy.loading : isError ? copy.error : copy.empty}
         </Text>
       ) : null}
 
-      {status === "ready" ? (
+      {isReady ? (
         <>
           <View style={styles.cycleBar}>
             <View>
@@ -316,12 +291,21 @@ export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) 
                     {gradeLabel} · {gradeEntries.length} {copy.storeUnit}
                   </Text>
 
-                  {gradeEntries.map((entry) => (
+                  {(isFullRankingVisible
+                    ? gradeEntries
+                    : gradeEntries.slice(0, MAX_INITIAL_ENTRIES_PER_GRADE)
+                  ).map((entry) => (
                     <View key={entry.id} style={[styles.storeCard, { borderColor: gradeColor }]}>
-                      <Image
-                        source={entry.photoUri ? { uri: entry.photoUri } : zhaoLogo}
-                        style={styles.storePhoto}
-                      />
+                      {entry.photoUri ? (
+                        <RemoteImage
+                          cacheKey={`grade-store-photo-${entry.id}`}
+                          loadPriority={entry.rank && entry.rank <= 3 ? "critical" : "important"}
+                          source={{ uri: entry.photoUri }}
+                          style={styles.storePhoto}
+                        />
+                      ) : (
+                        <Image source={zhaoLogo} style={styles.storePhoto} />
+                      )}
                       <View style={styles.storeBody}>
                         <View style={styles.storeTitleRow}>
                           {entry.rank ? <RankMedal rank={entry.rank} /> : null}
@@ -344,6 +328,17 @@ export function StoreGradeLeaderboard({ language }: StoreGradeLeaderboardProps) 
                 </View>
               );
             })}
+            {entries.length > MAX_INITIAL_ENTRIES_PER_GRADE ? (
+              <Pressable
+                accessibilityRole="button"
+                style={styles.fullRankingButton}
+                onPress={() => setIsFullRankingVisible((visible) => !visible)}
+              >
+                <Text style={styles.fullRankingButtonText}>
+                  {isFullRankingVisible ? copy.showLess : copy.showAll}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </>
       ) : null}
@@ -461,6 +456,19 @@ const styles = StyleSheet.create({
   gradeSection: {
     gap: 10,
     marginBottom: 20,
+  },
+  fullRankingButton: {
+    alignItems: "center",
+    borderColor: colors.ink20,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  fullRankingButtonText: {
+    color: colors.red,
+    fontSize: 14,
+    fontWeight: "700",
   },
   gradeHeader: {
     fontSize: 10.5,

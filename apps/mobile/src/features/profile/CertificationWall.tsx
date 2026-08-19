@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
+import { useDashboardRefreshVersion } from "@/features/dashboard/DashboardRefreshContext";
 import { fetchTrainingMyBadges } from "@/features/training/trainingApi";
 import { TrainingBadgeSvg } from "@/features/training/TrainingBadgeSvg";
 import type { TrainingMyBadges } from "@/features/training/trainingTypes";
@@ -22,9 +23,11 @@ function getCompletionRateWidth(completionRate: number): ViewStyle["width"] {
 }
 
 export function CertificationWall({
+  isActive = true,
   language,
   labels,
 }: {
+  isActive?: boolean;
   language: string;
   labels: {
     heading: string;
@@ -39,12 +42,14 @@ export function CertificationWall({
   const [badges, setBadges] = useState<TrainingMyBadges | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const hasLoadedBadgesRef = useRef(false);
+  const refreshVersion = useDashboardRefreshVersion({ isActive, deferMs: 2000 });
 
   useEffect(() => {
     let active = true;
 
     async function load() {
-      setIsLoading(true);
+      setIsLoading(!hasLoadedBadgesRef.current);
       setError("");
 
       try {
@@ -53,7 +58,10 @@ export function CertificationWall({
       } catch {
         if (active) setError(labels.error);
       } finally {
-        if (active) setIsLoading(false);
+        if (active) {
+          hasLoadedBadgesRef.current = true;
+          setIsLoading(false);
+        }
       }
     }
 
@@ -62,7 +70,7 @@ export function CertificationWall({
     return () => {
       active = false;
     };
-  }, [labels.error]);
+  }, [labels.error, refreshVersion]);
 
   if (isLoading) {
     return (
@@ -72,7 +80,7 @@ export function CertificationWall({
     );
   }
 
-  if (error) {
+  if (error && !badges) {
     return <Text style={styles.hint}>{error}</Text>;
   }
 
@@ -95,6 +103,8 @@ export function CertificationWall({
           </Text>
         </View>
       </View>
+
+      {error ? <Text style={styles.hint}>{error}</Text> : null}
 
       {certified.length > 0 ? (
         <ScrollView

@@ -1,8 +1,9 @@
-import { Directory, File, Paths } from "expo-file-system";
+import { File } from "expo-file-system";
 import { getAccessToken } from "@zhao/api";
 import { mobileApiClient } from "@/lib/api";
 import { MOBILE_API_URL } from "@/lib/env";
 import { secureTokenStorage } from "@/lib/tokenStorage";
+import { createUserMediaCacheDirectory } from "@/lib/mediaCache";
 import type {
   TrainingMaterialProgress,
   TrainingMyBadges,
@@ -143,9 +144,10 @@ export async function downloadTrainingMaterialToCache(
   material: TrainingPlanMaterial,
   userId: number | string,
 ): Promise<{ fileUri: string; directoryUri: string }> {
-  const cacheDirectory = new Directory(
-    Paths.cache,
-    buildTrainingCacheDirectoryName(material, userId),
+  const cacheDirectory = createUserMediaCacheDirectory(
+    userId,
+    "training",
+    buildTrainingCacheDirectoryName(material),
   );
   cacheDirectory.create({ idempotent: true, intermediates: true });
 
@@ -181,14 +183,11 @@ export async function downloadTrainingMaterialToCache(
   };
 }
 
-function buildTrainingCacheDirectoryName(
-  material: TrainingPlanMaterial,
-  userId: number | string,
-): string {
+function buildTrainingCacheDirectoryName(material: TrainingPlanMaterial): string {
   const updatedAt = Date.parse(material.updatedAt);
   const version = Number.isNaN(updatedAt) ? "unknown" : String(updatedAt);
 
-  return `training-material-${userId}-${material.id}-${version}`;
+  return `training-material-${material.id}-${version}`;
 }
 
 function buildTrainingFileName(material: TrainingPlanMaterial): string {

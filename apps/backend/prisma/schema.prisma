@@ -323,6 +323,7 @@ model Supplier {
   sortOrder                 Int              @map("sort_order")
   includeAllProductsInOrder Boolean          @default(false) @map("include_all_products_in_order")
   orderNotice               String?          @map("order_notice") @db.Text
+  orderNoticeFr             String?          @map("order_notice_fr") @db.Text
   products                  Product[]
   purchaseOrders            PurchaseOrder[]
   purchaseReturns           PurchaseReturn[]
