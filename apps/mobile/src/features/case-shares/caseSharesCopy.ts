@@ -19,7 +19,6 @@ export type CaseSharesCopy = {
   imagePick: string;
   imageReplace: string;
   imageRemove: string;
-  imagePermission: string;
   submit: string;
   submitting: string;
   cancel: string;
@@ -74,7 +73,6 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
     imagePick: "选择图片",
     imageReplace: "更换图片",
     imageRemove: "移除图片",
-    imagePermission: "需要相册权限。",
     submit: "提交审核",
     submitting: "提交中…",
     cancel: "取消",
@@ -135,7 +133,6 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
     imagePick: "Pick an image",
     imageReplace: "Replace image",
     imageRemove: "Remove image",
-    imagePermission: "Photo library permission is required.",
     submit: "Submit for review",
     submitting: "Submitting…",
     cancel: "Cancel",
@@ -196,7 +193,6 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
     imagePick: "Choisir une image",
     imageReplace: "Remplacer l’image",
     imageRemove: "Retirer l’image",
-    imagePermission: "L’accès à la photothèque est requis.",
     submit: "Soumettre",
     submitting: "Envoi…",
     cancel: "Annuler",

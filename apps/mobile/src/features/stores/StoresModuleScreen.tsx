@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  InteractionManager,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { storeManagementQueryKeys } from "@zhao/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@zhao/types";
 import { useScreenName } from "@/lib/useScreenName";
+import { preloadCriticalImages } from "@/lib/pagePreloadManager";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { useConfirm } from "@/components/confirm/ConfirmProvider";
 import { useToast } from "@/components/toast/ToastProvider";
@@ -19,11 +27,15 @@ import {
   STORE_COPY,
   STORE_JOB_ROLE_OPTIONS,
 } from "@/features/stores/storeCopy";
-import { updateUserApproval, updateUserJobRole, type UpdateUserApprovalResult } from "@/features/stores/storeApi";
 import {
-  fetchStoreManagementData,
-  type StoreManagementData,
-} from "@/features/stores/storeQueries";
+  fetchApprovableUsers,
+  fetchManageableStores,
+  fetchTrainingPositions,
+  removePermissionUser,
+  updateUserApproval,
+  updateUserJobRole,
+  type UpdateUserApprovalResult,
+} from "@/features/stores/storeApi";
 import { storeStyles as styles } from "@/features/stores/storeStyles";
 import type {
   MobilePermissionUser,
@@ -43,6 +55,9 @@ type StoreDetailView = "overview" | "pending" | "team" | "stats";
 
 const STORE_POSITION_ROOT_CODES = new Set(["FRONT_OF_HOUSE", "KITCHEN"]);
 const MANAGEMENT_POSITION_CODES = new Set(["ALL", "SM", "RM", "HOLDING"]);
+const INITIAL_STORE_CARD_COUNT = 3;
+const STORE_CARD_BATCH_SIZE = 3;
+const STORE_QUERY_STALE_TIME_MS = 5 * 60 * 1000;
 
 function getJobRoleValues(user: AuthUser): string[] {
   return `${user.jobRole || user.position || user.role || ""}`
@@ -181,16 +196,44 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
   const toast = useToast();
   const copy = STORE_COPY[language];
   const queryClient = useQueryClient();
-  const storeManagementQueryKey = storeManagementQueryKeys.overview(user.id);
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
+  const [detailView, setDetailView] = useState<StoreDetailView>("overview");
+  const [isInitialStorePhotoBatchReady, setIsInitialStorePhotoBatchReady] = useState(false);
+  const [visibleStoreCardCount, setVisibleStoreCardCount] = useState(
+    INITIAL_STORE_CARD_COUNT,
+  );
+  const storesQueryKey = storeManagementQueryKeys.stores(user.id);
+  const usersQueryKey = storeManagementQueryKeys.approvableUsers(user.id);
   const storesQuery = useQuery({
     enabled: isActive,
     meta: { persist: true },
     placeholderData: (previousData) => previousData,
-    queryFn: fetchStoreManagementData,
-    queryKey: storeManagementQueryKey,
+    queryFn: fetchManageableStores,
+    queryKey: storesQueryKey,
+    staleTime: STORE_QUERY_STALE_TIME_MS,
   });
-  const data = storesQuery.data ?? { stores: [], users: [] };
-  const trainingPositions = storesQuery.data?.trainingPositions ?? [];
+  const usersQuery = useQuery({
+    // The approvals response can contain every employee and their roles. Do not
+    // make the card list compete with that heavier request on a cold open.
+    enabled: isActive && Boolean(storesQuery.data),
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: fetchApprovableUsers,
+    queryKey: usersQueryKey,
+    staleTime: STORE_QUERY_STALE_TIME_MS,
+  });
+  const trainingPositionsQuery = useQuery({
+    // Positions are only used by the selected store's staff-management views.
+    enabled: isActive && selectedStoreId !== null,
+    meta: { persist: true },
+    placeholderData: (previousData) => previousData,
+    queryFn: fetchTrainingPositions,
+    queryKey: storeManagementQueryKeys.trainingPositions(),
+    staleTime: STORE_QUERY_STALE_TIME_MS,
+  });
+  const stores = storesQuery.data ?? [];
+  const users = usersQuery.data ?? [];
+  const trainingPositions = trainingPositionsQuery.data ?? [];
   const isLoading = storesQuery.isPending;
   const loadErrorMessage = storesQuery.isError
     ? (storesQuery.error instanceof Error && storesQuery.error.message === "INSUFFICIENT_PERMISSIONS"
@@ -201,29 +244,43 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
     () => getVisibleRoleOptions(language, user, trainingPositions),
     [language, trainingPositions, user],
   );
-  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
-  const [detailView, setDetailView] = useState<StoreDetailView>("overview");
   const [approvalDrafts, setApprovalDrafts] = useState<Record<number, StoreApprovalDraft>>({});
   const [teamDrafts, setTeamDrafts] = useState<Record<number, StoreTeamDraft>>({});
   const [errorMessage, setErrorMessage] = useState("");
   const [reviewingUserId, setReviewingUserId] = useState<number | null>(null);
   const [savingUserId, setSavingUserId] = useState<number | null>(null);
-  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+  const [deactivatingUserId, setDeactivatingUserId] = useState<number | null>(null);
   const [teamSearchTerm, setTeamSearchTerm] = useState("");
   const [teamRoleFilter, setTeamRoleFilter] = useState("");
   const visibleErrorMessage = errorMessage || loadErrorMessage;
 
-  const updateStoreManagementData = useCallback(
-    (updater: (current: StoreManagementData) => StoreManagementData): void => {
-      queryClient.setQueryData<StoreManagementData>(storeManagementQueryKey, (current) =>
+  const updateApprovableUsers = useCallback(
+    (updater: (current: MobilePermissionUser[]) => MobilePermissionUser[]): void => {
+      queryClient.setQueryData<MobilePermissionUser[]>(usersQueryKey, (current) =>
         current ? updater(current) : current,
       );
     },
-    [queryClient, storeManagementQueryKey],
+    [queryClient, usersQueryKey],
   );
 
-  const selectedStore = data.stores.find((store) => store.id === selectedStoreId) || null;
-  const selectedStoreUsers = selectedStore ? getUsersForStore(data.users, selectedStore.id) : [];
+  const storeUserCounts = useMemo(() => {
+    const countsByStoreId = new Map<number, { pending: number; team: number }>();
+
+    for (const permissionUser of users) {
+      const storeId = permissionUser.restaurant?.id;
+      if (!storeId) continue;
+
+      const counts = countsByStoreId.get(storeId) || { pending: 0, team: 0 };
+      if (permissionUser.accountStatus === "pending") counts.pending += 1;
+      if (permissionUser.accountStatus === "approved") counts.team += 1;
+      countsByStoreId.set(storeId, counts);
+    }
+
+    return countsByStoreId;
+  }, [users]);
+
+  const selectedStore = stores.find((store) => store.id === selectedStoreId) || null;
+  const selectedStoreUsers = selectedStore ? getUsersForStore(users, selectedStore.id) : [];
   const pendingUsers = selectedStoreUsers.filter((item) => item.accountStatus === "pending");
   const teamUsers = selectedStoreUsers.filter((item) => item.accountStatus === "approved");
   const activeStoreUsers = selectedStoreUsers.filter(
@@ -240,11 +297,46 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
   }));
 
   useEffect(() => {
-    if (!storesQuery.data) return;
+    if (!storesQuery.data) return undefined;
 
-    setApprovalDrafts(buildApprovalDrafts(storesQuery.data.users));
-    setTeamDrafts(buildTeamDrafts(storesQuery.data.users));
-  }, [storesQuery.data]);
+    let isCancelled = false;
+    setVisibleStoreCardCount(Math.min(INITIAL_STORE_CARD_COUNT, stores.length));
+    setIsInitialStorePhotoBatchReady(false);
+
+    void preloadCriticalImages(
+      stores.slice(0, INITIAL_STORE_CARD_COUNT).map((store) => store.photoUri),
+    ).finally(() => {
+      if (!isCancelled) setIsInitialStorePhotoBatchReady(true);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [stores, storesQuery.data]);
+
+  useEffect(() => {
+    if (
+      !isInitialStorePhotoBatchReady ||
+      visibleStoreCardCount >= stores.length
+    ) {
+      return undefined;
+    }
+
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      setVisibleStoreCardCount((currentCount) =>
+        Math.min(currentCount + STORE_CARD_BATCH_SIZE, stores.length),
+      );
+    });
+
+    return () => interaction.cancel();
+  }, [isInitialStorePhotoBatchReady, stores.length, visibleStoreCardCount]);
+
+  useEffect(() => {
+    if (!usersQuery.data) return;
+
+    setApprovalDrafts(buildApprovalDrafts(usersQuery.data));
+    setTeamDrafts(buildTeamDrafts(usersQuery.data));
+  }, [usersQuery.data]);
 
   function buildApprovalDrafts(users: MobilePermissionUser[]): Record<number, StoreApprovalDraft> {
     return users.reduce<Record<number, StoreApprovalDraft>>((drafts, item) => {
@@ -309,10 +401,9 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
       );
 
       if (isDeletedApprovalResult(result)) {
-        updateStoreManagementData((current) => ({
-          ...current,
-          users: current.users.filter((user) => user.id !== permissionUser.id),
-        }));
+        updateApprovableUsers((current) =>
+          current.filter((currentUser) => currentUser.id !== permissionUser.id),
+        );
         setApprovalDrafts((current) => {
           const nextDrafts = { ...current };
           delete nextDrafts[permissionUser.id];
@@ -323,10 +414,7 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
 
       const updatedUser = result;
 
-      updateStoreManagementData((current) => ({
-        ...current,
-        users: upsertUser(current.users, updatedUser),
-      }));
+      updateApprovableUsers((current) => upsertUser(current, updatedUser));
       setApprovalDrafts((current) => {
         const nextDrafts = { ...current };
         delete nextDrafts[permissionUser.id];
@@ -358,10 +446,7 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
     try {
       const updatedUser = await updateUserJobRole(permissionUser.id, jobRole);
 
-      updateStoreManagementData((current) => ({
-        ...current,
-        users: upsertUser(current.users, updatedUser),
-      }));
+      updateApprovableUsers((current) => upsertUser(current, updatedUser));
       setTeamDrafts((current) => ({
         ...current,
         [updatedUser.id]: { jobRole: updatedUser.jobRole || "" },
@@ -376,54 +461,49 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
     }
   }
 
-  async function deleteTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
-    setDeletingUserId(permissionUser.id);
+  async function deactivateTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
+    setDeactivatingUserId(permissionUser.id);
     setErrorMessage("");
 
     try {
-      const result = await updateUserApproval(permissionUser.id, "rejected");
+      await removePermissionUser(permissionUser.id);
 
-      if (!isDeletedApprovalResult(result)) {
-        throw new Error("EMPLOYEE_DELETION_FAILED");
-      }
-
-      updateStoreManagementData((current) => ({
-        ...current,
-        users: current.users.filter((user) => user.id !== permissionUser.id),
-      }));
+      updateApprovableUsers((current) =>
+        current.filter((currentUser) => currentUser.id !== permissionUser.id),
+      );
       setTeamDrafts((current) => {
         const nextDrafts = { ...current };
         delete nextDrafts[permissionUser.id];
         return nextDrafts;
       });
-      toast.success(copy.employeeDeleted);
+      toast.success(copy.employeeDeactivated);
     } catch {
-      toast.error(copy.employeeDeleteError);
+      toast.error(copy.employeeDeactivateError);
     } finally {
-      setDeletingUserId(null);
+      setDeactivatingUserId(null);
     }
   }
 
-  async function confirmDeleteTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
+  async function confirmDeactivateTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
     const confirmed = await confirm({
-      title: copy.deleteEmployeeTitle,
-      message: copy.deleteEmployeeBody,
-      confirmLabel: copy.deleteConfirm,
-      cancelLabel: copy.deleteCancel,
+      title: copy.deactivateEmployeeTitle,
+      message: copy.deactivateEmployeeBody,
+      confirmLabel: copy.deactivateConfirm,
+      cancelLabel: copy.deactivateCancel,
       tone: "danger",
     });
     if (confirmed) {
-      void deleteTeamUser(permissionUser);
+      void deactivateTeamUser(permissionUser);
     }
   }
 
-  function openStore(storeId: number): void {
+  const openStore = useCallback((storeId: number): void => {
     setSelectedStoreId(storeId);
     setDetailView("overview");
     setTeamSearchTerm("");
     setTeamRoleFilter("");
     setErrorMessage("");
-  }
+  }, []);
 
   if (selectedStore) {
     const isOverview = detailView === "overview";
@@ -581,11 +661,11 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
                   key={item.id}
                   copy={copy}
                   draft={teamDrafts[item.id] || { jobRole: item.jobRole || "" }}
-                  isDeleting={deletingUserId === item.id}
+                  isDeactivating={deactivatingUserId === item.id}
                   isSaving={savingUserId === item.id}
                   roleOptions={roleOptions}
                   user={item}
-                  onDelete={() => void confirmDeleteTeamUser(item)}
+                  onDeactivate={() => void confirmDeactivateTeamUser(item)}
                   onPatchDraft={(jobRole) => {
                     patchTeamDraft(item.id, jobRole);
                     void saveTeamRole(item, jobRole);
@@ -657,28 +737,25 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
         <Text style={styles.message}>{visibleErrorMessage}</Text>
       ) : null}
 
-      {!isLoading && !visibleErrorMessage && data.stores.length === 0 ? (
+      {!isLoading && !visibleErrorMessage && stores.length === 0 ? (
         <Text style={styles.emptyText}>{copy.empty}</Text>
       ) : null}
 
-      {!isLoading && data.stores.length > 0 ? (
+      {!isLoading && stores.length > 0 ? (
         <View style={styles.list}>
-          {data.stores.map((store, index) => {
-            const storeUsers = getUsersForStore(data.users, store.id);
-            const pendingCount = storeUsers.filter(
-              (item) => item.accountStatus === "pending",
-            ).length;
-            const teamCount = storeUsers.filter((item) => item.accountStatus === "approved").length;
+          {stores.slice(0, visibleStoreCardCount).map((store, index) => {
+            const storeCounts = storeUserCounts.get(store.id);
 
             return (
               <StoreCard
                 key={store.id}
                 copy={copy}
+                isContentReady={isInitialStorePhotoBatchReady || index >= INITIAL_STORE_CARD_COUNT}
                 imageLoadPriority={index < 3 ? "critical" : "lazy"}
-                pendingCount={pendingCount}
+                pendingCount={usersQuery.data ? (storeCounts?.pending ?? 0) : null}
                 store={store}
-                teamCount={teamCount}
-                onPress={() => openStore(store.id)}
+                teamCount={usersQuery.data ? (storeCounts?.team ?? 0) : null}
+                onPress={openStore}
               />
             );
           })}

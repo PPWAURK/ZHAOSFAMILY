@@ -14,6 +14,7 @@ import { useScreenName } from "@/lib/useScreenName";
 import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
 
 type InvitePartnerScreenProps = {
+  isActive?: boolean;
   language: AuthLanguage;
   user: AuthUser;
 };
@@ -33,7 +34,11 @@ function getInvitationErrorMessage(error: unknown, copy: typeof INVITE_PARTNER_C
   return copy.error;
 }
 
-export function InvitePartnerScreen({ language, user }: InvitePartnerScreenProps) {
+export function InvitePartnerScreen({
+  isActive = true,
+  language,
+  user,
+}: InvitePartnerScreenProps) {
   useScreenName("invite-partner");
   const toast = useToast();
   const copy = INVITE_PARTNER_COPY[language];
@@ -50,6 +55,10 @@ export function InvitePartnerScreen({ language, user }: InvitePartnerScreenProps
   );
 
   useEffect(() => {
+    if (!isActive) {
+      return undefined;
+    }
+
     let isCancelled = false;
 
     async function loadTrainingPositions(): Promise<void> {
@@ -74,7 +83,7 @@ export function InvitePartnerScreen({ language, user }: InvitePartnerScreenProps
     return () => {
       isCancelled = true;
     };
-  }, [copy.error, toast]);
+  }, [copy.error, isActive, toast]);
 
   async function handleSubmit(): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();

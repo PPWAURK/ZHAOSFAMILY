@@ -29,6 +29,7 @@ import {
 } from "@/features/recruitment/recruitmentCopy";
 
 type RecruitmentModuleScreenProps = {
+  isActive?: boolean;
   language: AuthLanguage;
 };
 
@@ -57,7 +58,10 @@ function isActivePosition(
   return !!combo[pos] && Object.keys(combo[pos]).length > 0;
 }
 
-export function RecruitmentModuleScreen({ language }: RecruitmentModuleScreenProps) {
+export function RecruitmentModuleScreen({
+  isActive = true,
+  language,
+}: RecruitmentModuleScreenProps) {
   useScreenName("recruitment");
   const copy = RECRUITMENT_COPY[language];
   const contractLabels = RECRUITMENT_CONTRACT_LABELS[language];
@@ -65,6 +69,7 @@ export function RecruitmentModuleScreen({ language }: RecruitmentModuleScreenPro
   const statusLabels = RECRUITMENT_STATUS_LABELS[language];
   const queryClient = useQueryClient();
   const requestsQuery = useQuery({
+    enabled: isActive,
     placeholderData: (previousData) => previousData,
     queryFn: fetchRecruitmentRequests,
     queryKey: recruitmentQueryKeys.requests(),

@@ -1,6 +1,8 @@
+import { memo } from "react";
 import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { RemoteImage } from "@/components/RemoteImage";
+import { Skeleton } from "@/components/Skeleton";
 import { authControlStyles, TrackingText } from "@/features/auth/AuthFormControls";
 import { STORE_COPY } from "@/features/stores/storeCopy";
 import { storeStyles as styles } from "@/features/stores/storeStyles";
@@ -126,8 +128,9 @@ export function StoreDetailActionCard({
   );
 }
 
-export function StoreCard({
+export const StoreCard = memo(function StoreCard({
   copy,
+  isContentReady = true,
   imageLoadPriority = "important",
   pendingCount,
   store,
@@ -135,14 +138,15 @@ export function StoreCard({
   onPress,
 }: {
   copy: typeof STORE_COPY.zh;
+  isContentReady?: boolean;
   imageLoadPriority?: AppImageLoadPriority;
-  pendingCount: number;
+  pendingCount: number | null;
   store: MobileStore;
-  teamCount: number;
-  onPress: () => void;
+  teamCount: number | null;
+  onPress: (storeId: number) => void;
 }) {
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <Pressable style={styles.card} onPress={() => onPress(store.id)}>
       <View style={styles.cardImage}>
         {store.photoUri ? (
           <RemoteImage
@@ -155,26 +159,36 @@ export function StoreCard({
           <Text style={styles.cardImageText}>{copy.imageFallback}</Text>
         )}
       </View>
-      <View style={styles.cardBody}>
-        <TrackingText color={authControlStyles.colors.red} size={10}>
-          {store.storeCode}
-        </TrackingText>
-        <Text style={styles.cardName}>{store.name}</Text>
-        <Text style={styles.cardMeta}>{store.address || "-"}</Text>
-      </View>
-      <View style={styles.cardStats}>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>{copy.pending}</Text>
-          <Text style={styles.statValue}>{pendingCount}</Text>
+      {isContentReady ? (
+        <>
+          <View style={styles.cardBody}>
+            <TrackingText color={authControlStyles.colors.red} size={10}>
+              {store.storeCode}
+            </TrackingText>
+            <Text style={styles.cardName}>{store.name}</Text>
+            <Text style={styles.cardMeta}>{store.address || "-"}</Text>
+          </View>
+          <View style={styles.cardStats}>
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>{copy.pending}</Text>
+              <Text style={styles.statValue}>{pendingCount ?? "—"}</Text>
+            </View>
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>{copy.team}</Text>
+              <Text style={styles.statValue}>{teamCount ?? "—"}</Text>
+            </View>
+          </View>
+        </>
+      ) : (
+        <View style={styles.cardContentPlaceholder}>
+          <Skeleton style={styles.cardKickerSkeleton} />
+          <Skeleton style={styles.cardTitleSkeleton} />
+          <Skeleton style={styles.cardMetaSkeleton} />
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>{copy.team}</Text>
-          <Text style={styles.statValue}>{teamCount}</Text>
-        </View>
-      </View>
+      )}
     </Pressable>
   );
-}
+});
 
 export function PendingUserCard({
   copy,
@@ -246,19 +260,19 @@ export function TeamUserCard({
   copy,
   draft,
   isSaving,
-  isDeleting,
+  isDeactivating,
   roleOptions,
   user,
-  onDelete,
+  onDeactivate,
   onPatchDraft,
 }: {
   copy: typeof STORE_COPY.zh;
   draft: StoreTeamDraft;
-  isDeleting: boolean;
+  isDeactivating: boolean;
   isSaving: boolean;
   roleOptions: StoreJobRoleOption[];
   user: MobilePermissionUser;
-  onDelete: () => void;
+  onDeactivate: () => void;
   onPatchDraft: (jobRole: string) => void;
 }) {
   return (
@@ -271,19 +285,19 @@ export function TeamUserCard({
         </View>
         <Pressable
           accessibilityRole="button"
-          disabled={isSaving || isDeleting}
-          style={[styles.teamDeleteButton, isSaving || isDeleting ? { opacity: 0.56 } : null]}
-          onPress={onDelete}
+          disabled={isSaving || isDeactivating}
+          style={[styles.teamDeleteButton, isSaving || isDeactivating ? { opacity: 0.56 } : null]}
+          onPress={onDeactivate}
         >
-          {isDeleting ? (
+          {isDeactivating ? (
             <ZhaoLoadingIndicator variant="button" />
           ) : (
-            <Text style={styles.actionButtonText}>{copy.deleteEmployee}</Text>
+            <Text style={styles.actionButtonText}>{copy.deactivateEmployee}</Text>
           )}
         </Pressable>
       </View>
       <RoleMultiSelector
-        disabled={isSaving || isDeleting}
+        disabled={isSaving || isDeactivating}
         options={roleOptions}
         value={draft.jobRole}
         requireSelection

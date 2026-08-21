@@ -1,4 +1,3 @@
-import React from "react";
 import ReactTestRenderer from "react-test-renderer";
 import { MobileOnboardingModal } from "@/features/onboarding/MobileOnboardingModal";
 

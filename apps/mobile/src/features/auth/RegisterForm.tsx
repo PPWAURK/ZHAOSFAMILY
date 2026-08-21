@@ -342,13 +342,6 @@ function AvatarPicker({ hint, label, value, onChange }: AvatarPickerProps) {
   }
 
   async function pickAvatarFromLibrary(): Promise<void> {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permission.granted) {
-      setErrorMessage("需要相册权限。");
-      return;
-    }
-
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsEditing: true,

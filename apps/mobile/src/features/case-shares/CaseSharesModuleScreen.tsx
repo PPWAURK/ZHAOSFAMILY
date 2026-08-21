@@ -201,16 +201,6 @@ export function CaseSharesModuleScreen({
     setComposerError("");
 
     try {
-      const currentPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
-      const permission = currentPermission.granted
-        ? currentPermission
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        setComposerError(copy.imagePermission);
-        return;
-      }
-
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsEditing: false,
         mediaTypes: ["images"],

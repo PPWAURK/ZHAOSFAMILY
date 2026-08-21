@@ -14,9 +14,10 @@ import { fetchRecipes } from "@/features/recipes/recipesApi";
 import { recipeStyles as styles } from "@/features/recipes/recipeStyles";
 import { MOBILE_API_URL } from "@/lib/env";
 import type { AppImageLoadPriority } from "@/lib/imagePriority";
-import fallbackRecipeImage from "../../../assets/四大天王/1411631517542_.pic_hd.jpg";
+import fallbackRecipeImage from "../../../assets/四大天王/recipe-fallback.jpg";
 
 type RecipeModuleScreenProps = {
+  isActive?: boolean;
   language: AuthLanguage;
   user: AuthUser;
 };
@@ -161,7 +162,7 @@ function RecipeTags({
   );
 }
 
-export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) {
+export function RecipeModuleScreen({ isActive = true, language, user }: RecipeModuleScreenProps) {
   const copy = COPY[language];
   const [view, setView] = useState<RecipeView>("list");
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
@@ -171,6 +172,7 @@ export function RecipeModuleScreen({ language, user }: RecipeModuleScreenProps) 
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
   const recipesQuery = useQuery({
+    enabled: isActive,
     meta: { persist: true },
     placeholderData: (previousData) => previousData,
     queryFn: () => fetchRecipes({ pageSize: 100 }),

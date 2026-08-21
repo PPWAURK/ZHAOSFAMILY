@@ -58,6 +58,10 @@ export const storeStyles = StyleSheet.create(scaleStyles({
   cardBody: {
     gap: 8,
   },
+  cardContentPlaceholder: {
+    gap: 10,
+    minHeight: 119,
+  },
   cardImage: {
     alignItems: "center",
     backgroundColor: "rgba(193, 22, 22, 0.08)",
@@ -78,11 +82,19 @@ export const storeStyles = StyleSheet.create(scaleStyles({
     fontWeight: "700",
     letterSpacing: 2,
   },
+  cardKickerSkeleton: {
+    height: 12,
+    width: "32%",
+  },
   cardMeta: {
     color: authControlStyles.colors.ink60,
     fontFamily: "serif",
     fontSize: 13,
     lineHeight: 19,
+  },
+  cardMetaSkeleton: {
+    height: 17,
+    width: "68%",
   },
   cardName: {
     color: authControlStyles.colors.ink,
@@ -90,6 +102,10 @@ export const storeStyles = StyleSheet.create(scaleStyles({
     fontSize: 22,
     fontWeight: "600",
     lineHeight: 27,
+  },
+  cardTitleSkeleton: {
+    height: 27,
+    width: "58%",
   },
   cardStats: {
     borderTopColor: authControlStyles.colors.ink10,

@@ -1,4 +1,3 @@
-import React from "react";
 import ReactTestRenderer from "react-test-renderer";
 import { SplashScreen } from "../src/features/splash/SplashScreen";
 

@@ -9,7 +9,6 @@ import {
 } from "react";
 import {
   Animated,
-  AccessibilityInfo,
   Easing,
   Image,
   InteractionManager,
@@ -132,78 +131,6 @@ function DashboardContentContainer({
   children,
 }: DashboardContentContainerProps): ReactNode {
   return <View>{children}</View>;
-}
-
-function DashboardNavigationLoadingOverlay({
-  label,
-  visible,
-}: {
-  label: string;
-  visible: boolean;
-}): ReactNode {
-  const progress = useRef(new Animated.Value(0)).current;
-  const [isRendered, setIsRendered] = useState(visible);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    void AccessibilityInfo.isReduceMotionEnabled().then((isEnabled) => {
-      if (isMounted) setReduceMotion(isEnabled);
-    });
-
-    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
-
-    return () => {
-      isMounted = false;
-      subscription.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    progress.stopAnimation();
-
-    if (visible) {
-      setIsRendered(true);
-      progress.setValue(0);
-      Animated.timing(progress, {
-        duration: reduceMotion ? 0 : 160,
-        easing: Easing.out(Easing.cubic),
-        toValue: 1,
-        useNativeDriver: true,
-      }).start();
-      return undefined;
-    }
-
-    Animated.timing(progress, {
-      duration: reduceMotion ? 0 : 110,
-      easing: Easing.out(Easing.cubic),
-      toValue: 0,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) setIsRendered(false);
-    });
-
-    return undefined;
-  }, [progress, reduceMotion, visible]);
-
-  if (!isRendered) return null;
-
-  const translateY = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [10, 0],
-  });
-
-  return (
-    <Animated.View
-      pointerEvents={visible ? "auto" : "none"}
-      style={[styles.navigationLoadingOverlay, { opacity: progress }]}
-    >
-      <Animated.View style={{ transform: [{ translateY }] }}>
-        <ZhaoLoadingIndicator label={label} variant="overlay" />
-      </Animated.View>
-    </Animated.View>
-  );
 }
 
 function resolveDisplayName(user: AuthUser, fallback: string): string {
@@ -333,15 +260,12 @@ export function DashboardHomeScreen({
   const isSplashComplete = useSplashCompletion();
   const [activeEntry, setActiveEntry] = useState("home");
   const [mountedEntries, setMountedEntries] = useState<string[]>(["home"]);
-  const [isNavigationPending, setIsNavigationPending] = useState(false);
   const [isOnboardingReplay, setIsOnboardingReplay] = useState(false);
   const [isOnboardingVisible, setIsOnboardingVisible] = useState(false);
   const [isOnboardingReplayPending, setIsOnboardingReplayPending] = useState(false);
   const [onboardingTargets, setOnboardingTargets] =
     useState<MobileOnboardingTargets>(EMPTY_ONBOARDING_TARGETS);
 
-  // Route to the relevant module when the app is opened from a push tap.
-  useNotificationNavigation((entry) => setActiveEntry(entry));
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   // The order module reports when its long product-selection view is active so
   // the scroll-to-top/bottom helpers only show there, not on the supplier list.
@@ -387,8 +311,6 @@ export function DashboardHomeScreen({
   const [actionMessage, setActionMessage] = useState("");
   const [equippedTitle, setEquippedTitle] = useState<TrainingTitle | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-  const navigationFrameRef = useRef<number | null>(null);
-  const navigationFinishFrameRef = useRef<number | null>(null);
   const preloadedHomeUserRef = useRef<string | null>(null);
   const pdfLoadingStartedAtRef = useRef(0);
   const pdfLoadingTokenRef = useRef(0);
@@ -425,39 +347,14 @@ export function DashboardHomeScreen({
         return;
       }
 
-      if (navigationFrameRef.current !== null) {
-        cancelAnimationFrame(navigationFrameRef.current);
-      }
-      if (navigationFinishFrameRef.current !== null) {
-        cancelAnimationFrame(navigationFinishFrameRef.current);
-      }
-
-      setIsNavigationPending(true);
-      navigationFrameRef.current = requestAnimationFrame(() => {
-        navigationFrameRef.current = null;
-        setActiveEntry(nextEntry);
-        scrollDashboardToTop();
-
-        navigationFinishFrameRef.current = requestAnimationFrame(() => {
-          navigationFinishFrameRef.current = null;
-          setIsNavigationPending(false);
-        });
-      });
+      setActiveEntry(nextEntry);
+      scrollDashboardToTop();
     },
     [activeEntry, scrollDashboardToTop],
   );
 
-  useEffect(
-    () => () => {
-      if (navigationFrameRef.current !== null) {
-        cancelAnimationFrame(navigationFrameRef.current);
-      }
-      if (navigationFinishFrameRef.current !== null) {
-        cancelAnimationFrame(navigationFinishFrameRef.current);
-      }
-    },
-    [],
-  );
+  // Route push-notification destinations through the same immediate navigation path.
+  useNotificationNavigation(navigateToEntry);
 
   useEffect(() => {
     setMountedEntries((currentEntries) =>
@@ -947,7 +844,7 @@ export function DashboardHomeScreen({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.shell}>
+        <View style={styles.shell}>
         <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
@@ -980,7 +877,7 @@ export function DashboardHomeScreen({
             <View style={styles.topActions}>
               <NotificationCenter
                 language={language}
-                onOpenEntry={(entry) => setActiveEntry(entry)}
+                onOpenEntry={navigateToEntry}
               />
               {!isMoreOpen ? (
                 <SidebarMenuToggle
@@ -1000,6 +897,7 @@ export function DashboardHomeScreen({
               {renderedEntries.map((entryId) => (
                 <View
                   key={entryId}
+                  pointerEvents={entryId === activeEntry ? "auto" : "none"}
                   style={entryId === activeEntry ? null : styles.keepAliveEntryHidden}
                 >
             {entryId === "orders" ? (
@@ -1025,11 +923,19 @@ export function DashboardHomeScreen({
                 onDeleteAccount={onDeleteAccount}
               />
             ) : entryId === "invite-partner" ? (
-              <InvitePartnerScreen language={language} user={user} />
+              <InvitePartnerScreen
+                isActive={entryId === activeEntry}
+                language={language}
+                user={user}
+              />
             ) : entryId === "recruitment-requests" ? (
-              <RecruitmentModuleScreen language={language} />
+              <RecruitmentModuleScreen isActive={entryId === activeEntry} language={language} />
             ) : entryId === "recipes" ? (
-              <RecipeModuleScreen language={language} user={user} />
+              <RecipeModuleScreen
+                isActive={entryId === activeEntry}
+                language={language}
+                user={user}
+              />
             ) : entryId === "case-shares" ? (
               <CaseSharesModuleScreen
                 language={language}
@@ -1479,11 +1385,6 @@ export function DashboardHomeScreen({
           </DashboardRefreshProvider>
         </ScrollView>
 
-        <DashboardNavigationLoadingOverlay
-          label={copy.loadingModule}
-          visible={isNavigationPending}
-        />
-
         {!isMoreOpen ? (
           <BlurView intensity={80} tint="light" style={styles.bottomNav}>
             <View style={styles.bottomNavDepth} />
@@ -1721,8 +1622,8 @@ export function DashboardHomeScreen({
           visible={isOnboardingVisible}
           onComplete={completeOnboarding}
         />
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
   );
 }
 
@@ -2044,15 +1945,12 @@ const styles = StyleSheet.create(
       backgroundColor: "#ffffff",
       flex: 1,
     },
-    navigationLoadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      alignItems: "center",
-      backgroundColor: "rgba(255, 255, 255, 0.94)",
-      justifyContent: "center",
-      zIndex: 3,
-    },
     keepAliveEntryHidden: {
-      display: "none",
+      left: 0,
+      opacity: 0,
+      position: "absolute",
+      right: 0,
+      top: 0,
     },
     mandatoryNewsScroll: {
       flex: 1,

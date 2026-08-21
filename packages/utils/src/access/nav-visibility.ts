@@ -38,6 +38,7 @@ export const ALL_JOB_ROLES = [
 ] as const;
 
 // 管理层岗位：可见运营类模块（门店 / 下单 / 供应商）。
+// 员工岗位已支持使用培训岗位树的代码保存；保留旧岗位 slug，兼容历史账号。
 export const MANAGEMENT_JOB_ROLES = [
   "holding",
   "regional-manager",
@@ -46,6 +47,13 @@ export const MANAGEMENT_JOB_ROLES = [
   "back-manager",
   "front-assistant",
   "back-assistant",
+  "HOLDING",
+  "RM",
+  "SM",
+  "FRONT_MANAGER",
+  "KITCHEN_MANAGER",
+  "FRONT_ASSISTANT",
+  "KITCHEN_ASSISTANT",
 ] as const;
 
 // 总部层岗位：可见最敏感模块（库存 / 岗位管理 / 系统角色）。

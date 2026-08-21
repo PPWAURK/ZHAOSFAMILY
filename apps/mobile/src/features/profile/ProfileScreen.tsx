@@ -189,6 +189,7 @@ export function ProfileScreen({
   const [titleMessage, setTitleMessage] = useState("");
   const queryClient = useQueryClient();
   const titlesQuery = useQuery({
+    enabled: isActive,
     placeholderData: (previousData) => previousData,
     queryFn: fetchTrainingMyTitles,
     queryKey: ["training", "my-titles", user.id],
@@ -255,12 +256,6 @@ export function ProfileScreen({
 
   async function changeAvatar(): Promise<void> {
     setAvatarMessage("");
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permission.granted) {
-      setAvatarMessage(copy.avatarError);
-      return;
-    }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,

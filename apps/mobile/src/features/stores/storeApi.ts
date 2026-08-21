@@ -97,6 +97,10 @@ export type UpdateUserApprovalResult =
   | MobilePermissionUser
   | { message: "EMPLOYEE_DELETED" };
 
+export type RemovePermissionUserResult = {
+  message: "EMPLOYEE_REMOVED" | "EMPLOYEE_DELETED";
+};
+
 export async function updateUserApproval(
   userId: number,
   accountStatus: "approved" | "rejected",
@@ -120,6 +124,14 @@ export async function updateUserApproval(
   }
 
   return mapPermissionUser(response);
+}
+
+export async function removePermissionUser(
+  userId: number,
+): Promise<RemovePermissionUserResult> {
+  return mobileApiClient.delete<RemovePermissionUserResult>(
+    `/permissions/users/${encodeURIComponent(userId)}`,
+  );
 }
 
 export async function updateUserJobRole(

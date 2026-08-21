@@ -12,7 +12,9 @@ import {
   fetchPublishedGradeBoard,
   fetchPublishedGradeCycles,
 } from "@/features/dashboard/abcGradeBoardApi";
-import { fetchStoreManagementData } from "@/features/stores/storeQueries";
+import {
+  fetchManageableStores,
+} from "@/features/stores/storeApi";
 import { fetchLocalizedTrainingPlan } from "@/features/training/trainingQueries";
 
 const MAX_CRITICAL_IMAGE_COUNT = 3;
@@ -63,13 +65,13 @@ export async function prepareStoresPage(
   queryClient: QueryClient,
   userId: number | string,
 ): Promise<void> {
-  const data = await queryClient.ensureQueryData({
+  const stores = await queryClient.ensureQueryData({
     meta: { persist: true },
-    queryFn: fetchStoreManagementData,
-    queryKey: storeManagementQueryKeys.overview(userId),
+    queryFn: fetchManageableStores,
+    queryKey: storeManagementQueryKeys.stores(userId),
   });
 
-  await preloadCriticalImages(data.stores.map((store) => store.photoUri));
+  await preloadCriticalImages(stores.map((store) => store.photoUri));
 }
 
 export async function prepareStoreGradeRankingPage(queryClient: QueryClient): Promise<void> {
@@ -129,11 +131,11 @@ export async function prepareHighFrequencyPages({
   queryClient,
   userId,
 }: HomePreloadOptions): Promise<void> {
+  await runPreloadTask(() => prepareStoresPage(queryClient, userId));
+  await waitForNextPreloadBatch();
   await runPreloadTask(() => prepareStoreGradeRankingPage(queryClient));
   await waitForNextPreloadBatch();
   await runPreloadTask(() => prepareOrdersPage(queryClient));
-  await waitForNextPreloadBatch();
-  await runPreloadTask(() => prepareStoresPage(queryClient, userId));
   await waitForNextPreloadBatch();
   await runPreloadTask(() => prepareTrainingPage(queryClient, userId, language));
 }
