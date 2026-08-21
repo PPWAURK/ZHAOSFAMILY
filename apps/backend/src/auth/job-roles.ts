@@ -22,6 +22,24 @@ export const JOB_ROLE_VALUES = [
 
 export type JobRoleValue = (typeof JOB_ROLE_VALUES)[number];
 
+// 下单最低岗位为前厅/厨房助理；兼容历史岗位 slug 与培训岗位树代码。
+export const ORDER_CREATION_JOB_ROLE_VALUES = [
+  'holding',
+  'regional-manager',
+  'store-manager',
+  'front-manager',
+  'back-manager',
+  'front-assistant',
+  'back-assistant',
+  'HOLDING',
+  'RM',
+  'SM',
+  'FRONT_MANAGER',
+  'KITCHEN_MANAGER',
+  'FRONT_ASSISTANT',
+  'KITCHEN_ASSISTANT',
+] as const;
+
 export const JOB_ROLE_PATTERN = new RegExp(
   `^(${JOB_ROLE_VALUES.join('|')})(,(${JOB_ROLE_VALUES.join('|')}))*$`,
 );

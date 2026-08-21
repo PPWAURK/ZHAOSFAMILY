@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { OrdersDocumentService } from './orders-document.service';
 import { OrderQuantityConversionService } from './order-quantity-conversion.service';
 import { OrdersService } from './orders.service';
@@ -112,6 +112,12 @@ function createProduct(
   };
 }
 
+const ORDER_ACTOR = {
+  id: 7,
+  restaurantId: 3,
+  jobRole: 'KITCHEN_ASSISTANT',
+};
+
 describe('OrdersService', () => {
   let prismaService: OrdersPrismaServiceMock;
   let ordersDocumentService: jest.Mocked<
@@ -215,7 +221,7 @@ describe('OrdersService', () => {
     });
 
     const result = await service.createOrder(
-      { id: 7, restaurantId: 3 },
+      ORDER_ACTOR,
       {
         deliveryDate: '2026-04-30',
         items: [{ productId: 11, quantity: 2, specificationSlot: 1 }],
@@ -248,7 +254,7 @@ describe('OrdersService', () => {
 
     await expect(
       service.createOrder(
-        { id: 7, restaurantId: 3 },
+        ORDER_ACTOR,
         {
           deliveryDate: '2026-04-30',
           items: [{ productId: 11, quantity: 2, specificationSlot: 1 }],
@@ -295,7 +301,7 @@ describe('OrdersService', () => {
     );
 
     const result = await service.createOrder(
-      { id: 7, restaurantId: 3 },
+      ORDER_ACTOR,
       {
         deliveryDate: '2026-04-30',
         items: [{ productId: 11, quantity: 25, specificationSlot: 1 }],
@@ -379,7 +385,7 @@ describe('OrdersService', () => {
     });
 
     await service.createOrder(
-      { id: 7, restaurantId: 3 },
+      ORDER_ACTOR,
       {
         deliveryDate: '2026-04-30',
         items: [{ productId: 11, quantity: 2, specificationSlot: 1 }],
@@ -387,7 +393,7 @@ describe('OrdersService', () => {
       { protocol: 'http', get: () => 'localhost:3002' },
     );
     await service.createOrder(
-      { id: 7, restaurantId: 3 },
+      ORDER_ACTOR,
       {
         deliveryDate: '2026-04-30',
         items: [{ productId: 22, quantity: 1, specificationSlot: 1 }],
@@ -425,7 +431,7 @@ describe('OrdersService', () => {
 
     await expect(
       service.createOrder(
-        { id: 7, restaurantId: 3 },
+        ORDER_ACTOR,
         {
           deliveryDate: '2026-04-30',
           items: [{ productId: 11, quantity: 2, specificationSlot: 1 }],
@@ -433,6 +439,21 @@ describe('OrdersService', () => {
         { protocol: 'http', get: () => 'localhost:3002' },
       ),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects order creation below the assistant level', async () => {
+    await expect(
+      service.createOrder(
+        { id: 7, restaurantId: 3, jobRole: 'FRONT_SERVER' },
+        {
+          deliveryDate: '2026-04-30',
+          items: [{ productId: 11, quantity: 2, specificationSlot: 1 }],
+        },
+        { protocol: 'http', get: () => 'localhost:3002' },
+      ),
+    ).rejects.toEqual(new ForbiddenException('ORDER_CREATE_FORBIDDEN'));
+
+    expect(prismaService.product.findMany).not.toHaveBeenCalled();
   });
 
   it('lists only current restaurant orders for store users', async () => {

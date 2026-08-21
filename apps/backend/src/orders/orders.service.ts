@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { renameSync } from 'fs';
+import { ORDER_CREATION_JOB_ROLE_VALUES } from '../auth/job-roles';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersDocumentService } from './orders-document.service';
 import { OrderQuantityConversionService } from './order-quantity-conversion.service';
@@ -136,6 +137,9 @@ type OrderFileSnapshot = {
 };
 
 const STOCK_ENFORCED_SUPPLIER_IDS = new Set([8]);
+const ORDER_CREATION_JOB_ROLES = new Set<string>(
+  ORDER_CREATION_JOB_ROLE_VALUES,
+);
 
 @Injectable()
 export class OrdersService {
@@ -150,6 +154,8 @@ export class OrdersService {
     dto: CreateOrderDto,
     request: OrdersRequestContext,
   ): Promise<unknown> {
+    this.assertCanCreateOrder(actor);
+
     const deliveryDate = this.parseDeliveryDate(dto.deliveryDate);
     const selectedItems = await this.prepareSelectedItems(dto.items);
     const supplierId = this.resolveSingleSupplierId(selectedItems);
@@ -1529,6 +1535,17 @@ export class OrdersService {
   private assertRestaurantScope(actor: OrderActor, restaurantId: number): void {
     if (!this.canManageRestaurantOrder(actor, restaurantId)) {
       throw new ForbiddenException('ORDER_OUTSIDE_RESTAURANT_SCOPE');
+    }
+  }
+
+  private assertCanCreateOrder(actor: OrderActor): void {
+    const canCreateOrder = `${actor.jobRole ?? ''}`
+      .split(',')
+      .map((role) => role.trim())
+      .some((role) => ORDER_CREATION_JOB_ROLES.has(role));
+
+    if (!canCreateOrder) {
+      throw new ForbiddenException('ORDER_CREATE_FORBIDDEN');
     }
   }
 
