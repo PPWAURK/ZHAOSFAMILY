@@ -29,12 +29,48 @@ const COURSE_KIND_LABELS = {
   OTHER: "OTHER",
 };
 
-function filterCourses(items, filter) {
-  if (filter === "all") {
-    return items;
-  }
+const MATERIAL_CATEGORY_TYPES = [
+  "all",
+  "VIDEO",
+  "PDF",
+  "QUIZ",
+  "ARTICLE",
+  "IMAGE",
+  "OTHER",
+];
 
-  return items.filter((item) => item.status === filter);
+function filterCourses(
+  items,
+  statusFilter,
+  categoryFilter,
+  positionFilter,
+  searchQuery,
+) {
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  return items.filter((item) => {
+    const matchesStatus =
+      statusFilter === "all" || item.status === statusFilter;
+    const matchesCategory =
+      categoryFilter === "all" || item.type === categoryFilter;
+    const matchesPosition =
+      positionFilter === "all" || item.positionId === positionFilter;
+    const searchableContent = [
+      item.title,
+      item.desc,
+      item.positionId,
+      item.type,
+      item.dur,
+      ...item.tags,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const matchesSearch =
+      !normalizedSearchQuery || searchableContent.includes(normalizedSearchQuery);
+
+    return matchesStatus && matchesCategory && matchesPosition && matchesSearch;
+  });
 }
 
 function toCourseCard(material) {
@@ -45,6 +81,7 @@ function toCourseCard(material) {
     id: `material-${material.id}`,
     materialId: material.id,
     type: material.type,
+    positionId: material.positionId,
     req: Boolean(material.isRequired),
     title: material.title,
     en: material.positionId,
@@ -61,9 +98,46 @@ function toCourseCard(material) {
   };
 }
 
+function replaceCourseTitle(template, title) {
+  return template.replace("{title}", title);
+}
+
+function buildOnboardingContent(course, t) {
+  const copy = t.page.onboarding;
+
+  if (!course) {
+    return {
+      mark: "成",
+      kicker: copy.emptyKicker,
+      title: copy.emptyTitle,
+      desc: copy.emptyDesc,
+      action: copy.emptyAction,
+    };
+  }
+
+  const status = course.status || "not_started";
+  const statusTemplate = copy.statusTitle[status] || copy.statusTitle.not_started;
+  const markByStatus = {
+    not_started: "学",
+    in_progress: "续",
+    completed: "复",
+  };
+
+  return {
+    mark: markByStatus[status] || markByStatus.not_started,
+    kicker: `${copy.requiredKicker} · ${course.positionId} · ${copy.progressLabel} ${course.prog}%`,
+    title: replaceCourseTitle(statusTemplate, course.title),
+    desc: course.desc || copy.defaultDesc,
+    action: t.shared.courseAction[status] || t.shared.courseAction.not_started,
+  };
+}
+
 export default function TrainingSpacePage() {
   const { user } = useAuth();
-  const [filter, setFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [positionFilter, setPositionFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [trainingPlan, setTrainingPlan] = useState(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planError, setPlanError] = useState("");
@@ -131,6 +205,17 @@ export default function TrainingSpacePage() {
       optional: optionalPlanItems.map(toCourseCard),
     };
   }, [optionalPlanItems, requiredPlanItems]);
+  const positionCategories = useMemo(
+    () =>
+      [
+        ...new Set(
+          [...materialCourses.required, ...materialCourses.optional]
+            .map((course) => course.positionId)
+            .filter(Boolean),
+        ),
+      ].sort(),
+    [materialCourses],
+  );
   return (
     <TrainingLayout
       pageCopy={{
@@ -140,8 +225,25 @@ export default function TrainingSpacePage() {
       }}
     >
       {({ t, styles }) => {
-        const requiredCourses = filterCourses(materialCourses.required, filter);
-        const optionalCourses = filterCourses(materialCourses.optional, filter);
+        const requiredCourses = filterCourses(
+          materialCourses.required,
+          statusFilter,
+          categoryFilter,
+          positionFilter,
+          searchQuery,
+        );
+        const optionalCourses = filterCourses(
+          materialCourses.optional,
+          "all",
+          categoryFilter,
+          positionFilter,
+          searchQuery,
+        );
+        const hasActiveFilters =
+          statusFilter !== "all" ||
+          categoryFilter !== "all" ||
+          positionFilter !== "all" ||
+          Boolean(searchQuery.trim());
         const continueCourse =
           materialCourses.required.find(
             (course) => course.status !== "completed",
@@ -150,7 +252,8 @@ export default function TrainingSpacePage() {
           null;
         const continueHref = continueCourse
           ? `/dashboard/training/materials/player?id=${continueCourse.materialId}`
-          : "/dashboard/training/materials";
+          : "/dashboard/training";
+        const onboardingContent = buildOnboardingContent(continueCourse, t);
 
         return (
           <>
@@ -180,14 +283,14 @@ export default function TrainingSpacePage() {
             </section>
 
             <section className={styles.onboardingBanner}>
-              <div className={styles.onboardingMark}>新</div>
+              <div className={styles.onboardingMark}>{onboardingContent.mark}</div>
               <div className={styles.onboardingText}>
-                <p className={styles.onboardingKicker}>{t.page.onboardingKicker}</p>
-                <h2 className={styles.onboardingTitle}>{t.page.onboardingTitle}</h2>
-                <p className={styles.onboardingDetail}>{t.page.onboardingDesc}</p>
+                <p className={styles.onboardingKicker}>{onboardingContent.kicker}</p>
+                <h2 className={styles.onboardingTitle}>{onboardingContent.title}</h2>
+                <p className={styles.onboardingDetail}>{onboardingContent.desc}</p>
               </div>
               <Link href={continueHref} className={styles.onboardingAction}>
-                <span>{t.page.onboardingAction}</span>
+                <span>{onboardingContent.action}</span>
                 <span className={styles.onboardingArrow}>→</span>
               </Link>
             </section>
@@ -198,6 +301,79 @@ export default function TrainingSpacePage() {
               </section>
             ) : null}
 
+            <section
+              className={styles.courseCategoryBar}
+              aria-label={t.shared.courseFiltersLabel}
+            >
+              <div className={styles.courseFilterGroup}>
+                <span className={styles.courseCategoryLabel}>
+                  {t.shared.materialCategoryLabel}
+                </span>
+                <div
+                  className={styles.filterButtons}
+                  role="group"
+                  aria-label={t.shared.materialCategoryLabel}
+                >
+                  {MATERIAL_CATEGORY_TYPES.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      className={`${styles.filterButton} ${
+                        categoryFilter === type ? styles.filterButtonActive : ""
+                      }`}
+                      onClick={() => setCategoryFilter(type)}
+                    >
+                      {t.shared.materialFilters[type]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.courseFilterGroup}>
+                <span className={styles.courseCategoryLabel}>
+                  {t.shared.positionCategoryLabel}
+                </span>
+                <div
+                  className={styles.filterButtons}
+                  role="group"
+                  aria-label={t.shared.positionCategoryLabel}
+                >
+                  <button
+                    type="button"
+                    className={`${styles.filterButton} ${
+                      positionFilter === "all" ? styles.filterButtonActive : ""
+                    }`}
+                    onClick={() => setPositionFilter("all")}
+                  >
+                    {t.shared.allPositionsLabel}
+                  </button>
+                  {positionCategories.map((positionId) => (
+                    <button
+                      key={positionId}
+                      type="button"
+                      className={`${styles.filterButton} ${
+                        positionFilter === positionId ? styles.filterButtonActive : ""
+                      }`}
+                      onClick={() => setPositionFilter(positionId)}
+                    >
+                      {positionId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className={styles.courseSearch}>
+                <span className={styles.courseCategoryLabel}>
+                  {t.shared.courseSearchLabel}
+                </span>
+                <input
+                  type="search"
+                  className={styles.courseSearchInput}
+                  value={searchQuery}
+                  placeholder={t.shared.courseSearchPlaceholder}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+              </label>
+            </section>
+
             <section className={styles.section}>
               <div className={styles.sectionBar}>
                 <h2 className={styles.sectionTitle}>
@@ -205,15 +381,19 @@ export default function TrainingSpacePage() {
                   <span>{t.page.requiredHeading}</span>
                   <span className={styles.sectionTitleEn}>{t.page.requiredEn}</span>
                 </h2>
-                <div className={styles.filterButtons}>
+                <div
+                  className={styles.filterButtons}
+                  role="group"
+                  aria-label="按学习进度筛选"
+                >
                   {Object.entries(t.shared.courseFilters).map(([value, label]) => (
                     <button
                       key={value}
                       type="button"
                       className={`${styles.filterButton} ${
-                        filter === value ? styles.filterButtonActive : ""
+                        statusFilter === value ? styles.filterButtonActive : ""
                       }`}
-                      onClick={() => setFilter(value)}
+                      onClick={() => setStatusFilter(value)}
                     >
                       {label}
                     </button>
@@ -282,7 +462,9 @@ export default function TrainingSpacePage() {
                   ))
                 ) : (
                   <div className={styles.materialEmpty}>
-                    暂无必修资料。请在资料库上传并标记为必修。
+                    {hasActiveFilters
+                      ? t.shared.empty
+                      : "暂无必修资料。请在资料库上传并标记为必修。"}
                   </div>
                 )}
               </div>
@@ -353,7 +535,9 @@ export default function TrainingSpacePage() {
                   ))
                 ) : (
                   <div className={styles.materialEmpty}>
-                    暂无选修资料。员工仍可先完成上方必修内容。
+                    {hasActiveFilters
+                      ? t.shared.empty
+                      : "暂无选修资料。员工仍可先完成上方必修内容。"}
                   </div>
                 )}
               </div>

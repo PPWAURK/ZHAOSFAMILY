@@ -438,6 +438,48 @@
   border-color: var(--ink);
 }
 
+.courseCategoryBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 14px 24px;
+  margin: 0 0 20px;
+}
+
+.courseFilterGroup,
+.courseSearch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.courseCategoryLabel {
+  flex: 0 0 auto;
+  color: var(--ink-50);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.courseSearchInput {
+  width: min(100%, 280px);
+  min-width: 220px;
+  padding: 7px 10px;
+  border: 1px solid var(--ink-10);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.courseSearchInput:focus {
+  border-color: var(--ink);
+  outline: none;
+}
+
 .storeProgressSummary {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -2922,9 +2964,19 @@
   .top,
   .topLeft,
   .topIndex,
-  .sectionBar {
+  .sectionBar,
+  .courseCategoryBar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .courseFilterGroup,
+  .courseSearch {
+    align-items: flex-start;
+  }
+
+  .courseSearchInput {
+    width: 100%;
   }
 
   .topLeft,
