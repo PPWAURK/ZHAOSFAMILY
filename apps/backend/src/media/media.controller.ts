@@ -19,6 +19,7 @@ import { mkdirSync } from 'fs';
 import multer from 'multer';
 import { tmpdir } from 'os';
 import * as path from 'path';
+import type { Readable } from 'stream';
 import type { Request, Response } from 'express';
 import { MediaService, type UploadedMedia } from './media.service';
 import { AuthService } from '../auth/auth.service';
@@ -251,7 +252,7 @@ export class MediaController {
         contentRange: `bytes ${range.start}-${range.end}/${file.size}`,
       });
 
-      file.stream.pipe(response);
+      this.pipeFileStream(file.stream, response);
       return;
     }
 
@@ -262,7 +263,30 @@ export class MediaController {
       contentLength: file.size,
     });
 
-    file.stream.pipe(response);
+    this.pipeFileStream(file.stream, response);
+  }
+
+  private pipeFileStream(stream: Readable, response: Response): void {
+    const destroyUpstream = (): void => {
+      if (!stream.destroyed) {
+        stream.destroy();
+      }
+    };
+
+    if (response.destroyed) {
+      destroyUpstream();
+      return;
+    }
+
+    response.once('close', destroyUpstream);
+
+    if (response.destroyed) {
+      response.off('close', destroyUpstream);
+      destroyUpstream();
+      return;
+    }
+
+    stream.pipe(response);
   }
 
   private async assertInspectionReportAccess(
