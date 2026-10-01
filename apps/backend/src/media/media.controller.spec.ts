@@ -1,28 +1,39 @@
 import type { Request, Response } from 'express';
+import { EventEmitter } from 'node:events';
 import type { Readable } from 'stream';
 import { ForbiddenException } from '@nestjs/common';
 import { MediaController } from './media.controller';
 
 function createResponseMock(): Response & {
+  destroyed: boolean;
   end: jest.Mock;
   setHeader: jest.Mock;
   status: jest.Mock;
 } {
-  const response = {
+  const response = Object.assign(new EventEmitter(), {
+    destroyed: false,
     end: jest.fn(),
     setHeader: jest.fn(),
     status: jest.fn().mockReturnThis(),
-  };
+  });
 
   return response as unknown as Response & {
+    destroyed: boolean;
     end: jest.Mock;
     setHeader: jest.Mock;
     status: jest.Mock;
   };
 }
 
-function createStreamMock(): Readable & { pipe: jest.Mock } {
-  return { pipe: jest.fn() } as unknown as Readable & { pipe: jest.Mock };
+function createStreamMock(): Readable & {
+  destroy: jest.Mock;
+  pipe: jest.Mock;
+} {
+  return Object.assign(new EventEmitter(), {
+    destroy: jest.fn(),
+    destroyed: false,
+    pipe: jest.fn(),
+  }) as unknown as Readable & { destroy: jest.Mock; pipe: jest.Mock };
 }
 
 function createRequest(range?: string): Request {
@@ -105,6 +116,58 @@ describe('MediaController', () => {
     );
 
     expect(stream.pipe).toHaveBeenCalledWith(response);
+  });
+
+  it('destroys the upstream object stream when the client disconnects', async () => {
+    const { controller, mediaService } = createController();
+    const response = createResponseMock();
+    const stream = createStreamMock();
+
+    mediaService.getFileMetadata.mockResolvedValue({
+      mimeType: 'video/mp4',
+      size: 1_000_000,
+    });
+    mediaService.getFile.mockResolvedValue({
+      mimeType: 'video/mp4',
+      size: 1_000_000,
+      stream,
+    });
+
+    await controller.getPublicStorePhoto(
+      { objectKey: 'stores/photos/2026/09/video.mp4' },
+      { headers: {} } as Request,
+      response,
+    );
+
+    response.emit('close');
+
+    expect(stream.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('destroys an upstream stream obtained after the client disconnected', async () => {
+    const { controller, mediaService } = createController();
+    const response = createResponseMock();
+    const stream = createStreamMock();
+    response.destroyed = true;
+
+    mediaService.getFileMetadata.mockResolvedValue({
+      mimeType: 'video/mp4',
+      size: 1_000_000,
+    });
+    mediaService.getFile.mockResolvedValue({
+      mimeType: 'video/mp4',
+      size: 1_000_000,
+      stream,
+    });
+
+    await controller.getPublicStorePhoto(
+      { objectKey: 'stores/photos/2026/09/video.mp4' },
+      { headers: {} } as Request,
+      response,
+    );
+
+    expect(stream.destroy).toHaveBeenCalledTimes(1);
+    expect(stream.pipe).not.toHaveBeenCalled();
   });
 
   it('does not expose non-store objects through the public media route', async () => {
