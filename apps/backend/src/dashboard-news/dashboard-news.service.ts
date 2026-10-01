@@ -521,11 +521,13 @@ export class DashboardNewsService {
       attachment: this.mapAttachment(post),
       restaurantId: post.restaurantId,
       restaurantName: post.restaurant.name,
-      author: {
-        id: post.author.id,
-        name: post.author.name,
-        email: post.author.email,
-      },
+      author: post.author
+        ? {
+            id: post.author.id,
+            name: post.author.name,
+            email: post.author.email,
+          }
+        : null,
       canDelete: this.canDeletePost(actor),
       readConfirmation: this.mapReadConfirmation(post, readConfirmation),
       readSummary:

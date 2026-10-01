@@ -30,20 +30,19 @@ const deleteAccountSections: DeleteAccountSection[] = [
     title: "账号与数据删除",
     lede: "本页面适用于 ZHAO's Family 应用。",
     requestTitle: "删除你的账号",
-    request:
-      "现在可以直接在应用内删除账号，无需再发送邮件给支持团队来申请删除账号。",
+    request: "现在可以直接在应用内删除账号，无需再发送邮件给支持团队来申请删除账号。",
     stepsTitle: "操作步骤",
     stepsIntro: "删除账号的步骤：",
     steps: [
       "登录你的 ZHAO's Family 账号；",
       "从 Dashboard 或移动端首页打开“个人资料”页面；",
       "选择“删除我的账号”；",
-      "输入当前密码以确认操作。",
+      "阅读删除说明弹窗，并输入当前密码以确认操作。",
     ],
     stepsNote: "通过密码确认可以验证你确实是该账号的持有者。",
     delayTitle: "处理时间",
     delay:
-      "确认后，你的账号将被停用，与个人资料相关的信息会被删除或匿名化。如法律、会计、安全或防止滥用等义务要求，部分数据可能会被临时保留。",
+      "确认后，账号及个人资料将被删除，原邮箱可重新注册。订单等业务历史会保留，但不再关联你的身份；你撰写的正文和附件原文仍会保留。",
     deletedDataTitle: "被删除的数据",
     deletedData: [
       "用户账号；",
@@ -59,7 +58,7 @@ const deleteAccountSections: DeleteAccountSection[] = [
     retentionTitle: "额外的保留期限",
     retention:
       "因法律或行政原因保留的数据，可能会在适用义务所严格要求的期限内继续保留。该期限结束后，这些数据将被删除或匿名化。",
-    footer: "最后更新：2026 年 7 月 9 日",
+    footer: "最后更新：2026 年 10 月 1 日",
   },
   {
     lang: "en",
@@ -74,13 +73,13 @@ const deleteAccountSections: DeleteAccountSection[] = [
       "sign in to your ZHAO's Family account;",
       "open the “Profile” page from the dashboard or the mobile home screen;",
       "select “Delete my account”;",
-      "enter your current password to confirm the action.",
+      "read the deletion dialog and enter your current password to confirm.",
     ],
     stepsNote:
       "This password confirmation verifies that you are the holder of the account concerned.",
     delayTitle: "Processing time",
     delay:
-      "Once confirmed, your account is deactivated and the personal information linked to the profile is deleted or anonymized. Some data may still be retained temporarily when required by a legal, accounting, security, or abuse-prevention obligation.",
+      "Once confirmed, your account and profile are deleted and your email can register again. Orders and other business history remain without your account identity; text and attachments you authored remain as originally submitted.",
     deletedDataTitle: "Deleted data",
     deletedData: [
       "user account;",
@@ -96,7 +95,7 @@ const deleteAccountSections: DeleteAccountSection[] = [
     retentionTitle: "Additional retention period",
     retention:
       "Data kept for legal or administrative reasons may be retained for the period strictly necessary under applicable obligations. After that period, it will be deleted or anonymized.",
-    footer: "Last updated: July 9, 2026",
+    footer: "Last updated: October 1, 2026",
   },
   {
     lang: "fr",
@@ -111,13 +110,13 @@ const deleteAccountSections: DeleteAccountSection[] = [
       "connectez-vous à votre compte ZHAO Family ;",
       "ouvrez la page « Profil » depuis le tableau de bord ou l'accueil mobile ;",
       "sélectionnez « Supprimer mon compte » ;",
-      "saisissez votre mot de passe actuel pour confirmer l'action.",
+      "lisez la boîte de dialogue, puis saisissez votre mot de passe actuel pour confirmer.",
     ],
     stepsNote:
       "Cette confirmation par mot de passe permet de vérifier que vous êtes bien le titulaire du compte concerné.",
     delayTitle: "Délai de traitement",
     delay:
-      "Après confirmation, votre compte est désactivé et les informations personnelles liées au profil sont supprimées ou anonymisées. Certaines données peuvent toutefois être conservées temporairement lorsqu'une obligation légale, comptable, de sécurité ou de prévention des abus l'exige.",
+      "Après confirmation, votre compte et votre profil sont supprimés et votre adresse e-mail peut être réutilisée. Les commandes et autres historiques restent sans lien avec votre identité ; les textes et pièces jointes que vous avez créés sont conservés.",
     deletedDataTitle: "Données supprimées",
     deletedData: [
       "compte utilisateur ;",
@@ -133,7 +132,7 @@ const deleteAccountSections: DeleteAccountSection[] = [
     retentionTitle: "Durée de conservation supplémentaire",
     retention:
       "Les données conservées pour des raisons légales ou administratives peuvent être conservées jusqu'à la durée strictement nécessaire, selon les obligations applicables. Après cette période, elles seront supprimées ou anonymisées.",
-    footer: "Dernière mise à jour : 9 juillet 2026",
+    footer: "Dernière mise à jour : 1 octobre 2026",
   },
 ];
 
@@ -152,8 +151,8 @@ export default function DeleteAccountPage(): JSX.Element {
         <header className={styles.header}>
           <h1 id="delete-account-title">Account Deletion / 账号删除</h1>
           <p>
-            This page explains account and data deletion for the ZHAO&apos;s Family app in
-            Chinese, English, and French. 本页面提供中文、英文和法文的账号删除说明。
+            This page explains account and data deletion for the ZHAO&apos;s Family app in Chinese,
+            English, and French. 本页面提供中文、英文和法文的账号删除说明。
           </p>
         </header>
 

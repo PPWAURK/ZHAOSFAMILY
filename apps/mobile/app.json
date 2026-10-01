@@ -35,9 +35,7 @@
       "blockedPermissions": [
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
-        "com.google.android.gms.permission.AD_ID",
-        "android.permission.ACCESS_ADSERVICES_AD_ID",
-        "android.permission.ACCESS_ADSERVICES_ATTRIBUTION"
+        "com.google.android.gms.permission.AD_ID"
       ],
       "versionCode": 20
     },
@@ -54,7 +52,6 @@
       ],
       "./plugins/with-google-utilities-modular-headers",
       "@react-native-firebase/analytics",
-      "./plugins/with-disable-ad-id",
       [
         "expo-image-picker",
         {

@@ -1,9 +1,6 @@
 import { mobileApiClient } from "@/lib/api";
 import { buildPublicStorePhotoUrl } from "@/lib/media";
-import type {
-  MobilePermissionUser,
-  MobileStore,
-} from "@/features/stores/storeTypes";
+import type { MobilePermissionUser, MobileStore } from "@/features/stores/storeTypes";
 export { fetchTrainingPositions } from "@/features/training/trainingApi";
 
 type ManageableRestaurantResponse = {
@@ -93,12 +90,10 @@ export async function sendEmployeeInvitation(input: {
   return mobileApiClient.post<InvitationResponse>("/permissions/invitations", input);
 }
 
-export type UpdateUserApprovalResult =
-  | MobilePermissionUser
-  | { message: "EMPLOYEE_DELETED" };
+export type UpdateUserApprovalResult = MobilePermissionUser | { message: "EMPLOYEE_DELETED" };
 
 export type RemovePermissionUserResult = {
-  message: "EMPLOYEE_REMOVED" | "EMPLOYEE_DELETED";
+  message: "EMPLOYEE_DELETED";
 };
 
 export async function updateUserApproval(
@@ -111,13 +106,10 @@ export async function updateUserApproval(
 ): Promise<UpdateUserApprovalResult> {
   const response = await mobileApiClient.patch<
     PermissionUserResponse | { message: "EMPLOYEE_DELETED" }
-  >(
-    `/permissions/users/${encodeURIComponent(userId)}/approval`,
-    {
-      accountStatus,
-      ...options,
-    },
-  );
+  >(`/permissions/users/${encodeURIComponent(userId)}/approval`, {
+    accountStatus,
+    ...options,
+  });
 
   if ("message" in response) {
     return response;
@@ -126,9 +118,7 @@ export async function updateUserApproval(
   return mapPermissionUser(response);
 }
 
-export async function removePermissionUser(
-  userId: number,
-): Promise<RemovePermissionUserResult> {
+export async function removePermissionUser(userId: number): Promise<RemovePermissionUserResult> {
   return mobileApiClient.delete<RemovePermissionUserResult>(
     `/permissions/users/${encodeURIComponent(userId)}`,
   );

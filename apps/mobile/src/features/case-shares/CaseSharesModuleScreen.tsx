@@ -363,13 +363,14 @@ export function CaseSharesModuleScreen({
       <View key={item.id} style={styles.caseCard}>
         <View style={styles.caseCardHeader}>
           <Pressable
-            accessibilityLabel={item.author.name}
-            accessibilityRole="button"
+            accessibilityLabel={item.author?.name ?? copy.deletedEmployee}
+            accessibilityRole={item.author ? "button" : undefined}
             style={styles.authorPressable}
-            onPress={() => setAuthorProfileId(item.author.id)}
+            disabled={!item.author}
+            onPress={() => item.author && setAuthorProfileId(item.author.id)}
           >
             <View style={styles.authorMark}>
-              {item.author.avatarUrl ? (
+              {item.author?.avatarUrl ? (
                 <RemoteImage
                   cacheKey={`case-author-${item.author.id}`}
                   source={{ uri: item.author.avatarUrl }}
@@ -377,17 +378,17 @@ export function CaseSharesModuleScreen({
                 />
               ) : (
                 <Text style={styles.authorMarkText}>
-                  {item.author.name.slice(0, 1).toUpperCase()}
+                  {(item.author?.name ?? copy.deletedEmployee).slice(0, 1).toUpperCase()}
                 </Text>
               )}
             </View>
             <View style={styles.authorInfo}>
               <Text style={styles.authorName} numberOfLines={1}>
-                {item.author.name}
+                {item.author?.name ?? copy.deletedEmployee}
               </Text>
               <Text style={styles.restaurantMeta} numberOfLines={1}>
                 {item.restaurant.name}
-                {item.author.jobRole ? ` · ${item.author.jobRole}` : ""}
+                {item.author?.jobRole ? ` · ${item.author.jobRole}` : ""}
                 {` · ${formatDate(item.createdAt)}`}
               </Text>
             </View>
@@ -735,7 +736,9 @@ export function CaseSharesModuleScreen({
                 ) : (
                   comments.map((entry) => (
                     <View key={entry.id} style={styles.commentRow}>
-                      <Text style={styles.commentAuthor}>{entry.author.name}</Text>
+                      <Text style={styles.commentAuthor}>
+                        {entry.author?.name ?? copy.deletedEmployee}
+                      </Text>
                       <Text style={styles.commentContent}>{entry.content}</Text>
                       <Text style={shared.statLabel}>{formatDate(entry.createdAt)}</Text>
                     </View>

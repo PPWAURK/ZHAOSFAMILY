@@ -49,6 +49,7 @@ export type CaseSharesCopy = {
   commentsLoadError: string;
   commentError: string;
   commentRequired: string;
+  deletedEmployee: string;
   likeError: string;
   typeLabels: Record<CaseShareType, string>;
   statusLabels: Record<CaseShareStatus, string>;
@@ -56,6 +57,7 @@ export type CaseSharesCopy = {
 
 export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
   zh: {
+    deletedEmployee: "已删除员工",
     kicker: "ZHAO · 案例分享",
     title: "优秀案例",
     titleAccent: "。",
@@ -116,6 +118,7 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
   },
 
   en: {
+    deletedEmployee: "Deleted employee",
     kicker: "ZHAO · SHARES",
     title: "Best Practice",
     titleAccent: ".",
@@ -176,20 +179,25 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
   },
 
   fr: {
+    deletedEmployee: "Employé supprimé",
     kicker: "ZHAO · PARTAGES",
     title: "Bonnes pratiques",
     titleAccent: ".",
-    intro: "Découvrez les bonnes idées, les bonnes pratiques et les réussites partagées par vos collègues.",
+    intro:
+      "Découvrez les bonnes idées, les bonnes pratiques et les réussites partagées par vos collègues.",
     mineTitle: "Mes partages",
-    mineIntro: "Consultez vos partages, leur statut de validation et les retours de l’équipe marketing.",
+    mineIntro:
+      "Consultez vos partages, leur statut de validation et les retours de l’équipe marketing.",
     publish: "Partager une pépite",
     composerTitle: "Partager une nouvelle pépite",
     composerIntro: "Expliquez la situation, la solution et ce que les équipes peuvent en retenir.",
     typeLabel: "Type de partage",
     contentLabel: "Contenu du partage",
-    contentPlaceholder: "Racontez ce qui s’est passé, ce que vous avez fait et ce que vous en retenez…",
+    contentPlaceholder:
+      "Racontez ce qui s’est passé, ce que vous avez fait et ce que vous en retenez…",
     imageLabel: "Image (optionnelle, 1 max)",
-    imageEmptyHint: "Ajoutez une photo terrain, service, plat ou équipe pour rendre le partage plus clair.",
+    imageEmptyHint:
+      "Ajoutez une photo terrain, service, plat ou équipe pour rendre le partage plus clair.",
     imagePick: "Choisir une image",
     imageReplace: "Remplacer l’image",
     imageRemove: "Retirer l’image",
@@ -202,7 +210,8 @@ export const CASE_SHARES_COPY: Record<AuthLanguage, CaseSharesCopy> = {
     uploadError: "Échec de l’envoi de l’image. Réessayez plus tard.",
     loading: "Chargement…",
     feedEmpty: "Aucune pépite publique pour le moment. Partagez la première expérience terrain.",
-    mineEmpty: "Vous n’avez encore rien partagé. Gardez une trace d’une belle leçon de service ou d’équipe.",
+    mineEmpty:
+      "Vous n’avez encore rien partagé. Gardez une trace d’une belle leçon de service ou d’équipe.",
     loadError: "Échec du chargement. Réessayez plus tard.",
     reviewNoteLabel: "Retour de l’équipe marketing",
     delete: "Supprimer",

@@ -124,7 +124,10 @@ function getVisibleRoleOptions(lang, user, trainingPositions) {
   }
 
   return canManageRegionalJobRoles(user)
-    ? [...managementOptions.filter((option) => option.value === "store-manager"), ...positionOptions]
+    ? [
+        ...managementOptions.filter((option) => option.value === "store-manager"),
+        ...positionOptions,
+      ]
     : positionOptions;
 }
 
@@ -533,9 +536,7 @@ export default function StoreApprovalPage() {
       );
 
       if (isDeletedApprovalResult(result)) {
-        setUsers((current) =>
-          current.filter((item) => String(item.id) !== String(userId)),
-        );
+        setUsers((current) => current.filter((item) => String(item.id) !== String(userId)));
         setReviewDrafts((current) => {
           const nextDrafts = { ...current };
           delete nextDrafts[String(userId)];
@@ -574,7 +575,7 @@ export default function StoreApprovalPage() {
       targetUser.name || targetUser.email || "",
     );
 
-    if (!(await confirm({ message: confirmMessage, tone: "danger" }))) {
+    if (!(await confirm({ message: confirmMessage, confirmLabel: page.remove, tone: "danger" }))) {
       return;
     }
 
@@ -824,7 +825,10 @@ export default function StoreApprovalPage() {
                   <span className={styles.sectionTitle}>{page.inviteEmployee}</span>
                 </div>
                 <p className={styles.invitationHint}>{page.inviteHint}</p>
-                <form className={`${styles.formPanel} ${styles.invitationForm}`} onSubmit={submitInvitation}>
+                <form
+                  className={`${styles.formPanel} ${styles.invitationForm}`}
+                  onSubmit={submitInvitation}
+                >
                   <label className={styles.formField}>
                     <span>{page.inviteEmailLabel}</span>
                     <input
@@ -850,7 +854,11 @@ export default function StoreApprovalPage() {
                       {invitationError}
                     </p>
                   ) : null}
-                  <button type="submit" className={styles.formPrimaryButton} disabled={isSendingInvitation}>
+                  <button
+                    type="submit"
+                    className={styles.formPrimaryButton}
+                    disabled={isSendingInvitation}
+                  >
                     {isSendingInvitation ? page.inviteSending : page.inviteSend}
                   </button>
                 </form>

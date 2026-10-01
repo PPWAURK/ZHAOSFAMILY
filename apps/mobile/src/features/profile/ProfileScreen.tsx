@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { scaleStyles } from "@/lib/responsive";
 import { useScreenName } from "@/lib/useScreenName";
 import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
@@ -656,47 +656,9 @@ export function ProfileScreen({
           </View>
         </View>
 
-        {isConfirmingDelete ? (
-          <>
-            <Text style={styles.sectionHint}>{copy.deleteWarning}</Text>
-            <View style={styles.editField}>
-              <TrackingText size={10}>{copy.deletePasswordLabel}</TrackingText>
-              <TextInput
-                placeholder="••••••••"
-                placeholderTextColor={authControlStyles.colors.ink20}
-                secureTextEntry
-                style={styles.input}
-                value={deletePassword}
-                onChangeText={setDeletePassword}
-              />
-            </View>
-            {deleteError ? <Text style={styles.inlineMessage}>{deleteError}</Text> : null}
-            <View style={styles.buttonRow}>
-              <Pressable
-                disabled={isDeleting}
-                style={[styles.dangerButton, isDeleting ? styles.disabledButton : null]}
-                onPress={() => void confirmAccountDeletion()}
-              >
-                {isDeleting ? (
-                  <ZhaoLoadingIndicator variant="button" />
-                ) : (
-                  <Text style={styles.dangerButtonText}>{copy.deleteConfirm}</Text>
-                )}
-              </Pressable>
-              <Pressable
-                disabled={isDeleting}
-                style={styles.secondaryButton}
-                onPress={cancelAccountDeletion}
-              >
-                <Text style={styles.secondaryButtonText}>{copy.cancel}</Text>
-              </Pressable>
-            </View>
-          </>
-        ) : (
-          <Pressable style={styles.linkButton} onPress={startAccountDeletion}>
-            <Text style={styles.linkButtonText}>{copy.deleteAction}</Text>
-          </Pressable>
-        )}
+        <Pressable style={styles.linkButton} onPress={startAccountDeletion}>
+          <Text style={styles.linkButtonText}>{copy.deleteAction}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.section}>
@@ -718,12 +680,72 @@ export function ProfileScreen({
           )}
         </Pressable>
       </View>
+      <Modal
+        visible={isConfirmingDelete}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isDeleting) cancelAccountDeletion();
+        }}
+      >
+        <View style={styles.deleteBackdrop}>
+          <View style={styles.deleteDialog}>
+            <Text style={styles.sectionTitle}>{copy.deleteHeading}</Text>
+            <Text style={styles.sectionHint}>{copy.deleteWarning}</Text>
+            <View style={styles.editField}>
+              <TrackingText size={10}>{copy.deletePasswordLabel}</TrackingText>
+              <TextInput
+                placeholder="••••••••"
+                placeholderTextColor={authControlStyles.colors.ink20}
+                secureTextEntry
+                style={styles.input}
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+              />
+            </View>
+            {deleteError ? <Text style={styles.inlineMessage}>{deleteError}</Text> : null}
+            <View style={styles.buttonRow}>
+              <Pressable
+                disabled={isDeleting}
+                style={styles.secondaryButton}
+                onPress={cancelAccountDeletion}
+              >
+                <Text style={styles.secondaryButtonText}>{copy.cancel}</Text>
+              </Pressable>
+              <Pressable
+                disabled={isDeleting}
+                style={[styles.dangerButton, isDeleting ? styles.disabledButton : null]}
+                onPress={() => void confirmAccountDeletion()}
+              >
+                {isDeleting ? (
+                  <ZhaoLoadingIndicator variant="button" />
+                ) : (
+                  <Text style={styles.dangerButtonText}>{copy.deleteConfirm}</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create(
   scaleStyles({
+    deleteBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(10, 10, 10, 0.55)",
+      justifyContent: "center",
+      padding: 24,
+    },
+    deleteDialog: {
+      backgroundColor: "#ffffff",
+      borderWidth: 1,
+      borderColor: authControlStyles.colors.ink10,
+      gap: 18,
+      padding: 20,
+    },
     avatar: {
       alignItems: "center",
       backgroundColor: "rgba(193, 22, 22, 0.08)",

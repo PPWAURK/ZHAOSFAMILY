@@ -193,9 +193,7 @@ export default function CaseSharesReviewPage() {
             </h2>
 
             {isLoading ? <p className={styles.empty}>{t.loading}</p> : null}
-            {!isLoading && loadError ? (
-              <p className={styles.inlineError}>{loadError}</p>
-            ) : null}
+            {!isLoading && loadError ? <p className={styles.inlineError}>{loadError}</p> : null}
             {!isLoading && !loadError && cases.length === 0 ? (
               <p className={styles.empty}>{t.empty}</p>
             ) : null}
@@ -211,9 +209,7 @@ export default function CaseSharesReviewPage() {
                   return (
                     <article key={caseItem.id} className={styles.card}>
                       <div className={styles.cardHead}>
-                        <span className={styles.typeBadge}>
-                          {t.typeLabels[caseItem.type]}
-                        </span>
+                        <span className={styles.typeBadge}>{t.typeLabels[caseItem.type]}</span>
                         <span className={styles.cardDate}>
                           {formatDate(caseItem.createdAt)}
                           <span className={styles.cardId}>#{caseItem.id}</span>
@@ -221,7 +217,7 @@ export default function CaseSharesReviewPage() {
                       </div>
 
                       <p className={styles.cardMeta}>
-                        {t.submitterLabel}: {caseItem.author.name} ·{" "}
+                        {t.submitterLabel}: {caseItem.author?.name ?? t.deletedEmployee} ·{" "}
                         {t.storeLabel}: {caseItem.restaurant.name}
                       </p>
 
@@ -236,16 +232,12 @@ export default function CaseSharesReviewPage() {
                       ) : null}
 
                       <label className={styles.noteField}>
-                        <span className={styles.noteLabel}>
-                          {t.reviewNoteLabel}
-                        </span>
+                        <span className={styles.noteLabel}>{t.reviewNoteLabel}</span>
                         <textarea
                           className={styles.noteInput}
                           placeholder={t.reviewNotePlaceholder}
                           value={note}
-                          onChange={(event) =>
-                            patchNote(caseItem.id, event.target.value)
-                          }
+                          onChange={(event) => patchNote(caseItem.id, event.target.value)}
                         />
                       </label>
 

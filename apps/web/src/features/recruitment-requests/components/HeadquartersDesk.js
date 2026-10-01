@@ -123,9 +123,7 @@ export default function HeadquartersDesk({ lang }) {
       });
 
       setRequests((current) =>
-        current.map((item) =>
-          item.id === updatedRequest.id ? updatedRequest : item,
-        ),
+        current.map((item) => (item.id === updatedRequest.id ? updatedRequest : item)),
       );
       setDrafts((current) => ({
         ...current,
@@ -171,11 +169,7 @@ export default function HeadquartersDesk({ lang }) {
           </select>
         </label>
 
-        <button
-          type="button"
-          className={styles.btn}
-          onClick={() => setStatusFilter("all")}
-        >
+        <button type="button" className={styles.btn} onClick={() => setStatusFilter("all")}>
           {t.filters.reset}
         </button>
       </div>
@@ -186,9 +180,7 @@ export default function HeadquartersDesk({ lang }) {
       </h2>
 
       {isLoading ? <p className={styles.empty}>{t.loading}</p> : null}
-      {!isLoading && loadError ? (
-        <p className={styles.inlineError}>{loadError}</p>
-      ) : null}
+      {!isLoading && loadError ? <p className={styles.inlineError}>{loadError}</p> : null}
 
       {!isLoading && !loadError && filteredRequests.length === 0 ? (
         <p className={styles.empty}>{t.empty}</p>
@@ -222,7 +214,7 @@ export default function HeadquartersDesk({ lang }) {
                 <div className={styles.rowStore}>
                   <strong>{request.restaurantName}</strong>
                   <span>
-                    {t.submitterLabel}: {request.createdBy.name}
+                    {t.submitterLabel}: {request.createdBy?.name ?? t.deletedEmployee}
                   </span>
                 </div>
                 <div className={styles.rowRequest}>
@@ -236,17 +228,15 @@ export default function HeadquartersDesk({ lang }) {
                   <select
                     className={styles.rowSelect}
                     value={draft.status}
-                    onChange={(event) =>
-                      patchDraft(request.id, "status", event.target.value)
-                    }
+                    onChange={(event) => patchDraft(request.id, "status", event.target.value)}
                   >
-                    {RECRUITMENT_REQUEST_STATUSES.filter(
-                      (status) => status !== "all",
-                    ).map((status) => (
-                      <option key={status} value={status}>
-                        {t.statuses[status]}
-                      </option>
-                    ))}
+                    {RECRUITMENT_REQUEST_STATUSES.filter((status) => status !== "all").map(
+                      (status) => (
+                        <option key={status} value={status}>
+                          {t.statuses[status]}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </div>
                 <div className={styles.rowNotes}>
@@ -259,9 +249,7 @@ export default function HeadquartersDesk({ lang }) {
                   <textarea
                     placeholder={t.handledNotesPlaceholder}
                     value={draft.handledNotes}
-                    onChange={(event) =>
-                      patchDraft(request.id, "handledNotes", event.target.value)
-                    }
+                    onChange={(event) => patchDraft(request.id, "handledNotes", event.target.value)}
                   />
                 </div>
                 <div className={styles.rowActions}>

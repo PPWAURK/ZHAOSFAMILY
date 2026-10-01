@@ -21,6 +21,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RestaurantsService } from '../restaurants/restaurants.service';
 import { MailService } from '../mail/mail.service';
 import { ACCOUNT_STATUS } from './account-status';
+import { deleteUserAccountRecords } from './user-account-deletion';
 import type { AccountStatus } from './account-status';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { ChangeCurrentPasswordDto } from './dto/change-current-password.dto';
@@ -34,7 +35,6 @@ import { UpdateCurrentUserDto } from './dto/update-current-user.dto';
 const scrypt = promisify(scryptCallback);
 const SUPPORTED_PROFILE_PHOTO_PATTERN = /^data:image\/[a-zA-Z0-9.+-]+;base64,/;
 const DEFAULT_USER_LEVEL = 0;
-const DELETED_ACCOUNT_NAME = 'Compte supprimé';
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 8;
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
@@ -654,6 +654,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     if (user.accountStatus === ACCOUNT_STATUS.deleted) {
       throw new UnauthorizedException('ACCOUNT_DELETED');
     }
+    this.assertApprovedAccount(user.accountStatus);
 
     return this.toAuthUser(user, await this.listUserPermissions(user.id));
   }
@@ -774,45 +775,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       throw new UnauthorizedException('INVALID_CURRENT_PASSWORD');
     }
 
-    // Hard deletion is blocked by many `onDelete: Restrict` foreign keys
-    // (purchase orders, dashboard posts, recruitment requests, case shares…),
-    // so we anonymize the account instead and sever every active session.
-    const anonymizedPasswordHash = await hashPassword(createOpaqueToken());
-
-    await this.prismaService.$transaction([
-      this.prismaService.userRole.deleteMany({ where: { userId: user.id } }),
-      this.prismaService.pushToken.deleteMany({ where: { userId: user.id } }),
-      this.prismaService.refreshSession.updateMany({
-        where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      }),
-      this.prismaService.user.update({
-        where: { id: user.id },
-        data: {
-          familyName: DELETED_ACCOUNT_NAME,
-          givenName: '',
-          name: DELETED_ACCOUNT_NAME,
-          email: `deleted-user-${user.id}@deleted.invalid`,
-          emailVerified: false,
-          accountStatus: ACCOUNT_STATUS.deleted,
-          accountReviewedAt: new Date(),
-          passwordHash: anonymizedPasswordHash,
-          birthday: null,
-          jobRole: null,
-          phone: null,
-          address: null,
-          profilePhoto: null,
-          invitationTokenHash: null,
-          invitationExpiresAt: null,
-          passwordResetTokenHash: null,
-          passwordResetExpiresAt: null,
-        },
-      }),
-    ]);
-
-    this.invalidateUserPermissions(user.id);
+    await this.deleteUserAccount(user.id);
 
     return { message: 'ACCOUNT_DELETED' };
+  }
+
+  async deleteUserAccount(userId: number): Promise<void> {
+    await deleteUserAccountRecords(this.prismaService, userId);
+    this.invalidateUserPermissions(userId);
   }
 
   async getPermissionsForToken(

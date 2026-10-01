@@ -131,7 +131,7 @@ export class PermissionsController {
   async removeUser(
     @Headers('authorization') authorization: string | undefined,
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<{ message: 'EMPLOYEE_REMOVED' | 'EMPLOYEE_DELETED' }> {
+  ): Promise<{ message: 'EMPLOYEE_DELETED' }> {
     const viewer = await this.authService.getCurrentUser(
       parseBearerToken(authorization),
     );

@@ -260,19 +260,19 @@ export function TeamUserCard({
   copy,
   draft,
   isSaving,
-  isDeactivating,
+  isDeleting,
   roleOptions,
   user,
-  onDeactivate,
+  onDelete,
   onPatchDraft,
 }: {
   copy: typeof STORE_COPY.zh;
   draft: StoreTeamDraft;
-  isDeactivating: boolean;
+  isDeleting: boolean;
   isSaving: boolean;
   roleOptions: StoreJobRoleOption[];
   user: MobilePermissionUser;
-  onDeactivate: () => void;
+  onDelete: () => void;
   onPatchDraft: (jobRole: string) => void;
 }) {
   return (
@@ -285,19 +285,19 @@ export function TeamUserCard({
         </View>
         <Pressable
           accessibilityRole="button"
-          disabled={isSaving || isDeactivating}
-          style={[styles.teamDeleteButton, isSaving || isDeactivating ? { opacity: 0.56 } : null]}
-          onPress={onDeactivate}
+          disabled={isSaving || isDeleting}
+          style={[styles.teamDeleteButton, isSaving || isDeleting ? { opacity: 0.56 } : null]}
+          onPress={onDelete}
         >
-          {isDeactivating ? (
+          {isDeleting ? (
             <ZhaoLoadingIndicator variant="button" />
           ) : (
-            <Text style={styles.actionButtonText}>{copy.deactivateEmployee}</Text>
+            <Text style={styles.actionButtonText}>{copy.deleteEmployee}</Text>
           )}
         </Pressable>
       </View>
       <RoleMultiSelector
-        disabled={isSaving || isDeactivating}
+        disabled={isSaving || isDeleting}
         options={roleOptions}
         value={draft.jobRole}
         requireSelection

@@ -206,11 +206,13 @@ export class RecruitmentRequestsService {
       id: request.id,
       restaurantId: request.restaurantId,
       restaurantName: request.restaurant.name,
-      createdBy: {
-        id: request.createdByUser.id,
-        name: request.createdByUser.name,
-        email: request.createdByUser.email,
-      },
+      createdBy: request.createdByUser
+        ? {
+            id: request.createdByUser.id,
+            name: request.createdByUser.name,
+            email: request.createdByUser.email,
+          }
+        : null,
       contractType:
         request.contractType as RecruitmentRequestItem['contractType'],
       position: request.position as RecruitmentRequestItem['position'],

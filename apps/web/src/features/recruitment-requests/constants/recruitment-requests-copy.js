@@ -1,9 +1,4 @@
-export const RECRUITMENT_REQUEST_STATUSES = [
-  "all",
-  "pending",
-  "in_progress",
-  "completed",
-];
+export const RECRUITMENT_REQUEST_STATUSES = ["all", "pending", "in_progress", "completed"];
 
 export const RECRUITMENT_REQUEST_COPY = {
   zh: {
@@ -52,6 +47,7 @@ export const RECRUITMENT_REQUEST_COPY = {
     saveError: "招聘请求更新失败，请稍后重试。",
     handledNotesPlaceholder: "填写总部处理备注",
     submitterLabel: "提交人",
+    deletedEmployee: "已删除员工",
     handledByLabel: "处理人",
     peopleUnit: "人",
     send: {
@@ -128,6 +124,7 @@ export const RECRUITMENT_REQUEST_COPY = {
     saveError: "Recruitment request could not be updated.",
     handledNotesPlaceholder: "Add headquarters notes",
     submitterLabel: "Submitted by",
+    deletedEmployee: "Deleted employee",
     handledByLabel: "Handled by",
     peopleUnit: "people",
     send: {
@@ -204,6 +201,7 @@ export const RECRUITMENT_REQUEST_COPY = {
     saveError: "La demande n'a pas pu être mise à jour.",
     handledNotesPlaceholder: "Ajouter une note du siège",
     submitterLabel: "Envoyé par",
+    deletedEmployee: "Employé supprimé",
     handledByLabel: "Traité par",
     peopleUnit: "personnes",
     send: {

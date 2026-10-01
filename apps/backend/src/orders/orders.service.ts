@@ -342,11 +342,13 @@ export class OrdersService {
         canReturn: canManageOrder,
         canDelete: canManageOrder && order.returns.length === 0,
         returnCount: order.returns.length,
-        createdBy: {
-          id: order.createdByUser.id,
-          name: order.createdByUser.name,
-          email: order.createdByUser.email,
-        },
+        createdBy: order.createdByUser
+          ? {
+              id: order.createdByUser.id,
+              name: order.createdByUser.name,
+              email: order.createdByUser.email,
+            }
+          : null,
       };
     });
   }
@@ -537,11 +539,13 @@ export class OrdersService {
       createdAt: order.createdAt.toISOString(),
       canEdit: order.returns.length === 0,
       returnCount: order.returns.length,
-      createdBy: {
-        id: order.createdByUser.id,
-        name: order.createdByUser.name,
-        email: order.createdByUser.email,
-      },
+      createdBy: order.createdByUser
+        ? {
+            id: order.createdByUser.id,
+            name: order.createdByUser.name,
+            email: order.createdByUser.email,
+          }
+        : null,
       items: order.items.map((item) => ({
         purchaseOrderItemId: item.id,
         productId: item.productId.toString(),

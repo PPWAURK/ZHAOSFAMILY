@@ -73,6 +73,7 @@ describe('PermissionsService', () => {
     const authService = {
       invalidateUserPermissions: jest.fn(),
       sendEmployeeInvitation: jest.fn().mockResolvedValue(undefined),
+      deleteUserAccount: jest.fn().mockResolvedValue(undefined),
     };
     const mailService = {
       sendEmployeeApprovedEmail: jest.fn().mockResolvedValue(undefined),
@@ -1240,7 +1241,8 @@ describe('PermissionsService', () => {
   });
 
   it('deletes a rejected registration without sending a push', async () => {
-    const { service, prismaService, notificationsService } = createService();
+    const { service, prismaService, notificationsService, authService } =
+      createService();
     prismaService.user.findUnique.mockResolvedValue({
       id: 12,
       jobRole: 'front-of-house',
@@ -1255,9 +1257,7 @@ describe('PermissionsService', () => {
       }),
     ).resolves.toEqual({ message: 'EMPLOYEE_DELETED' });
 
-    expect(prismaService.user.delete).toHaveBeenCalledWith({
-      where: { id: 12 },
-    });
+    expect(authService.deleteUserAccount).toHaveBeenCalledWith(12);
     expect(prismaService.user.update).not.toHaveBeenCalled();
     expect(notificationsService.sendToUsers).not.toHaveBeenCalled();
   });
@@ -1465,8 +1465,8 @@ describe('PermissionsService', () => {
     };
   }
 
-  it('deactivates an employee in the store manager own store', async () => {
-    const { service, prismaService } = createService();
+  it('deletes an employee in the store manager own store', async () => {
+    const { service, prismaService, authService } = createService();
     prismaService.user.findUnique.mockResolvedValue({
       id: 12,
       jobRole: 'front-of-house',
@@ -1476,23 +1476,13 @@ describe('PermissionsService', () => {
 
     await expect(
       service.removeUser(makeStoreManagerViewer(7), 12),
-    ).resolves.toEqual({ message: 'EMPLOYEE_REMOVED' });
+    ).resolves.toEqual({ message: 'EMPLOYEE_DELETED' });
 
-    expect(prismaService.user.update).toHaveBeenCalledWith({
-      where: { id: 12 },
-      data: {
-        accountStatus: 'removed',
-        accountReviewedAt: expect.any(Date) as Date,
-        accountReviewedByUserId: 1,
-      },
-    });
-    expect(prismaService.refreshSession.deleteMany).toHaveBeenCalledWith({
-      where: { userId: 12 },
-    });
+    expect(authService.deleteUserAccount).toHaveBeenCalledWith(12);
   });
 
   it('hard deletes a rejected account in the store manager own store', async () => {
-    const { service, prismaService } = createService();
+    const { service, prismaService, authService } = createService();
     prismaService.user.findUnique.mockResolvedValue({
       id: 12,
       jobRole: 'front-of-house',
@@ -1504,14 +1494,12 @@ describe('PermissionsService', () => {
       service.removeUser(makeStoreManagerViewer(7), 12),
     ).resolves.toEqual({ message: 'EMPLOYEE_DELETED' });
 
-    expect(prismaService.user.delete).toHaveBeenCalledWith({
-      where: { id: 12 },
-    });
+    expect(authService.deleteUserAccount).toHaveBeenCalledWith(12);
     expect(prismaService.user.update).not.toHaveBeenCalled();
   });
 
   it('hard deletes a rejected account even when it has a holding job role', async () => {
-    const { service, prismaService } = createService();
+    const { service, prismaService, authService } = createService();
     prismaService.user.findUnique.mockResolvedValue({
       id: 12,
       jobRole: 'holding',
@@ -1523,20 +1511,18 @@ describe('PermissionsService', () => {
       service.removeUser(makeStoreManagerViewer(7), 12),
     ).resolves.toEqual({ message: 'EMPLOYEE_DELETED' });
 
-    expect(prismaService.user.delete).toHaveBeenCalledWith({
-      where: { id: 12 },
-    });
+    expect(authService.deleteUserAccount).toHaveBeenCalledWith(12);
   });
 
   it('returns a conflict when a rejected account still has linked data', async () => {
-    const { service, prismaService } = createService();
+    const { service, prismaService, authService } = createService();
     prismaService.user.findUnique.mockResolvedValue({
       id: 12,
       jobRole: 'front-of-house',
       restaurantId: 7,
       accountStatus: 'rejected',
     });
-    prismaService.user.delete.mockRejectedValue(
+    authService.deleteUserAccount.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError('FK', {
         code: 'P2003',
         clientVersion: 'test',
@@ -1588,7 +1574,7 @@ describe('PermissionsService', () => {
     expect(prismaService.user.update).not.toHaveBeenCalled();
   });
 
-  it('rejects deactivating an already removed employee', async () => {
+  it('deletes a previously removed employee', async () => {
     const { service, prismaService } = createService();
     prismaService.user.findUnique.mockResolvedValue({
       id: 12,
@@ -1599,7 +1585,6 @@ describe('PermissionsService', () => {
 
     await expect(
       service.removeUser(makeStoreManagerViewer(7), 12),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prismaService.user.update).not.toHaveBeenCalled();
+    ).resolves.toEqual({ message: 'EMPLOYEE_DELETED' });
   });
 });

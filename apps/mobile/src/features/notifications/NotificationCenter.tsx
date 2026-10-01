@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Modal, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Animated, Dimensions, Modal, PanResponder, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
@@ -19,7 +19,10 @@ import { NOTIFICATIONS_COPY, formatRelativeTime } from "./notificationsCopy";
 
 const UNREAD_POLL_INTERVAL_MS = 45000;
 const MAX_BADGE_COUNT = 99;
+const INITIAL_SHEET_HEIGHT_RATIO = 0.8;
+const SHEET_DISMISS_DISTANCE_RATIO = 0.2;
 const colors = authControlStyles.colors;
+const screenHeight = Dimensions.get("window").height;
 
 type NotificationCenterProps = {
   language: AuthLanguage;
@@ -33,6 +36,46 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const sheetHeight = useRef(new Animated.Value(screenHeight * INITIAL_SHEET_HEIGHT_RATIO)).current;
+  const dragStartHeight = useRef(screenHeight * INITIAL_SHEET_HEIGHT_RATIO);
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 4,
+      onPanResponderGrant: () => {
+        sheetHeight.stopAnimation((height) => {
+          dragStartHeight.current = height;
+        });
+      },
+      onPanResponderMove: (_, gesture) => {
+        const nextHeight = Math.max(
+          screenHeight * 0.5,
+          Math.min(screenHeight, dragStartHeight.current - gesture.dy),
+        );
+        sheetHeight.setValue(nextHeight);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy > screenHeight * SHEET_DISMISS_DISTANCE_RATIO) {
+          setIsOpen(false);
+          sheetHeight.setValue(screenHeight * INITIAL_SHEET_HEIGHT_RATIO);
+          return;
+        }
+
+        const shouldExpand = gesture.dy < -40 || gesture.vy < -0.5;
+        Animated.spring(sheetHeight, {
+          toValue: shouldExpand ? screenHeight : screenHeight * INITIAL_SHEET_HEIGHT_RATIO,
+          useNativeDriver: false,
+          bounciness: 0,
+        }).start();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(sheetHeight, {
+          toValue: screenHeight * INITIAL_SHEET_HEIGHT_RATIO,
+          useNativeDriver: false,
+          bounciness: 0,
+        }).start();
+      },
+    }),
+  ).current;
 
   const refreshUnreadCount = useCallback(async () => {
     try {
@@ -130,8 +173,9 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
         onRequestClose={() => setIsOpen(false)}
       >
         <View style={styles.backdrop}>
-          <SafeAreaView style={styles.sheet} edges={["top", "bottom"]}>
-            <View style={styles.header}>
+          <Animated.View style={[styles.sheet, { height: sheetHeight }]}>
+            <SafeAreaView style={styles.sheetContent} edges={["top", "bottom"]}>
+            <View style={styles.header} {...panResponder.panHandlers}>
               <Text style={styles.title}>{copy.title}</Text>
               <View style={styles.headerActions}>
                 {items.some((item) => !item.readAt) ? (
@@ -165,6 +209,7 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
             ) : (
               <FlashList
                 data={items}
+                style={styles.list}
                 keyExtractor={(item) => String(item.id)}
                 contentContainerStyle={styles.listContent}
                 renderItem={({ item }) => (
@@ -186,7 +231,8 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
                 )}
               />
             )}
-          </SafeAreaView>
+            </SafeAreaView>
+          </Animated.View>
         </View>
       </Modal>
     </>
@@ -210,11 +256,12 @@ const styles = StyleSheet.create({
   badgeText: { color: colors.paper, fontSize: 11, fontWeight: "700" },
   backdrop: { flex: 1, backgroundColor: "rgba(10, 10, 10, 0.35)", justifyContent: "flex-end" },
   sheet: {
-    maxHeight: "80%",
     backgroundColor: colors.paper,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    overflow: "hidden",
   },
+  sheetContent: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -228,9 +275,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: "700", color: colors.ink },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 16 },
   markAll: { fontSize: 13, fontWeight: "600", color: colors.red },
-  stateBox: { paddingVertical: 48, alignItems: "center", justifyContent: "center" },
+  stateBox: { flex: 1, paddingVertical: 48, alignItems: "center", justifyContent: "center" },
   loadingSkeleton: { height: 72, width: "84%" },
   stateText: { fontSize: 14, color: colors.ink60 },
+  list: { flex: 1 },
   listContent: { paddingBottom: 8 },
   row: {
     flexDirection: "row",

@@ -18,9 +18,7 @@ function normalizeVisibility(visibility?: string | null): string {
   return visibility ?? "public";
 }
 
-function normalizePost(
-  raw: DashboardNewsPostApiRecord | null,
-): DashboardNewsPost | null {
+function normalizePost(raw: DashboardNewsPostApiRecord | null): DashboardNewsPost | null {
   if (!raw) return null;
 
   return {
@@ -93,13 +91,9 @@ export async function fetchDashboardNewsPosts(
   return Array.isArray(posts) ? posts.map(normalizePost).filter(isDefined) : [];
 }
 
-export async function fetchDashboardNewsPost(
-  id: string,
-): Promise<DashboardNewsPost | null> {
+export async function fetchDashboardNewsPost(id: string): Promise<DashboardNewsPost | null> {
   return normalizePost(
-    await apiClient.get<DashboardNewsPostApiRecord>(
-      `/dashboard-news/${encodeURIComponent(id)}`,
-    ),
+    await apiClient.get<DashboardNewsPostApiRecord>(`/dashboard-news/${encodeURIComponent(id)}`),
   );
 }
 
@@ -151,17 +145,13 @@ export async function deleteDashboardNewsPost(id: string): Promise<void> {
   await apiClient.delete(`/dashboard-news/${encodeURIComponent(id)}`);
 }
 
-export async function confirmDashboardNewsRead(
-  id: string,
-): Promise<DashboardNewsReadConfirmation> {
+export async function confirmDashboardNewsRead(id: string): Promise<DashboardNewsReadConfirmation> {
   return apiClient.post<DashboardNewsReadConfirmation>(
     `/dashboard-news/${encodeURIComponent(id)}/read-confirmation`,
   );
 }
 
-export async function fetchDashboardNewsReadStatus(
-  id: string,
-): Promise<DashboardNewsReadStatus> {
+export async function fetchDashboardNewsReadStatus(id: string): Promise<DashboardNewsReadStatus> {
   const raw = await apiClient.get<DashboardNewsReadStatusApiRecord>(
     `/dashboard-news/${encodeURIComponent(id)}/read-status`,
   );

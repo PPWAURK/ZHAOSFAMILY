@@ -1066,7 +1066,7 @@ export default function DashboardNewsModule({ lang, copy }) {
                   </h2>
                   <p className={styles.newsFeatureMeta}>
                     {copy.dateLabel} · {formatDate(activePost.createdAt)} · {copy.byLabel} ·{" "}
-                    {activePost.author.name}
+                    {activePost.author.name || copy.deletedEmployee}
                   </p>
                 </div>
 
@@ -1685,7 +1685,7 @@ export default function DashboardNewsModule({ lang, copy }) {
             <p className={styles.readerSummary}>{renderInlineMarkdown(selectedPost.summary)}</p>
             <div className={styles.readerMeta}>
               <span>
-                {copy.byLabel} · {selectedPost.author.name}
+                {copy.byLabel} · {selectedPost.author.name || copy.deletedEmployee}
               </span>
               <span>
                 {copy.reader.storeLabel} · {selectedPost.restaurantName || "-"}

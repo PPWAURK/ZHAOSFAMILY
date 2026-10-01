@@ -420,7 +420,8 @@ export const DashboardNewsBoard = memo(function DashboardNewsBoard({
               {stripDashboardNewsFormatting(activePost.title)}
             </Text>
             <Text style={styles.articleMeta}>
-              {formatDashboardNewsDate(activePost.createdAt)} · {activePost.authorName || "-"}
+              {formatDashboardNewsDate(activePost.createdAt)} ·{" "}
+              {activePost.authorName || copy.deletedEmployee}
             </Text>
             <View style={styles.articleControls}>
               {activePost.tags.length > 0 ? (

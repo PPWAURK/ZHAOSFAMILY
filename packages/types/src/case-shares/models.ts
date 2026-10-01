@@ -68,7 +68,7 @@ export type CaseShareItem = {
   type: CaseShareType;
   content: string;
   status: CaseShareStatus;
-  author: CaseShareAuthor;
+  author: CaseShareAuthor | null;
   restaurant: CaseShareRestaurant;
   image: CaseShareImage | null;
   // 仅作者本人 / 审核人可见审核备注，公开流中为 null。
@@ -86,6 +86,6 @@ export type CaseShareItem = {
 export type CaseShareCommentItem = {
   id: number;
   content: string;
-  author: CaseShareAuthor;
+  author: CaseShareAuthor | null;
   createdAt: string;
 };

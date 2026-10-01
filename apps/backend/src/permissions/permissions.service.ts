@@ -631,7 +631,7 @@ export class PermissionsService {
   async removeUser(
     viewer: AuthUser,
     userId: number,
-  ): Promise<{ message: 'EMPLOYEE_REMOVED' | 'EMPLOYEE_DELETED' }> {
+  ): Promise<{ message: 'EMPLOYEE_DELETED' }> {
     if (viewer.id === userId) {
       throw new BadRequestException('CANNOT_REMOVE_SELF');
     }
@@ -655,32 +655,14 @@ export class PermissionsService {
       throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
     }
 
-    if (targetUser.accountStatus === ACCOUNT_STATUS.removed) {
-      throw new BadRequestException('USER_ALREADY_REMOVED');
-    }
-
-    await this.prismaService.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          accountStatus: ACCOUNT_STATUS.removed,
-          accountReviewedAt: new Date(),
-          accountReviewedByUserId: viewer.id,
-        },
-      });
-
-      // Revoke refresh sessions so the removed employee cannot stay signed in.
-      await tx.refreshSession.deleteMany({ where: { userId } });
-    });
-
-    return { message: 'EMPLOYEE_REMOVED' };
+    return this.hardDeleteUser(userId);
   }
 
   private async hardDeleteUser(
     userId: number,
   ): Promise<{ message: 'EMPLOYEE_DELETED' }> {
     try {
-      await this.prismaService.user.delete({ where: { id: userId } });
+      await this.authService.deleteUserAccount(userId);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2003') {

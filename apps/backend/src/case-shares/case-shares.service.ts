@@ -411,9 +411,11 @@ export class CaseSharesService {
     return this.fetchItemOrThrow(actor, id);
   }
 
-  private async findApprovedOrThrow(
-    id: number,
-  ): Promise<{ id: number; authorId: number; authorLanguage: string | null }> {
+  private async findApprovedOrThrow(id: number): Promise<{
+    id: number;
+    authorId: number | null;
+    authorLanguage: string | null;
+  }> {
     const record = await this.prismaService.caseShare.findFirst({
       where: { id, status: 'approved' },
       select: {
@@ -430,7 +432,7 @@ export class CaseSharesService {
     return {
       id: record.id,
       authorId: record.authorId,
-      authorLanguage: record.author.preferredLanguage,
+      authorLanguage: record.author?.preferredLanguage ?? null,
     };
   }
 
@@ -438,10 +440,10 @@ export class CaseSharesService {
   // must not fail the like/comment action, so errors are swallowed after logging.
   private async notifyAuthor(
     actorId: number,
-    approved: { authorId: number },
+    approved: { authorId: number | null },
     payloadFor: (actorName: string) => NotificationPayload,
   ): Promise<void> {
-    if (approved.authorId === actorId) {
+    if (approved.authorId === null || approved.authorId === actorId) {
       return;
     }
 
@@ -513,13 +515,15 @@ export class CaseSharesService {
       type: record.type as CaseShareType,
       content: record.content,
       status: record.status as CaseShareStatus,
-      author: {
-        id: record.author.id,
-        name: record.author.name,
-        email: record.author.email,
-        avatarUrl: record.author.profilePhoto,
-        jobRole: record.author.jobRole,
-      },
+      author: record.author
+        ? {
+            id: record.author.id,
+            name: record.author.name,
+            email: record.author.email,
+            avatarUrl: record.author.profilePhoto,
+            jobRole: record.author.jobRole,
+          }
+        : null,
       restaurant: {
         id: record.restaurant.id,
         name: record.restaurant.name,
@@ -543,13 +547,15 @@ export class CaseSharesService {
     return {
       id: record.id,
       content: record.content,
-      author: {
-        id: record.author.id,
-        name: record.author.name,
-        email: record.author.email,
-        avatarUrl: null,
-        jobRole: null,
-      },
+      author: record.author
+        ? {
+            id: record.author.id,
+            name: record.author.name,
+            email: record.author.email,
+            avatarUrl: null,
+            jobRole: null,
+          }
+        : null,
       createdAt: record.createdAt.toISOString(),
     };
   }

@@ -48,7 +48,7 @@ const privacySections = [
     ],
     deletionTitle: "账号删除",
     deletion:
-      "你可以登录后进入“个人资料”，选择“删除我的账号”，并输入当前密码确认。确认后账号会被停用，个人资料相关信息会被删除或匿名化。更多说明请查看账号删除说明页。",
+      "你可以登录后进入“个人资料”，选择“删除我的账号”，并输入当前密码确认。确认后账号及个人资料会被删除，订单等业务历史会保留但不再关联你的身份。更多说明请查看账号删除说明页。",
     deletionLink: "账号删除说明",
     retentionTitle: "数据保留",
     retentionParagraphs: [
@@ -58,7 +58,7 @@ const privacySections = [
     updateTitle: "政策更新",
     update:
       "ZHAO's Family 可根据产品、法律或运营要求更新本隐私政策。更新后会在本页面标注新的日期。",
-    footer: "最后更新：2026 年 7 月 9 日",
+    footer: "最后更新：2026 年 10 月 1 日",
   },
   {
     lang: "en",
@@ -102,7 +102,7 @@ const privacySections = [
     ],
     deletionTitle: "Account Deletion",
     deletion:
-      "After signing in, open Profile, choose “Delete my account”, and confirm with your current password. Once confirmed, the account is deactivated and profile-related personal information is deleted or anonymized. See the account deletion information page for details.",
+      "After signing in, open Profile, choose “Delete my account”, and confirm with your current password. Once confirmed, the account and profile are deleted. Orders and other business history remain without the account identity. See the account deletion information page for details.",
     deletionLink: "Account deletion information",
     retentionTitle: "Retention",
     retentionParagraphs: [
@@ -112,7 +112,7 @@ const privacySections = [
     updateTitle: "Policy Updates",
     update:
       "ZHAO's Family may update this privacy policy to reflect product, legal, or operational changes. Updates will be published on this page with a new date.",
-    footer: "Last updated: July 9, 2026",
+    footer: "Last updated: October 1, 2026",
   },
   {
     lang: "fr",
@@ -156,7 +156,7 @@ const privacySections = [
     ],
     deletionTitle: "Suppression de compte",
     deletion:
-      "Après connexion, ouvrez « Profil », choisissez « Supprimer mon compte » puis confirmez avec votre mot de passe actuel. Après confirmation, le compte est désactivé et les informations personnelles liées au profil sont supprimées ou anonymisées. La page dédiée explique ce parcours.",
+      "Après connexion, ouvrez « Profil », choisissez « Supprimer mon compte » puis confirmez avec votre mot de passe actuel. Après confirmation, le compte et le profil sont supprimés. Les commandes et autres historiques restent sans lien avec l’identité du compte. La page dédiée explique ce parcours.",
     deletionLink: "Informations sur la suppression de compte",
     retentionTitle: "Durée de conservation",
     retentionParagraphs: [
@@ -166,14 +166,13 @@ const privacySections = [
     updateTitle: "Modifications de cette politique",
     update:
       "ZHAO's Family peut mettre à jour cette politique pour refléter les évolutions du produit, de la loi ou des opérations. Les mises à jour seront publiées sur cette page avec une nouvelle date.",
-    footer: "Dernière mise à jour : 9 juillet 2026",
+    footer: "Dernière mise à jour : 1 octobre 2026",
   },
 ];
 
 export const metadata: Metadata = {
   title: "Privacy Policy / 隐私政策 — ZHAO's Family",
-  description:
-    "Privacy policy for the ZHAO's Family internal app in Chinese, English, and French.",
+  description: "Privacy policy for the ZHAO's Family internal app in Chinese, English, and French.",
 };
 
 export default function PrivacyPage(): JSX.Element {

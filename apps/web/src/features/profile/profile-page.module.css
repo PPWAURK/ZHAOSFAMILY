@@ -97,7 +97,9 @@
   display: block;
   height: 1.5px;
   background: currentColor;
-  transition: transform 0.25s ease, opacity 0.2s ease;
+  transition:
+    transform 0.25s ease,
+    opacity 0.2s ease;
 }
 
 .menuToggleOpen .menuToggleIcon span:nth-child(1) {
@@ -289,7 +291,12 @@
   padding: 8px 36px;
   border: 2px solid var(--title-frame-accent);
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.9)),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(255, 255, 255, 0.45),
+      rgba(255, 255, 255, 0.9)
+    ),
     var(--title-frame-soft);
   color: var(--title-frame-accent);
   font-family: var(--zh-serif);
@@ -705,7 +712,9 @@
   text-decoration: none;
   padding: 6px 0;
   border-bottom: 1px solid var(--red-soft-2);
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .backLink:hover {
@@ -779,4 +788,32 @@
     align-items: stretch;
     flex-direction: column;
   }
+}
+
+.deleteBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 10, 10, 0.56);
+}
+
+.deleteDialog {
+  width: min(100%, 480px);
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  background: var(--paper);
+  border: 1px solid var(--ink-20);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+}
+
+.deletePasswordLabel {
+  display: grid;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
 }

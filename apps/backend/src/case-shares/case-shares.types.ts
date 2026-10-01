@@ -68,7 +68,7 @@ export type CaseShareItem = {
   type: CaseShareType;
   content: string;
   status: CaseShareStatus;
-  author: CaseShareAuthor;
+  author: CaseShareAuthor | null;
   restaurant: CaseShareRestaurant;
   image: CaseShareImage | null;
   reviewNote: string | null;
@@ -85,7 +85,7 @@ export type CaseShareItem = {
 export type CaseShareCommentItem = {
   id: number;
   content: string;
-  author: CaseShareAuthor;
+  author: CaseShareAuthor | null;
   createdAt: string;
 };
 

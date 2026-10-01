@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  InteractionManager,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { InteractionManager, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { storeManagementQueryKeys } from "@zhao/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@zhao/types";
@@ -23,10 +16,7 @@ import {
   StoreCard,
   TeamUserCard,
 } from "@/features/stores/StoreModuleParts";
-import {
-  STORE_COPY,
-  STORE_JOB_ROLE_OPTIONS,
-} from "@/features/stores/storeCopy";
+import { STORE_COPY, STORE_JOB_ROLE_OPTIONS } from "@/features/stores/storeCopy";
 import {
   fetchApprovableUsers,
   fetchManageableStores,
@@ -120,10 +110,7 @@ function getVisibleRoleOptions(
   trainingPositions: TrainingPositionOption[],
 ): StoreJobRoleOption[] {
   const options = STORE_JOB_ROLE_OPTIONS[language];
-  const positionOptions = getOperationalTrainingPositionOptions(
-    trainingPositions,
-    language,
-  );
+  const positionOptions = getOperationalTrainingPositionOptions(trainingPositions, language);
   const managementOptions = options.filter((option) =>
     ["holding", "regional-manager", "store-manager"].includes(option.value),
   );
@@ -199,9 +186,7 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [detailView, setDetailView] = useState<StoreDetailView>("overview");
   const [isInitialStorePhotoBatchReady, setIsInitialStorePhotoBatchReady] = useState(false);
-  const [visibleStoreCardCount, setVisibleStoreCardCount] = useState(
-    INITIAL_STORE_CARD_COUNT,
-  );
+  const [visibleStoreCardCount, setVisibleStoreCardCount] = useState(INITIAL_STORE_CARD_COUNT);
   const storesQueryKey = storeManagementQueryKeys.stores(user.id);
   const usersQueryKey = storeManagementQueryKeys.approvableUsers(user.id);
   const storesQuery = useQuery({
@@ -236,9 +221,9 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
   const trainingPositions = trainingPositionsQuery.data ?? [];
   const isLoading = storesQuery.isPending;
   const loadErrorMessage = storesQuery.isError
-    ? (storesQuery.error instanceof Error && storesQuery.error.message === "INSUFFICIENT_PERMISSIONS"
-        ? copy.unavailable
-        : copy.error)
+    ? storesQuery.error instanceof Error && storesQuery.error.message === "INSUFFICIENT_PERMISSIONS"
+      ? copy.unavailable
+      : copy.error
     : "";
   const roleOptions = useMemo(
     () => getVisibleRoleOptions(language, user, trainingPositions),
@@ -249,7 +234,7 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
   const [errorMessage, setErrorMessage] = useState("");
   const [reviewingUserId, setReviewingUserId] = useState<number | null>(null);
   const [savingUserId, setSavingUserId] = useState<number | null>(null);
-  const [deactivatingUserId, setDeactivatingUserId] = useState<number | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [teamSearchTerm, setTeamSearchTerm] = useState("");
   const [teamRoleFilter, setTeamRoleFilter] = useState("");
   const visibleErrorMessage = errorMessage || loadErrorMessage;
@@ -315,10 +300,7 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
   }, [stores, storesQuery.data]);
 
   useEffect(() => {
-    if (
-      !isInitialStorePhotoBatchReady ||
-      visibleStoreCardCount >= stores.length
-    ) {
+    if (!isInitialStorePhotoBatchReady || visibleStoreCardCount >= stores.length) {
       return undefined;
     }
 
@@ -461,8 +443,8 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
     }
   }
 
-  async function deactivateTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
-    setDeactivatingUserId(permissionUser.id);
+  async function deleteTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
+    setDeletingUserId(permissionUser.id);
     setErrorMessage("");
 
     try {
@@ -476,24 +458,24 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
         delete nextDrafts[permissionUser.id];
         return nextDrafts;
       });
-      toast.success(copy.employeeDeactivated);
+      toast.success(copy.employeeDeleted);
     } catch {
-      toast.error(copy.employeeDeactivateError);
+      toast.error(copy.employeeDeleteError);
     } finally {
-      setDeactivatingUserId(null);
+      setDeletingUserId(null);
     }
   }
 
-  async function confirmDeactivateTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
+  async function confirmDeleteTeamUser(permissionUser: MobilePermissionUser): Promise<void> {
     const confirmed = await confirm({
-      title: copy.deactivateEmployeeTitle,
-      message: copy.deactivateEmployeeBody,
-      confirmLabel: copy.deactivateConfirm,
-      cancelLabel: copy.deactivateCancel,
+      title: copy.deleteEmployeeTitle,
+      message: copy.deleteEmployeeBody,
+      confirmLabel: copy.deleteConfirm,
+      cancelLabel: copy.deleteCancel,
       tone: "danger",
     });
     if (confirmed) {
-      void deactivateTeamUser(permissionUser);
+      void deleteTeamUser(permissionUser);
     }
   }
 
@@ -582,11 +564,7 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
                 <PendingUserCard
                   key={item.id}
                   copy={copy}
-                  appliedRoleLabel={formatAppliedRoleLabel(
-                    item.jobRole,
-                    language,
-                    roleOptions,
-                  )}
+                  appliedRoleLabel={formatAppliedRoleLabel(item.jobRole, language, roleOptions)}
                   draft={approvalDrafts[item.id] || { jobRole: "" }}
                   isReviewing={reviewingUserId === item.id}
                   roleOptions={roleOptions}
@@ -661,11 +639,11 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
                   key={item.id}
                   copy={copy}
                   draft={teamDrafts[item.id] || { jobRole: item.jobRole || "" }}
-                  isDeactivating={deactivatingUserId === item.id}
+                  isDeleting={deletingUserId === item.id}
                   isSaving={savingUserId === item.id}
                   roleOptions={roleOptions}
                   user={item}
-                  onDeactivate={() => void confirmDeactivateTeamUser(item)}
+                  onDelete={() => void confirmDeleteTeamUser(item)}
                   onPatchDraft={(jobRole) => {
                     patchTeamDraft(item.id, jobRole);
                     void saveTeamRole(item, jobRole);

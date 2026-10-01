@@ -127,9 +127,7 @@ type DashboardContentContainerProps = {
   children: ReactNode;
 };
 
-function DashboardContentContainer({
-  children,
-}: DashboardContentContainerProps): ReactNode {
+function DashboardContentContainer({ children }: DashboardContentContainerProps): ReactNode {
   return <View>{children}</View>;
 }
 
@@ -645,39 +643,45 @@ export function DashboardHomeScreen({
     await onLogout();
   }
 
-  const loadNewsReadStatus = useCallback(async (postId: string): Promise<void> => {
-    try {
-      setReadStatusState({ postId, status: null, error: "", isLoading: true });
-      const status = await fetchDashboardNewsReadStatus(postId);
-      setReadStatusState({ postId, status, error: "", isLoading: false });
-    } catch {
-      setReadStatusState({
-        postId,
-        status: null,
-        error: copy.newsReadStatusError,
-        isLoading: false,
-      });
-    }
-  }, [copy.newsReadStatusError]);
-
-  const handleOpenNewsPost = useCallback(async (post: DashboardNewsPost): Promise<void> => {
-    setReaderError("");
-    setSelectedNewsPost(post);
-    setIsLoadingSelectedNews(true);
-
-    try {
-      const nextPost = (await fetchDashboardNewsPost(post.id)) ?? post;
-      setSelectedNewsPost(nextPost);
-
-      if (canViewNewsReadStats) {
-        await loadNewsReadStatus(nextPost.id);
+  const loadNewsReadStatus = useCallback(
+    async (postId: string): Promise<void> => {
+      try {
+        setReadStatusState({ postId, status: null, error: "", isLoading: true });
+        const status = await fetchDashboardNewsReadStatus(postId);
+        setReadStatusState({ postId, status, error: "", isLoading: false });
+      } catch {
+        setReadStatusState({
+          postId,
+          status: null,
+          error: copy.newsReadStatusError,
+          isLoading: false,
+        });
       }
-    } catch {
-      setReaderError(copy.readerError);
-    } finally {
-      setIsLoadingSelectedNews(false);
-    }
-  }, [canViewNewsReadStats, copy.readerError, loadNewsReadStatus]);
+    },
+    [copy.newsReadStatusError],
+  );
+
+  const handleOpenNewsPost = useCallback(
+    async (post: DashboardNewsPost): Promise<void> => {
+      setReaderError("");
+      setSelectedNewsPost(post);
+      setIsLoadingSelectedNews(true);
+
+      try {
+        const nextPost = (await fetchDashboardNewsPost(post.id)) ?? post;
+        setSelectedNewsPost(nextPost);
+
+        if (canViewNewsReadStats) {
+          await loadNewsReadStatus(nextPost.id);
+        }
+      } catch {
+        setReaderError(copy.readerError);
+      } finally {
+        setIsLoadingSelectedNews(false);
+      }
+    },
+    [canViewNewsReadStats, copy.readerError, loadNewsReadStatus],
+  );
 
   function handleCloseNewsReader(): void {
     setSelectedNewsPost(null);
@@ -687,36 +691,39 @@ export function DashboardHomeScreen({
     setReadStatusState({ postId: "", status: null, error: "", isLoading: false });
   }
 
-  const handleConfirmNewsRead = useCallback(async (postId: string): Promise<void> => {
-    try {
-      setReadConfirmationState({ postId, message: "" });
-      const confirmation = await confirmDashboardNewsRead(postId);
+  const handleConfirmNewsRead = useCallback(
+    async (postId: string): Promise<void> => {
+      try {
+        setReadConfirmationState({ postId, message: "" });
+        const confirmation = await confirmDashboardNewsRead(postId);
 
-      const updateReadConfirmation = (post: DashboardNewsPost): DashboardNewsPost =>
-        post.id === postId ? { ...post, readConfirmation: confirmation } : post;
+        const updateReadConfirmation = (post: DashboardNewsPost): DashboardNewsPost =>
+          post.id === postId ? { ...post, readConfirmation: confirmation } : post;
 
-      setSelectedNewsPost((currentPost) =>
-        currentPost ? updateReadConfirmation(currentPost) : currentPost,
-      );
-      queryClient.setQueryData<DashboardNewsPost[]>(
-        dashboardNewsQueryKeys.lists(),
-        (current) => current?.map(updateReadConfirmation) ?? current,
-      );
-      setReadConfirmationState({ postId: "", message: copy.newsReadConfirmed });
+        setSelectedNewsPost((currentPost) =>
+          currentPost ? updateReadConfirmation(currentPost) : currentPost,
+        );
+        queryClient.setQueryData<DashboardNewsPost[]>(
+          dashboardNewsQueryKeys.lists(),
+          (current) => current?.map(updateReadConfirmation) ?? current,
+        );
+        setReadConfirmationState({ postId: "", message: copy.newsReadConfirmed });
 
-      if (canViewNewsReadStats) {
-        await loadNewsReadStatus(postId);
+        if (canViewNewsReadStats) {
+          await loadNewsReadStatus(postId);
+        }
+      } catch {
+        setReadConfirmationState({ postId: "", message: copy.newsReadConfirmError });
       }
-    } catch {
-      setReadConfirmationState({ postId: "", message: copy.newsReadConfirmError });
-    }
-  }, [
-    canViewNewsReadStats,
-    copy.newsReadConfirmError,
-    copy.newsReadConfirmed,
-    loadNewsReadStatus,
-    queryClient,
-  ]);
+    },
+    [
+      canViewNewsReadStats,
+      copy.newsReadConfirmError,
+      copy.newsReadConfirmed,
+      loadNewsReadStatus,
+      queryClient,
+    ],
+  );
 
   function handleMandatoryNewsScroll(event: {
     nativeEvent: {
@@ -799,15 +806,18 @@ export function DashboardHomeScreen({
     }, remaining);
   }
 
-  const moveNewsPost = useCallback((direction: "previous" | "next"): void => {
-    setNewsCarouselIndex((currentIndex) => {
-      if (direction === "next") {
-        return Math.min(currentIndex + 1, visibleNewsPosts.length - 1);
-      }
+  const moveNewsPost = useCallback(
+    (direction: "previous" | "next"): void => {
+      setNewsCarouselIndex((currentIndex) => {
+        if (direction === "next") {
+          return Math.min(currentIndex + 1, visibleNewsPosts.length - 1);
+        }
 
-      return Math.max(currentIndex - 1, 0);
-    });
-  }, [visibleNewsPosts.length]);
+        return Math.max(currentIndex - 1, 0);
+      });
+    },
+    [visibleNewsPosts.length],
+  );
 
   function renderNewsReaderBody(post: DashboardNewsPost): ReactNode {
     const body = post.body || post.summary;
@@ -844,7 +854,7 @@ export function DashboardHomeScreen({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-        <View style={styles.shell}>
+      <View style={styles.shell}>
         <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
@@ -875,10 +885,7 @@ export function DashboardHomeScreen({
             </View>
 
             <View style={styles.topActions}>
-              <NotificationCenter
-                language={language}
-                onOpenEntry={navigateToEntry}
-              />
+              <NotificationCenter language={language} onOpenEntry={navigateToEntry} />
               {!isMoreOpen ? (
                 <SidebarMenuToggle
                   accessibilityLabel={moreNavLabel ?? copy.moreTitle}
@@ -900,485 +907,525 @@ export function DashboardHomeScreen({
                   pointerEvents={entryId === activeEntry ? "auto" : "none"}
                   style={entryId === activeEntry ? null : styles.keepAliveEntryHidden}
                 >
-            {entryId === "orders" ? (
-              <OrderModuleScreen
-                isActive={entryId === activeEntry}
-                language={language}
-                storeName={user.store?.name || user.storeName || user.establishment || undefined}
-                onProductViewChange={setIsOrderProductView}
-              />
-            ) : entryId === "stores" ? (
-              <StoresModuleScreen isActive={entryId === activeEntry} language={language} user={user} />
-            ) : entryId === "store-grade-ranking" ? (
-              <StoreGradeLeaderboard isActive={entryId === activeEntry} language={language} />
-            ) : entryId === "profile" ? (
-              <ProfileScreen
-                isActive={entryId === activeEntry}
-                language={language}
-                user={user}
-                onChangeLanguage={onChangeLanguage}
-                onLogout={onLogout}
-                onChangePassword={onChangePassword}
-                onUpdateProfile={onUpdateProfile}
-                onDeleteAccount={onDeleteAccount}
-              />
-            ) : entryId === "invite-partner" ? (
-              <InvitePartnerScreen
-                isActive={entryId === activeEntry}
-                language={language}
-                user={user}
-              />
-            ) : entryId === "recruitment-requests" ? (
-              <RecruitmentModuleScreen isActive={entryId === activeEntry} language={language} />
-            ) : entryId === "recipes" ? (
-              <RecipeModuleScreen
-                isActive={entryId === activeEntry}
-                language={language}
-                user={user}
-              />
-            ) : entryId === "case-shares" ? (
-              <CaseSharesModuleScreen
-                language={language}
-                mode="public"
-                isActive={entryId === activeEntry}
-                onRegisterPublishAction={handleCaseSharePublishActionChange}
-                onOpenMyCases={() => navigateToEntry("my-case-shares")}
-              />
-            ) : entryId === "my-case-shares" ? (
-              <CaseSharesModuleScreen
-                language={language}
-                mode="mine"
-                isActive={entryId === activeEntry}
-                onRegisterPublishAction={handleCaseSharePublishActionChange}
-                onOpenMyCases={() => navigateToEntry("my-case-shares")}
-              />
-            ) : entryId === "training" ? (
-              <TrainingModuleScreen isActive={entryId === activeEntry} language={language} user={user} />
-            ) : entryId === "training-records" ? (
-              <TrainingHistoryView
-                copy={TRAINING_COPY[language]}
-                isActive={entryId === activeEntry}
-                language={language}
-              />
-            ) : (
-              <>
-                <View style={styles.intro}>
-                  <View style={styles.kickerRow}>
-                    <View style={styles.kickerDot} />
-                    <TrackingText color={authControlStyles.colors.red} size={10.5}>
-                      {copy.greetingLabel}
-                    </TrackingText>
-                  </View>
-                  <Text style={styles.title}>
-                    {copy.greetingPrefix}
-                    <Text style={styles.titleEm}>{displayName}</Text>
-                    {copy.greetingSuffix}
-                  </Text>
-                </View>
-
-                <DashboardNewsBoard
-                  activeCategory={selectedNewsCategory}
-                  activeIndex={newsCarouselIndex}
-                  copy={copy}
-                  error={newsError}
-                  isConfirmingRead={readConfirmationState.postId !== ""}
-                  isLoading={isLoadingNews}
-                  posts={newsPosts}
-                  searchTerm={newsSearchTerm}
-                  userId={user.id}
-                  visiblePosts={visibleNewsPosts}
-                  onMove={moveNewsPost}
-                  onConfirmRead={handleConfirmNewsRead}
-                  onOpenPost={handleOpenNewsPost}
-                  onCategoryTargetMeasure={updateOnboardingTarget}
-                  onSearchChange={setNewsSearchTerm}
-                  onSelectCategory={setSelectedNewsCategory}
-                />
-
-                <Modal
-                  animationType="slide"
-                  presentationStyle="overFullScreen"
-                  transparent={false}
-                  visible={!!mandatoryNewsPost}
-                  onRequestClose={() => undefined}
-                >
-                  {mandatoryNewsPost ? (
-                    <View style={[styles.mandatoryNewsSafeArea, { paddingTop: insets.top }]}>
-                      <View style={styles.mandatoryNewsHeader}>
-                        <Text style={styles.mandatoryNewsKicker}>{copy.newsMandatoryTitle}</Text>
-                        <Text style={styles.mandatoryNewsHint}>{copy.newsMandatoryHint}</Text>
-                      </View>
-                      <ScrollView
-                        scrollEventThrottle={16}
-                        showsVerticalScrollIndicator={false}
-                        style={styles.mandatoryNewsScroll}
-                        contentContainerStyle={styles.mandatoryNewsContent}
-                        onContentSizeChange={(_width, height) =>
-                          setMandatoryNewsContentHeight(height)
-                        }
-                        onLayout={(event) =>
-                          setMandatoryNewsViewportHeight(event.nativeEvent.layout.height)
-                        }
-                        onScroll={handleMandatoryNewsScroll}
-                      >
-                        <Text style={styles.readerTitle}>
-                          {stripDashboardNewsFormatting(mandatoryNewsPost.title)}
+                  {entryId === "orders" ? (
+                    <OrderModuleScreen
+                      isActive={entryId === activeEntry}
+                      language={language}
+                      storeName={
+                        user.store?.name || user.storeName || user.establishment || undefined
+                      }
+                      onProductViewChange={setIsOrderProductView}
+                    />
+                  ) : entryId === "stores" ? (
+                    <StoresModuleScreen
+                      isActive={entryId === activeEntry}
+                      language={language}
+                      user={user}
+                    />
+                  ) : entryId === "store-grade-ranking" ? (
+                    <StoreGradeLeaderboard isActive={entryId === activeEntry} language={language} />
+                  ) : entryId === "profile" ? (
+                    <ProfileScreen
+                      isActive={entryId === activeEntry}
+                      language={language}
+                      user={user}
+                      onChangeLanguage={onChangeLanguage}
+                      onLogout={onLogout}
+                      onChangePassword={onChangePassword}
+                      onUpdateProfile={onUpdateProfile}
+                      onDeleteAccount={onDeleteAccount}
+                    />
+                  ) : entryId === "invite-partner" ? (
+                    <InvitePartnerScreen
+                      isActive={entryId === activeEntry}
+                      language={language}
+                      user={user}
+                    />
+                  ) : entryId === "recruitment-requests" ? (
+                    <RecruitmentModuleScreen
+                      isActive={entryId === activeEntry}
+                      language={language}
+                    />
+                  ) : entryId === "recipes" ? (
+                    <RecipeModuleScreen
+                      isActive={entryId === activeEntry}
+                      language={language}
+                      user={user}
+                    />
+                  ) : entryId === "case-shares" ? (
+                    <CaseSharesModuleScreen
+                      language={language}
+                      mode="public"
+                      isActive={entryId === activeEntry}
+                      onRegisterPublishAction={handleCaseSharePublishActionChange}
+                      onOpenMyCases={() => navigateToEntry("my-case-shares")}
+                    />
+                  ) : entryId === "my-case-shares" ? (
+                    <CaseSharesModuleScreen
+                      language={language}
+                      mode="mine"
+                      isActive={entryId === activeEntry}
+                      onRegisterPublishAction={handleCaseSharePublishActionChange}
+                      onOpenMyCases={() => navigateToEntry("my-case-shares")}
+                    />
+                  ) : entryId === "training" ? (
+                    <TrainingModuleScreen
+                      isActive={entryId === activeEntry}
+                      language={language}
+                      user={user}
+                    />
+                  ) : entryId === "training-records" ? (
+                    <TrainingHistoryView
+                      copy={TRAINING_COPY[language]}
+                      isActive={entryId === activeEntry}
+                      language={language}
+                    />
+                  ) : (
+                    <>
+                      <View style={styles.intro}>
+                        <View style={styles.kickerRow}>
+                          <View style={styles.kickerDot} />
+                          <TrackingText color={authControlStyles.colors.red} size={10.5}>
+                            {copy.greetingLabel}
+                          </TrackingText>
+                        </View>
+                        <Text style={styles.title}>
+                          {copy.greetingPrefix}
+                          <Text style={styles.titleEm}>{displayName}</Text>
+                          {copy.greetingSuffix}
                         </Text>
-                        {mandatoryNewsPost.attachment?.href &&
-                        isImageAttachment(mandatoryNewsPost) ? (
-                          <RemoteImage
-                            cacheKey={`dashboard-news-attachment-${mandatoryNewsPost.attachment.objectKey}`}
-                            contentFit="contain"
-                            source={{ uri: mandatoryNewsPost.attachment.href }}
-                            style={styles.mandatoryNewsAttachmentImage}
-                          />
-                        ) : null}
-                        {isDashboardNewsSummaryDistinct(
-                          mandatoryNewsPost.summary,
-                          mandatoryNewsPost.body,
-                        ) ? (
-                          <Text style={styles.readerSummary}>
-                            {stripDashboardNewsFormatting(mandatoryNewsPost.summary)}
-                          </Text>
-                        ) : null}
-                        <View style={styles.readerBody}>
-                          {renderNewsReaderBody(mandatoryNewsPost)}
-                        </View>
-                        <View style={styles.readerMetaGrid}>
-                          <Text style={styles.newsMetaText}>
-                            {formatDate(mandatoryNewsPost.createdAt)}
-                          </Text>
-                          <Text style={styles.newsMetaText}>
-                            {mandatoryNewsPost.authorName || "-"} ·{" "}
-                            {mandatoryNewsPost.restaurantName || "-"}
-                          </Text>
-                        </View>
-                      </ScrollView>
-                      <View
-                        style={[
-                          styles.mandatoryNewsActions,
-                          { paddingBottom: Math.max(16, insets.bottom) },
-                        ]}
-                      >
-                        <Pressable
-                          accessibilityRole="button"
-                          disabled={
-                            !hasReachedMandatoryNewsEnd ||
-                            readConfirmationState.postId === mandatoryNewsPost.id
-                          }
-                          style={[
-                            styles.mandatoryNewsConfirmButton,
-                            !hasReachedMandatoryNewsEnd ||
-                            readConfirmationState.postId === mandatoryNewsPost.id
-                              ? styles.mandatoryNewsConfirmButtonDisabled
-                              : null,
-                          ]}
-                          onPress={() => void handleConfirmNewsRead(mandatoryNewsPost.id)}
-                        >
-                          <Text style={styles.mandatoryNewsConfirmButtonText}>
-                            {copy.newsConfirmRead}
-                          </Text>
-                        </Pressable>
-                        {readConfirmationState.message ? (
-                          <Text style={styles.mandatoryNewsHint}>
-                            {readConfirmationState.message}
-                          </Text>
-                        ) : null}
                       </View>
-                    </View>
-                  ) : null}
-                </Modal>
 
-                <Modal
-                  animationType="slide"
-                  presentationStyle="overFullScreen"
-                  transparent
-                  visible={!!selectedNewsPost}
-                  onRequestClose={handleCloseNewsReader}
-                >
-                  <View style={styles.readerModalRoot}>
-                    <Pressable style={styles.readerBackdrop} onPress={handleCloseNewsReader} />
-                    <SafeAreaView
-                      edges={["left", "right"]}
-                      pointerEvents="box-none"
-                      style={styles.readerSafeArea}
-                    >
-                      {selectedNewsPost ? (
-                        <BlurView intensity={34} tint="light" style={styles.readerSheet}>
-                          <View style={styles.sheetSurface} />
-                          <View style={styles.sheetHandle} />
-                          <View style={styles.newsMetaRow}>
-                            <Text style={styles.newsMetaText}>
-                              {
-                                copy.newsCategories[
-                                  resolveNewsDeskCategory(selectedNewsPost.category)
-                                ]
+                      <DashboardNewsBoard
+                        activeCategory={selectedNewsCategory}
+                        activeIndex={newsCarouselIndex}
+                        copy={copy}
+                        error={newsError}
+                        isConfirmingRead={readConfirmationState.postId !== ""}
+                        isLoading={isLoadingNews}
+                        posts={newsPosts}
+                        searchTerm={newsSearchTerm}
+                        userId={user.id}
+                        visiblePosts={visibleNewsPosts}
+                        onMove={moveNewsPost}
+                        onConfirmRead={handleConfirmNewsRead}
+                        onOpenPost={handleOpenNewsPost}
+                        onCategoryTargetMeasure={updateOnboardingTarget}
+                        onSearchChange={setNewsSearchTerm}
+                        onSelectCategory={setSelectedNewsCategory}
+                      />
+
+                      <Modal
+                        animationType="slide"
+                        presentationStyle="overFullScreen"
+                        transparent={false}
+                        visible={!!mandatoryNewsPost}
+                        onRequestClose={() => undefined}
+                      >
+                        {mandatoryNewsPost ? (
+                          <View style={[styles.mandatoryNewsSafeArea, { paddingTop: insets.top }]}>
+                            <View style={styles.mandatoryNewsHeader}>
+                              <Text style={styles.mandatoryNewsKicker}>
+                                {copy.newsMandatoryTitle}
+                              </Text>
+                              <Text style={styles.mandatoryNewsHint}>{copy.newsMandatoryHint}</Text>
+                            </View>
+                            <ScrollView
+                              scrollEventThrottle={16}
+                              showsVerticalScrollIndicator={false}
+                              style={styles.mandatoryNewsScroll}
+                              contentContainerStyle={styles.mandatoryNewsContent}
+                              onContentSizeChange={(_width, height) =>
+                                setMandatoryNewsContentHeight(height)
                               }
-                            </Text>
-                            <Pressable
-                              style={styles.readerCloseButton}
-                              onPress={handleCloseNewsReader}
+                              onLayout={(event) =>
+                                setMandatoryNewsViewportHeight(event.nativeEvent.layout.height)
+                              }
+                              onScroll={handleMandatoryNewsScroll}
                             >
-                              <Text style={styles.sheetCloseText}>{copy.newsReaderClose}</Text>
-                            </Pressable>
-                          </View>
-                          <ScrollView
-                            showsVerticalScrollIndicator={false}
-                            style={styles.readerScroll}
-                          >
-                            <Text style={styles.readerTitle}>
-                              {stripDashboardNewsFormatting(selectedNewsPost.title)}
-                            </Text>
-                            {isDashboardNewsSummaryDistinct(
-                              selectedNewsPost.summary,
-                              selectedNewsPost.body,
-                            ) ? (
-                              <Text style={styles.readerSummary}>
-                                {stripDashboardNewsFormatting(selectedNewsPost.summary)}
+                              <Text style={styles.readerTitle}>
+                                {stripDashboardNewsFormatting(mandatoryNewsPost.title)}
                               </Text>
-                            ) : null}
-                            <View style={styles.readerMetaGrid}>
-                              <Text style={styles.newsMetaText}>
-                                {formatDate(selectedNewsPost.createdAt)}
-                              </Text>
-                              <Text style={styles.newsMetaText}>
-                                {selectedNewsPost.authorName || "-"} ·{" "}
-                                {selectedNewsPost.restaurantName || "-"}
-                              </Text>
-                            </View>
-                            {isLoadingSelectedNews ? (
-                              <View style={styles.stateRow}>
-                                <ZhaoLoadingIndicator label={copy.newsReaderLoading} />
+                              {mandatoryNewsPost.attachment?.href &&
+                              isImageAttachment(mandatoryNewsPost) ? (
+                                <RemoteImage
+                                  cacheKey={`dashboard-news-attachment-${mandatoryNewsPost.attachment.objectKey}`}
+                                  contentFit="contain"
+                                  source={{ uri: mandatoryNewsPost.attachment.href }}
+                                  style={styles.mandatoryNewsAttachmentImage}
+                                />
+                              ) : null}
+                              {isDashboardNewsSummaryDistinct(
+                                mandatoryNewsPost.summary,
+                                mandatoryNewsPost.body,
+                              ) ? (
+                                <Text style={styles.readerSummary}>
+                                  {stripDashboardNewsFormatting(mandatoryNewsPost.summary)}
+                                </Text>
+                              ) : null}
+                              <View style={styles.readerBody}>
+                                {renderNewsReaderBody(mandatoryNewsPost)}
                               </View>
-                            ) : null}
-                            {readerError ? (
-                              <Text style={styles.stateText}>{readerError}</Text>
-                            ) : null}
-                            {selectedNewsPost.attachment?.href ? (
+                              <View style={styles.readerMetaGrid}>
+                                <Text style={styles.newsMetaText}>
+                                  {formatDate(mandatoryNewsPost.createdAt)}
+                                </Text>
+                                <Text style={styles.newsMetaText}>
+                                  {mandatoryNewsPost.authorName || copy.deletedEmployee} ·{" "}
+                                  {mandatoryNewsPost.restaurantName || "-"}
+                                </Text>
+                              </View>
+                            </ScrollView>
+                            <View
+                              style={[
+                                styles.mandatoryNewsActions,
+                                { paddingBottom: Math.max(16, insets.bottom) },
+                              ]}
+                            >
                               <Pressable
-                                style={styles.attachmentCard}
-                                onPress={() => void handleOpenAttachment(selectedNewsPost)}
+                                accessibilityRole="button"
+                                disabled={
+                                  !hasReachedMandatoryNewsEnd ||
+                                  readConfirmationState.postId === mandatoryNewsPost.id
+                                }
+                                style={[
+                                  styles.mandatoryNewsConfirmButton,
+                                  !hasReachedMandatoryNewsEnd ||
+                                  readConfirmationState.postId === mandatoryNewsPost.id
+                                    ? styles.mandatoryNewsConfirmButtonDisabled
+                                    : null,
+                                ]}
+                                onPress={() => void handleConfirmNewsRead(mandatoryNewsPost.id)}
                               >
-                                <View style={styles.attachmentBody}>
-                                  <Text style={styles.newsMetaText}>{copy.newsAttachment}</Text>
-                                  <Text style={styles.attachmentName}>
-                                    {selectedNewsPost.attachment.name || "-"}
-                                  </Text>
-                                  <Text style={styles.stateText}>
-                                    {formatAttachmentSize(selectedNewsPost.attachment.sizeBytes)}
-                                  </Text>
-                                </View>
-                                <Text style={styles.newsReadMore}>{copy.newsOpenAttachment}</Text>
+                                <Text style={styles.mandatoryNewsConfirmButtonText}>
+                                  {copy.newsConfirmRead}
+                                </Text>
                               </Pressable>
-                            ) : null}
-                            <View style={styles.readerBody}>
-                              {renderNewsReaderBody(selectedNewsPost)}
+                              {readConfirmationState.message ? (
+                                <Text style={styles.mandatoryNewsHint}>
+                                  {readConfirmationState.message}
+                                </Text>
+                              ) : null}
                             </View>
-                            {selectedNewsPost.tags.length > 0 ? (
-                              <View style={styles.newsTagRow}>
-                                {selectedNewsPost.tags.map((tag) => (
-                                  <Text key={tag} style={styles.newsTag}>
-                                    #{tag}
+                          </View>
+                        ) : null}
+                      </Modal>
+
+                      <Modal
+                        animationType="slide"
+                        presentationStyle="overFullScreen"
+                        transparent
+                        visible={!!selectedNewsPost}
+                        onRequestClose={handleCloseNewsReader}
+                      >
+                        <View style={styles.readerModalRoot}>
+                          <Pressable
+                            style={styles.readerBackdrop}
+                            onPress={handleCloseNewsReader}
+                          />
+                          <SafeAreaView
+                            edges={["left", "right"]}
+                            pointerEvents="box-none"
+                            style={styles.readerSafeArea}
+                          >
+                            {selectedNewsPost ? (
+                              <BlurView intensity={34} tint="light" style={styles.readerSheet}>
+                                <View style={styles.sheetSurface} />
+                                <View style={styles.sheetHandle} />
+                                <View style={styles.newsMetaRow}>
+                                  <Text style={styles.newsMetaText}>
+                                    {
+                                      copy.newsCategories[
+                                        resolveNewsDeskCategory(selectedNewsPost.category)
+                                      ]
+                                    }
                                   </Text>
-                                ))}
-                              </View>
-                            ) : null}
-                            {selectedNewsPost.readConfirmation?.isRequired ? (
-                              <View style={styles.readConfirmationCard}>
-                                {selectedNewsPost.readConfirmation.confirmedAt ? (
-                                  <Text style={styles.readConfirmationText}>
-                                    {copy.newsReadConfirmedAt} ·{" "}
-                                    {formatDate(selectedNewsPost.readConfirmation.confirmedAt)}
-                                  </Text>
-                                ) : (
                                   <Pressable
-                                    accessibilityRole="button"
-                                    disabled={readConfirmationState.postId === selectedNewsPost.id}
-                                    style={styles.readConfirmationButton}
-                                    onPress={() => void handleConfirmNewsRead(selectedNewsPost.id)}
+                                    style={styles.readerCloseButton}
+                                    onPress={handleCloseNewsReader}
                                   >
-                                    <Text style={styles.readConfirmationButtonText}>
-                                      {copy.newsConfirmRead}
+                                    <Text style={styles.sheetCloseText}>
+                                      {copy.newsReaderClose}
                                     </Text>
                                   </Pressable>
-                                )}
-                                {readConfirmationState.message ? (
-                                  <Text style={styles.readConfirmationText}>
-                                    {readConfirmationState.message}
-                                  </Text>
-                                ) : null}
-                              </View>
-                            ) : null}
-                            {canViewNewsReadStats ? (
-                              <View style={styles.readStatusCard}>
-                                {selectedNewsPost.readSummary ? (
-                                  <Text style={styles.readConfirmationText}>
-                                    {copy.newsReadProgress(
-                                      selectedNewsPost.readSummary.readCount,
-                                      selectedNewsPost.readSummary.totalRecipients,
-                                      selectedNewsPost.readSummary.readRate,
-                                    )}
-                                  </Text>
-                                ) : (
-                                  <Text style={styles.readConfirmationText}>
-                                    {copy.newsReadTrackingUnavailable}
-                                  </Text>
-                                )}
-                                <Pressable
-                                  accessibilityRole="button"
-                                  style={styles.readStatusButton}
-                                  onPress={() => void loadNewsReadStatus(selectedNewsPost.id)}
+                                </View>
+                                <ScrollView
+                                  showsVerticalScrollIndicator={false}
+                                  style={styles.readerScroll}
                                 >
-                                  <Text style={styles.readStatusButtonText}>
-                                    {copy.newsViewReadDetails}
+                                  <Text style={styles.readerTitle}>
+                                    {stripDashboardNewsFormatting(selectedNewsPost.title)}
                                   </Text>
-                                </Pressable>
-                                {readStatusState.postId === selectedNewsPost.id ? (
-                                  <View style={styles.readStatusDetails}>
-                                    {readStatusState.isLoading ? (
-                                      <Text style={styles.readConfirmationText}>
-                                        {copy.newsReadStatusLoading}
-                                      </Text>
-                                    ) : null}
-                                    {readStatusState.error ? (
-                                      <Text style={styles.readConfirmationText}>
-                                        {readStatusState.error}
-                                      </Text>
-                                    ) : null}
-                                    {!readStatusState.isLoading &&
-                                    readStatusState.status?.isTracked ? (
-                                      <>
-                                        <View style={styles.readStatusTabs}>
-                                          {(
-                                            [
-                                              ["read", copy.newsReadList],
-                                              ["unread", copy.newsUnreadList],
-                                            ] as const
-                                          ).map(([key, label]) => (
-                                            <Pressable
-                                              key={key}
-                                              accessibilityRole="tab"
-                                              accessibilityState={{
-                                                selected: readStatusTab === key,
-                                              }}
-                                              style={[
-                                                styles.readStatusTab,
-                                                readStatusTab === key
-                                                  ? styles.readStatusTabActive
-                                                  : null,
-                                              ]}
-                                              onPress={() => setReadStatusTab(key)}
-                                            >
-                                              <Text
-                                                style={[
-                                                  styles.readStatusTabText,
-                                                  readStatusTab === key
-                                                    ? styles.readStatusTabTextActive
-                                                    : null,
-                                                ]}
-                                              >
-                                                {label}
-                                              </Text>
-                                            </Pressable>
-                                          ))}
-                                        </View>
-                                        {(readStatusTab === "read"
-                                          ? readStatusState.status.read
-                                          : readStatusState.status.unread
-                                        ).map((item) => (
-                                          <View key={item.userId} style={styles.readStatusPerson}>
-                                            <Text style={styles.readStatusPersonName}>
-                                              {item.name || "-"}
-                                            </Text>
-                                            <Text style={styles.readStatusPersonMeta}>
-                                              {item.restaurantName || "-"} ·{" "}
-                                              {item.confirmedAt
-                                                ? formatDate(item.confirmedAt)
-                                                : copy.newsNotRead}
-                                            </Text>
-                                          </View>
-                                        ))}
-                                      </>
-                                    ) : null}
-                                    {!readStatusState.isLoading &&
-                                    readStatusState.status &&
-                                    !readStatusState.status.isTracked ? (
-                                      <Text style={styles.readConfirmationText}>
-                                        {copy.newsReadTrackingUnavailable}
-                                      </Text>
-                                    ) : null}
+                                  {isDashboardNewsSummaryDistinct(
+                                    selectedNewsPost.summary,
+                                    selectedNewsPost.body,
+                                  ) ? (
+                                    <Text style={styles.readerSummary}>
+                                      {stripDashboardNewsFormatting(selectedNewsPost.summary)}
+                                    </Text>
+                                  ) : null}
+                                  <View style={styles.readerMetaGrid}>
+                                    <Text style={styles.newsMetaText}>
+                                      {formatDate(selectedNewsPost.createdAt)}
+                                    </Text>
+                                    <Text style={styles.newsMetaText}>
+                                      {selectedNewsPost.authorName || copy.deletedEmployee} ·{" "}
+                                      {selectedNewsPost.restaurantName || "-"}
+                                    </Text>
                                   </View>
-                                ) : null}
-                              </View>
+                                  {isLoadingSelectedNews ? (
+                                    <View style={styles.stateRow}>
+                                      <ZhaoLoadingIndicator label={copy.newsReaderLoading} />
+                                    </View>
+                                  ) : null}
+                                  {readerError ? (
+                                    <Text style={styles.stateText}>{readerError}</Text>
+                                  ) : null}
+                                  {selectedNewsPost.attachment?.href ? (
+                                    <Pressable
+                                      style={styles.attachmentCard}
+                                      onPress={() => void handleOpenAttachment(selectedNewsPost)}
+                                    >
+                                      <View style={styles.attachmentBody}>
+                                        <Text style={styles.newsMetaText}>
+                                          {copy.newsAttachment}
+                                        </Text>
+                                        <Text style={styles.attachmentName}>
+                                          {selectedNewsPost.attachment.name || "-"}
+                                        </Text>
+                                        <Text style={styles.stateText}>
+                                          {formatAttachmentSize(
+                                            selectedNewsPost.attachment.sizeBytes,
+                                          )}
+                                        </Text>
+                                      </View>
+                                      <Text style={styles.newsReadMore}>
+                                        {copy.newsOpenAttachment}
+                                      </Text>
+                                    </Pressable>
+                                  ) : null}
+                                  <View style={styles.readerBody}>
+                                    {renderNewsReaderBody(selectedNewsPost)}
+                                  </View>
+                                  {selectedNewsPost.tags.length > 0 ? (
+                                    <View style={styles.newsTagRow}>
+                                      {selectedNewsPost.tags.map((tag) => (
+                                        <Text key={tag} style={styles.newsTag}>
+                                          #{tag}
+                                        </Text>
+                                      ))}
+                                    </View>
+                                  ) : null}
+                                  {selectedNewsPost.readConfirmation?.isRequired ? (
+                                    <View style={styles.readConfirmationCard}>
+                                      {selectedNewsPost.readConfirmation.confirmedAt ? (
+                                        <Text style={styles.readConfirmationText}>
+                                          {copy.newsReadConfirmedAt} ·{" "}
+                                          {formatDate(
+                                            selectedNewsPost.readConfirmation.confirmedAt,
+                                          )}
+                                        </Text>
+                                      ) : (
+                                        <Pressable
+                                          accessibilityRole="button"
+                                          disabled={
+                                            readConfirmationState.postId === selectedNewsPost.id
+                                          }
+                                          style={styles.readConfirmationButton}
+                                          onPress={() =>
+                                            void handleConfirmNewsRead(selectedNewsPost.id)
+                                          }
+                                        >
+                                          <Text style={styles.readConfirmationButtonText}>
+                                            {copy.newsConfirmRead}
+                                          </Text>
+                                        </Pressable>
+                                      )}
+                                      {readConfirmationState.message ? (
+                                        <Text style={styles.readConfirmationText}>
+                                          {readConfirmationState.message}
+                                        </Text>
+                                      ) : null}
+                                    </View>
+                                  ) : null}
+                                  {canViewNewsReadStats ? (
+                                    <View style={styles.readStatusCard}>
+                                      {selectedNewsPost.readSummary ? (
+                                        <Text style={styles.readConfirmationText}>
+                                          {copy.newsReadProgress(
+                                            selectedNewsPost.readSummary.readCount,
+                                            selectedNewsPost.readSummary.totalRecipients,
+                                            selectedNewsPost.readSummary.readRate,
+                                          )}
+                                        </Text>
+                                      ) : (
+                                        <Text style={styles.readConfirmationText}>
+                                          {copy.newsReadTrackingUnavailable}
+                                        </Text>
+                                      )}
+                                      <Pressable
+                                        accessibilityRole="button"
+                                        style={styles.readStatusButton}
+                                        onPress={() => void loadNewsReadStatus(selectedNewsPost.id)}
+                                      >
+                                        <Text style={styles.readStatusButtonText}>
+                                          {copy.newsViewReadDetails}
+                                        </Text>
+                                      </Pressable>
+                                      {readStatusState.postId === selectedNewsPost.id ? (
+                                        <View style={styles.readStatusDetails}>
+                                          {readStatusState.isLoading ? (
+                                            <Text style={styles.readConfirmationText}>
+                                              {copy.newsReadStatusLoading}
+                                            </Text>
+                                          ) : null}
+                                          {readStatusState.error ? (
+                                            <Text style={styles.readConfirmationText}>
+                                              {readStatusState.error}
+                                            </Text>
+                                          ) : null}
+                                          {!readStatusState.isLoading &&
+                                          readStatusState.status?.isTracked ? (
+                                            <>
+                                              <View style={styles.readStatusTabs}>
+                                                {(
+                                                  [
+                                                    ["read", copy.newsReadList],
+                                                    ["unread", copy.newsUnreadList],
+                                                  ] as const
+                                                ).map(([key, label]) => (
+                                                  <Pressable
+                                                    key={key}
+                                                    accessibilityRole="tab"
+                                                    accessibilityState={{
+                                                      selected: readStatusTab === key,
+                                                    }}
+                                                    style={[
+                                                      styles.readStatusTab,
+                                                      readStatusTab === key
+                                                        ? styles.readStatusTabActive
+                                                        : null,
+                                                    ]}
+                                                    onPress={() => setReadStatusTab(key)}
+                                                  >
+                                                    <Text
+                                                      style={[
+                                                        styles.readStatusTabText,
+                                                        readStatusTab === key
+                                                          ? styles.readStatusTabTextActive
+                                                          : null,
+                                                      ]}
+                                                    >
+                                                      {label}
+                                                    </Text>
+                                                  </Pressable>
+                                                ))}
+                                              </View>
+                                              {(readStatusTab === "read"
+                                                ? readStatusState.status.read
+                                                : readStatusState.status.unread
+                                              ).map((item) => (
+                                                <View
+                                                  key={item.userId}
+                                                  style={styles.readStatusPerson}
+                                                >
+                                                  <Text style={styles.readStatusPersonName}>
+                                                    {item.name || "-"}
+                                                  </Text>
+                                                  <Text style={styles.readStatusPersonMeta}>
+                                                    {item.restaurantName || "-"} ·{" "}
+                                                    {item.confirmedAt
+                                                      ? formatDate(item.confirmedAt)
+                                                      : copy.newsNotRead}
+                                                  </Text>
+                                                </View>
+                                              ))}
+                                            </>
+                                          ) : null}
+                                          {!readStatusState.isLoading &&
+                                          readStatusState.status &&
+                                          !readStatusState.status.isTracked ? (
+                                            <Text style={styles.readConfirmationText}>
+                                              {copy.newsReadTrackingUnavailable}
+                                            </Text>
+                                          ) : null}
+                                        </View>
+                                      ) : null}
+                                    </View>
+                                  ) : null}
+                                </ScrollView>
+                              </BlurView>
                             ) : null}
-                          </ScrollView>
-                        </BlurView>
-                      ) : null}
-                    </SafeAreaView>
-                  </View>
-                </Modal>
-
-                <Modal
-                  animationType="slide"
-                  presentationStyle="overFullScreen"
-                  transparent
-                  visible={!!pdfPreviewPost}
-                  onRequestClose={handleClosePdfPreview}
-                >
-                  <View style={styles.pdfModalRoot}>
-                    <View style={styles.pdfPanel}>
-                      <View style={styles.pdfHeader}>
-                        <View style={styles.attachmentBody}>
-                          <Text style={styles.newsMetaText}>{copy.newsPdfPreview}</Text>
-                          <Text style={styles.attachmentName}>
-                            {pdfPreviewPost?.attachment?.name || "-"}
-                          </Text>
+                          </SafeAreaView>
                         </View>
-                        <Pressable style={styles.readerCloseButton} onPress={handleClosePdfPreview}>
-                          <Text style={styles.sheetCloseText}>{copy.newsReaderClose}</Text>
-                        </Pressable>
-                      </View>
-                      <View style={styles.pdfViewer}>
-                        {pdfPreviewPost && pdfPreviewFileUri ? (
-                          <ProtectedScreen screenName="dashboard-home-pdf-preview">
-                            <WebView
-                              allowFileAccess
-                              allowFileAccessFromFileURLs
-                              allowingReadAccessToURL={pdfPreviewBaseUri || pdfPreviewFileUri}
-                              mixedContentMode="always"
-                              originWhitelist={["*"]}
-                              source={{ uri: pdfPreviewFileUri }}
-                              startInLoadingState
-                              style={styles.pdfWebView}
-                              onError={() => {
-                                finishPdfLoading(() =>
-                                  setPdfPreviewError(copy.newsPdfPreviewError),
-                                );
-                              }}
-                              onLoadEnd={() => finishPdfLoading()}
-                            />
-                          </ProtectedScreen>
-                        ) : null}
-                        {isLoadingPdfPreview ? (
-                          <View style={styles.pdfLoadingOverlay}>
-                            <ZhaoLoadingIndicator
-                              label={copy.newsPdfPreviewLoading}
-                              variant="overlay"
-                            />
+                      </Modal>
+
+                      <Modal
+                        animationType="slide"
+                        presentationStyle="overFullScreen"
+                        transparent
+                        visible={!!pdfPreviewPost}
+                        onRequestClose={handleClosePdfPreview}
+                      >
+                        <View style={styles.pdfModalRoot}>
+                          <View style={styles.pdfPanel}>
+                            <View style={styles.pdfHeader}>
+                              <View style={styles.attachmentBody}>
+                                <Text style={styles.newsMetaText}>{copy.newsPdfPreview}</Text>
+                                <Text style={styles.attachmentName}>
+                                  {pdfPreviewPost?.attachment?.name || "-"}
+                                </Text>
+                              </View>
+                              <Pressable
+                                style={styles.readerCloseButton}
+                                onPress={handleClosePdfPreview}
+                              >
+                                <Text style={styles.sheetCloseText}>{copy.newsReaderClose}</Text>
+                              </Pressable>
+                            </View>
+                            <View style={styles.pdfViewer}>
+                              {pdfPreviewPost && pdfPreviewFileUri ? (
+                                <ProtectedScreen screenName="dashboard-home-pdf-preview">
+                                  <WebView
+                                    allowFileAccess
+                                    allowFileAccessFromFileURLs
+                                    allowingReadAccessToURL={pdfPreviewBaseUri || pdfPreviewFileUri}
+                                    mixedContentMode="always"
+                                    originWhitelist={["*"]}
+                                    source={{ uri: pdfPreviewFileUri }}
+                                    startInLoadingState
+                                    style={styles.pdfWebView}
+                                    onError={() => {
+                                      finishPdfLoading(() =>
+                                        setPdfPreviewError(copy.newsPdfPreviewError),
+                                      );
+                                    }}
+                                    onLoadEnd={() => finishPdfLoading()}
+                                  />
+                                </ProtectedScreen>
+                              ) : null}
+                              {isLoadingPdfPreview ? (
+                                <View style={styles.pdfLoadingOverlay}>
+                                  <ZhaoLoadingIndicator
+                                    label={copy.newsPdfPreviewLoading}
+                                    variant="overlay"
+                                  />
+                                </View>
+                              ) : null}
+                              {pdfPreviewError ? (
+                                <View style={styles.pdfLoadingOverlay}>
+                                  <Text style={styles.pdfLoadingText}>{pdfPreviewError}</Text>
+                                </View>
+                              ) : null}
+                            </View>
                           </View>
-                        ) : null}
-                        {pdfPreviewError ? (
-                          <View style={styles.pdfLoadingOverlay}>
-                            <Text style={styles.pdfLoadingText}>{pdfPreviewError}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-                  </View>
-                </Modal>
-                {actionMessage ? <Text style={styles.actionMessage}>{actionMessage}</Text> : null}
-              </>
-            )}
+                        </View>
+                      </Modal>
+                      {actionMessage ? (
+                        <Text style={styles.actionMessage}>{actionMessage}</Text>
+                      ) : null}
+                    </>
+                  )}
                 </View>
               ))}
             </DashboardContentContainer>
@@ -1622,8 +1669,8 @@ export function DashboardHomeScreen({
           visible={isOnboardingVisible}
           onComplete={completeOnboarding}
         />
-        </View>
-      </SafeAreaView>
+      </View>
+    </SafeAreaView>
   );
 }
 

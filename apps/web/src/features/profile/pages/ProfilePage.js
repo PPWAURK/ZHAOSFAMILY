@@ -51,8 +51,7 @@ function getTitleFrameClass(title) {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, logout, updateMe, changePassword, deleteAccount } =
-    useAuth();
+  const { user, isLoading, logout, updateMe, changePassword, deleteAccount } = useAuth();
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -370,11 +369,7 @@ export default function ProfilePage() {
           <header className={styles.sectionHeader}>
             <div className={styles.sectionHeadingGroup}>
               <h3 className={styles.sectionHeading}>
-                {lang === "zh"
-                  ? "我的称号"
-                  : lang === "fr"
-                    ? "Mes titres"
-                    : "My titles"}
+                {lang === "zh" ? "我的称号" : lang === "fr" ? "Mes titres" : "My titles"}
               </h3>
               <p className={styles.sectionHint}>
                 {lang === "zh"
@@ -523,9 +518,7 @@ export default function ProfilePage() {
                       type="tel"
                       className={styles.input}
                       value={draft.phone}
-                      onChange={(e) =>
-                        setDraft((prev) => ({ ...prev, phone: e.target.value }))
-                      }
+                      onChange={(e) => setDraft((prev) => ({ ...prev, phone: e.target.value }))}
                       placeholder="+33 …"
                     />
                   </dd>
@@ -537,9 +530,7 @@ export default function ProfilePage() {
                       type="text"
                       className={styles.input}
                       value={draft.address}
-                      onChange={(e) =>
-                        setDraft((prev) => ({ ...prev, address: e.target.value }))
-                      }
+                      onChange={(e) => setDraft((prev) => ({ ...prev, address: e.target.value }))}
                     />
                   </dd>
                 </div>
@@ -618,9 +609,7 @@ export default function ProfilePage() {
             </div>
             {!changingPwd ? (
               <div className={styles.btnRow}>
-                {pwdChanged ? (
-                  <span className={styles.savedFlag}>{t.passwordChanged}</span>
-                ) : null}
+                {pwdChanged ? <span className={styles.savedFlag}>{t.passwordChanged}</span> : null}
                 <button
                   type="button"
                   className={`${styles.btn} ${styles.btnGhost}`}
@@ -644,9 +633,7 @@ export default function ProfilePage() {
                       autoComplete="current-password"
                       className={styles.input}
                       value={pwd.current}
-                      onChange={(e) =>
-                        setPwd((prev) => ({ ...prev, current: e.target.value }))
-                      }
+                      onChange={(e) => setPwd((prev) => ({ ...prev, current: e.target.value }))}
                     />
                   </dd>
                 </div>
@@ -658,9 +645,7 @@ export default function ProfilePage() {
                       autoComplete="new-password"
                       className={styles.input}
                       value={pwd.next}
-                      onChange={(e) =>
-                        setPwd((prev) => ({ ...prev, next: e.target.value }))
-                      }
+                      onChange={(e) => setPwd((prev) => ({ ...prev, next: e.target.value }))}
                     />
                   </dd>
                 </div>
@@ -672,9 +657,7 @@ export default function ProfilePage() {
                       autoComplete="new-password"
                       className={styles.input}
                       value={pwd.confirm}
-                      onChange={(e) =>
-                        setPwd((prev) => ({ ...prev, confirm: e.target.value }))
-                      }
+                      onChange={(e) => setPwd((prev) => ({ ...prev, confirm: e.target.value }))}
                     />
                   </dd>
                 </div>
@@ -733,59 +716,16 @@ export default function ProfilePage() {
               <h3 className={styles.sectionHeading}>{t.dangerHeading}</h3>
               <p className={styles.sectionHint}>{t.dangerHint}</p>
             </div>
-            {!deletingAccount ? (
-              <div className={styles.btnRow}>
-                <button
-                  type="button"
-                  className={`${styles.btn} ${styles.btnDanger}`}
-                  onClick={startDelete}
-                >
-                  {t.deleteAccount}
-                </button>
-              </div>
-            ) : null}
+            <div className={styles.btnRow}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnDanger}`}
+                onClick={startDelete}
+              >
+                {t.deleteAccount}
+              </button>
+            </div>
           </header>
-
-          {deletingAccount ? (
-            <>
-              <p className={styles.sectionHint}>{t.deleteWarning}</p>
-              <dl className={styles.fieldList}>
-                <div className={styles.fieldItem}>
-                  <dt>{t.fieldDeletePassword}</dt>
-                  <dd>
-                    <input
-                      type="password"
-                      autoComplete="current-password"
-                      className={styles.input}
-                      value={deletePassword}
-                      onChange={(e) => setDeletePassword(e.target.value)}
-                    />
-                  </dd>
-                </div>
-              </dl>
-              {deleteError ? (
-                <p className={styles.sectionStatus}>{deleteError}</p>
-              ) : null}
-              <div className={styles.btnRow}>
-                <button
-                  type="button"
-                  className={`${styles.btn} ${styles.btnDanger}`}
-                  onClick={submitDelete}
-                  disabled={deletingSubmit}
-                >
-                  {deletingSubmit ? t.deleteSubmitting : t.deleteConfirm}
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  onClick={cancelDelete}
-                  disabled={deletingSubmit}
-                >
-                  {t.cancel}
-                </button>
-              </div>
-            </>
-          ) : null}
         </section>
 
         <div className={styles.backRow}>
@@ -794,6 +734,61 @@ export default function ProfilePage() {
           </Link>
         </div>
       </motion.section>
+
+      {deletingAccount ? (
+        <div
+          className={styles.deleteBackdrop}
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !deletingSubmit) cancelDelete();
+          }}
+        >
+          <div
+            className={styles.deleteDialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !deletingSubmit) cancelDelete();
+            }}
+          >
+            <h2 id="delete-account-title" className={styles.sectionHeading}>
+              {t.dangerHeading}
+            </h2>
+            <p className={styles.sectionHint}>{t.deleteWarning}</p>
+            <label className={styles.deletePasswordLabel}>
+              {t.fieldDeletePassword}
+              <input
+                autoFocus
+                type="password"
+                autoComplete="current-password"
+                className={styles.input}
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+              />
+            </label>
+            {deleteError ? <p className={styles.sectionStatus}>{deleteError}</p> : null}
+            <div className={styles.btnRow}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={cancelDelete}
+                disabled={deletingSubmit}
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnDanger}`}
+                onClick={submitDelete}
+                disabled={deletingSubmit}
+              >
+                {deletingSubmit ? t.deleteSubmitting : t.deleteConfirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <footer className={styles.footer}>{t.footer}</footer>
 

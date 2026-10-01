@@ -339,8 +339,8 @@ model PurchaseOrder {
   supplier        Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   restaurantId    Int                 @map("restaurant_id")
   restaurant      Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  createdByUserId Int                 @map("created_by_user_id")
-  createdByUser   User                @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdByUserId Int?                @map("created_by_user_id")
+  createdByUser   User?               @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
   deliveryDate    DateTime            @map("delivery_date") @db.Date
   deliveryAddress String              @map("delivery_address") @db.VarChar(255)
   totalItems      Int                 @map("total_items")
@@ -388,8 +388,8 @@ model PurchaseReturn {
   supplier        Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   restaurantId    Int                  @map("restaurant_id")
   restaurant      Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  createdByUserId Int                  @map("created_by_user_id")
-  createdByUser   User                 @relation("CreatedByUserReturns", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdByUserId Int?                 @map("created_by_user_id")
+  createdByUser   User?                @relation("CreatedByUserReturns", fields: [createdByUserId], references: [id], onDelete: SetNull)
   reason          String               @db.VarChar(255)
   notes           String?              @db.Text
   totalItems      Int                  @map("total_items")
@@ -680,8 +680,8 @@ model DashboardPost {
   attachmentSizeBytes BigInt?    @map("attachment_size_bytes")
   attachmentBucket    String?    @map("attachment_bucket") @db.VarChar(100)
   attachmentObjectKey String?    @map("attachment_object_key") @db.VarChar(500)
-  authorId            Int        @map("author_id")
-  author              User       @relation("DashboardPostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  authorId            Int?       @map("author_id")
+  author              User?      @relation("DashboardPostAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   restaurantId        Int        @map("restaurant_id")
   restaurant          Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
   readTrackingStartedAt DateTime? @map("read_tracking_started_at")
@@ -715,8 +715,8 @@ model RecruitmentRequest {
   id              Int        @id @default(autoincrement())
   restaurantId    Int        @map("restaurant_id")
   restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  createdByUserId Int        @map("created_by_user_id")
-  createdByUser   User       @relation("RecruitmentRequestCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdByUserId Int?       @map("created_by_user_id")
+  createdByUser   User?      @relation("RecruitmentRequestCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   contractType    String     @map("contract_type") @db.VarChar(20)
   position        String     @db.VarChar(40)
   headcount       Int
@@ -724,7 +724,7 @@ model RecruitmentRequest {
   status          String     @default("pending") @db.VarChar(20)
   handledNotes    String?    @map("handled_notes") @db.Text
   handledByUserId Int?       @map("handled_by_user_id")
-  handledByUser   User?      @relation("RecruitmentRequestHandledBy", fields: [handledByUserId], references: [id], onDelete: Restrict)
+  handledByUser   User?      @relation("RecruitmentRequestHandledBy", fields: [handledByUserId], references: [id], onDelete: SetNull)
   handledAt       DateTime?  @map("handled_at")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
@@ -738,8 +738,8 @@ model RecruitmentRequest {
 
 model CaseShare {
   id               Int                @id @default(autoincrement())
-  authorId         Int                @map("author_id")
-  author           User               @relation("CaseShareAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  authorId         Int?               @map("author_id")
+  author           User?              @relation("CaseShareAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   restaurantId     Int                @map("restaurant_id")
   restaurant       Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
   type             String             @db.VarChar(20)
@@ -769,8 +769,8 @@ model CaseShareComment {
   id          Int       @id @default(autoincrement())
   caseShareId Int       @map("case_share_id")
   caseShare   CaseShare @relation(fields: [caseShareId], references: [id], onDelete: Cascade)
-  authorId    Int       @map("author_id")
-  author      User      @relation("CaseShareCommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  authorId    Int?      @map("author_id")
+  author      User?     @relation("CaseShareCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   content     String    @db.VarChar(300)
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -954,7 +954,7 @@ model LegacyNewsPost {
   module                LegacyModule?
   section               LegacyModuleSection?
   attachmentDocumentId  Int?                   @map("attachment_document_id")
-  createdByUserId       Int                    @map("created_by_user_id")
+  createdByUserId       Int?                   @map("created_by_user_id")
   createdAt             DateTime               @default(now()) @map("created_at") @db.DateTime(0)
   tags                  Json?
   visibleEmployeeLevels Json?                  @map("visible_employee_levels")
@@ -1008,7 +1008,7 @@ model LegacyPurchaseReturnItemPhoto {
 model LegacyRecruitmentRequest {
   id                Int                           @id @default(autoincrement())
   restaurantId      Int                           @map("restaurant_id")
-  createdByUserId   Int                           @map("created_by_user_id")
+  createdByUserId   Int?                          @map("created_by_user_id")
   position          String
   contractType      LegacyRecruitmentContractType @map("contract_type")
   headcount         Int

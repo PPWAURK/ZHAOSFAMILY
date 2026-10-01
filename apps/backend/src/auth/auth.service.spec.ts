@@ -12,6 +12,11 @@ import {
 } from 'node:crypto';
 import { promisify } from 'node:util';
 import { AuthService } from './auth.service';
+import { deleteUserAccountRecords } from './user-account-deletion';
+
+jest.mock('./user-account-deletion', () => ({
+  deleteUserAccountRecords: jest.fn().mockResolvedValue(undefined),
+}));
 
 const scrypt = promisify(scryptCallback);
 const TEST_AUTH_TOKEN_SECRET = 'test-auth-token-secret';
@@ -817,7 +822,7 @@ describe('AuthService', () => {
     });
   });
 
-  it('anonymizes the account and revokes sessions when the password matches', async () => {
+  it('deletes the account when the password matches', async () => {
     const { authService, prismaService } = createService();
     const passwordHash = await makeTestPasswordHash('current-password');
 
@@ -827,46 +832,12 @@ describe('AuthService', () => {
       accountStatus: 'approved',
     } as never);
 
-    const result = await authService.deleteCurrentAccount(
-      signTestAccessToken(42),
-      { password: 'current-password' },
-    );
-
-    expect(result).toEqual({ message: 'ACCOUNT_DELETED' });
-    expect(prismaService.userRole.deleteMany).toHaveBeenCalledWith({
-      where: { userId: 42 },
-    });
-    expect(prismaService.pushToken.deleteMany).toHaveBeenCalledWith({
-      where: { userId: 42 },
-    });
-    const [revokeCall] = prismaService.refreshSession.updateMany.mock
-      .calls[0] as [
-      { where: Record<string, unknown>; data: { revokedAt: Date } },
-    ];
-    expect(revokeCall.where).toEqual({ userId: 42, revokedAt: null });
-    expect(revokeCall.data.revokedAt).toBeInstanceOf(Date);
-    expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
-
-    const [updateCall] = prismaService.user.update.mock.calls[0] as [
-      UpdateUserCall,
-    ];
-    expect(updateCall.where).toEqual({ id: 42 });
-    expect(updateCall.data).toMatchObject({
-      familyName: 'Compte supprimé',
-      givenName: '',
-      name: 'Compte supprimé',
-      email: 'deleted-user-42@deleted.invalid',
-      emailVerified: false,
-      accountStatus: 'deleted',
-      phone: null,
-      address: null,
-      profilePhoto: null,
-      birthday: null,
-      jobRole: null,
-    });
-    // The password is scrambled so the old credentials can never sign in again.
-    expect(updateCall.data.passwordHash).toMatch(/^scrypt\$/);
-    expect(updateCall.data.passwordHash).not.toBe(passwordHash);
+    await expect(
+      authService.deleteCurrentAccount(signTestAccessToken(42), {
+        password: 'current-password',
+      }),
+    ).resolves.toEqual({ message: 'ACCOUNT_DELETED' });
+    expect(deleteUserAccountRecords).toHaveBeenCalledWith(prismaService, 42);
   });
 
   it('rejects account deletion when the password is wrong', async () => {
@@ -903,6 +874,18 @@ describe('AuthService', () => {
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prismaService.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects an existing access token after an account is removed', async () => {
+    const { authService, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 42,
+      accountStatus: 'removed',
+    } as never);
+
+    await expect(
+      authService.getCurrentUser(signTestAccessToken(42)),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('caches permissions across lookups and re-queries after invalidation', async () => {

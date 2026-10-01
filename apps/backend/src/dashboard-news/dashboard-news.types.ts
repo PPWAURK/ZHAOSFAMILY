@@ -70,7 +70,7 @@ export type DashboardNewsPost = {
   attachment: DashboardNewsAttachment | null;
   restaurantId: number;
   restaurantName: string;
-  author: DashboardNewsAuthor;
+  author: DashboardNewsAuthor | null;
   canDelete: boolean;
   readConfirmation: DashboardNewsReadConfirmation | null;
   readSummary: DashboardNewsReadSummary | null;

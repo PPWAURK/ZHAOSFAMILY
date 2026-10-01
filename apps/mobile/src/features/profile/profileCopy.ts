@@ -58,7 +58,7 @@ export const PROFILE_COPY: Record<
     titleSuffix: string;
     updateError: string;
   }
-  > = {
+> = {
   zh: {
     certificationHeading: "认证墙",
     certificationHint: "已获得 {earned} / {total} 项认证",
@@ -86,10 +86,10 @@ export const PROFILE_COPY: Record<
     logoutHeading: "登录状态",
     logoutHint: "结束当前会话并返回登录页。",
     deleteHeading: "删除账号",
-    deleteHint: "永久删除后无法恢复，你的个人信息将被匿名化。",
+    deleteHint: "账号及个人资料将永久删除，原邮箱可重新注册。",
     deleteAction: "删除我的账号",
     deleteWarning:
-      "此操作不可撤销。确认后你的账号将被停用、个人信息将被匿名化，且你会立即退出登录。请输入当前密码以确认。",
+      "账号和个人资料将永久删除，原邮箱可重新注册。历史订单和其他业务内容会保留，但不再显示你的身份。此操作无法撤销，确认后你会立即退出登录。请输入当前密码以确认。",
     deletePasswordLabel: "当前密码",
     deletePasswordRequired: "请输入当前密码。",
     deleteConfirm: "永久删除账号",
@@ -144,10 +144,11 @@ export const PROFILE_COPY: Record<
     logoutHeading: "Session",
     logoutHint: "End this session and return to login.",
     deleteHeading: "Delete account",
-    deleteHint: "Deletion is permanent and your personal data will be anonymized.",
+    deleteHint:
+      "Your account and personal data will be permanently deleted. Your email can register again.",
     deleteAction: "Delete my account",
     deleteWarning:
-      "This action cannot be undone. Once confirmed, your account is deactivated, your personal data is anonymized, and you are signed out immediately. Enter your current password to confirm.",
+      "Your account and personal data will be permanently deleted, and your email can register again. Orders and other business history will remain without your identity. This cannot be undone. Enter your current password to confirm.",
     deletePasswordLabel: "Current password",
     deletePasswordRequired: "Please enter your current password.",
     deleteConfirm: "Permanently delete account",
@@ -202,10 +203,11 @@ export const PROFILE_COPY: Record<
     logoutHeading: "Session",
     logoutHint: "Terminez cette session et retournez à la connexion.",
     deleteHeading: "Supprimer le compte",
-    deleteHint: "La suppression est définitive et vos données personnelles seront anonymisées.",
+    deleteHint:
+      "Votre compte et vos données personnelles seront supprimés définitivement. Votre adresse e-mail pourra être réutilisée.",
     deleteAction: "Supprimer mon compte",
     deleteWarning:
-      "Cette action est irréversible. Une fois confirmée, votre compte est désactivé, vos données personnelles sont anonymisées et vous êtes déconnecté immédiatement. Saisissez votre mot de passe actuel pour confirmer.",
+      "Votre compte et vos données personnelles seront supprimés définitivement, et votre adresse e-mail pourra être réutilisée. Les commandes et autres historiques resteront sans votre identité. Cette action est irréversible. Saisissez votre mot de passe actuel pour confirmer.",
     deletePasswordLabel: "Mot de passe actuel",
     deletePasswordRequired: "Veuillez saisir votre mot de passe actuel.",
     deleteConfirm: "Supprimer définitivement le compte",

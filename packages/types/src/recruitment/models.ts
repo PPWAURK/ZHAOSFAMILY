@@ -1,24 +1,14 @@
 export const RECRUITMENT_CONTRACT_TYPES = ["full_time", "part_time"] as const;
 
-export const RECRUITMENT_POSITIONS = [
-  "waiter",
-  "chef",
-  "kitchen_assistant",
-] as const;
+export const RECRUITMENT_POSITIONS = ["waiter", "chef", "kitchen_assistant"] as const;
 
-export const RECRUITMENT_REQUEST_STATUSES = [
-  "pending",
-  "in_progress",
-  "completed",
-] as const;
+export const RECRUITMENT_REQUEST_STATUSES = ["pending", "in_progress", "completed"] as const;
 
-export type RecruitmentContractType =
-  (typeof RECRUITMENT_CONTRACT_TYPES)[number];
+export type RecruitmentContractType = (typeof RECRUITMENT_CONTRACT_TYPES)[number];
 
 export type RecruitmentPosition = (typeof RECRUITMENT_POSITIONS)[number];
 
-export type RecruitmentRequestStatus =
-  (typeof RECRUITMENT_REQUEST_STATUSES)[number];
+export type RecruitmentRequestStatus = (typeof RECRUITMENT_REQUEST_STATUSES)[number];
 
 export type RecruitmentRequestUser = {
   id: number;
@@ -30,7 +20,7 @@ export type RecruitmentRequestItem = {
   id: number;
   restaurantId: number;
   restaurantName: string;
-  createdBy: RecruitmentRequestUser;
+  createdBy: RecruitmentRequestUser | null;
   contractType: RecruitmentContractType;
   position: RecruitmentPosition;
   headcount: number;

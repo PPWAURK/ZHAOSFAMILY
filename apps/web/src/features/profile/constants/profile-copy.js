@@ -63,9 +63,10 @@ export const PROFILE_COPY = {
     loggingOut: "正在退出…",
 
     dangerHeading: "删除账号",
-    dangerHint: "永久删除后无法恢复，你的个人信息将被匿名化。",
+    dangerHint: "账号及个人资料将永久删除，原邮箱可重新注册。",
     deleteAccount: "删除我的账号",
-    deleteWarning: "此操作不可撤销。确认后你的账号将被停用、个人信息将被匿名化，且你会立即退出登录。请输入当前密码以确认。",
+    deleteWarning:
+      "账号和个人资料将永久删除，原邮箱可重新注册。历史订单和其他业务内容会保留，但不再显示你的身份。此操作无法撤销，确认后你会立即退出登录。请输入当前密码以确认。",
     fieldDeletePassword: "当前密码",
     deleteConfirm: "永久删除账号",
     deleteSubmitting: "正在删除…",
@@ -136,10 +137,11 @@ export const PROFILE_COPY = {
     loggingOut: "Signing out…",
 
     dangerHeading: "Delete account",
-    dangerHint: "Deletion is permanent and your personal data will be anonymized.",
+    dangerHint:
+      "Your account and personal data will be permanently deleted. Your email can register again.",
     deleteAccount: "Delete my account",
     deleteWarning:
-      "This action cannot be undone. Once confirmed, your account is deactivated, your personal data is anonymized, and you are signed out immediately. Enter your current password to confirm.",
+      "Your account and personal data will be permanently deleted, and your email can register again. Orders and other business history will remain without your identity. This cannot be undone. Enter your current password to confirm.",
     fieldDeletePassword: "Current password",
     deleteConfirm: "Permanently delete account",
     deleteSubmitting: "Deleting…",
@@ -168,7 +170,8 @@ export const PROFILE_COPY = {
 
     certificationHeading: "Certifications",
     certificationHint: "{earned} / {total} certifications obtenues",
-    certificationEmpty: "Aucune certification pour le moment. Suivez des formations pour en débloquer.",
+    certificationEmpty:
+      "Aucune certification pour le moment. Suivez des formations pour en débloquer.",
     certificationInProgress: "En cours",
     certificationLevel: "Nv.",
     certificationLoading: "Chargement des certifications…",
@@ -210,10 +213,11 @@ export const PROFILE_COPY = {
     loggingOut: "Déconnexion…",
 
     dangerHeading: "Supprimer le compte",
-    dangerHint: "La suppression est définitive et vos données personnelles seront anonymisées.",
+    dangerHint:
+      "Votre compte et vos données personnelles seront supprimés définitivement. Votre adresse e-mail pourra être réutilisée.",
     deleteAccount: "Supprimer mon compte",
     deleteWarning:
-      "Cette action est irréversible. Une fois confirmée, votre compte est désactivé, vos données personnelles sont anonymisées et vous êtes déconnecté immédiatement. Saisissez votre mot de passe actuel pour confirmer.",
+      "Votre compte et vos données personnelles seront supprimés définitivement, et votre adresse e-mail pourra être réutilisée. Les commandes et autres historiques resteront sans votre identité. Cette action est irréversible. Saisissez votre mot de passe actuel pour confirmer.",
     fieldDeletePassword: "Mot de passe actuel",
     deleteConfirm: "Supprimer définitivement le compte",
     deleteSubmitting: "Suppression…",

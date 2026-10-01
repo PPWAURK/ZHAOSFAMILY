@@ -36,7 +36,7 @@ export type RecruitmentRequestItem = {
   id: number;
   restaurantId: number;
   restaurantName: string;
-  createdBy: RecruitmentRequestUser;
+  createdBy: RecruitmentRequestUser | null;
   contractType: RecruitmentContractType;
   position: RecruitmentPosition;
   headcount: number;
