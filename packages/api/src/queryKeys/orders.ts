@@ -3,5 +3,5 @@ export const ordersQueryKeys = {
   history: () => ["orders", "history"] as const,
   products: (supplierId: number | string) =>
     ["orders", "products", String(supplierId)] as const,
-  suppliers: () => ["orders", "suppliers"] as const,
+  suppliers: () => ["orders", "suppliers", "orderable"] as const,
 };

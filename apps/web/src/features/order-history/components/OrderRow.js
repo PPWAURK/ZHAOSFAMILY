@@ -91,6 +91,13 @@ export default function OrderRow({
           className={styles.rowAction}
           onClick={() => onEditOrder(order)}
           disabled={!order.canEdit || deletingOrder}
+          title={
+            !order.canEdit
+              ? order.returnCount > 0
+                ? copy.returnedOrderLocked
+                : copy.supplierUnavailable
+              : undefined
+          }
         >
           {copy.editOrder}
         </button>

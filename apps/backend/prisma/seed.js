@@ -1065,6 +1065,16 @@ const ROLES = [
     ],
   },
   {
+    name: 'store-manager-partner',
+    description: 'Read-only store operations access for store manager partners',
+    permissions: [
+      'training.material.read',
+      'training.material.play',
+      'training.progress.view_store',
+      'abc.inspection.read',
+    ],
+  },
+  {
     name: 'training-admin',
     description: 'Can manage training materials',
     permissions: [

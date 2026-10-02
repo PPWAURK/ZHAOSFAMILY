@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Modal, PanResponder, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  Modal,
+  PanResponder,
+  StyleSheet,
+  Text,
+  View,
+  type PanResponderGestureState,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
@@ -7,6 +16,7 @@ import type { NotificationItem } from "@zhao/types";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 import { FeedbackPressable } from "@/components/FeedbackPressable";
 import { Skeleton } from "@/components/Skeleton";
+import { useMotionPreferences } from "@/lib/motion";
 import type { AuthLanguage } from "@/features/auth/authCopy";
 import { resolveNotificationEntry, type NotificationEntry } from "@/lib/useNotificationNavigation";
 import {
@@ -20,7 +30,7 @@ import { NOTIFICATIONS_COPY, formatRelativeTime } from "./notificationsCopy";
 const UNREAD_POLL_INTERVAL_MS = 45000;
 const MAX_BADGE_COUNT = 99;
 const INITIAL_SHEET_HEIGHT_RATIO = 0.8;
-const SHEET_DISMISS_DISTANCE_RATIO = 0.2;
+const SHEET_DISMISS_OFFSET_RATIO = 0.9;
 const colors = authControlStyles.colors;
 const screenHeight = Dimensions.get("window").height;
 
@@ -32,50 +42,83 @@ type NotificationCenterProps = {
 export function NotificationCenter({ language, onOpenEntry }: NotificationCenterProps) {
   const copy = NOTIFICATIONS_COPY[language];
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const sheetHeight = useRef(new Animated.Value(screenHeight * INITIAL_SHEET_HEIGHT_RATIO)).current;
-  const dragStartHeight = useRef(screenHeight * INITIAL_SHEET_HEIGHT_RATIO);
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 4,
-      onPanResponderGrant: () => {
-        sheetHeight.stopAnimation((height) => {
-          dragStartHeight.current = height;
-        });
-      },
-      onPanResponderMove: (_, gesture) => {
-        const nextHeight = Math.max(
-          screenHeight * 0.5,
-          Math.min(screenHeight, dragStartHeight.current - gesture.dy),
-        );
-        sheetHeight.setValue(nextHeight);
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dy > screenHeight * SHEET_DISMISS_DISTANCE_RATIO) {
-          setIsOpen(false);
-          sheetHeight.setValue(screenHeight * INITIAL_SHEET_HEIGHT_RATIO);
-          return;
-        }
+  const { reduceMotion } = useMotionPreferences();
+  const initialSheetOffset = screenHeight * (1 - INITIAL_SHEET_HEIGHT_RATIO);
+  const sheetOffset = useRef(new Animated.Value(initialSheetOffset)).current;
+  const dragStartOffset = useRef(initialSheetOffset);
 
-        const shouldExpand = gesture.dy < -40 || gesture.vy < -0.5;
-        Animated.spring(sheetHeight, {
-          toValue: shouldExpand ? screenHeight : screenHeight * INITIAL_SHEET_HEIGHT_RATIO,
-          useNativeDriver: false,
-          bounciness: 0,
-        }).start();
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(sheetHeight, {
-          toValue: screenHeight * INITIAL_SHEET_HEIGHT_RATIO,
-          useNativeDriver: false,
-          bounciness: 0,
-        }).start();
-      },
-    }),
-  ).current;
+  const settleSheet = useCallback(
+    (offset: number) => {
+      setIsExpanded(offset < initialSheetOffset / 2);
+      if (reduceMotion) {
+        sheetOffset.setValue(offset);
+        return;
+      }
+
+      Animated.spring(sheetOffset, {
+        toValue: offset,
+        useNativeDriver: true,
+        bounciness: 0,
+      }).start();
+    },
+    [initialSheetOffset, reduceMotion, sheetOffset],
+  );
+
+  const handlePanGrant = useCallback(() => {
+    sheetOffset.stopAnimation((offset) => {
+      dragStartOffset.current = offset;
+    });
+  }, [sheetOffset]);
+
+  const handlePanMove = useCallback(
+    (_event: unknown, gesture: PanResponderGestureState) => {
+      const nextOffset = Math.max(0, Math.min(screenHeight, dragStartOffset.current + gesture.dy));
+      sheetOffset.setValue(nextOffset);
+    },
+    [sheetOffset],
+  );
+
+  const handlePanRelease = useCallback(
+    (_event: unknown, gesture: PanResponderGestureState) => {
+      const nextOffset = Math.max(0, Math.min(screenHeight, dragStartOffset.current + gesture.dy));
+      if (nextOffset > screenHeight * SHEET_DISMISS_OFFSET_RATIO) {
+        sheetOffset.setValue(initialSheetOffset);
+        setIsExpanded(false);
+        setIsOpen(false);
+        return;
+      }
+
+      const shouldExpand = gesture.dy < -40 || gesture.vy < -0.5;
+      const startedExpanded = dragStartOffset.current < initialSheetOffset / 2;
+      const targetOffset = shouldExpand ? 0 : startedExpanded ? 0 : initialSheetOffset;
+      settleSheet(targetOffset);
+    },
+    [initialSheetOffset, settleSheet, sheetOffset],
+  );
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: (_event, gesture) => Math.abs(gesture.dy) > 4,
+        onPanResponderGrant: handlePanGrant,
+        onPanResponderMove: handlePanMove,
+        onPanResponderRelease: handlePanRelease,
+        onPanResponderTerminate: () => settleSheet(dragStartOffset.current),
+      }),
+    [handlePanGrant, handlePanMove, handlePanRelease, settleSheet],
+  );
+
+  const sheetPosition = sheetOffset.interpolate({
+    inputRange: [0, screenHeight],
+    outputRange: [0, screenHeight],
+    extrapolate: "clamp",
+  });
 
   const refreshUnreadCount = useCallback(async () => {
     try {
@@ -107,9 +150,12 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
   }, []);
 
   const openCenter = useCallback(() => {
+    sheetOffset.setValue(initialSheetOffset);
+    dragStartOffset.current = initialSheetOffset;
+    setIsExpanded(false);
     setIsOpen(true);
     void loadList();
-  }, [loadList]);
+  }, [initialSheetOffset, loadList, sheetOffset]);
 
   const handleMarkAll = useCallback(async () => {
     setItems((current) =>
@@ -124,19 +170,21 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
   }, [refreshUnreadCount]);
 
   const handlePressItem = useCallback(
-    async (item: NotificationItem) => {
+    (item: NotificationItem) => {
       if (!item.readAt) {
         setItems((current) =>
           current.map((row) =>
             row.id === item.id ? { ...row, readAt: new Date().toISOString() } : row,
           ),
         );
-        try {
-          const { unreadCount: next } = await markNotificationRead(item.id);
-          setUnreadCount(next);
-        } catch {
-          void refreshUnreadCount();
-        }
+        void (async () => {
+          try {
+            const { unreadCount: next } = await markNotificationRead(item.id);
+            setUnreadCount(next);
+          } catch {
+            void refreshUnreadCount();
+          }
+        })();
       }
 
       const entry = resolveNotificationEntry(item.type);
@@ -173,64 +221,77 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
         onRequestClose={() => setIsOpen(false)}
       >
         <View style={styles.backdrop}>
-          <Animated.View style={[styles.sheet, { height: sheetHeight }]}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              { height: screenHeight, transform: [{ translateY: sheetPosition }] },
+            ]}
+          >
             <SafeAreaView style={styles.sheetContent} edges={["top", "bottom"]}>
-            <View style={styles.header} {...panResponder.panHandlers}>
-              <Text style={styles.title}>{copy.title}</Text>
-              <View style={styles.headerActions}>
-                {items.some((item) => !item.readAt) ? (
-                  <FeedbackPressable onPress={handleMarkAll} hitSlop={8}>
-                    <Text style={styles.markAll}>{copy.markAll}</Text>
-                  </FeedbackPressable>
-                ) : null}
-                <FeedbackPressable
-                  accessibilityLabel={copy.close}
-                  accessibilityRole="button"
-                  onPress={() => setIsOpen(false)}
-                  hitSlop={8}
-                >
-                  <Ionicons color={colors.ink} name="close" size={24} />
-                </FeedbackPressable>
+              <View>
+                <View style={styles.dragHandleArea} {...panResponder.panHandlers}>
+                  <View style={styles.dragHandle} />
+                </View>
+                <View style={styles.header}>
+                  <Text style={styles.title}>{copy.title}</Text>
+                  <View style={styles.headerActions}>
+                    {items.some((item) => !item.readAt) ? (
+                      <FeedbackPressable onPress={handleMarkAll} hitSlop={8}>
+                        <Text style={styles.markAll}>{copy.markAll}</Text>
+                      </FeedbackPressable>
+                    ) : null}
+                    <FeedbackPressable
+                      accessibilityLabel={copy.close}
+                      accessibilityRole="button"
+                      onPress={() => setIsOpen(false)}
+                      hitSlop={8}
+                    >
+                      <Ionicons color={colors.ink} name="close" size={24} />
+                    </FeedbackPressable>
+                  </View>
+                </View>
               </View>
-            </View>
 
-            {isLoading ? (
-              <View style={styles.stateBox}>
-                <Skeleton style={styles.loadingSkeleton} />
-              </View>
-            ) : hasError ? (
-              <View style={styles.stateBox}>
-                <Text style={styles.stateText}>{copy.loadError}</Text>
-              </View>
-            ) : items.length === 0 ? (
-              <View style={styles.stateBox}>
-                <Text style={styles.stateText}>{copy.empty}</Text>
-              </View>
-            ) : (
-              <FlashList
-                data={items}
-                style={styles.list}
-                keyExtractor={(item) => String(item.id)}
-                contentContainerStyle={styles.listContent}
-                renderItem={({ item }) => (
-                  <FeedbackPressable
-                    style={[styles.row, item.readAt ? null : styles.rowUnread]}
-                    onPress={() => void handlePressItem(item)}
-                  >
-                    {item.readAt ? (
-                      <View style={styles.dotSpacer} />
-                    ) : (
-                      <View style={styles.unreadDot} />
-                    )}
-                    <View style={styles.rowBody}>
-                      <Text style={styles.rowTitle}>{item.title}</Text>
-                      <Text style={styles.rowText}>{item.body}</Text>
-                      <Text style={styles.rowTime}>{formatRelativeTime(item.createdAt, copy)}</Text>
-                    </View>
-                  </FeedbackPressable>
-                )}
-              />
-            )}
+              {isLoading ? (
+                <View style={styles.stateBox}>
+                  <Skeleton style={styles.loadingSkeleton} />
+                </View>
+              ) : hasError ? (
+                <View style={styles.stateBox}>
+                  <Text style={styles.stateText}>{copy.loadError}</Text>
+                </View>
+              ) : items.length === 0 ? (
+                <View style={styles.stateBox}>
+                  <Text style={styles.stateText}>{copy.empty}</Text>
+                </View>
+              ) : (
+                <FlashList
+                  data={items}
+                  style={styles.list}
+                  keyExtractor={(item) => String(item.id)}
+                  contentContainerStyle={[
+                    styles.listContent,
+                    { paddingBottom: (isExpanded ? 0 : initialSheetOffset) + 8 },
+                  ]}
+                  renderItem={({ item }) => (
+                    <FeedbackPressable
+                      style={[styles.row, item.readAt ? null : styles.rowUnread]}
+                      onPress={() => handlePressItem(item)}
+                    >
+                      {item.readAt ? (
+                        <View style={styles.dotSpacer} />
+                      ) : (
+                        <View style={styles.unreadDot} />
+                      )}
+                      <View style={styles.rowBody}>
+                        <Text style={styles.rowTitle}>{item.title}</Text>
+                        <Text style={styles.rowText}>{item.body}</Text>
+                        <Text style={styles.rowTime}>{formatRelativeTime(item.createdAt, copy)}</Text>
+                      </View>
+                    </FeedbackPressable>
+                  )}
+                />
+              )}
             </SafeAreaView>
           </Animated.View>
         </View>
@@ -262,6 +323,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   sheetContent: { flex: 1 },
+  dragHandleArea: { alignItems: "center", justifyContent: "center", height: 40 },
+  dragHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.ink40 },
   header: {
     flexDirection: "row",
     alignItems: "center",

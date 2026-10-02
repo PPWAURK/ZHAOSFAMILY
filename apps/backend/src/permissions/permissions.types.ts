@@ -1,6 +1,7 @@
 export const BUILT_IN_ROLE_NAMES = [
   'super-admin',
   'store-manager',
+  'store-manager-partner',
   'training-admin',
   'training-viewer',
 ] as const;

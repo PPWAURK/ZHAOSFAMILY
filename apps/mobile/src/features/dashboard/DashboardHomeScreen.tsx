@@ -40,7 +40,6 @@ import { BlurView } from "expo-blur";
 import { WebView } from "react-native-webview";
 import { SidebarMenuToggle } from "@/components/SidebarMenuToggle";
 import { FeedbackPressable } from "@/components/FeedbackPressable";
-import { ProtectedScreen } from "@/components/ProtectedScreen";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { RemoteImage } from "@/components/RemoteImage";
 import { StoreGradeLeaderboard } from "@/features/dashboard/StoreGradeLeaderboard";
@@ -306,6 +305,12 @@ export function DashboardHomeScreen({
   const [hasReachedMandatoryNewsEnd, setHasReachedMandatoryNewsEnd] = useState(false);
   const [mandatoryNewsContentHeight, setMandatoryNewsContentHeight] = useState(0);
   const [mandatoryNewsViewportHeight, setMandatoryNewsViewportHeight] = useState(0);
+  const [mandatoryNewsPdfViewer, setMandatoryNewsPdfViewer] = useState<{
+    baseUri: string;
+    fileUri: string;
+    postId: string;
+  } | null>(null);
+  const [mandatoryNewsPdfError, setMandatoryNewsPdfError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [equippedTitle, setEquippedTitle] = useState<TrainingTitle | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -469,6 +474,33 @@ export function DashboardHomeScreen({
       ) ?? null,
     [newsPosts],
   );
+
+  useEffect(() => {
+    const attachment = mandatoryNewsPost?.attachment;
+    if (!mandatoryNewsPost || !attachment || !isPdfAttachment(mandatoryNewsPost)) {
+      setMandatoryNewsPdfViewer(null);
+      setMandatoryNewsPdfError("");
+      return;
+    }
+
+    let isCancelled = false;
+    setMandatoryNewsPdfViewer(null);
+    setMandatoryNewsPdfError("");
+
+    void createDashboardNewsPdfViewer(attachment, user.id)
+      .then((viewer) => {
+        if (!isCancelled) {
+          setMandatoryNewsPdfViewer({ ...viewer, postId: mandatoryNewsPost.id });
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) setMandatoryNewsPdfError(copy.newsPdfPreviewError);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [copy.newsPdfPreviewError, mandatoryNewsPost, user.id]);
 
   useEffect(() => {
     setHasReachedMandatoryNewsEnd(false);
@@ -996,24 +1028,26 @@ export function DashboardHomeScreen({
                         </Text>
                       </View>
 
-                      <DashboardNewsBoard
-                        activeCategory={selectedNewsCategory}
-                        activeIndex={newsCarouselIndex}
-                        copy={copy}
-                        error={newsError}
-                        isConfirmingRead={readConfirmationState.postId !== ""}
-                        isLoading={isLoadingNews}
-                        posts={newsPosts}
-                        searchTerm={newsSearchTerm}
-                        userId={user.id}
-                        visiblePosts={visibleNewsPosts}
-                        onMove={moveNewsPost}
-                        onConfirmRead={handleConfirmNewsRead}
-                        onOpenPost={handleOpenNewsPost}
-                        onCategoryTargetMeasure={updateOnboardingTarget}
-                        onSearchChange={setNewsSearchTerm}
-                        onSelectCategory={setSelectedNewsCategory}
-                      />
+                      {!mandatoryNewsPost ? (
+                        <DashboardNewsBoard
+                          activeCategory={selectedNewsCategory}
+                          activeIndex={newsCarouselIndex}
+                          copy={copy}
+                          error={newsError}
+                          isConfirmingRead={readConfirmationState.postId !== ""}
+                          isLoading={isLoadingNews}
+                          posts={newsPosts}
+                          searchTerm={newsSearchTerm}
+                          userId={user.id}
+                          visiblePosts={visibleNewsPosts}
+                          onMove={moveNewsPost}
+                          onConfirmRead={handleConfirmNewsRead}
+                          onOpenPost={handleOpenNewsPost}
+                          onCategoryTargetMeasure={updateOnboardingTarget}
+                          onSearchChange={setNewsSearchTerm}
+                          onSelectCategory={setSelectedNewsCategory}
+                        />
+                      ) : null}
 
                       <Modal
                         animationType="slide"
@@ -1046,14 +1080,82 @@ export function DashboardHomeScreen({
                               <Text style={styles.readerTitle}>
                                 {stripDashboardNewsFormatting(mandatoryNewsPost.title)}
                               </Text>
-                              {mandatoryNewsPost.attachment?.href &&
-                              isImageAttachment(mandatoryNewsPost) ? (
-                                <RemoteImage
-                                  cacheKey={`dashboard-news-attachment-${mandatoryNewsPost.attachment.objectKey}`}
-                                  contentFit="contain"
-                                  source={{ uri: mandatoryNewsPost.attachment.href }}
-                                  style={styles.mandatoryNewsAttachmentImage}
-                                />
+                              {mandatoryNewsPost.attachment?.href ? (
+                                isImageAttachment(mandatoryNewsPost) ? (
+                                  <View style={styles.mandatoryNewsAttachmentPreview}>
+                                    <RemoteImage
+                                      cacheKey={`dashboard-news-attachment-${mandatoryNewsPost.attachment.objectKey}`}
+                                      contentFit="contain"
+                                      source={{ uri: mandatoryNewsPost.attachment.href }}
+                                      style={styles.mandatoryNewsAttachmentImage}
+                                    />
+                                  </View>
+                                ) : isPdfAttachment(mandatoryNewsPost) ? (
+                                  <View style={styles.mandatoryNewsPdfPreview}>
+                                    {mandatoryNewsPdfError ? (
+                                      <Pressable
+                                        accessibilityRole="button"
+                                        onPress={() => void handleOpenAttachment(mandatoryNewsPost)}
+                                        style={styles.attachmentCard}
+                                      >
+                                        <Text style={styles.stateText}>{mandatoryNewsPdfError}</Text>
+                                        <Text style={styles.newsReadMore}>
+                                          {copy.newsOpenAttachment}
+                                        </Text>
+                                      </Pressable>
+                                    ) : mandatoryNewsPdfViewer?.postId === mandatoryNewsPost.id ? (
+                                      <WebView
+                                        allowFileAccess
+                                        allowFileAccessFromFileURLs
+                                        allowingReadAccessToURL={mandatoryNewsPdfViewer.baseUri}
+                                        bounces
+                                        mixedContentMode="always"
+                                        nestedScrollEnabled
+                                        originWhitelist={["*"]}
+                                        scalesPageToFit
+                                        scrollEnabled
+                                        setBuiltInZoomControls
+                                        setDisplayZoomControls={false}
+                                        setSupportMultipleWindows={false}
+                                        source={{ uri: mandatoryNewsPdfViewer.fileUri }}
+                                        style={styles.pdfWebView}
+                                        onContentProcessDidTerminate={() =>
+                                          setMandatoryNewsPdfError(copy.newsPdfPreviewError)
+                                        }
+                                        onError={() =>
+                                          setMandatoryNewsPdfError(copy.newsPdfPreviewError)
+                                        }
+                                      />
+                                    ) : (
+                                      <ZhaoLoadingIndicator
+                                        label={copy.newsPdfPreviewLoading}
+                                      />
+                                    )}
+                                  </View>
+                                ) : (
+                                  <Pressable
+                                    accessibilityRole="button"
+                                    onPress={() => void handleOpenAttachment(mandatoryNewsPost)}
+                                    style={styles.attachmentCard}
+                                  >
+                                    <View style={styles.attachmentBody}>
+                                      <Text style={styles.newsMetaText}>
+                                        {copy.newsAttachment}
+                                      </Text>
+                                      <Text style={styles.attachmentName}>
+                                        {mandatoryNewsPost.attachment.name || "-"}
+                                      </Text>
+                                      <Text style={styles.stateText}>
+                                        {formatAttachmentSize(
+                                          mandatoryNewsPost.attachment.sizeBytes,
+                                        )}
+                                      </Text>
+                                    </View>
+                                    <Text style={styles.newsReadMore}>
+                                      {copy.newsOpenAttachment}
+                                    </Text>
+                                  </Pressable>
+                                )
                               ) : null}
                               {isDashboardNewsSummaryDistinct(
                                 mandatoryNewsPost.summary,
@@ -1385,24 +1487,22 @@ export function DashboardHomeScreen({
                             </View>
                             <View style={styles.pdfViewer}>
                               {pdfPreviewPost && pdfPreviewFileUri ? (
-                                <ProtectedScreen screenName="dashboard-home-pdf-preview">
-                                  <WebView
-                                    allowFileAccess
-                                    allowFileAccessFromFileURLs
-                                    allowingReadAccessToURL={pdfPreviewBaseUri || pdfPreviewFileUri}
-                                    mixedContentMode="always"
-                                    originWhitelist={["*"]}
-                                    source={{ uri: pdfPreviewFileUri }}
-                                    startInLoadingState
-                                    style={styles.pdfWebView}
-                                    onError={() => {
-                                      finishPdfLoading(() =>
-                                        setPdfPreviewError(copy.newsPdfPreviewError),
-                                      );
-                                    }}
-                                    onLoadEnd={() => finishPdfLoading()}
-                                  />
-                                </ProtectedScreen>
+                                <WebView
+                                  allowFileAccess
+                                  allowFileAccessFromFileURLs
+                                  allowingReadAccessToURL={pdfPreviewBaseUri || pdfPreviewFileUri}
+                                  mixedContentMode="always"
+                                  originWhitelist={["*"]}
+                                  source={{ uri: pdfPreviewFileUri }}
+                                  startInLoadingState
+                                  style={styles.pdfWebView}
+                                  onError={() => {
+                                    finishPdfLoading(() =>
+                                      setPdfPreviewError(copy.newsPdfPreviewError),
+                                    );
+                                  }}
+                                  onLoadEnd={() => finishPdfLoading()}
+                                />
                               ) : null}
                               {isLoadingPdfPreview ? (
                                 <View style={styles.pdfLoadingOverlay}>
@@ -1945,6 +2045,18 @@ const styles = StyleSheet.create(
       borderColor: "rgba(193, 22, 22, 0.16)",
       borderWidth: 1,
       height: 220,
+      width: "100%",
+    },
+    mandatoryNewsAttachmentPreview: {
+      height: 220,
+      marginTop: 18,
+      width: "100%",
+    },
+    mandatoryNewsPdfPreview: {
+      backgroundColor: "#f4f4f4",
+      height: 360,
+      marginTop: 18,
+      overflow: "hidden",
       width: "100%",
     },
     mandatoryNewsConfirmButton: {

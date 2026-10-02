@@ -1,3 +1,5 @@
+import type { SupplierAvailabilityScope } from "./models";
+
 export type CreateSupplierRequest = {
   name: string;
   sortOrder?: number;
@@ -7,3 +9,8 @@ export type CreateSupplierRequest = {
 };
 
 export type UpdateSupplierRequest = Partial<CreateSupplierRequest>;
+
+export type UpdateSupplierAvailabilityRequest = {
+  scope: SupplierAvailabilityScope;
+  restaurantIds: number[];
+};

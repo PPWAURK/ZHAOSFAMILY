@@ -10,6 +10,7 @@ import {
 } from "@/features/dashboard/constants/dashboard-copy";
 import ConfirmDialog from "@/features/suppliers/components/ConfirmDialog";
 import ProductEditRow from "@/features/suppliers/components/ProductEditRow";
+import SupplierAvailabilityPanel from "@/features/suppliers/components/SupplierAvailabilityPanel";
 import SupplierForm from "@/features/suppliers/components/SupplierForm";
 import { SUPPLIERS_COPY } from "@/features/suppliers/constants/suppliers-copy";
 import { useSupplierDetail } from "@/features/suppliers/store/suppliersStore";
@@ -338,6 +339,8 @@ export default function SupplierDetailPage({ supplierId }) {
                 </dl>
               )}
             </div>
+
+            <SupplierAvailabilityPanel supplierId={supplierId} copy={t} />
 
             {/* Produits */}
             <div className={styles.section}>

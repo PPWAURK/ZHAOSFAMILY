@@ -266,10 +266,10 @@ export function OrderModuleScreen({
 
   const suppliersQuery = useQuery({
     enabled: isActive,
-    meta: { persist: true },
-    placeholderData: (previousData) => previousData,
     queryFn: fetchOrderSuppliers,
     queryKey: ordersQueryKeys.suppliers(),
+    refetchOnMount: "always",
+    staleTime: 0,
   });
   const orderHistoryQuery = useQuery({
     enabled: isActive && mode === "history",
@@ -277,6 +277,7 @@ export function OrderModuleScreen({
     placeholderData: (previousData) => previousData,
     queryFn: fetchOrderHistory,
     queryKey: ordersQueryKeys.history(),
+    staleTime: 0,
   });
   const orderProductsQuery = useQuery({
     enabled: isActive && Boolean(selectedSupplierId),
@@ -304,6 +305,31 @@ export function OrderModuleScreen({
       ? copy.loadError
       : "";
   const visibleErrorMessage = errorMessage || queryLoadError;
+
+  useEffect(() => {
+    if (
+      !suppliersQuery.isSuccess ||
+      !selectedSupplierId ||
+      editingOrder ||
+      suppliers.some((supplier) => supplier.id === selectedSupplierId)
+    ) {
+      return;
+    }
+
+    setSelectedSupplierId("");
+    setOriginalStockMap({});
+    setQuantities({});
+    setProductSearch("");
+    setSelectedCategory("");
+    setStep("edit");
+    setErrorMessage(copy.supplierUnavailable);
+  }, [
+    copy.supplierUnavailable,
+    editingOrder,
+    selectedSupplierId,
+    suppliers,
+    suppliersQuery.isSuccess,
+  ]);
 
   const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
   const orderNotice =
@@ -434,8 +460,14 @@ export function OrderModuleScreen({
       setCreatedOrder(order);
       await queryClient.invalidateQueries({ queryKey: ordersQueryKeys.history() });
       setStep("complete");
-    } catch {
-      setErrorMessage(editingOrder ? copy.updateError : copy.submitError);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error && error.message === "SUPPLIER_NOT_AVAILABLE_FOR_RESTAURANT"
+          ? copy.supplierUnavailable
+          : editingOrder
+            ? copy.updateError
+            : copy.submitError,
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -683,7 +715,11 @@ export function OrderModuleScreen({
 
   async function handleSelectHistoryOrder(order: OrderHistoryItem): Promise<void> {
     if (order.canEdit === false) {
-      setErrorMessage(copy.returnedOrderLocked);
+      setErrorMessage(
+        order.returnCount && order.returnCount > 0
+          ? copy.returnedOrderLocked
+          : copy.supplierUnavailable,
+      );
       return;
     }
 
@@ -698,7 +734,11 @@ export function OrderModuleScreen({
       const detail = await fetchOrderDetail(order.id);
 
       if (!detail.canEdit || (detail.returnCount && detail.returnCount > 0)) {
-        setErrorMessage(copy.returnedOrderLocked);
+        setErrorMessage(
+          detail.returnCount && detail.returnCount > 0
+            ? copy.returnedOrderLocked
+            : copy.supplierUnavailable,
+        );
         return;
       }
 
@@ -831,6 +871,8 @@ export function OrderModuleScreen({
                     </Text>
                     {isLocked ? (
                       <Text style={styles.errorText}>{copy.returnedOrderLocked}</Text>
+                    ) : order.canEdit === false ? (
+                      <Text style={styles.errorText}>{copy.supplierUnavailable}</Text>
                     ) : null}
                     <View style={styles.orderCardActions}>
                       <Pressable

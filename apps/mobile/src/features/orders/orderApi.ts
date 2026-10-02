@@ -97,7 +97,7 @@ export function buildCreateOrderItems(quantities: QuantityMap): CreateOrderItem[
 }
 
 export async function fetchOrderSuppliers(): Promise<OrderSupplier[]> {
-  const suppliers = await mobileApiClient.get<OrderSupplier[]>("/suppliers");
+  const suppliers = await mobileApiClient.get<OrderSupplier[]>("/suppliers/orderable");
 
   if (!Array.isArray(suppliers)) {
     return [];

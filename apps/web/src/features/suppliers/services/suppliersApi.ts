@@ -12,6 +12,8 @@ import type {
   ProductSummary as ProductApiRecord,
   ReorderProductsRequest,
   SupplierSummary as SupplierApiRecord,
+  SupplierAvailability,
+  UpdateSupplierAvailabilityRequest,
   UpdateProductRequest,
 } from "@zhao/types";
 import type {
@@ -92,6 +94,10 @@ export async function fetchSupplier(id: string): Promise<SupplierSummary | null>
   }
 }
 
+export async function fetchSupplierAvailability(id: string): Promise<SupplierAvailability> {
+  return suppliersApi.getAvailability(id);
+}
+
 export async function createSupplierApi(input: SupplierInput): Promise<SupplierSummary | null> {
   const body: CreateSupplierRequest = {
     name: input.name,
@@ -118,6 +124,13 @@ export async function updateSupplierApi(
   if (patch.orderNoticeFr !== undefined) body.orderNoticeFr = patch.orderNoticeFr;
   const data = await suppliersApi.update(id, body);
   return normalizeSupplier(data);
+}
+
+export async function updateSupplierAvailabilityApi(
+  id: string,
+  input: UpdateSupplierAvailabilityRequest,
+): Promise<SupplierAvailability> {
+  return suppliersApi.updateAvailability(id, input);
 }
 
 export async function deleteSupplierApi(id: string): Promise<void> {

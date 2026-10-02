@@ -8,10 +8,12 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../auth/auth.service';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { parseBearerToken } from '../auth/auth-token.utils';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { RequirePermissions, SYSTEM_PERMISSIONS } from '../auth/permissions';
@@ -82,10 +84,15 @@ export class PermissionsController {
   @UseGuards(PermissionGuard)
   @RequirePermissions(SYSTEM_PERMISSIONS.managePermissions)
   updateUserRoles(
+    @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserRolesDto,
   ): Promise<PermissionUserItem> {
-    return this.permissionsService.updateUserRoles(id, dto.roleNames);
+    return this.permissionsService.updateUserRoles(
+      request.user!.id,
+      id,
+      dto.roleNames,
+    );
   }
 
   @Patch('users/:id/job-role')

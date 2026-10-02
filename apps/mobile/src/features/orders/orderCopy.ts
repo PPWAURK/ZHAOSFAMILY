@@ -21,6 +21,7 @@ export const ORDER_COPY = {
     updatedOrder: "订单已更新",
     backToHistory: "返回历史",
     returnedOrderLocked: "该订单已有退货记录，不能修改。",
+    supplierUnavailable: "该供应商尚未对当前门店开放，不能新建或修改订单。",
     returnTitle: "创建退货",
     loadingReturnDraft: "正在加载可退商品...",
     returnReason: "退货原因",
@@ -108,6 +109,8 @@ export const ORDER_COPY = {
     updatedOrder: "Order updated",
     backToHistory: "Back to history",
     returnedOrderLocked: "This order has returns and cannot be edited.",
+    supplierUnavailable:
+      "This supplier is not available to your store, so the order cannot be created or edited.",
     returnTitle: "Create return",
     loadingReturnDraft: "Loading returnable items...",
     returnReason: "Return reason",
@@ -195,6 +198,8 @@ export const ORDER_COPY = {
     updatedOrder: "Commande mise a jour",
     backToHistory: "Retour historique",
     returnedOrderLocked: "Cette commande a des retours et ne peut pas etre modifiee.",
+    supplierUnavailable:
+      "Ce fournisseur n'est pas disponible pour votre restaurant. La commande ne peut pas etre creee ou modifiee.",
     returnTitle: "Creer un retour",
     loadingReturnDraft: "Chargement des articles retournables...",
     returnReason: "Motif du retour",

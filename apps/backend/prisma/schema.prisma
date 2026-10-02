@@ -212,6 +212,7 @@ model Restaurant {
   abcStoreInspections AbcStoreInspection[]
   caseShares          CaseShare[]
   waitingQueueEntries WaitingQueueEntry[]
+  supplierAvailabilities SupplierRestaurantAvailability[]
 
   @@map("restaurants")
 }
@@ -321,15 +322,29 @@ model Supplier {
   id                        Int              @id @default(autoincrement())
   name                      String           @map("nom") @db.VarChar(255)
   sortOrder                 Int              @map("sort_order")
+  availableToAllRestaurants Boolean          @default(false) @map("available_to_all_restaurants")
   includeAllProductsInOrder Boolean          @default(false) @map("include_all_products_in_order")
   orderNotice               String?          @map("order_notice") @db.Text
   orderNoticeFr             String?          @map("order_notice_fr") @db.Text
   products                  Product[]
   purchaseOrders            PurchaseOrder[]
   purchaseReturns           PurchaseReturn[]
+  restaurantAvailabilities  SupplierRestaurantAvailability[]
 
   @@index([sortOrder])
   @@map("fournisseurs")
+}
+
+model SupplierRestaurantAvailability {
+  supplierId   Int        @map("supplier_id")
+  restaurantId Int        @map("restaurant_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  supplier     Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([supplierId, restaurantId])
+  @@index([restaurantId])
+  @@map("supplier_restaurant_availabilities")
 }
 
 model PurchaseOrder {

@@ -7,6 +7,7 @@ describe('PermissionsService', () => {
     const userRole = {
       createMany: jest.fn(),
       deleteMany: jest.fn(),
+      findFirst: jest.fn(),
     };
     const role = {
       findMany: jest.fn(),
@@ -111,6 +112,15 @@ describe('PermissionsService', () => {
         description: 'Super admin',
         rolePermissions: [{ permission: { key: 'system.permission.manage' } }],
       },
+      {
+        id: 2,
+        name: 'store-manager-partner',
+        description: 'Store manager partner',
+        rolePermissions: [
+          { permission: { key: 'training.material.read' } },
+          { permission: { key: 'abc.inspection.read' } },
+        ],
+      },
     ]);
 
     await expect(service.listRoles()).resolves.toEqual([
@@ -118,6 +128,11 @@ describe('PermissionsService', () => {
         name: 'super-admin',
         description: 'Super admin',
         permissions: ['system.permission.manage'],
+      },
+      {
+        name: 'store-manager-partner',
+        description: 'Store manager partner',
+        permissions: ['abc.inspection.read', 'training.material.read'],
       },
       {
         name: 'training-admin',
@@ -220,7 +235,7 @@ describe('PermissionsService', () => {
     prismaService.userRole.createMany.mockResolvedValue({ count: 2 });
 
     await expect(
-      service.updateUserRoles(1, ['store-manager', 'training-viewer']),
+      service.updateUserRoles(99, 1, ['store-manager', 'training-viewer']),
     ).resolves.toMatchObject({
       id: 1,
       roles: ['store-manager', 'training-viewer'],
@@ -248,7 +263,7 @@ describe('PermissionsService', () => {
     ]);
 
     await expect(
-      service.updateUserRoles(1, ['training-viewer', 'missing-role']),
+      service.updateUserRoles(99, 1, ['training-viewer', 'missing-role']),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
@@ -261,7 +276,7 @@ describe('PermissionsService', () => {
     });
 
     await expect(
-      service.updateUserRoles(1, ['super-admin']),
+      service.updateUserRoles(99, 1, ['super-admin']),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prismaService.role.findMany).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
@@ -297,12 +312,104 @@ describe('PermissionsService', () => {
     ]);
 
     await expect(
-      service.updateUserRoles(1, ['super-admin']),
+      service.updateUserRoles(99, 1, ['super-admin']),
     ).resolves.toMatchObject({
       id: 1,
       jobRole: 'holding',
       roles: ['super-admin'],
     });
+  });
+
+  it('allows a super admin to assign store manager partner to a store manager', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({ id: 1, jobRole: 'store-manager' })
+      .mockResolvedValueOnce({
+        id: 1,
+        name: 'Store Manager Partner',
+        email: 'partner@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'store-manager',
+        restaurant: { id: 7, name: 'ZHAO Test' },
+        userRoles: [
+          {
+            role: {
+              name: 'store-manager-partner',
+              rolePermissions: [
+                { permission: { key: 'training.material.read' } },
+                { permission: { key: 'abc.inspection.read' } },
+              ],
+            },
+          },
+        ],
+      });
+    prismaService.userRole.findFirst.mockResolvedValue({ id: 10 });
+    prismaService.role.findMany.mockResolvedValue([
+      { id: 13, name: 'store-manager-partner' },
+    ]);
+
+    await expect(
+      service.updateUserRoles(99, 1, ['store-manager-partner']),
+    ).resolves.toMatchObject({
+      id: 1,
+      jobRole: 'store-manager',
+      roles: ['store-manager-partner'],
+    });
+    expect(prismaService.userRole.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: 99,
+        role: { name: 'super-admin' },
+      },
+      select: { id: true },
+    });
+  });
+
+  it('rejects store manager partner assignment from a non-super-admin', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 1,
+      jobRole: 'store-manager',
+    });
+    prismaService.userRole.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateUserRoles(99, 1, ['store-manager-partner']),
+    ).rejects.toThrow('STORE_MANAGER_PARTNER_REQUIRES_SUPER_ADMIN');
+    expect(prismaService.role.findMany).not.toHaveBeenCalled();
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects store manager partner assignment to a non-store-manager', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 1,
+      jobRole: 'front-manager',
+    });
+    prismaService.userRole.findFirst.mockResolvedValue({ id: 10 });
+
+    await expect(
+      service.updateUserRoles(99, 1, ['store-manager-partner']),
+    ).rejects.toThrow('STORE_MANAGER_PARTNER_REQUIRES_STORE_MANAGER');
+    expect(prismaService.role.findMany).not.toHaveBeenCalled();
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects mutually exclusive store manager RBAC roles', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 1,
+      jobRole: 'store-manager',
+    });
+    prismaService.userRole.findFirst.mockResolvedValue({ id: 10 });
+
+    await expect(
+      service.updateUserRoles(99, 1, [
+        'store-manager',
+        'store-manager-partner',
+      ]),
+    ).rejects.toThrow('STORE_MANAGER_PARTNER_ROLE_CONFLICT');
+    expect(prismaService.role.findMany).not.toHaveBeenCalled();
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
 
   it('allows a store manager to update job roles for same-store employees', async () => {
@@ -1429,7 +1536,7 @@ describe('PermissionsService', () => {
     prismaService.user.findUnique.mockResolvedValue(null);
 
     await expect(
-      service.updateUserRoles(404, ['training-viewer']),
+      service.updateUserRoles(99, 404, ['training-viewer']),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

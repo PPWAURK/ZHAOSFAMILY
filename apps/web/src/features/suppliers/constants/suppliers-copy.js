@@ -66,6 +66,24 @@ export const SUPPLIERS_COPY = {
     editInfo: "编辑",
     editing: "编辑中",
 
+    availabilityHeading: "可下单门店",
+    availabilityHint: "控制哪些门店能在网页和手机端看到并使用该供应商。",
+    availabilityAll: "所有门店",
+    availabilityAllHint: "当前及以后新增的门店都可以向该供应商下单。",
+    availabilitySelected: "指定门店",
+    availabilitySelectedHint: "仅勾选的测试门店可见；不勾选代表暂不开放。",
+    availabilitySearch: "搜索门店名称、编号或地址",
+    availabilitySelectedCount: "已选择 {count} 家门店",
+    availabilitySelectVisible: "全选当前结果",
+    availabilityClear: "清空选择",
+    availabilityNoStores: "暂无可配置的门店。",
+    availabilityNoMatches: "没有匹配的门店。",
+    availabilityUnsaved: "有未保存的变更",
+    availabilitySaved: "开放范围已保存",
+    availabilityLoadError: "门店开放范围加载失败，请重试。",
+    availabilitySaveError: "门店开放范围保存失败，请重试。",
+    availabilityRetry: "重新加载",
+
     productsHeading: "商品目录",
     productsHint: "使用行尾的上下箭头调整下单界面的展示顺序；筛选商品时不可调整。",
     productsCount: "件商品",
@@ -182,6 +200,25 @@ export const SUPPLIERS_COPY = {
     detailInfoHint: "These fields are shown during the order flow.",
     editInfo: "Edit",
     editing: "Editing",
+
+    availabilityHeading: "Ordering stores",
+    availabilityHint: "Choose which stores can see and order from this supplier on web and mobile.",
+    availabilityAll: "All stores",
+    availabilityAllHint: "Every current and future store can order from this supplier.",
+    availabilitySelected: "Selected stores",
+    availabilitySelectedHint:
+      "Only checked test stores can see it; leave empty to keep it unavailable.",
+    availabilitySearch: "Search store name, code, or address",
+    availabilitySelectedCount: "{count} stores selected",
+    availabilitySelectVisible: "Select visible",
+    availabilityClear: "Clear selection",
+    availabilityNoStores: "No stores are available to configure.",
+    availabilityNoMatches: "No stores match this search.",
+    availabilityUnsaved: "Unsaved changes",
+    availabilitySaved: "Ordering scope saved",
+    availabilityLoadError: "Ordering scope could not be loaded. Please retry.",
+    availabilitySaveError: "Ordering scope could not be saved. Please retry.",
+    availabilityRetry: "Reload",
 
     productsHeading: "Product catalog",
     productsHint:
@@ -300,6 +337,27 @@ export const SUPPLIERS_COPY = {
     detailInfoHint: "Ces champs sont affichés dans le parcours de commande.",
     editInfo: "Modifier",
     editing: "Édition",
+
+    availabilityHeading: "Restaurants autorisés",
+    availabilityHint:
+      "Choisissez les restaurants qui peuvent voir ce fournisseur et commander sur le web et le mobile.",
+    availabilityAll: "Tous les restaurants",
+    availabilityAllHint:
+      "Tous les restaurants actuels et futurs peuvent commander chez ce fournisseur.",
+    availabilitySelected: "Restaurants sélectionnés",
+    availabilitySelectedHint:
+      "Seuls les restaurants de test cochés le voient ; laissez vide pour ne pas l'ouvrir.",
+    availabilitySearch: "Rechercher par nom, code ou adresse",
+    availabilitySelectedCount: "{count} restaurants sélectionnés",
+    availabilitySelectVisible: "Tout sélectionner",
+    availabilityClear: "Vider la sélection",
+    availabilityNoStores: "Aucun restaurant à configurer.",
+    availabilityNoMatches: "Aucun restaurant correspondant.",
+    availabilityUnsaved: "Modifications non enregistrées",
+    availabilitySaved: "Périmètre de commande enregistré",
+    availabilityLoadError: "Le périmètre de commande n'a pas pu être chargé.",
+    availabilitySaveError: "Le périmètre de commande n'a pas pu être enregistré.",
+    availabilityRetry: "Recharger",
 
     productsHeading: "Catalogue produits",
     productsHint:

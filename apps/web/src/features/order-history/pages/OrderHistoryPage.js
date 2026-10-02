@@ -56,6 +56,7 @@ function toOrderRow(order) {
     status: "recorded",
     commandeUrl: order.commandeUrl,
     canEdit: order.canEdit !== false,
+    returnCount: Number(order.returnCount) || 0,
     canReturn: order.canReturn !== false,
     canDelete: order.canDelete !== false,
   };

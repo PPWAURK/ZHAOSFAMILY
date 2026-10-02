@@ -17,6 +17,8 @@ import { formatJobRoleLabel } from "@/shared/constants/job-roles";
 
 const MANAGE_PERMISSION = "system.permission.manage";
 const SUPER_ADMIN_ROLE = "super-admin";
+const STORE_MANAGER_ROLE = "store-manager";
+const STORE_MANAGER_PARTNER_ROLE = "store-manager-partner";
 const HOLDING_JOB_ROLE = "holding";
 const REGIONAL_MANAGER_JOB_ROLE = "regional-manager";
 
@@ -30,6 +32,11 @@ const ROLE_LABELS = {
     zh: "门店经理",
     en: "Store manager",
     fr: "Responsable boutique",
+  },
+  "store-manager-partner": {
+    zh: "店长合伙人",
+    en: "Store Manager Partner",
+    fr: "Associé gérant de magasin",
   },
   "training-admin": {
     zh: "培训管理员",
@@ -84,6 +91,16 @@ const PERMISSION_LABELS = {
     en: "Manage training positions",
     fr: "Gérer les postes formation",
   },
+  "training.progress.view_store": {
+    zh: "查看本店培训进度",
+    en: "View store training progress",
+    fr: "Voir la progression de formation du magasin",
+  },
+  "abc.inspection.read": {
+    zh: "查看 ABC 巡检",
+    en: "View ABC inspections",
+    fr: "Voir les inspections ABC",
+  },
 };
 
 const PERMISSIONS_COPY = {
@@ -98,10 +115,9 @@ const PERMISSIONS_COPY = {
       lede: "只管理少数高级系统角色。日常前厅、厨房和门店岗位请在团队管理或岗位管理里处理。",
       stepLabel: "RBAC",
       stepDetail: "系统角色会立即影响后端权限校验。",
-      boundaryNote:
-        "岗位决定员工做什么和学习什么；系统角色决定员工能操作哪些后台能力。",
+      boundaryNote: "岗位决定员工做什么和学习什么；系统角色决定员工能操作哪些后台能力。",
       metrics: [
-        { value: "04", label: "BUILT-IN ROLES" },
+        { value: "05", label: "BUILT-IN ROLES" },
         { value: "RBAC", label: "SYSTEM ACCESS" },
         { value: "HQ", label: "HOLDING ONLY" },
       ],
@@ -114,6 +130,9 @@ const PERMISSIONS_COPY = {
       loadError: "权限数据加载失败",
       saveError: "角色保存失败",
       roleLocked: "仅 holding 岗位可分配最高管理员",
+      partnerAssignerLocked: "仅最高管理员可分配店长合伙人",
+      partnerTargetLocked: "店长合伙人只能分配给店长岗位",
+      partnerConflict: "店长合伙人与门店经理系统角色不能同时分配",
       noChanges: "未修改",
       unassignedStore: "未分配门店",
       memberCountSuffix: "人",
@@ -155,7 +174,7 @@ const PERMISSIONS_COPY = {
       boundaryNote:
         "Positions define what employees do and learn; system roles define which admin capabilities they can use.",
       metrics: [
-        { value: "04", label: "BUILT-IN ROLES" },
+        { value: "05", label: "BUILT-IN ROLES" },
         { value: "RBAC", label: "SYSTEM ACCESS" },
         { value: "HQ", label: "HOLDING ONLY" },
       ],
@@ -168,6 +187,9 @@ const PERMISSIONS_COPY = {
       loadError: "Failed to load permission data",
       saveError: "Failed to save roles",
       roleLocked: "Only holding users can receive super admin",
+      partnerAssignerLocked: "Only super admins can assign Store Manager Partner",
+      partnerTargetLocked: "Store Manager Partner is limited to store managers",
+      partnerConflict: "Store Manager Partner and Store Manager cannot be assigned together",
       noChanges: "No changes",
       unassignedStore: "Unassigned store",
       memberCountSuffix: "members",
@@ -209,26 +231,29 @@ const PERMISSIONS_COPY = {
       boundaryNote:
         "Les postes définissent le travail et la formation ; les rôles système définissent les capacités d'administration.",
       metrics: [
-        { value: "04", label: "BUILT-IN ROLES" },
+        { value: "05", label: "BUILT-IN ROLES" },
         { value: "RBAC", label: "SYSTEM ACCESS" },
         { value: "HQ", label: "HOLDING ONLY" },
       ],
       noPermission: "Aucune permission",
       deniedTitle: "Accès refusé",
-      deniedDetail:
-        "La permission Gérer les permissions système est nécessaire.",
+      deniedDetail: "La permission Gérer les permissions système est nécessaire.",
       loadingAuth: "Vérification des permissions...",
       loadingData: "Chargement des permissions...",
       emptyUsers: "Aucun utilisateur.",
       loadError: "Échec du chargement des permissions",
       saveError: "Échec de l'enregistrement des rôles",
-      roleLocked:
-        "Seuls les utilisateurs holding peuvent recevoir super admin",
+      roleLocked: "Seuls les utilisateurs holding peuvent recevoir super admin",
+      partnerAssignerLocked:
+        "Seuls les super administrateurs peuvent attribuer Associé gérant de magasin",
+      partnerTargetLocked:
+        "Le rôle Associé gérant de magasin est réservé aux responsables boutique",
+      partnerConflict:
+        "Les rôles Associé gérant de magasin et Responsable boutique sont incompatibles",
       noChanges: "Aucun changement",
       unassignedStore: "Boutique non assignée",
       memberCountSuffix: "membres",
-      managedStoresUnavailable:
-        "Le périmètre boutique concerne uniquement les managers régionaux",
+      managedStoresUnavailable: "Le périmètre boutique concerne uniquement les managers régionaux",
       storeJumpLabel: "Aller à la boutique",
       table: {
         name: "Nom",
@@ -281,9 +306,7 @@ function formatPermissionLabels(permissions, lang, fallback) {
     return [fallback];
   }
 
-  return permissions.map((permission) =>
-    getLocalizedLabel(PERMISSION_LABELS, permission, lang),
-  );
+  return permissions.map((permission) => getLocalizedLabel(PERMISSION_LABELS, permission, lang));
 }
 
 function normalizeRoleNames(roleNames) {
@@ -294,17 +317,38 @@ function areRoleNamesEqual(leftRoles, rightRoles) {
   const left = normalizeRoleNames(leftRoles);
   const right = normalizeRoleNames(rightRoles);
 
-  return (
-    left.length === right.length &&
-    left.every((roleName, index) => roleName === right[index])
-  );
+  return left.length === right.length && left.every((roleName, index) => roleName === right[index]);
 }
 
-function canAssignRoleToUser(roleName, user) {
-  return (
-    roleName !== SUPER_ADMIN_ROLE ||
-    getJobRoleValues(user?.jobRole).includes(HOLDING_JOB_ROLE)
-  );
+function getRoleAssignmentRestriction(roleName, targetUser, actorRoleNames, draftRoleNames, copy) {
+  if (
+    roleName === SUPER_ADMIN_ROLE &&
+    !getJobRoleValues(targetUser?.jobRole).includes(HOLDING_JOB_ROLE)
+  ) {
+    return copy.roleLocked;
+  }
+
+  const rolesConflict =
+    (roleName === STORE_MANAGER_ROLE && draftRoleNames.includes(STORE_MANAGER_PARTNER_ROLE)) ||
+    (roleName === STORE_MANAGER_PARTNER_ROLE && draftRoleNames.includes(STORE_MANAGER_ROLE));
+
+  if (rolesConflict) {
+    return copy.partnerConflict;
+  }
+
+  if (roleName !== STORE_MANAGER_PARTNER_ROLE) {
+    return null;
+  }
+
+  if (!actorRoleNames.includes(SUPER_ADMIN_ROLE)) {
+    return copy.partnerAssignerLocked;
+  }
+
+  if (!getJobRoleValues(targetUser?.jobRole).includes(STORE_MANAGER_ROLE)) {
+    return copy.partnerTargetLocked;
+  }
+
+  return null;
 }
 
 function getUserIdKey(userId) {
@@ -375,13 +419,11 @@ export default function PermissionsPage() {
   const [restaurants, setRestaurants] = useState([]);
   const [users, setUsers] = useState([]);
   const [draftRolesByUserId, setDraftRolesByUserId] = useState({});
-  const [draftManagedRestaurantsByUserId, setDraftManagedRestaurantsByUserId] =
-    useState({});
+  const [draftManagedRestaurantsByUserId, setDraftManagedRestaurantsByUserId] = useState({});
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [savingUserId, setSavingUserId] = useState(null);
-  const [savingManagedRestaurantsUserId, setSavingManagedRestaurantsUserId] =
-    useState(null);
+  const [savingManagedRestaurantsUserId, setSavingManagedRestaurantsUserId] = useState(null);
 
   useEffect(() => {
     let isActive = true;
@@ -412,10 +454,7 @@ export default function PermissionsPage() {
           setUsers(nextUsers);
           setDraftRolesByUserId(
             Object.fromEntries(
-              nextUsers.map((item) => [
-                getUserIdKey(item.id),
-                normalizeRoleNames(item.roles),
-              ]),
+              nextUsers.map((item) => [getUserIdKey(item.id), normalizeRoleNames(item.roles)]),
             ),
           );
           setDraftManagedRestaurantsByUserId(
@@ -423,9 +462,7 @@ export default function PermissionsPage() {
               nextUsers.map((item) => [
                 getUserIdKey(item.id),
                 normalizeRestaurantIds(
-                  (item.managedRestaurants || []).map(
-                    (restaurant) => restaurant.id,
-                  ),
+                  (item.managedRestaurants || []).map((restaurant) => restaurant.id),
                 ),
               ]),
             ),
@@ -483,9 +520,7 @@ export default function PermissionsPage() {
 
     try {
       const updatedUser = await updatePermissionUserRoles(userIdKey, roleNames);
-      setUsers((prev) =>
-        prev.map((item) => (item.id === userId ? updatedUser : item)),
-      );
+      setUsers((prev) => prev.map((item) => (item.id === userId ? updatedUser : item)));
       setDraftRolesByUserId((prev) => ({
         ...prev,
         [getUserIdKey(updatedUser.id)]: normalizeRoleNames(updatedUser.roles),
@@ -505,19 +540,12 @@ export default function PermissionsPage() {
     setSavingManagedRestaurantsUserId(userId);
 
     try {
-      const updatedUser = await updatePermissionUserManagedRestaurants(
-        userIdKey,
-        restaurantIds,
-      );
-      setUsers((prev) =>
-        prev.map((item) => (item.id === userId ? updatedUser : item)),
-      );
+      const updatedUser = await updatePermissionUserManagedRestaurants(userIdKey, restaurantIds);
+      setUsers((prev) => prev.map((item) => (item.id === userId ? updatedUser : item)));
       setDraftManagedRestaurantsByUserId((prev) => ({
         ...prev,
         [getUserIdKey(updatedUser.id)]: normalizeRestaurantIds(
-          (updatedUser.managedRestaurants || []).map(
-            (restaurant) => restaurant.id,
-          ),
+          (updatedUser.managedRestaurants || []).map((restaurant) => restaurant.id),
         ),
       }));
       toast.success("管理门店已保存");
@@ -531,10 +559,9 @@ export default function PermissionsPage() {
   return (
     <TrainingLayout pageCopy={PERMISSIONS_COPY}>
       {({ lang, t, styles }) => {
-        const permissionStoreGroups = groupUsersByStore(
-          users,
-          t.page.unassignedStore,
-        );
+        const permissionStoreGroups = groupUsersByStore(users, t.page.unassignedStore);
+        const actorRoleNames =
+          users.find((item) => getUserIdKey(item.id) === getUserIdKey(user?.id))?.roles || [];
 
         return (
           <>
@@ -544,12 +571,8 @@ export default function PermissionsPage() {
                   <span className={styles.stepBadge}>{t.page.stepLabel}</span>
                   <span>{t.page.stepDetail}</span>
                 </p>
-                <p className={styles.permissionBoundaryNote}>
-                  {t.page.boundaryNote}
-                </p>
-                {errorMessage ? (
-                  <p className={styles.materialLoadError}>{errorMessage}</p>
-                ) : null}
+                <p className={styles.permissionBoundaryNote}>{t.page.boundaryNote}</p>
+                {errorMessage ? <p className={styles.materialLoadError}>{errorMessage}</p> : null}
               </div>
               <div className={styles.metricGrid}>
                 {t.page.metrics.map((metric) => (
@@ -562,9 +585,7 @@ export default function PermissionsPage() {
             </section>
 
             {isLoading ? (
-              <section className={styles.materialEmpty}>
-                {t.page.loadingAuth}
-              </section>
+              <section className={styles.materialEmpty}>{t.page.loadingAuth}</section>
             ) : !canManagePermissions ? (
               <section className={styles.permissionDenied}>
                 <h2>{t.page.deniedTitle}</h2>
@@ -573,9 +594,7 @@ export default function PermissionsPage() {
             ) : (
               <section className={styles.permissionTableWrap}>
                 {isLoadingData ? (
-                  <div className={styles.materialEmpty}>
-                    {t.page.loadingData}
-                  </div>
+                  <div className={styles.materialEmpty}>{t.page.loadingData}</div>
                 ) : users.length > 0 ? (
                   <>
                     <nav
@@ -617,31 +636,20 @@ export default function PermissionsPage() {
                           <div className={styles.permissionUserGrid}>
                             {group.users.map((item) => {
                               const userIdKey = getUserIdKey(item.id);
-                              const currentRoles = normalizeRoleNames(
-                                item.roles,
+                              const currentRoles = normalizeRoleNames(item.roles);
+                              const draftRoles = draftRolesByUserId[userIdKey] || currentRoles;
+                              const currentManagedRestaurantIds = normalizeRestaurantIds(
+                                (item.managedRestaurants || []).map((restaurant) => restaurant.id),
                               );
-                              const draftRoles =
-                                draftRolesByUserId[userIdKey] || currentRoles;
-                              const currentManagedRestaurantIds =
-                                normalizeRestaurantIds(
-                                  (item.managedRestaurants || []).map(
-                                    (restaurant) => restaurant.id,
-                                  ),
-                                );
                               const draftManagedRestaurantIds =
                                 draftManagedRestaurantsByUserId[userIdKey] ||
                                 currentManagedRestaurantIds;
-                              const hasRoleChanges = !areRoleNamesEqual(
-                                currentRoles,
-                                draftRoles,
+                              const hasRoleChanges = !areRoleNamesEqual(currentRoles, draftRoles);
+                              const hasManagedRestaurantChanges = !areRestaurantIdsEqual(
+                                currentManagedRestaurantIds,
+                                draftManagedRestaurantIds,
                               );
-                              const hasManagedRestaurantChanges =
-                                !areRestaurantIdsEqual(
-                                  currentManagedRestaurantIds,
-                                  draftManagedRestaurantIds,
-                                );
-                              const canEditManagedRestaurants =
-                                isRegionalManager(item);
+                              const canEditManagedRestaurants = isRegionalManager(item);
                               const permissionLabels = formatPermissionLabels(
                                 item.permissions || [],
                                 lang,
@@ -649,14 +657,9 @@ export default function PermissionsPage() {
                               );
 
                               return (
-                                <article
-                                  key={item.id}
-                                  className={styles.permissionUserCard}
-                                >
+                                <article key={item.id} className={styles.permissionUserCard}>
                                   <header className={styles.permissionUserHead}>
-                                    <div
-                                      className={styles.permissionUserIdentity}
-                                    >
+                                    <div className={styles.permissionUserIdentity}>
                                       <strong>{item.name || "-"}</strong>
                                       <span>{item.email || "-"}</span>
                                     </div>
@@ -671,39 +674,33 @@ export default function PermissionsPage() {
                                     <span className={styles.permissionMetaLabel}>
                                       {t.page.table.jobRole}
                                     </span>
-                                    <span
-                                      className={styles.permissionReadOnlyPill}
-                                    >
+                                    <span className={styles.permissionReadOnlyPill}>
                                       {formatJobRoleLabel(item.jobRole, lang)}
                                     </span>
                                   </div>
 
-                                  <section
-                                    className={styles.permissionCardSection}
-                                  >
-                                    <div
-                                      className={styles.permissionSectionHead}
-                                    >
+                                  <section className={styles.permissionCardSection}>
+                                    <div className={styles.permissionSectionHead}>
                                       <span>{t.page.table.roles}</span>
                                     </div>
                                     <div className={styles.permissionRoleChips}>
                                       {roles.map((role) => {
-                                        const isChecked = draftRoles.includes(
-                                          role.name,
-                                        );
-                                        const canAssign = canAssignRoleToUser(
+                                        const isChecked = draftRoles.includes(role.name);
+                                        const assignmentRestriction = getRoleAssignmentRestriction(
                                           role.name,
                                           item,
+                                          actorRoleNames,
+                                          draftRoles,
+                                          t.page,
                                         );
                                         const isDisabled =
                                           savingUserId === item.id ||
-                                          (!canAssign && !isChecked);
-                                        const permissionTitle =
-                                          formatPermissionSummary(
-                                            role.permissions || [],
-                                            lang,
-                                            t.page.noPermission,
-                                          );
+                                          (!!assignmentRestriction && !isChecked);
+                                        const permissionTitle = formatPermissionSummary(
+                                          role.permissions || [],
+                                          lang,
+                                          t.page.noPermission,
+                                        );
 
                                         return (
                                           <label
@@ -713,11 +710,7 @@ export default function PermissionsPage() {
                                                 ? styles.permissionRoleChipDisabled
                                                 : styles.permissionRoleChip
                                             }
-                                            title={
-                                              canAssign
-                                                ? permissionTitle
-                                                : t.page.roleLocked
-                                            }
+                                            title={assignmentRestriction || permissionTitle}
                                           >
                                             <input
                                               type="checkbox"
@@ -731,61 +724,41 @@ export default function PermissionsPage() {
                                                 )
                                               }
                                             />
-                                            <span>
-                                              {formatRoleLabel(role.name, lang)}
-                                            </span>
+                                            <span>{formatRoleLabel(role.name, lang)}</span>
                                           </label>
                                         );
                                       })}
                                     </div>
                                   </section>
 
-                                  <section
-                                    className={styles.permissionCardSection}
-                                  >
-                                    <div
-                                      className={styles.permissionSectionHead}
-                                    >
+                                  <section className={styles.permissionCardSection}>
+                                    <div className={styles.permissionSectionHead}>
                                       <span>{t.page.table.managedStores}</span>
                                     </div>
                                     {canEditManagedRestaurants ? (
-                                      <div
-                                        className={styles.permissionScopePanel}
-                                      >
-                                        <div
-                                          className={
-                                            styles.permissionManagedStoreGrid
-                                          }
-                                        >
+                                      <div className={styles.permissionScopePanel}>
+                                        <div className={styles.permissionManagedStoreGrid}>
                                           {restaurants.map((restaurant) => {
-                                            const restaurantId = Number(
-                                              restaurant.id,
-                                            );
+                                            const restaurantId = Number(restaurant.id);
                                             const isChecked =
-                                              draftManagedRestaurantIds.includes(
-                                                restaurantId,
-                                              );
+                                              draftManagedRestaurantIds.includes(restaurantId);
 
                                             return (
                                               <label
                                                 key={restaurant.id}
-                                                className={
-                                                  styles.permissionManagedStoreOption
-                                                }
+                                                className={styles.permissionManagedStoreOption}
                                               >
                                                 <input
                                                   type="checkbox"
                                                   checked={isChecked}
                                                   disabled={
-                                                    savingManagedRestaurantsUserId ===
-                                                    item.id
+                                                    savingManagedRestaurantsUserId === item.id
                                                   }
                                                   onChange={(event) =>
                                                     updateDraftManagedRestaurant(
                                                       item.id,
                                                       restaurantId,
-                                                      event.currentTarget
-                                                        .checked,
+                                                      event.currentTarget.checked,
                                                     )
                                                   }
                                                 />
@@ -798,16 +771,12 @@ export default function PermissionsPage() {
                                           type="button"
                                           className={styles.permissionSaveButton}
                                           disabled={
-                                            savingManagedRestaurantsUserId ===
-                                              item.id ||
+                                            savingManagedRestaurantsUserId === item.id ||
                                             !hasManagedRestaurantChanges
                                           }
-                                          onClick={() =>
-                                            saveManagedRestaurants(item.id)
-                                          }
+                                          onClick={() => saveManagedRestaurants(item.id)}
                                         >
-                                          {savingManagedRestaurantsUserId ===
-                                          item.id
+                                          {savingManagedRestaurantsUserId === item.id
                                             ? t.page.actions.saving
                                             : hasManagedRestaurantChanges
                                               ? t.page.actions.saveStores
@@ -821,19 +790,13 @@ export default function PermissionsPage() {
                                     )}
                                   </section>
 
-                                  <section
-                                    className={styles.permissionCardSection}
-                                  >
-                                    <div
-                                      className={styles.permissionSectionHead}
-                                    >
+                                  <section className={styles.permissionCardSection}>
+                                    <div className={styles.permissionSectionHead}>
                                       <span>{t.page.table.permissions}</span>
                                     </div>
                                     <div
                                       className={styles.permissionSummaryChips}
-                                      title={(item.permissions || []).join(
-                                        " / ",
-                                      )}
+                                      title={(item.permissions || []).join(" / ")}
                                     >
                                       {permissionLabels.map((permissionLabel, index) => (
                                         <span key={`${permissionLabel}-${index}`}>
@@ -843,16 +806,11 @@ export default function PermissionsPage() {
                                     </div>
                                   </section>
 
-                                  <footer
-                                    className={styles.permissionCardFooter}
-                                  >
+                                  <footer className={styles.permissionCardFooter}>
                                     <button
                                       type="button"
                                       className={styles.permissionSaveButton}
-                                      disabled={
-                                        savingUserId === item.id ||
-                                        !hasRoleChanges
-                                      }
+                                      disabled={savingUserId === item.id || !hasRoleChanges}
                                       onClick={() => saveUserRoles(item.id)}
                                     >
                                       {savingUserId === item.id

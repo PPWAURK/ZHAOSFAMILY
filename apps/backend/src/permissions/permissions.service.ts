@@ -77,6 +77,7 @@ type TrainingPositionRoleRow = {
 };
 
 const SUPER_ADMIN_ROLE_NAME = 'super-admin';
+const STORE_MANAGER_PARTNER_ROLE_NAME = 'store-manager-partner';
 const TRAINING_VIEWER_ROLE_NAME = 'training-viewer';
 const HOLDING_JOB_ROLE = 'holding';
 const STORE_MANAGER_JOB_ROLE = 'store-manager';
@@ -366,11 +367,12 @@ export class PermissionsService {
   }
 
   async updateUserRoles(
+    actorUserId: number,
     userId: number,
     roleNames: string[],
   ): Promise<PermissionUserItem> {
     const user = await this.getUserRoleScope(userId);
-    this.assertRoleAssignmentAllowed(user, roleNames);
+    await this.assertRoleAssignmentAllowed(actorUserId, user, roleNames);
 
     const roles = await this.prismaService.role.findMany({
       where: {
@@ -740,15 +742,48 @@ export class PermissionsService {
     throw new ForbiddenException('INSUFFICIENT_PERMISSIONS');
   }
 
-  private assertRoleAssignmentAllowed(
+  private async assertRoleAssignmentAllowed(
+    actorUserId: number,
     user: PermissionUserRoleScope,
     roleNames: string[],
-  ): void {
+  ): Promise<void> {
+    const targetJobRoles = this.parseJobRoles(user.jobRole);
+
     if (
       roleNames.includes(SUPER_ADMIN_ROLE_NAME) &&
-      !this.parseJobRoles(user.jobRole).has(HOLDING_JOB_ROLE)
+      !targetJobRoles.has(HOLDING_JOB_ROLE)
     ) {
       throw new BadRequestException('SUPER_ADMIN_REQUIRES_HOLDING');
+    }
+
+    if (!roleNames.includes(STORE_MANAGER_PARTNER_ROLE_NAME)) {
+      return;
+    }
+
+    const actorSuperAdminRole = await this.prismaService.userRole.findFirst({
+      where: {
+        userId: actorUserId,
+        role: {
+          name: SUPER_ADMIN_ROLE_NAME,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!actorSuperAdminRole) {
+      throw new ForbiddenException(
+        'STORE_MANAGER_PARTNER_REQUIRES_SUPER_ADMIN',
+      );
+    }
+
+    if (!targetJobRoles.has(STORE_MANAGER_JOB_ROLE)) {
+      throw new BadRequestException(
+        'STORE_MANAGER_PARTNER_REQUIRES_STORE_MANAGER',
+      );
+    }
+
+    if (roleNames.includes(STORE_MANAGER_JOB_ROLE)) {
+      throw new BadRequestException('STORE_MANAGER_PARTNER_ROLE_CONFLICT');
     }
   }
 

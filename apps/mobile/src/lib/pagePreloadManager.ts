@@ -54,10 +54,10 @@ export async function preloadCriticalImages(
 }
 
 export async function prepareOrdersPage(queryClient: QueryClient): Promise<void> {
-  await queryClient.ensureQueryData({
-    meta: { persist: true },
+  await queryClient.fetchQuery({
     queryFn: fetchOrderSuppliers,
     queryKey: ordersQueryKeys.suppliers(),
+    staleTime: 0,
   });
 }
 

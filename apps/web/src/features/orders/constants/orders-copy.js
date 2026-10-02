@@ -145,6 +145,7 @@ export const NEW_ORDER_COPY = {
     selectAtLeastOneProduct: "请至少选择一个产品。",
     selectDeliveryDate: "请选择送达日期。",
     submitError: "订单提交失败，请稍后重试。",
+    supplierUnavailable: "该供应商尚未对当前门店开放，不能新建或修改订单。",
     loadEditOrderError: "历史订单加载失败，请返回历史订单后重试。",
     orderCannotEdit: "这张订单已有退货记录，不能直接修改。",
     pdfOpenError: "PDF 预览打开失败，请到历史订单中重新打开。",
@@ -302,6 +303,8 @@ export const NEW_ORDER_COPY = {
     selectAtLeastOneProduct: "Please pick at least one product.",
     selectDeliveryDate: "Please choose a delivery date.",
     submitError: "Order submission failed. Please try again.",
+    supplierUnavailable:
+      "This supplier is not available to your store, so the order cannot be created or edited.",
     loadEditOrderError: "Failed to load the historical order. Go back to history and retry.",
     orderCannotEdit: "This order already has returns and cannot be edited directly.",
     pdfOpenError: "Failed to open the PDF preview. Reopen it from order history.",
@@ -463,6 +466,8 @@ export const NEW_ORDER_COPY = {
     selectAtLeastOneProduct: "Choisissez au moins un produit.",
     selectDeliveryDate: "Choisissez une date de livraison.",
     submitError: "Impossible d'envoyer la commande. Veuillez reessayer.",
+    supplierUnavailable:
+      "Ce fournisseur n'est pas disponible pour votre restaurant. La commande ne peut pas etre creee ou modifiee.",
     loadEditOrderError:
       "Impossible de charger la commande historique. Revenez à l'historique puis réessayez.",
     orderCannotEdit:

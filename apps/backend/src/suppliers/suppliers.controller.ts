@@ -9,12 +9,20 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 
 import { CreateSupplierDto } from './dto/create-supplier.dto';
+import { UpdateSupplierAvailabilityDto } from './dto/update-supplier-availability.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
-import { SuppliersService, type SupplierListItem } from './suppliers.service';
+import {
+  SuppliersService,
+  type SupplierAvailability,
+  type SupplierListItem,
+} from './suppliers.service';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { CATALOG_PERMISSIONS, RequirePermissions } from '../auth/permissions';
 
@@ -25,6 +33,34 @@ export class SuppliersController {
   @Get()
   listSuppliers(): Promise<SupplierListItem[]> {
     return this.suppliersService.listSuppliers();
+  }
+
+  @Get('orderable')
+  listOrderableSuppliers(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<SupplierListItem[]> {
+    return this.suppliersService.listOrderableSuppliers(
+      request.user!.restaurantId,
+    );
+  }
+
+  @Get(':id/availability')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(CATALOG_PERMISSIONS.manageSuppliers)
+  getSupplierAvailability(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<SupplierAvailability> {
+    return this.suppliersService.getSupplierAvailability(id);
+  }
+
+  @Put(':id/availability')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(CATALOG_PERMISSIONS.manageSuppliers)
+  updateSupplierAvailability(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSupplierAvailabilityDto,
+  ): Promise<SupplierAvailability> {
+    return this.suppliersService.updateSupplierAvailability(id, dto);
   }
 
   @Get(':id')

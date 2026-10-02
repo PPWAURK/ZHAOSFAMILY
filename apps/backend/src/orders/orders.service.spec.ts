@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { OrdersDocumentService } from './orders-document.service';
 import { OrderQuantityConversionService } from './order-quantity-conversion.service';
 import { OrdersService } from './orders.service';
+import type { SuppliersService } from '../suppliers/suppliers.service';
 
 type ProductFixture = {
   id: bigint;
@@ -132,6 +133,14 @@ describe('OrdersService', () => {
       | 'sanitizeLabel'
     >
   >;
+  let suppliersService: jest.Mocked<
+    Pick<
+      SuppliersService,
+      | 'assertSupplierOrderable'
+      | 'isSupplierOrderable'
+      | 'listOrderableSupplierIds'
+    >
+  >;
   let service: OrdersService;
 
   beforeEach(() => {
@@ -200,8 +209,14 @@ describe('OrdersService', () => {
       resolveExistingOrderFile: jest.fn((fileName) => `/tmp/${fileName}`),
       sanitizeLabel: jest.fn((value) => value?.trim() || '-'),
     };
+    suppliersService = {
+      assertSupplierOrderable: jest.fn().mockResolvedValue(undefined),
+      isSupplierOrderable: jest.fn().mockResolvedValue(true),
+      listOrderableSupplierIds: jest.fn().mockResolvedValue(new Set([1, 2, 8])),
+    };
     service = new OrdersService(
       prismaService,
+      suppliersService as unknown as SuppliersService,
       ordersDocumentService as unknown as OrdersDocumentService,
       new OrderQuantityConversionService(),
     );
@@ -245,6 +260,39 @@ describe('OrdersService', () => {
         totalAmount: 5,
       }),
     );
+  });
+
+  it('rejects an unavailable supplier before creating files or records', async () => {
+    prismaService.product.findMany.mockResolvedValue([createProduct()]);
+    prismaService.supplier.findUnique.mockResolvedValue({
+      id: 1,
+      name: 'Test supplier',
+      includeAllProductsInOrder: false,
+    });
+    prismaService.restaurant.findUnique.mockResolvedValue({
+      id: 3,
+      name: 'ZHAO Opera',
+      address: '1 rue test',
+    });
+    suppliersService.assertSupplierOrderable.mockRejectedValue(
+      new ForbiddenException('SUPPLIER_NOT_AVAILABLE_FOR_RESTAURANT'),
+    );
+
+    await expect(
+      service.createOrder(
+        ORDER_ACTOR,
+        {
+          deliveryDate: '2026-04-30',
+          items: [{ productId: 11, quantity: 2, specificationSlot: 1 }],
+        },
+        { protocol: 'http', get: () => 'localhost:3002' },
+      ),
+    ).rejects.toEqual(
+      new ForbiddenException('SUPPLIER_NOT_AVAILABLE_FOR_RESTAURANT'),
+    );
+
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
+    expect(ordersDocumentService.generateCommandePdf).not.toHaveBeenCalled();
   });
 
   it('rejects an order for an out-of-stock product', async () => {
@@ -469,6 +517,79 @@ describe('OrdersService', () => {
         where: { restaurantId: 3 },
       }),
     );
+  });
+
+  it('keeps unavailable supplier orders visible but disables editing', async () => {
+    prismaService.purchaseOrder.findMany.mockResolvedValue([
+      {
+        id: 42,
+        number: 'PO-20260601-0042',
+        supplierId: 1,
+        supplier: { id: 1, name: 'Test supplier' },
+        restaurantId: 3,
+        restaurant: { id: 3, name: 'ZHAO Opera' },
+        createdByUser: null,
+        deliveryDate: new Date('2026-06-02T00:00:00.000Z'),
+        deliveryAddress: '1 rue test',
+        totalItems: 3,
+        totalAmount: 30,
+        createdAt: new Date('2026-06-01T10:00:00.000Z'),
+        returns: [],
+      },
+    ]);
+    suppliersService.listOrderableSupplierIds.mockResolvedValue(new Set());
+
+    const result = (await service.listOrders(
+      { id: 7, restaurantId: 3, jobRole: 'store-manager', permissions: [] },
+      { protocol: 'http', get: () => 'localhost:3002' },
+    )) as Array<Record<string, unknown>>;
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      canEdit: false,
+      canReturn: true,
+      canDelete: true,
+    });
+  });
+
+  it('rejects updating an order after its supplier is disabled', async () => {
+    prismaService.product.findMany.mockResolvedValue([createProduct()]);
+    prismaService.purchaseOrder.findUnique.mockResolvedValue({
+      id: 42,
+      number: 'PO-20260429-0042',
+      supplierId: 1,
+      restaurantId: 3,
+      bonFileName: 'order.pdf',
+      createdAt: new Date('2026-04-29T10:00:00.000Z'),
+      supplier: {
+        id: 1,
+        name: 'Test supplier',
+        includeAllProductsInOrder: false,
+      },
+      restaurant: { id: 3, name: 'ZHAO Opera', address: '1 rue test' },
+      returns: [],
+      items: [{ productId: BigInt(11), quantity: 2 }],
+    });
+    suppliersService.assertSupplierOrderable.mockRejectedValue(
+      new ForbiddenException('SUPPLIER_NOT_AVAILABLE_FOR_RESTAURANT'),
+    );
+
+    await expect(
+      service.updateOrder(
+        42,
+        ORDER_ACTOR,
+        {
+          deliveryDate: '2026-05-01',
+          items: [{ productId: 11, quantity: 3, specificationSlot: 1 }],
+        },
+        { protocol: 'http', get: () => 'localhost:3002' },
+      ),
+    ).rejects.toEqual(
+      new ForbiddenException('SUPPLIER_NOT_AVAILABLE_FOR_RESTAURANT'),
+    );
+
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
+    expect(ordersDocumentService.generateCommandePdf).not.toHaveBeenCalled();
   });
 
   it('lists all restaurant orders for holding viewers', async () => {

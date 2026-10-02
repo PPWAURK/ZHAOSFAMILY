@@ -8,6 +8,7 @@ import type { Prisma } from '@prisma/client';
 import { renameSync } from 'fs';
 import { ORDER_CREATION_JOB_ROLE_VALUES } from '../auth/job-roles';
 import { PrismaService } from '../prisma/prisma.service';
+import { SuppliersService } from '../suppliers/suppliers.service';
 import { OrdersDocumentService } from './orders-document.service';
 import { OrderQuantityConversionService } from './order-quantity-conversion.service';
 import type { CreateOrderReturnDto } from './dto/create-order-return.dto';
@@ -145,6 +146,7 @@ const ORDER_CREATION_JOB_ROLES = new Set<string>(
 export class OrdersService {
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly suppliersService: SuppliersService,
     private readonly ordersDocumentService: OrdersDocumentService,
     private readonly orderQuantityConversionService: OrderQuantityConversionService,
   ) {}
@@ -174,6 +176,10 @@ export class OrdersService {
       throw new NotFoundException('RESTAURANT_NOT_FOUND');
     }
 
+    await this.suppliersService.assertSupplierOrderable(
+      supplierId,
+      actor.restaurantId,
+    );
     await this.assertStockAvailable(supplierId, selectedItems);
 
     const orderItems = supplier.includeAllProductsInOrder
@@ -302,17 +308,20 @@ export class OrdersService {
       ? {}
       : { restaurantId: actor.restaurantId };
 
-    const orders = await this.prismaService.purchaseOrder.findMany({
-      where,
-      include: {
-        supplier: { select: { id: true, name: true } },
-        restaurant: { select: { id: true, name: true } },
-        createdByUser: { select: { id: true, name: true, email: true } },
-        returns: { select: { id: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 120,
-    });
+    const [orders, orderableSupplierIds] = await Promise.all([
+      this.prismaService.purchaseOrder.findMany({
+        where,
+        include: {
+          supplier: { select: { id: true, name: true } },
+          restaurant: { select: { id: true, name: true } },
+          createdByUser: { select: { id: true, name: true, email: true } },
+          returns: { select: { id: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 120,
+      }),
+      this.suppliersService.listOrderableSupplierIds(actor.restaurantId),
+    ]);
 
     return orders.map((order) => {
       const canManageOrder = this.canManageRestaurantOrder(
@@ -338,7 +347,10 @@ export class OrdersService {
         commandeUrl,
         bonUrl: commandeUrl,
         createdAt: order.createdAt.toISOString(),
-        canEdit: canManageOrder && order.returns.length === 0,
+        canEdit:
+          canManageOrder &&
+          order.returns.length === 0 &&
+          orderableSupplierIds.has(order.supplierId),
         canReturn: canManageOrder,
         canDelete: canManageOrder && order.returns.length === 0,
         returnCount: order.returns.length,
@@ -518,6 +530,11 @@ export class OrdersService {
 
     this.assertRestaurantReadScope(actor, order.restaurantId);
 
+    const supplierIsOrderable = await this.suppliersService.isSupplierOrderable(
+      order.supplierId,
+      order.restaurantId,
+    );
+
     const commandeUrl = this.ordersDocumentService.buildOrderUrl(
       request,
       order.id,
@@ -537,7 +554,10 @@ export class OrdersService {
       commandeUrl,
       bonUrl: commandeUrl,
       createdAt: order.createdAt.toISOString(),
-      canEdit: order.returns.length === 0,
+      canEdit:
+        this.canManageRestaurantOrder(actor, order.restaurantId) &&
+        order.returns.length === 0 &&
+        supplierIsOrderable,
       returnCount: order.returns.length,
       createdBy: order.createdByUser
         ? {
@@ -598,6 +618,10 @@ export class OrdersService {
       throw new BadRequestException('ORDER_SUPPLIER_CANNOT_CHANGE');
     }
 
+    await this.suppliersService.assertSupplierOrderable(
+      supplierId,
+      order.restaurantId,
+    );
     await this.assertStockAvailableForUpdate(
       supplierId,
       selectedItems,

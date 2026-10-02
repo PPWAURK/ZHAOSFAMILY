@@ -10,3 +10,11 @@ export type SupplierSummary = {
 export type SupplierDetail = SupplierSummary;
 
 export type SupplierResponse = SupplierSummary;
+
+export type SupplierAvailabilityScope = "all" | "selected";
+
+export type SupplierAvailability = {
+  supplierId: number;
+  scope: SupplierAvailabilityScope;
+  restaurantIds: number[];
+};

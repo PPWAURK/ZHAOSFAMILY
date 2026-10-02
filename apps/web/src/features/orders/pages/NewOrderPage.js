@@ -49,6 +49,14 @@ function resolveErrorMessage(error, fallbackMessage) {
   return fallbackMessage;
 }
 
+function resolveSubmitErrorMessage(error, copy) {
+  if (error instanceof Error && error.message === "SUPPLIER_NOT_AVAILABLE_FOR_RESTAURANT") {
+    return copy.supplierUnavailable;
+  }
+
+  return resolveErrorMessage(error, copy.submitError);
+}
+
 function getEditOrderIdFromLocation() {
   if (typeof window === "undefined") {
     return "";
@@ -218,7 +226,7 @@ export default function NewOrderPage() {
         }
 
         if (order?.canEdit === false) {
-          setError(t.orderCannotEdit);
+          setError(order?.returnCount > 0 ? t.orderCannotEdit : t.supplierUnavailable);
           return;
         }
 
@@ -243,7 +251,7 @@ export default function NewOrderPage() {
     return () => {
       isCancelled = true;
     };
-  }, [editOrderId, t.loadEditOrderError, t.orderCannotEdit]);
+  }, [editOrderId, t.loadEditOrderError, t.orderCannotEdit, t.supplierUnavailable]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -429,7 +437,7 @@ export default function NewOrderPage() {
       if (previewWindow) {
         previewWindow.close();
       }
-      setError(resolveErrorMessage(nextError, t.submitError));
+      setError(resolveSubmitErrorMessage(nextError, t));
       setSubmitting(false);
     }
   }

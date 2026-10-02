@@ -64,7 +64,7 @@ export async function fetchOrderStores(): Promise<StoreOption[]> {
 }
 
 export async function fetchOrderSuppliers(): Promise<OrderSupplier[]> {
-  const suppliers = await apiClient.get<OrderSupplier[]>("/suppliers");
+  const suppliers = await apiClient.get<OrderSupplier[]>("/suppliers/orderable");
 
   if (!Array.isArray(suppliers)) {
     return [];
