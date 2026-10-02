@@ -1,11 +1,8 @@
 import type { AuthLanguage } from "@/features/auth/authCopy";
-import type {
-  StoreJobRoleOption,
-  TrainingPositionOption,
-} from "@/features/stores/storeTypes";
+import type { StoreJobRoleOption, TrainingPositionOption } from "@/features/stores/storeTypes";
 
 const STORE_POSITION_ROOT_CODES = new Set(["FRONT_OF_HOUSE", "KITCHEN"]);
-const MANAGEMENT_POSITION_CODES = new Set(["ALL", "SM", "RM", "HOLDING"]);
+const MANAGEMENT_POSITION_CODES = new Set(["ALL", "SM", "STORE_MANAGER_PARTNER", "RM", "HOLDING"]);
 
 function getStoreAssignableCustomPositions(
   positions: TrainingPositionOption[],
@@ -19,8 +16,7 @@ function getStoreAssignableCustomPositions(
     isManagementPosition: boolean,
   ): void {
     for (const position of items) {
-      const nextIsStorePosition =
-        isStorePosition || STORE_POSITION_ROOT_CODES.has(position.code);
+      const nextIsStorePosition = isStorePosition || STORE_POSITION_ROOT_CODES.has(position.code);
       const nextIsManagementPosition =
         isManagementPosition || MANAGEMENT_POSITION_CODES.has(position.code);
 

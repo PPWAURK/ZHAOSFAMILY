@@ -33,7 +33,13 @@ import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/stores/stores-page.module.css";
 
 const STORE_INVITATION_POSITION_ROOT_CODES = new Set(["FRONT_OF_HOUSE", "KITCHEN"]);
-const MANAGEMENT_TRAINING_POSITION_CODES = new Set(["ALL", "SM", "RM", "HOLDING"]);
+const MANAGEMENT_TRAINING_POSITION_CODES = new Set([
+  "ALL",
+  "SM",
+  "STORE_MANAGER_PARTNER",
+  "RM",
+  "HOLDING",
+]);
 
 function getStoreIdParam(params, searchParams) {
   const searchStoreId = searchParams.get("storeId");
@@ -116,7 +122,9 @@ function getVisibleRoleOptions(lang, user, trainingPositions) {
   const options = STORE_JOB_ROLE_OPTIONS[lang] || STORE_JOB_ROLE_OPTIONS.zh;
   const positionOptions = getOperationalPositionOptions(trainingPositions, lang);
   const managementOptions = options.filter((option) =>
-    ["holding", "regional-manager", "store-manager"].includes(option.value),
+    ["holding", "regional-manager", "store-manager", "STORE_MANAGER_PARTNER"].includes(
+      option.value,
+    ),
   );
 
   if (canManageHoldingJobRole(user)) {

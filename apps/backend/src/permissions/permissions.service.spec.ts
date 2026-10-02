@@ -364,6 +364,42 @@ describe('PermissionsService', () => {
     });
   });
 
+  it('allows a super admin to assign store manager partner to a regional manager', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({ id: 1, jobRole: 'regional-manager' })
+      .mockResolvedValueOnce({
+        id: 1,
+        name: 'Regional Manager Partner',
+        email: 'regional-partner@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'regional-manager',
+        restaurant: { id: 7, name: 'ZHAO Test' },
+        userRoles: [
+          {
+            role: {
+              name: 'store-manager-partner',
+              rolePermissions: [
+                { permission: { key: 'training.material.read' } },
+              ],
+            },
+          },
+        ],
+      });
+    prismaService.userRole.findFirst.mockResolvedValue({ id: 10 });
+    prismaService.role.findMany.mockResolvedValue([
+      { id: 13, name: 'store-manager-partner' },
+    ]);
+
+    await expect(
+      service.updateUserRoles(99, 1, ['store-manager-partner']),
+    ).resolves.toMatchObject({
+      id: 1,
+      jobRole: 'regional-manager',
+      roles: ['store-manager-partner'],
+    });
+  });
+
   it('rejects store manager partner assignment from a non-super-admin', async () => {
     const { service, prismaService } = createService();
     prismaService.user.findUnique.mockResolvedValue({
@@ -389,7 +425,7 @@ describe('PermissionsService', () => {
 
     await expect(
       service.updateUserRoles(99, 1, ['store-manager-partner']),
-    ).rejects.toThrow('STORE_MANAGER_PARTNER_REQUIRES_STORE_MANAGER');
+    ).rejects.toThrow('STORE_MANAGER_PARTNER_REQUIRES_MANAGEMENT_ROLE');
     expect(prismaService.role.findMany).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
@@ -540,6 +576,65 @@ describe('PermissionsService', () => {
       where: { id: 12 },
       data: { jobRole: 'PREP' },
     });
+  });
+
+  it('allows holding to assign the store manager partner training position', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique
+      .mockResolvedValueOnce({
+        id: 12,
+        jobRole: 'regional-manager',
+        restaurantId: 7,
+      })
+      .mockResolvedValueOnce({
+        id: 12,
+        name: 'Regional Partner',
+        email: 'regional-partner@zhao.test',
+        accountStatus: 'approved',
+        jobRole: 'regional-manager,STORE_MANAGER_PARTNER',
+        restaurant: { id: 7, name: 'ZHAO Test' },
+        userRoles: [],
+      });
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      { code: 'STORE_MANAGER_PARTNER', parentCode: null },
+    ]);
+
+    await service.updateUserJobRole(
+      makeHoldingViewer(),
+      12,
+      'regional-manager,store_manager_partner',
+    );
+
+    expect(prismaService.user.update).toHaveBeenCalledWith({
+      where: { id: 12 },
+      data: { jobRole: 'regional-manager,STORE_MANAGER_PARTNER' },
+    });
+  });
+
+  it('rejects regional managers assigning the store manager partner training position', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 12,
+      jobRole: 'front-manager',
+      restaurantId: 7,
+    });
+    prismaService.legacyUserManagedRestaurant.findUnique.mockResolvedValue({
+      restaurantId: 7,
+    });
+    prismaService.trainingPosition.findMany.mockResolvedValue([
+      { code: 'STORE_MANAGER_PARTNER', parentCode: null },
+    ]);
+    const viewer = {
+      ...makeStoreManagerViewer(7),
+      jobRole: 'regional-manager',
+      role: 'regional-manager',
+      position: 'regional-manager',
+    };
+
+    await expect(
+      service.updateUserJobRole(viewer, 12, 'STORE_MANAGER_PARTNER'),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(prismaService.user.update).not.toHaveBeenCalled();
   });
 
   it('lets a store manager invite one permitted employee role to their own store', async () => {
@@ -1569,6 +1664,17 @@ describe('PermissionsService', () => {
       userLevel: 0,
       preferredLanguage: 'zh',
       permissions: [],
+    };
+  }
+
+  function makeHoldingViewer() {
+    return {
+      ...makeStoreManagerViewer(99),
+      email: 'admin@zhao.test',
+      jobRole: 'holding',
+      role: 'holding',
+      position: 'holding',
+      permissions: ['system.permission.manage'],
     };
   }
 

@@ -19,6 +19,7 @@ const MANAGE_PERMISSION = "system.permission.manage";
 const SUPER_ADMIN_ROLE = "super-admin";
 const STORE_MANAGER_ROLE = "store-manager";
 const STORE_MANAGER_PARTNER_ROLE = "store-manager-partner";
+const STORE_MANAGER_PARTNER_POSITION = "STORE_MANAGER_PARTNER";
 const HOLDING_JOB_ROLE = "holding";
 const REGIONAL_MANAGER_JOB_ROLE = "regional-manager";
 
@@ -131,7 +132,7 @@ const PERMISSIONS_COPY = {
       saveError: "角色保存失败",
       roleLocked: "仅 holding 岗位可分配最高管理员",
       partnerAssignerLocked: "仅最高管理员可分配店长合伙人",
-      partnerTargetLocked: "店长合伙人只能分配给店长岗位",
+      partnerTargetLocked: "店长合伙人只能分配给店长、区域经理或店长合伙人岗位",
       partnerConflict: "店长合伙人与门店经理系统角色不能同时分配",
       noChanges: "未修改",
       unassignedStore: "未分配门店",
@@ -188,7 +189,8 @@ const PERMISSIONS_COPY = {
       saveError: "Failed to save roles",
       roleLocked: "Only holding users can receive super admin",
       partnerAssignerLocked: "Only super admins can assign Store Manager Partner",
-      partnerTargetLocked: "Store Manager Partner is limited to store managers",
+      partnerTargetLocked:
+        "Store Manager Partner is limited to store managers, regional managers, and Store Manager Partner positions",
       partnerConflict: "Store Manager Partner and Store Manager cannot be assigned together",
       noChanges: "No changes",
       unassignedStore: "Unassigned store",
@@ -247,7 +249,7 @@ const PERMISSIONS_COPY = {
       partnerAssignerLocked:
         "Seuls les super administrateurs peuvent attribuer Associé gérant de magasin",
       partnerTargetLocked:
-        "Le rôle Associé gérant de magasin est réservé aux responsables boutique",
+        "Le rôle Associé gérant de magasin est réservé aux responsables boutique, régionaux et associés gérants",
       partnerConflict:
         "Les rôles Associé gérant de magasin et Responsable boutique sont incompatibles",
       noChanges: "Aucun changement",
@@ -344,7 +346,15 @@ function getRoleAssignmentRestriction(roleName, targetUser, actorRoleNames, draf
     return copy.partnerAssignerLocked;
   }
 
-  if (!getJobRoleValues(targetUser?.jobRole).includes(STORE_MANAGER_ROLE)) {
+  const targetJobRoles = getJobRoleValues(targetUser?.jobRole);
+  const hasEligibleJobRole = targetJobRoles.some(
+    (jobRole) =>
+      jobRole === STORE_MANAGER_ROLE ||
+      jobRole === REGIONAL_MANAGER_JOB_ROLE ||
+      jobRole === STORE_MANAGER_PARTNER_POSITION,
+  );
+
+  if (!hasEligibleJobRole) {
     return copy.partnerTargetLocked;
   }
 

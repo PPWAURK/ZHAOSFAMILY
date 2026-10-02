@@ -127,7 +127,7 @@ function getRoleValues(user) {
 function getStorePositionCodes(positions) {
   return flattenTrainingPositions(positions)
     .map((position) => position.code)
-    .filter((code) => !["ALL", "HOLDING", "RM", "SM"].includes(code));
+    .filter((code) => !["ALL", "HOLDING", "RM", "SM", "STORE_MANAGER_PARTNER"].includes(code));
 }
 
 function getAllLearningPositionCodes(positions) {

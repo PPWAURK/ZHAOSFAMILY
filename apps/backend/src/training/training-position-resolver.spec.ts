@@ -31,6 +31,83 @@ describe('resolveTrainingPositionCodes', () => {
       warnings: [],
     });
   });
+
+  it('uses an explicit mapping for a training-position job role', () => {
+    const result = resolveTrainingPositionCodes(
+      'STORE_MANAGER_PARTNER',
+      [
+        { code: 'ALL', parentCode: null },
+        { code: 'STORE_MANAGER_PARTNER', parentCode: null },
+        { code: 'FRONT_HOST', parentCode: 'FRONT_OF_HOUSE' },
+      ],
+      [
+        {
+          jobRole: 'STORE_MANAGER_PARTNER',
+          positionCode: 'STORE_MANAGER_PARTNER',
+          includeDescendants: false,
+          grantsAllPositions: true,
+        },
+      ],
+    );
+
+    expect(result).toEqual({
+      positionCodes: ['ALL', 'STORE_MANAGER_PARTNER', 'FRONT_HOST'],
+      warnings: [],
+    });
+  });
+
+  it('excludes store manager partner materials from the store manager all-position scope', () => {
+    const result = resolveTrainingPositionCodes(
+      'store-manager',
+      [
+        { code: 'ALL', parentCode: null },
+        { code: 'SM', parentCode: null },
+        { code: 'STORE_MANAGER_PARTNER', parentCode: null },
+        { code: 'FRONT_HOST', parentCode: 'FRONT_OF_HOUSE' },
+      ],
+      [
+        {
+          jobRole: 'store-manager',
+          positionCode: 'SM',
+          includeDescendants: false,
+          grantsAllPositions: true,
+        },
+      ],
+    );
+
+    expect(result).toEqual({
+      positionCodes: ['ALL', 'SM', 'FRONT_HOST'],
+      warnings: [],
+    });
+  });
+
+  it('includes store manager partner materials when that position is explicitly assigned', () => {
+    const result = resolveTrainingPositionCodes(
+      'store-manager,STORE_MANAGER_PARTNER',
+      [
+        { code: 'ALL', parentCode: null },
+        { code: 'SM', parentCode: null },
+        { code: 'STORE_MANAGER_PARTNER', parentCode: null },
+        { code: 'FRONT_HOST', parentCode: 'FRONT_OF_HOUSE' },
+      ],
+      [
+        {
+          jobRole: 'store-manager',
+          positionCode: 'SM',
+          includeDescendants: false,
+          grantsAllPositions: true,
+        },
+        {
+          jobRole: 'STORE_MANAGER_PARTNER',
+          positionCode: 'STORE_MANAGER_PARTNER',
+          includeDescendants: false,
+          grantsAllPositions: false,
+        },
+      ],
+    );
+
+    expect(result.positionCodes).toContain('STORE_MANAGER_PARTNER');
+  });
 });
 
 describe('resolveTrainingMaterialRecipients', () => {

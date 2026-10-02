@@ -284,6 +284,14 @@ const TRAINING_POSITIONS = [
     sortOrder: 40,
   },
   {
+    code: 'STORE_MANAGER_PARTNER',
+    nameZh: '店长合伙人',
+    nameEn: 'Store Manager Partner',
+    nameFr: 'Associé gérant de magasin',
+    parentCode: null,
+    sortOrder: 45,
+  },
+  {
     code: 'RM',
     nameZh: '区域经理',
     nameEn: 'Regional Manager',
@@ -319,6 +327,12 @@ const TRAINING_JOB_ROLE_POSITIONS = [
     positionCode: 'SM',
     includeDescendants: false,
     grantsAllPositions: true,
+  },
+  {
+    jobRole: 'STORE_MANAGER_PARTNER',
+    positionCode: 'STORE_MANAGER_PARTNER',
+    includeDescendants: false,
+    grantsAllPositions: false,
   },
   {
     jobRole: 'front-manager',

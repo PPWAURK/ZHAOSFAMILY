@@ -552,6 +552,24 @@ describe('TrainingService', () => {
     });
   });
 
+  it('protects the store manager partner system position from deletion', async () => {
+    const { service, prismaService } = createService();
+    prismaService.trainingPosition.findUnique.mockResolvedValue({
+      code: 'STORE_MANAGER_PARTNER',
+      nameZh: '店长合伙人',
+      nameEn: 'Store Manager Partner',
+      nameFr: 'Associé gérant de magasin',
+      parentCode: null,
+      isActive: true,
+      sortOrder: 45,
+    });
+
+    await expect(
+      service.deletePosition('STORE_MANAGER_PARTNER'),
+    ).rejects.toThrow('TRAINING_SYSTEM_POSITION_CANNOT_DELETE');
+    expect(prismaService.trainingPosition.delete).not.toHaveBeenCalled();
+  });
+
   it('rejects deleting a training position with materials', async () => {
     const { service, prismaService } = createService();
     prismaService.trainingPosition.findUnique.mockResolvedValue({
@@ -1473,6 +1491,16 @@ describe('TrainingService', () => {
   });
 
   describe('job-role position mapping', () => {
+    it('keeps store manager partner visible when its mapping is missing', async () => {
+      const { service, prismaService } = createService();
+      prismaService.trainingPosition.findMany.mockResolvedValue([]);
+      prismaService.trainingMaterial.findMany.mockResolvedValue([]);
+
+      const result = await service.getDiagnostics();
+
+      expect(result.unmappedJobRoles).toContain('STORE_MANAGER_PARTNER');
+    });
+
     it('upserts a mapping after validating the role and position', async () => {
       const { service, prismaService } = createService();
       prismaService.trainingPosition.findUnique.mockResolvedValue({
@@ -1497,6 +1525,28 @@ describe('TrainingService', () => {
         positionCode: 'FRONT_HOST',
         includeDescendants: false,
         grantsAllPositions: false,
+      });
+    });
+
+    it('allows configuring the store manager partner mapping', async () => {
+      const { service, prismaService } = createService();
+      prismaService.trainingPosition.findUnique.mockResolvedValue({
+        isActive: true,
+      });
+      prismaService.trainingJobRolePosition.upsert.mockResolvedValue({
+        jobRole: 'STORE_MANAGER_PARTNER',
+        positionCode: 'STORE_MANAGER_PARTNER',
+        includeDescendants: false,
+        grantsAllPositions: false,
+      });
+
+      await expect(
+        service.upsertJobRolePosition('STORE_MANAGER_PARTNER', {
+          positionCode: 'STORE_MANAGER_PARTNER',
+        }),
+      ).resolves.toMatchObject({
+        jobRole: 'STORE_MANAGER_PARTNER',
+        positionCode: 'STORE_MANAGER_PARTNER',
       });
     });
 

@@ -119,11 +119,18 @@ type TrainingStoreProgressScope = {
 const HOLDING_JOB_ROLE = 'holding';
 const STORE_MANAGER_JOB_ROLE = 'store-manager';
 const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
+const STORE_MANAGER_PARTNER_POSITION_CODE = 'STORE_MANAGER_PARTNER';
+const TRAINING_JOB_ROLE_VALUES = [
+  ...JOB_ROLE_VALUES,
+  STORE_MANAGER_PARTNER_POSITION_CODE,
+] as const;
+const TRAINING_JOB_ROLE_VALUE_SET = new Set<string>(TRAINING_JOB_ROLE_VALUES);
 const SYSTEM_POSITION_CODES = new Set([
   ALL_POSITION_CODE,
   'FRONT_OF_HOUSE',
   'KITCHEN',
   'SM',
+  'STORE_MANAGER_PARTNER',
   'RM',
   'HOLDING',
   'FRONT_HOST',
@@ -819,7 +826,7 @@ export class TrainingService {
     );
 
     return {
-      unmappedJobRoles: JOB_ROLE_VALUES.filter(
+      unmappedJobRoles: TRAINING_JOB_ROLE_VALUES.filter(
         (role) => !mappedRoles.has(role),
       ),
       positionsWithoutMaterials: positions
@@ -918,9 +925,7 @@ export class TrainingService {
   }
 
   private ensureKnownJobRole(jobRole: string): void {
-    if (
-      !JOB_ROLE_VALUES.includes(jobRole as (typeof JOB_ROLE_VALUES)[number])
-    ) {
+    if (!TRAINING_JOB_ROLE_VALUE_SET.has(jobRole)) {
       throw new BadRequestException('INVALID_JOB_ROLE');
     }
   }
@@ -1308,7 +1313,7 @@ export class TrainingService {
     mappings: TrainingJobRolePositionRow[],
     materials: { positionId: string; isRequired: boolean }[],
   ): string[] {
-    return JOB_ROLE_VALUES.filter((role) => {
+    return TRAINING_JOB_ROLE_VALUES.filter((role) => {
       const result = resolveTrainingPositionCodes(role, positions, mappings);
 
       return !materials.some(

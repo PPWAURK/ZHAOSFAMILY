@@ -34,6 +34,7 @@ export const TRAINING_POSITION_IDS = [
   'FRONT_OF_HOUSE',
   'KITCHEN',
   'SM',
+  'STORE_MANAGER_PARTNER',
   'RM',
   'ALL',
 ] as const;

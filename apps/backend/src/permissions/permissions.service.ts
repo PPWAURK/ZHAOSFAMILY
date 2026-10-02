@@ -82,6 +82,12 @@ const TRAINING_VIEWER_ROLE_NAME = 'training-viewer';
 const HOLDING_JOB_ROLE = 'holding';
 const STORE_MANAGER_JOB_ROLE = 'store-manager';
 const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
+const STORE_MANAGER_PARTNER_POSITION_CODE = 'STORE_MANAGER_PARTNER';
+const STORE_MANAGER_PARTNER_JOB_ROLES = new Set([
+  STORE_MANAGER_JOB_ROLE,
+  REGIONAL_MANAGER_JOB_ROLE,
+  STORE_MANAGER_PARTNER_POSITION_CODE,
+]);
 // Pending applications for these management-level positions are only reviewable
 // by holding — they must stay hidden from store/regional managers' approval lists.
 const ELEVATED_APPLICATION_JOB_ROLES = new Set([
@@ -118,6 +124,7 @@ const MANAGEMENT_TRAINING_POSITION_CODES = new Set([
   'SM',
   'RM',
   'HOLDING',
+  STORE_MANAGER_PARTNER_POSITION_CODE,
 ]);
 const STORE_ASSIGNABLE_TRAINING_POSITION_ROOT_CODES = new Set([
   'FRONT_OF_HOUSE',
@@ -776,9 +783,13 @@ export class PermissionsService {
       );
     }
 
-    if (!targetJobRoles.has(STORE_MANAGER_JOB_ROLE)) {
+    const hasEligibleJobRole = [...targetJobRoles].some((jobRole) =>
+      STORE_MANAGER_PARTNER_JOB_ROLES.has(jobRole),
+    );
+
+    if (!hasEligibleJobRole) {
       throw new BadRequestException(
-        'STORE_MANAGER_PARTNER_REQUIRES_STORE_MANAGER',
+        'STORE_MANAGER_PARTNER_REQUIRES_MANAGEMENT_ROLE',
       );
     }
 

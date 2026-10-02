@@ -37,13 +37,27 @@ describe("store manager invitation roles", () => {
           },
         ],
       },
+      {
+        code: "STORE_MANAGER_PARTNER",
+        name: {
+          zh: "店长合伙人",
+          en: "Store Manager Partner",
+          fr: "Associé gérant de magasin",
+        },
+        isActive: true,
+        children: [],
+      },
     ]);
 
     expect(options.map((option) => option.value)).toEqual(
       expect.arrayContaining(["FRONT_MANAGER", "FRONT_HOST"]),
     );
     expect(options.map((option) => option.value)).not.toEqual(
-      expect.arrayContaining(["FRONT_OF_HOUSE", "SHIFT_LEAD"]),
+      expect.arrayContaining([
+        "FRONT_OF_HOUSE",
+        "SHIFT_LEAD",
+        "STORE_MANAGER_PARTNER",
+      ]),
     );
   });
 

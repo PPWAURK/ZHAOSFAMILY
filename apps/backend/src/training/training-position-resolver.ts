@@ -1,4 +1,6 @@
 export const ALL_POSITION_CODE = 'ALL';
+const STORE_MANAGER_JOB_ROLE = 'store-manager';
+const STORE_MANAGER_PARTNER_POSITION_CODE = 'STORE_MANAGER_PARTNER';
 const SHARED_BRANCH_POSITION_CODES = new Set([
   'FRONT_OF_HOUSE',
   'KITCHEN',
@@ -53,7 +55,8 @@ export function resolveTrainingPositionCodes(
 
   for (const roleValue of roleValues) {
     const normalizedRole = roleValue.toLowerCase();
-    const mapping = mappingByRole.get(normalizedRole);
+    const mapping =
+      mappingByRole.get(roleValue) ?? mappingByRole.get(normalizedRole);
 
     if (!mapping) {
       const directPosition = positionByCode.get(roleValue.toUpperCase());
@@ -80,9 +83,16 @@ export function resolveTrainingPositionCodes(
     }
 
     if (mapping.grantsAllPositions) {
+      const excludedPositionCodes =
+        normalizedRole === STORE_MANAGER_JOB_ROLE
+          ? new Set([STORE_MANAGER_PARTNER_POSITION_CODE])
+          : new Set<string>();
+
       addCodes(
         resultCodes,
-        positions.map((position) => position.code),
+        positions
+          .filter((position) => !excludedPositionCodes.has(position.code))
+          .map((position) => position.code),
       );
       continue;
     }

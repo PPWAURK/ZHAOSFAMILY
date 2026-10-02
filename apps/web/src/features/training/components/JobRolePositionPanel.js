@@ -41,6 +41,9 @@ const COPY = {
     descendantsHint: "例如选择 FOH · 前厅后，开启此项会同时看到迎宾、收银、服务员等前厅子岗位资料。普通单一岗位不建议开启。",
     grantsAll: "可查看全部岗位资料",
     grantsAllHint: "开启后会覆盖普通岗位范围，适合管理岗。",
+    grantsAllStoreManager: "可查看其他岗位资料（不含店长合伙人）",
+    grantsAllStoreManagerHint:
+      "开启后可查看其他普通岗位资料，但不会看到店长合伙人的专属资料。",
     preview: "预览可见资料",
     save: "保存",
     saving: "保存中",
@@ -77,6 +80,9 @@ const COPY = {
     descendantsHint: "For example, FOH can include host, cashier, server, and related materials.",
     grantsAll: "Can view all role materials",
     grantsAllHint: "Overrides the normal role scope. Best for management roles.",
+    grantsAllStoreManager: "Can view other roles except Store Manager Partner",
+    grantsAllStoreManagerHint:
+      "Includes other regular-role materials but excludes Store Manager Partner materials.",
     preview: "Preview visible materials",
     save: "Save",
     saving: "Saving",
@@ -113,6 +119,9 @@ const COPY = {
     descendantsHint: "Par exemple, FOH peut inclure accueil, caisse, service et supports liés.",
     grantsAll: "Peut voir tous les postes",
     grantsAllHint: "Remplace le périmètre normal. À réserver aux postes de gestion.",
+    grantsAllStoreManager: "Voir les autres postes sauf Associé gérant",
+    grantsAllStoreManagerHint:
+      "Inclut les autres supports de poste, mais exclut ceux de l’Associé gérant de magasin.",
     preview: "Prévisualiser",
     save: "Enregistrer",
     saving: "En cours",
@@ -226,6 +235,8 @@ function RoleMappingCard({
   onSave,
   onRemove,
 }) {
+  const isStoreManager = role === "store-manager";
+
   return (
     <article
       className={`${styles.roleCard} ${!draft.exists ? styles.roleCardUnmapped : ""}`}
@@ -290,8 +301,12 @@ function RoleMappingCard({
             }
           />
           <span>
-            <strong>{t.grantsAll}</strong>
-            <small>{t.grantsAllHint}</small>
+            <strong>
+              {isStoreManager ? t.grantsAllStoreManager : t.grantsAll}
+            </strong>
+            <small>
+              {isStoreManager ? t.grantsAllStoreManagerHint : t.grantsAllHint}
+            </small>
           </span>
         </label>
       </div>

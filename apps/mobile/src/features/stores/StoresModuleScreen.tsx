@@ -44,7 +44,7 @@ type StoresModuleScreenProps = {
 type StoreDetailView = "overview" | "pending" | "team" | "stats";
 
 const STORE_POSITION_ROOT_CODES = new Set(["FRONT_OF_HOUSE", "KITCHEN"]);
-const MANAGEMENT_POSITION_CODES = new Set(["ALL", "SM", "RM", "HOLDING"]);
+const MANAGEMENT_POSITION_CODES = new Set(["ALL", "SM", "STORE_MANAGER_PARTNER", "RM", "HOLDING"]);
 const INITIAL_STORE_CARD_COUNT = 3;
 const STORE_CARD_BATCH_SIZE = 3;
 const STORE_QUERY_STALE_TIME_MS = 5 * 60 * 1000;
@@ -112,7 +112,9 @@ function getVisibleRoleOptions(
   const options = STORE_JOB_ROLE_OPTIONS[language];
   const positionOptions = getOperationalTrainingPositionOptions(trainingPositions, language);
   const managementOptions = options.filter((option) =>
-    ["holding", "regional-manager", "store-manager"].includes(option.value),
+    ["holding", "regional-manager", "store-manager", "STORE_MANAGER_PARTNER"].includes(
+      option.value,
+    ),
   );
 
   // Holding/admins may assign any role; regional and store managers use

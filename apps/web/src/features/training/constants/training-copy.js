@@ -392,6 +392,15 @@ export const TRAINING_POSITIONS = [
     desc: "排班、成本、日结、现场决策的必备材料。",
   },
   {
+    id: "STORE_MANAGER_PARTNER",
+    code: "POS-45",
+    name: "店长合伙人",
+    en: "Store Manager Partner",
+    fr: "Associé gérant de magasin",
+    mine: false,
+    desc: "面向店长合伙人的经营认知、协作标准与管理培训。",
+  },
+  {
     id: "RM",
     code: "POS-05",
     name: "区域经理",
