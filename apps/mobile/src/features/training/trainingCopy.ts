@@ -113,6 +113,13 @@ type TrainingCopy = {
   mapNodeStudy: string;
   mapNodeQuiz: string;
   mapNodeComplete: string;
+  searchIndexTitle: string;
+  searchIndexHint: string;
+  searchPlaceholder: string;
+  searchClear: string;
+  searchResultCount: string;
+  searchNoResults: string;
+  searchFileName: string;
 
   materialTypes: Record<string, string>;
   statuses: Record<string, string>;
@@ -233,6 +240,13 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     mapNodeStudy: "学习",
     mapNodeQuiz: "测验",
     mapNodeComplete: "完成",
+    searchIndexTitle: "资料索引",
+    searchIndexHint: "按资料标题或上传文件名查找",
+    searchPlaceholder: "搜索标题或文件名…",
+    searchClear: "清空搜索",
+    searchResultCount: "{count} 项结果",
+    searchNoResults: "没有找到匹配的培训资料，请检查文件名或标题。",
+    searchFileName: "文件名",
     materialTypes: {
       VIDEO: "视频",
       PDF: "PDF",
@@ -386,6 +400,13 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     mapNodeStudy: "Study",
     mapNodeQuiz: "Quiz",
     mapNodeComplete: "Done",
+    searchIndexTitle: "Material index",
+    searchIndexHint: "Find materials by title or uploaded file name",
+    searchPlaceholder: "Search title or file name…",
+    searchClear: "Clear search",
+    searchResultCount: "{count} results",
+    searchNoResults: "No matching training materials. Check the file name or title.",
+    searchFileName: "File name",
     materialTypes: {
       VIDEO: "Video",
       PDF: "PDF",
@@ -539,6 +560,13 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     mapNodeStudy: "Étudier",
     mapNodeQuiz: "Quiz",
     mapNodeComplete: "Terminé",
+    searchIndexTitle: "Index des supports",
+    searchIndexHint: "Rechercher par titre ou nom du fichier importé",
+    searchPlaceholder: "Rechercher un titre ou un fichier…",
+    searchClear: "Effacer la recherche",
+    searchResultCount: "{count} résultats",
+    searchNoResults: "Aucun support trouvé. Vérifiez le nom du fichier ou le titre.",
+    searchFileName: "Nom du fichier",
     materialTypes: {
       VIDEO: "Vidéo",
       PDF: "PDF",

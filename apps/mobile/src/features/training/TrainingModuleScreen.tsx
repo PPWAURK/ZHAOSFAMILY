@@ -25,6 +25,7 @@ import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { buildTrainingMapData } from "@/features/training/trainingMapState";
 import { fetchLocalizedTrainingPlan } from "@/features/training/trainingQueries";
 import { TrainingBadgeUnlockModal } from "@/features/training/TrainingBadgeUnlockModal";
+import { TrainingMaterialIndex } from "@/features/training/TrainingMaterialIndex";
 import { TrainingPreviewModal } from "@/features/training/TrainingPreviewModal";
 import { TrainingQuizModal } from "@/features/training/TrainingQuizModal";
 import { TrainingVideoFeedModal } from "@/features/training/TrainingVideoFeedModal";
@@ -176,6 +177,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [expandedPositions, setExpandedPositions] = useState<Record<string, boolean>>({});
+  const [materialSearchQuery, setMaterialSearchQuery] = useState("");
 
   const trainingPlanQuery = useQuery({
     enabled: isActive,
@@ -197,6 +199,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
     setPreviewMaterial(null);
     setQuizMaterial(null);
     setVideoFeedInitialMaterialId(null);
+    setMaterialSearchQuery("");
   }, [isActive]);
 
   const mapData: TrainingMapData | null = useMemo(() => {
@@ -441,6 +444,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
   const totalMaterials = summary.sharedTotal + summary.requiredTotal + summary.advancedTotal;
   const completedMaterials =
     summary.sharedCompleted + summary.requiredCompleted + summary.advancedCompleted;
+  const isSearchingMaterials = Boolean(materialSearchQuery.trim());
 
   const hubContent = (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={trainingStyles.container}>
@@ -532,7 +536,20 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
         </View>
       </View>
 
-      <View style={trainingStyles.mapContainer}>
+      <TrainingMaterialIndex
+        copy={copy}
+        mapData={mapData}
+        query={materialSearchQuery}
+        onOpenMaterial={handleStudy}
+        onQueryChange={setMaterialSearchQuery}
+      />
+
+      <View
+        style={[
+          trainingStyles.mapContainer,
+          isSearchingMaterials ? trainingStyles.mapContainerHidden : null,
+        ]}
+      >
         <MapLayerSection
           title={copy.mapLayerShared}
           body={copy.mapLayerSharedBody}

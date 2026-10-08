@@ -1623,6 +1623,176 @@ export const trainingStyles = StyleSheet.create(
       letterSpacing: 0.6,
     },
 
+    // ── Searchable material index ──
+
+    materialIndex: {
+      gap: 12,
+    },
+    materialIndexHeader: {
+      alignItems: "flex-end",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    materialIndexTitleGroup: {
+      flex: 1,
+      gap: 4,
+      minWidth: 0,
+    },
+    materialIndexTitle: {
+      color: authControlStyles.colors.ink,
+      fontFamily: "serif",
+      fontSize: 20,
+      fontWeight: "700",
+      lineHeight: 25,
+    },
+    materialIndexHint: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    materialIndexCount: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "monospace",
+      fontSize: 10,
+      letterSpacing: 0.6,
+      textAlign: "right",
+    },
+    materialIndexSearchField: {
+      alignItems: "center",
+      backgroundColor: "#ffffff",
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 10,
+      minHeight: 50,
+      paddingLeft: 14,
+      paddingRight: 6,
+    },
+    materialIndexSearchInput: {
+      color: authControlStyles.colors.ink,
+      flex: 1,
+      fontFamily: "serif",
+      fontSize: 15,
+      minHeight: 48,
+      paddingVertical: 0,
+    },
+    materialIndexClearButton: {
+      alignItems: "center",
+      height: 44,
+      justifyContent: "center",
+      width: 44,
+    },
+    materialIndexResults: {
+      gap: 8,
+    },
+    materialIndexResult: {
+      backgroundColor: "#ffffff",
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      gap: 9,
+      padding: 14,
+    },
+    materialIndexResultPressed: {
+      backgroundColor: "rgba(193, 22, 22, 0.035)",
+      borderColor: "rgba(193, 22, 22, 0.34)",
+    },
+    materialIndexResultLocked: {
+      backgroundColor: authControlStyles.colors.ink05,
+      opacity: 0.72,
+    },
+    materialIndexResultHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
+    },
+    materialIndexResultTitle: {
+      color: authControlStyles.colors.ink,
+      flex: 1,
+      fontFamily: "serif",
+      fontSize: 16,
+      fontWeight: "700",
+      lineHeight: 21,
+    },
+    materialIndexFileName: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "monospace",
+      fontSize: 10.5,
+      lineHeight: 16,
+    },
+    materialIndexMetaRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+    },
+    materialIndexMeta: {
+      backgroundColor: "rgba(10, 10, 10, 0.04)",
+      color: authControlStyles.colors.ink60,
+      fontFamily: "monospace",
+      fontSize: 9,
+      fontWeight: "700",
+      letterSpacing: 0.5,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      textTransform: "uppercase",
+    },
+    materialIndexStatus: {
+      borderColor: "rgba(193, 22, 22, 0.38)",
+      borderWidth: 1,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+    },
+    materialIndexStatusLocked: {
+      borderColor: authControlStyles.colors.ink20,
+    },
+    materialIndexStatusCompleted: {
+      backgroundColor: "rgba(25, 122, 61, 0.10)",
+      borderColor: authControlStyles.colors.success,
+    },
+    materialIndexStatusText: {
+      color: authControlStyles.colors.red,
+      fontFamily: "monospace",
+      fontSize: 9,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+    },
+    materialIndexStatusTextLocked: {
+      color: authControlStyles.colors.ink60,
+    },
+    materialIndexStatusTextCompleted: {
+      color: authControlStyles.colors.success,
+    },
+    materialIndexAction: {
+      color: authControlStyles.colors.red,
+      fontFamily: "monospace",
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.9,
+      textTransform: "uppercase",
+    },
+    materialIndexActionLocked: {
+      color: authControlStyles.colors.ink60,
+    },
+    materialIndexEmpty: {
+      alignItems: "center",
+      borderColor: authControlStyles.colors.ink10,
+      borderWidth: 1,
+      gap: 8,
+      minHeight: 116,
+      justifyContent: "center",
+      padding: 18,
+    },
+    materialIndexEmptyText: {
+      color: authControlStyles.colors.ink60,
+      fontFamily: "serif",
+      fontSize: 13,
+      lineHeight: 19,
+      textAlign: "center",
+    },
+
     // ── Map visual styles (three-layer gamified map) ──
 
     mapHeroPanel: {
@@ -1817,6 +1987,9 @@ export const trainingStyles = StyleSheet.create(
     },
     mapContainer: {
       gap: 18,
+    },
+    mapContainerHidden: {
+      display: "none",
     },
     mapLayerCard: {
       backgroundColor: "#ffffff",
