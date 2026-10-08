@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { recruitmentQueryKeys } from "@zhao/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +31,7 @@ import {
 type RecruitmentModuleScreenProps = {
   isActive?: boolean;
   language: AuthLanguage;
+  onDirtyStateChange?: (isDirty: boolean) => void;
 };
 
 type RecruitmentCombo = Partial<
@@ -61,6 +62,7 @@ function isActivePosition(
 export function RecruitmentModuleScreen({
   isActive = true,
   language,
+  onDirtyStateChange,
 }: RecruitmentModuleScreenProps) {
   useScreenName("recruitment");
   const copy = RECRUITMENT_COPY[language];
@@ -70,6 +72,7 @@ export function RecruitmentModuleScreen({
   const queryClient = useQueryClient();
   const requestsQuery = useQuery({
     enabled: isActive,
+    meta: { persist: true },
     placeholderData: (previousData) => previousData,
     queryFn: fetchRecruitmentRequests,
     queryKey: recruitmentQueryKeys.requests(),
@@ -83,6 +86,17 @@ export function RecruitmentModuleScreen({
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [deletingId, setDeletingId] = useState<number | string | null>(null);
+  const defaultContracts = combo.waiter;
+  const hasDefaultCombo =
+    Object.keys(combo).length === 1 &&
+    defaultContracts !== undefined &&
+    Object.keys(defaultContracts).length === 1 &&
+    defaultContracts.full_time === DEFAULT_HEADCOUNT;
+  const isDraftDirty = isSubmitting || !hasDefaultCombo || Boolean(notes.trim());
+
+  useEffect(() => {
+    onDirtyStateChange?.(isDraftDirty);
+  }, [isDraftDirty, onDirtyStateChange]);
   const sortedRequests = useMemo(
     () =>
       [...requests].sort((a, b) =>

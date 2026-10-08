@@ -78,7 +78,7 @@ export function SplashScreen({
     progress.setValue(0);
 
     const animation = Animated.timing(progress, {
-      duration: reduceMotion ? 700 : SPLASH_DURATION_MS,
+      duration: reduceMotion ? 250 : SPLASH_DURATION_MS,
       easing: Easing.bezier(...SPLASH_EASING.outQuart),
       toValue: 1,
       useNativeDriver: true,
@@ -141,7 +141,7 @@ export function SplashScreen({
                       atSplashTime(SPLASH_TIMELINE.noodleInEnd),
                       atSplashTime(SPLASH_TIMELINE.noodleOutEnd),
                     ],
-                    outputRange: [-240, 0, 260],
+                    outputRange: [-110, 0, 110],
                   }),
                 },
                 {
@@ -151,7 +151,7 @@ export function SplashScreen({
                       atSplashTime(SPLASH_TIMELINE.noodleInEnd),
                       atSplashTime(SPLASH_TIMELINE.noodleOutEnd),
                     ],
-                    outputRange: [-86, 0, -124],
+                    outputRange: [-28, 0, -36],
                   }),
                 },
                 {
@@ -161,7 +161,7 @@ export function SplashScreen({
                       atSplashTime(SPLASH_TIMELINE.noodleInEnd),
                       atSplashTime(SPLASH_TIMELINE.noodleOutEnd),
                     ],
-                    outputRange: ["-46deg", "0deg", "540deg"],
+                    outputRange: ["-24deg", "0deg", "24deg"],
                   }),
                 },
               ],
@@ -184,7 +184,7 @@ export function SplashScreen({
                       atSplashTime(SPLASH_TIMELINE.noodleInEnd),
                       atSplashTime(SPLASH_TIMELINE.noodleOutEnd),
                     ],
-                    outputRange: [240, 0, -260],
+                    outputRange: [110, 0, -110],
                   }),
                 },
                 {
@@ -194,7 +194,7 @@ export function SplashScreen({
                       atSplashTime(SPLASH_TIMELINE.noodleInEnd),
                       atSplashTime(SPLASH_TIMELINE.noodleOutEnd),
                     ],
-                    outputRange: [86, 0, 124],
+                    outputRange: [28, 0, 36],
                   }),
                 },
                 {
@@ -204,7 +204,7 @@ export function SplashScreen({
                       atSplashTime(SPLASH_TIMELINE.noodleInEnd),
                       atSplashTime(SPLASH_TIMELINE.noodleOutEnd),
                     ],
-                    outputRange: ["46deg", "0deg", "-540deg"],
+                    outputRange: ["24deg", "0deg", "-24deg"],
                   }),
                 },
               ],

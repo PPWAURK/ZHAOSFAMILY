@@ -76,6 +76,7 @@ type OrderModuleScreenProps = {
   language: AuthLanguage;
   storeName?: string;
   onProductViewChange?: (visible: boolean) => void;
+  onDirtyStateChange?: (isDirty: boolean) => void;
 };
 
 type OrderModuleMode = "new" | "history";
@@ -228,6 +229,7 @@ export function OrderModuleScreen({
   language,
   storeName,
   onProductViewChange,
+  onDirtyStateChange,
 }: OrderModuleScreenProps) {
   useScreenName("orders");
   const copy = ORDER_COPY[language];
@@ -266,10 +268,10 @@ export function OrderModuleScreen({
 
   const suppliersQuery = useQuery({
     enabled: isActive,
+    meta: { persist: true },
     queryFn: fetchOrderSuppliers,
     queryKey: ordersQueryKeys.suppliers(),
-    refetchOnMount: "always",
-    staleTime: 0,
+    staleTime: 5 * 60 * 1000,
   });
   const orderHistoryQuery = useQuery({
     enabled: isActive && mode === "history",
@@ -401,6 +403,12 @@ export function OrderModuleScreen({
   const deliveryDate = getDeliveryDate(deliveryMode, customDate);
   const orderItems = useMemo(() => buildCreateOrderItems(quantities), [quantities]);
   const totalItems = selectedLines.reduce((sum, line) => sum + line.orderedQuantity, 0);
+  const hasUnsavedChanges =
+    totalItems > 0 ||
+    Boolean(returnReason.trim() || returnNotes.trim()) ||
+    Object.values(returnQuantities).some((quantity) => Number(quantity) > 0) ||
+    isSubmitting ||
+    isSubmittingReturn;
   const estimatedTotal = selectedLines.reduce(
     (sum, line) => sum + line.orderedQuantity * (line.variant.price ?? 0),
     0,
@@ -409,6 +417,10 @@ export function OrderModuleScreen({
   const stockViolation = isStockEnforced
     ? getStockViolation(products, quantities, availableStockMap, language)
     : null;
+
+  useEffect(() => {
+    onDirtyStateChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyStateChange]);
   function updateQuantity(variantId: string, value: string): void {
     const sanitizedValue = value.replace(/[^0-9]/g, "");
     setQuantities((current) => ({ ...current, [variantId]: sanitizedValue }));

@@ -8,17 +8,26 @@ import {
   type Query,
 } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { persistQueryClient } from "@tanstack/react-query-persist-client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { useStore } from "zustand";
-import { mobileAuthStore } from "@/lib/api";
+import { mobileAuthActions, mobileAuthStore, setMobileNetworkOnline } from "@/lib/api";
 import { clearUserMediaCache } from "@/lib/mediaCache";
 
 const CACHE_KEY_PREFIX = "zhao-mobile-query-cache-v1";
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "OFFLINE_READ_ONLY"
+  ) {
+    return false;
+  }
+
   const status = resolveHttpStatus(error);
 
   return failureCount < 2 && (!status || status >= 500);
@@ -65,59 +74,97 @@ function createMobileQueryClient(): QueryClient {
 type MobileQueryProviderProps = { children: ReactNode };
 
 export function MobileQueryProvider({ children }: MobileQueryProviderProps): ReactNode {
-  const [queryClient] = useState(createMobileQueryClient);
   const userId = useStore(mobileAuthStore, (state) => state.user?.id ?? null);
+  const authStatus = useStore(mobileAuthStore, (state) => state.status);
+  const [isNetworkOnline, setIsNetworkOnline] = useState(false);
+  const queryClient = useMemo(createMobileQueryClient, [userId]);
   const previousUserIdRef = useRef<number | string | null>(null);
+  const previousQueryClientRef = useRef(queryClient);
+  const previousNetworkOnlineRef = useRef(isNetworkOnline);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state: AppStateStatus) => {
       focusManager.setFocused(state === "active");
+
+      if (state === "active" && isNetworkOnline && authStatus === "offline") {
+        void mobileAuthActions.revalidateSession().catch((error: unknown) => {
+          console.warn("Unable to revalidate the cached mobile session.", error);
+        });
+      }
     });
 
     return () => subscription.remove();
-  }, []);
+  }, [authStatus, isNetworkOnline]);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
-      onlineManager.setOnline(Boolean(state.isConnected && state.isInternetReachable !== false));
+      const isOnline = Boolean(state.isConnected && state.isInternetReachable !== false);
+      setMobileNetworkOnline(isOnline);
+      setIsNetworkOnline(isOnline);
     });
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    onlineManager.setOnline(isNetworkOnline && authStatus !== "offline" && authStatus !== "loading");
+  }, [authStatus, isNetworkOnline]);
+
+  useEffect(() => {
+    const hasJustReconnected = isNetworkOnline && !previousNetworkOnlineRef.current;
+    previousNetworkOnlineRef.current = isNetworkOnline;
+    if (!hasJustReconnected || authStatus !== "offline") return;
+
+    void mobileAuthActions.revalidateSession().catch((error: unknown) => {
+      console.warn("Unable to revalidate the cached mobile session.", error);
+    });
+  }, [authStatus, isNetworkOnline]);
 
   useEffect(() => {
     const previousUserId = previousUserIdRef.current;
 
     if (previousUserId !== null && previousUserId !== userId) {
-      void clearUserMediaCache(previousUserId);
+      previousQueryClientRef.current.clear();
+      void clearUserMediaCache(previousUserId).catch((error: unknown) => {
+        console.warn("Unable to clear the previous account's image cache.", error);
+      });
+      void AsyncStorage.removeItem(`${CACHE_KEY_PREFIX}-${previousUserId}`).catch(
+        (error: unknown) => {
+          console.warn("Unable to clear the previous account's query cache.", error);
+        },
+      );
     }
 
     previousUserIdRef.current = userId;
-
-    if (!userId) {
-      queryClient.clear();
-      return undefined;
-    }
-
-    // A single in-memory client survives an account change. Clearing before
-    // hydration prevents a different user's cached response from flashing.
-    queryClient.clear();
-
-    const persister = createAsyncStoragePersister({
-      key: `${CACHE_KEY_PREFIX}-${userId}`,
-      storage: AsyncStorage,
-    });
-
-    const [unsubscribe, restorePromise] = persistQueryClient({
-      dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
-      maxAge: CACHE_MAX_AGE_MS,
-      persister,
-      queryClient,
-    });
-
-    void restorePromise;
-    return unsubscribe;
+    previousQueryClientRef.current = queryClient;
   }, [queryClient, userId]);
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  const persister = useMemo(
+    () =>
+      userId === null
+        ? null
+        : createAsyncStoragePersister({
+            key: `${CACHE_KEY_PREFIX}-${userId}`,
+            storage: AsyncStorage,
+          }),
+    [userId],
+  );
+
+  if (!persister) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+
+  return (
+    <PersistQueryClientProvider
+      key={String(userId)}
+      client={queryClient}
+      persistOptions={{
+        dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
+        maxAge: CACHE_MAX_AGE_MS,
+        persister,
+      }}
+    >
+      {children}
+    </PersistQueryClientProvider>
+  );
 }

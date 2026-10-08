@@ -1,6 +1,6 @@
 export type AbcCycleStatus = "draft" | "published";
 
-export type AbcGrade = "A" | "B" | "C";
+export type AbcGrade = "S" | "A" | "B" | "C";
 
 export type AbcCycleSummary = {
   id: number;
@@ -57,12 +57,7 @@ export type AbcGradeDirectory = {
 
 export type AbcPublicGradeEntry = Pick<
   AbcGradeDirectoryEntry,
-  | "restaurantId"
-  | "storeName"
-  | "storeAddress"
-  | "photoObjectKey"
-  | "rank"
-  | "inspectionNotes"
+  "restaurantId" | "storeName" | "storeAddress" | "photoObjectKey" | "rank" | "inspectionNotes"
 > & {
   grade: AbcGrade | null;
 };

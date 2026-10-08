@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { buildPublicStorePhotoUrl } from "@/shared/api/api-client";
 import styles from "@/features/dashboard/components/store-grade-leaderboard.module.css";
 
-const GRADES = ["A", "B", "C"];
+const GRADES = ["S", "A", "B", "C"];
 const GRADE_TIERS = [...GRADES, "Ungraded"];
 
 function getStoreInitial(storeName) {
@@ -34,7 +34,14 @@ function RankBadge({ label, rank }) {
     <span className={`${styles.gradeStoreRank} ${medalClassName}`} aria-label={`${label} ${rank}`}>
       <svg viewBox="0 0 36 42" aria-hidden="true">
         <path d="M9 2h18l-4 16H13z" fill="var(--medal-edge)" />
-        <circle cx="18" cy="27" r="11" fill="var(--medal)" stroke="var(--medal-edge)" strokeWidth="1.5" />
+        <circle
+          cx="18"
+          cy="27"
+          r="11"
+          fill="var(--medal)"
+          stroke="var(--medal-edge)"
+          strokeWidth="1.5"
+        />
         <text x="18" y="31" fill="var(--medal-ink)" fontSize={rank > 99 ? 8 : rank > 9 ? 10 : 13}>
           {rank}
         </text>
@@ -56,14 +63,13 @@ export default function StoreGradeLeaderboard({
   const entriesByGrade = new Map(
     GRADE_TIERS.map((grade) => [
       grade,
-      entries.filter((entry) =>
-        grade === "Ungraded" ? entry.grade === null : entry.grade === grade,
-      ).sort(
-        (left, right) =>
-          (left.rank ?? Number.MAX_SAFE_INTEGER) -
-            (right.rank ?? Number.MAX_SAFE_INTEGER) ||
-          left.restaurantId - right.restaurantId,
-      ),
+      entries
+        .filter((entry) => (grade === "Ungraded" ? entry.grade === null : entry.grade === grade))
+        .sort(
+          (left, right) =>
+            (left.rank ?? Number.MAX_SAFE_INTEGER) - (right.rank ?? Number.MAX_SAFE_INTEGER) ||
+            left.restaurantId - right.restaurantId,
+        ),
     ]),
   );
 
@@ -180,9 +186,7 @@ export default function StoreGradeLeaderboard({
                       <h4>{entry.storeName}</h4>
                       <p>{entry.storeAddress}</p>
                       {entry.inspectionNotes ? (
-                        <p className={styles.gradeStoreNotes}>
-                          {entry.inspectionNotes}
-                        </p>
+                        <p className={styles.gradeStoreNotes}>{entry.inspectionNotes}</p>
                       ) : null}
                     </div>
                     <span className={styles.gradeStoreValue}>{gradeLabel}</span>

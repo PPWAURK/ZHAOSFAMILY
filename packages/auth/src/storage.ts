@@ -1,3 +1,5 @@
+import type { AuthUser } from "@zhao/types";
+
 export type TokenStorage = {
   getAccessToken: () => Promise<string | null>;
   setAccessToken: (token: string) => Promise<void>;
@@ -5,6 +7,12 @@ export type TokenStorage = {
   getRefreshToken: () => Promise<string | null>;
   setRefreshToken: (token: string) => Promise<void>;
   removeRefreshToken: () => Promise<void>;
+};
+
+export type AuthUserSnapshotStorage = {
+  read: () => Promise<AuthUser | null>;
+  write: (user: AuthUser) => Promise<void>;
+  clear: () => Promise<void>;
 };
 
 export function createMemoryTokenStorage(): TokenStorage {

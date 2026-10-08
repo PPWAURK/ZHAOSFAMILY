@@ -25,6 +25,7 @@ import type { TrainingMyTitles } from "@/features/training/trainingTypes";
 type ProfileScreenProps = {
   isActive?: boolean;
   language: AuthLanguage;
+  onDirtyStateChange?: (isDirty: boolean) => void;
   user: AuthUser;
   onChangeLanguage: (language: AuthLanguage) => void;
   onLogout: () => Promise<void>;
@@ -156,6 +157,7 @@ export function ProfileScreen({
   isActive = true,
   language,
   user,
+  onDirtyStateChange,
   onChangeLanguage,
   onLogout,
   onChangePassword,
@@ -187,14 +189,29 @@ export function ProfileScreen({
   const [showSaved, setShowSaved] = useState(false);
   const [savingTitleCode, setSavingTitleCode] = useState("");
   const [titleMessage, setTitleMessage] = useState("");
+  const hasUnsavedChanges =
+    (isEditing && (draft.address !== contact.address || draft.phone !== contact.phone)) ||
+    Boolean(passwordDraft.currentPassword || passwordDraft.nextPassword || deletePassword) ||
+    isChangingAvatar ||
+    isChangingPassword ||
+    isLoggingOut ||
+    isSaving ||
+    isConfirmingDelete ||
+    isDeleting ||
+    Boolean(savingTitleCode);
   const queryClient = useQueryClient();
   const titlesQuery = useQuery({
     enabled: isActive,
+    meta: { persist: true },
     placeholderData: (previousData) => previousData,
     queryFn: fetchTrainingMyTitles,
     queryKey: ["training", "my-titles", user.id],
   });
   const myTitles = titlesQuery.data ?? EMPTY_MY_TITLES;
+
+  useEffect(() => {
+    onDirtyStateChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyStateChange]);
 
   const identityFields = useMemo(
     () => [

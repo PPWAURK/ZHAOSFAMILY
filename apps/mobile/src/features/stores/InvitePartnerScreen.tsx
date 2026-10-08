@@ -16,6 +16,7 @@ import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
 type InvitePartnerScreenProps = {
   isActive?: boolean;
   language: AuthLanguage;
+  onDirtyStateChange?: (isDirty: boolean) => void;
   user: AuthUser;
 };
 
@@ -38,6 +39,7 @@ export function InvitePartnerScreen({
   isActive = true,
   language,
   user,
+  onDirtyStateChange,
 }: InvitePartnerScreenProps) {
   useScreenName("invite-partner");
   const toast = useToast();
@@ -48,6 +50,11 @@ export function InvitePartnerScreen({
   const [isLoadingRoles, setIsLoadingRoles] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const hasUnsavedChanges = Boolean(email.trim() || jobRole || isSubmitting);
+
+  useEffect(() => {
+    onDirtyStateChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyStateChange]);
 
   const roleOptions = useMemo(
     () => getStoreManagerInvitationRoleOptions(language, trainingPositions),

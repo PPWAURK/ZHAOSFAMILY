@@ -53,6 +53,7 @@ export default function ScoreEditModal({
             onChange={(event) => onChange("grade", event.target.value)}
           >
             <option value="">{t.gradeNone}</option>
+            <option value="S">S</option>
             <option value="A">A</option>
             <option value="B">B</option>
             <option value="C">C</option>

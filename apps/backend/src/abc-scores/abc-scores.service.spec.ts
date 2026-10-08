@@ -99,12 +99,12 @@ describe('AbcScoresService', () => {
   });
 
   describe('recordInspection', () => {
-    it('upserts a grade, rank, and improvement notes without storing a score', async () => {
+    it('upserts an S grade, rank, and improvement notes without storing a score', async () => {
       prisma.abcScoreCycle.findUnique.mockResolvedValue(DRAFT_CYCLE);
       prisma.restaurant.findUnique.mockResolvedValue(RESTAURANT);
       prisma.abcStoreInspection.upsert.mockResolvedValue({
         ...RESTAURANT,
-        grade: 'B',
+        grade: 'S',
         rank: 1,
         inspectionNotes: 'Improve closing checklist',
         inspectedAt: new Date('2026-06-22T11:00:00.000Z'),
@@ -112,18 +112,18 @@ describe('AbcScoresService', () => {
       });
 
       const item = await service.recordInspection(ACTOR, 1, 2, {
-        grade: 'B',
+        grade: 'S',
         rank: 1,
         notes: 'Improve closing checklist',
       });
 
       expect(item).toMatchObject({
-        grade: 'B',
+        grade: 'S',
         rank: 1,
         inspectionNotes: 'Improve closing checklist',
       });
       const inspectionData = {
-        grade: 'B',
+        grade: 'S',
         rank: 1,
         inspectionNotes: 'Improve closing checklist',
         inspectedByUserId: 7,

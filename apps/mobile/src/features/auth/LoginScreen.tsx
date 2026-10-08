@@ -125,7 +125,7 @@ export function LoginScreen() {
   // On login, adopt the language saved on the account. Guarded per user id so a
   // later store refresh (or a manual switch) never snaps the UI back.
   useEffect(() => {
-    if (authStatus !== "authenticated" || !authUser) {
+    if ((authStatus !== "authenticated" && authStatus !== "offline") || !authUser) {
       return;
     }
 
@@ -359,9 +359,10 @@ export function LoginScreen() {
     );
   }
 
-  if (authStatus === "authenticated" && authUser) {
+  if ((authStatus === "authenticated" || authStatus === "offline") && authUser) {
     return (
       <DashboardHomeScreen
+        isOffline={authStatus === "offline"}
         language={language}
         user={authUser}
         onChangeLanguage={changeLanguage}

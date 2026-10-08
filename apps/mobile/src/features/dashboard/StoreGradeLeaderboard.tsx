@@ -14,10 +14,11 @@ import {
 } from "@/features/dashboard/abcGradeBoardApi";
 
 const colors = authControlStyles.colors;
-const GRADES = ["A", "B", "C"] as const;
+const GRADES = ["S", "A", "B", "C"] as const;
 const GRADE_TIERS = [...GRADES, null] as const;
 const MAX_INITIAL_ENTRIES_PER_GRADE = 2;
 const GRADE_COLORS = {
+  S: colors.red,
   A: "#c79a1e",
   B: "#8c93a0",
   C: "#b16a34",
@@ -27,7 +28,7 @@ const COPY = {
   zh: {
     kicker: "ABC STORE GRADES",
     title: "门店 ABC 评级榜",
-    subtitle: "展示最新已发布周期的 A、B、C 级及未评级门店。检查报告仅向总部及管理层开放。",
+    subtitle: "展示最新已发布周期的 S、A、B、C 级及未评级门店。S 为每三个月轮换的特别等级。",
     ungraded: "未评级",
     storeUnit: "家门店",
     cycleLabel: "检查周期",
@@ -43,7 +44,7 @@ const COPY = {
     kicker: "ABC STORE GRADES",
     title: "ABC store grade board",
     subtitle:
-      "A, B, C and ungraded stores from the latest published cycle. Reports remain restricted to headquarters and management.",
+      "S, A, B, C and ungraded stores from the latest published cycle. S is the special grade selected every three months.",
     ungraded: "Ungraded",
     storeUnit: "stores",
     cycleLabel: "Inspection cycle",
@@ -59,7 +60,7 @@ const COPY = {
     kicker: "NIVEAUX ABC DES BOUTIQUES",
     title: "Tableau des niveaux ABC",
     subtitle:
-      "Niveaux A, B, C et boutiques non notées du dernier cycle publié. Les rapports restent réservés au siège et au management.",
+      "Niveaux S, A, B, C et boutiques non notées du dernier cycle publié. S est le niveau spécial renouvelé tous les trois mois.",
     ungraded: "Non noté",
     storeUnit: "boutiques",
     cycleLabel: "Cycle d'inspection",
@@ -143,10 +144,7 @@ export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeL
   });
   const latestBoard = latestBoardQuery.data ?? null;
   const selectedBoardQuery = useQuery({
-    enabled:
-      isActive &&
-      selectedCycle !== null &&
-      selectedCycle.id !== latestBoard?.cycle.id,
+    enabled: isActive && selectedCycle !== null && selectedCycle.id !== latestBoard?.cycle.id,
     meta: { persist: true },
     placeholderData: (previousData) => previousData,
     queryFn: () => fetchPublishedGradeBoard(selectedCycle?.id),
@@ -155,15 +153,13 @@ export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeL
   const board =
     selectedCycle === null || selectedCycle.id === latestBoard?.cycle.id
       ? latestBoard
-      : selectedBoardQuery.data ?? null;
+      : (selectedBoardQuery.data ?? null);
   const isLoading =
     board === null &&
     (latestBoardQuery.isPending || (selectedCycle !== null && selectedBoardQuery.isPending));
   const isReady = board !== null;
   const isError =
-    !isReady &&
-    latestBoardQuery.isError &&
-    (selectedCycle === null || selectedBoardQuery.isError);
+    !isReady && latestBoardQuery.isError && (selectedCycle === null || selectedBoardQuery.isError);
   const entries = board?.entries ?? [];
 
   useEffect(() => {
@@ -309,7 +305,9 @@ export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeL
                       <View style={styles.storeBody}>
                         <View style={styles.storeTitleRow}>
                           {entry.rank ? <RankMedal rank={entry.rank} /> : null}
-                          <Text numberOfLines={1} style={styles.storeName}>{entry.name}</Text>
+                          <Text numberOfLines={1} style={styles.storeName}>
+                            {entry.name}
+                          </Text>
                         </View>
                         <Text numberOfLines={2} style={styles.storeAddress}>
                           {entry.address}
@@ -320,9 +318,7 @@ export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeL
                           </Text>
                         ) : null}
                       </View>
-                      <Text style={[styles.storeGrade, { color: gradeColor }]}>
-                        {grade ?? "—"}
-                      </Text>
+                      <Text style={[styles.storeGrade, { color: gradeColor }]}>{grade ?? "—"}</Text>
                     </View>
                   ))}
                 </View>
@@ -425,16 +421,15 @@ const styles = StyleSheet.create({
   },
   summary: {
     flexDirection: "row",
-    gap: 10,
+    gap: 6,
     marginBottom: 22,
   },
   summaryItem: {
     flex: 1,
     flexShrink: 1,
-    flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    gap: 2,
     paddingVertical: 10,
     borderWidth: 1,
     borderColor: colors.ink10,

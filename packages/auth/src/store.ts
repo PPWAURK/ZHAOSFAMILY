@@ -1,7 +1,7 @@
 import { createStore } from "zustand/vanilla";
 import type { AuthUser } from "@zhao/types";
 
-export type AuthStatus = "idle" | "loading" | "authenticated" | "anonymous";
+export type AuthStatus = "idle" | "loading" | "authenticated" | "offline" | "anonymous";
 
 export type AuthState = {
   accessToken: string | null;
@@ -16,6 +16,7 @@ export type AuthActions = {
   setAccessToken: (accessToken: string | null) => void;
   setError: (error: string | null) => void;
   setLoading: () => void;
+  setOfflineUser: (user: AuthUser) => void;
   setRefreshToken: (refreshToken: string | null) => void;
   setSession: (session: {
     accessToken: string;
@@ -50,6 +51,7 @@ export function createAuthStore(initialState: Partial<AuthState> = {}) {
     setAccessToken: (accessToken) => set({ accessToken }),
     setError: (error) => set({ error, status: "anonymous" }),
     setLoading: () => set({ error: null, status: "loading" }),
+    setOfflineUser: (user) => set({ error: null, status: "offline", user }),
     setRefreshToken: (refreshToken) => set({ refreshToken }),
     setSession: ({ accessToken, refreshToken, user }) =>
       set({

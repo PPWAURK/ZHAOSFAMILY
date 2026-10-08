@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { MediaLink } from "@/shared/components/media/MediaLink";
 import { buildPublicStorePhotoUrl } from "@/shared/api/api-client";
 
-const GRADES = ["A", "B", "C"];
+const GRADES = ["S", "A", "B", "C"];
 
 function getStoreInitial(storeName) {
   return storeName.trim().slice(0, 1).toUpperCase();
@@ -40,7 +40,14 @@ function StoreRankBadge({ rank, styles, label }) {
     <span className={`${styles.storeRankBadge} ${medalClass}`} aria-label={`${label} ${rank}`}>
       <svg viewBox="0 0 36 42" aria-hidden="true">
         <path d="M9 2h18l-4 16H13z" fill="var(--medal-edge)" />
-        <circle cx="18" cy="27" r="11" fill="var(--medal)" stroke="var(--medal-edge)" strokeWidth="1.5" />
+        <circle
+          cx="18"
+          cy="27"
+          r="11"
+          fill="var(--medal)"
+          stroke="var(--medal-edge)"
+          strokeWidth="1.5"
+        />
         <text x="18" y="31" fill="var(--medal-ink)" fontSize={rank > 99 ? 8 : rank > 9 ? 10 : 13}>
           {rank}
         </text>

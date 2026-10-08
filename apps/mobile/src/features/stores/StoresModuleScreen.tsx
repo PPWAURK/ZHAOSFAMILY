@@ -39,6 +39,7 @@ type StoresModuleScreenProps = {
   isActive?: boolean;
   language: AuthLanguage;
   user: AuthUser;
+  onDirtyStateChange?: (isDirty: boolean) => void;
 };
 
 type StoreDetailView = "overview" | "pending" | "team" | "stats";
@@ -179,7 +180,12 @@ function userHasRole(user: MobilePermissionUser, roleValue: string): boolean {
   return parseRoleValues(user.jobRole).includes(roleValue);
 }
 
-export function StoresModuleScreen({ isActive = true, language, user }: StoresModuleScreenProps) {
+export function StoresModuleScreen({
+  isActive = true,
+  language,
+  user,
+  onDirtyStateChange,
+}: StoresModuleScreenProps) {
   useScreenName("stores");
   const confirm = useConfirm();
   const toast = useToast();
@@ -240,6 +246,19 @@ export function StoresModuleScreen({ isActive = true, language, user }: StoresMo
   const [teamSearchTerm, setTeamSearchTerm] = useState("");
   const [teamRoleFilter, setTeamRoleFilter] = useState("");
   const visibleErrorMessage = errorMessage || loadErrorMessage;
+  const hasUnsavedChanges =
+    Object.values(approvalDrafts).some((draft) => Boolean(draft.jobRole.trim())) ||
+    Object.entries(teamDrafts).some(([userId, draft]) => {
+      const currentUser = users.find((item) => String(item.id) === userId);
+      return currentUser !== undefined && draft.jobRole !== (currentUser.jobRole || "");
+    }) ||
+    reviewingUserId !== null ||
+    savingUserId !== null ||
+    deletingUserId !== null;
+
+  useEffect(() => {
+    onDirtyStateChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyStateChange]);
 
   const updateApprovableUsers = useCallback(
     (updater: (current: MobilePermissionUser[]) => MobilePermissionUser[]): void => {

@@ -503,6 +503,7 @@
   letter-spacing: -0.01em;
 }
 
+.gradeMarkerS,
 .gradeMarkerA,
 .gradeMarkerB,
 .gradeMarkerC,
@@ -510,6 +511,10 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
+}
+
+.gradeMarkerS {
+  background: var(--red);
 }
 
 .gradeMarkerA {
@@ -542,12 +547,20 @@
   padding: 20px 22px;
   border: 1px solid var(--ink-20);
   background: var(--paper-raised);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .gradeStoreCard:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 22px rgba(23, 17, 10, 0.08);
+}
+
+.gradeStoreCardS {
+  --grade-color: var(--red);
+  border-color: var(--red);
+  background: rgba(193, 22, 22, 0.08);
 }
 
 .gradeStoreCardA {
@@ -644,6 +657,10 @@
   border-radius: 50%;
   color: var(--ink);
   font-size: 17px;
+}
+
+.gradeStoreCardS .gradeBadge {
+  color: var(--red);
 }
 
 .gradeStoreCardA .gradeBadge {

@@ -52,6 +52,7 @@ type CaseSharesModuleScreenProps = {
   isActive?: boolean;
   language: AuthLanguage;
   mode?: "public" | "mine";
+  onDirtyStateChange?: (isDirty: boolean) => void;
   onRegisterPublishAction?: (action: (() => void) | null) => void;
   onOpenMyCases?: () => void;
 };
@@ -82,6 +83,7 @@ export function CaseSharesModuleScreen({
   isActive = true,
   language,
   mode = "public",
+  onDirtyStateChange,
   onRegisterPublishAction,
   onOpenMyCases,
 }: CaseSharesModuleScreenProps) {
@@ -111,9 +113,19 @@ export function CaseSharesModuleScreen({
   const [comments, setComments] = useState<CaseShareCommentItem[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState("");
-  const [commentInput, setCommentInput] = useState("");
+  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [authorProfileId, setAuthorProfileId] = useState<number | null>(null);
+  const hasUnsavedChanges =
+    Boolean(composerContent.trim() || composerImage) ||
+    isSubmitting ||
+    isPickingImage ||
+    Object.values(commentDrafts).some((draft) => Boolean(draft.trim())) ||
+    isSendingComment;
+
+  useEffect(() => {
+    onDirtyStateChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyStateChange]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -150,9 +162,6 @@ export function CaseSharesModuleScreen({
   }, [copy.loadError, refreshVersion]);
 
   const openComposer = useCallback((): void => {
-    setComposerType("personal");
-    setComposerContent("");
-    setComposerImage(null);
     setComposerError("");
     setIsPickingImage(false);
     setComposerOpen(true);
@@ -250,6 +259,9 @@ export function CaseSharesModuleScreen({
       });
 
       setMine((current) => [created, ...current]);
+      setComposerType("personal");
+      setComposerContent("");
+      setComposerImage(null);
       setComposerOpen(false);
       onOpenMyCases?.();
       toast.success(copy.submitSuccess);
@@ -315,7 +327,6 @@ export function CaseSharesModuleScreen({
   async function openComments(item: CaseShareItem): Promise<void> {
     setCommentsCase(item);
     setComments([]);
-    setCommentInput("");
     setCommentsError("");
     setCommentsLoading(true);
 
@@ -333,7 +344,7 @@ export function CaseSharesModuleScreen({
       return;
     }
 
-    const content = commentInput.trim();
+    const content = (commentDrafts[commentsCase.id] || "").trim();
 
     if (!content) {
       setCommentsError(copy.commentRequired);
@@ -346,7 +357,11 @@ export function CaseSharesModuleScreen({
     try {
       const created = await createCaseComment(commentsCase.id, content);
       setComments((current) => [...current, created]);
-      setCommentInput("");
+      setCommentDrafts((current) => {
+        const nextDrafts = { ...current };
+        delete nextDrafts[commentsCase.id];
+        return nextDrafts;
+      });
       applyUpdatedItem({
         ...commentsCase,
         commentCount: commentsCase.commentCount + 1,
@@ -755,10 +770,14 @@ export function CaseSharesModuleScreen({
                 placeholder={copy.commentPlaceholder}
                 placeholderTextColor={authControlStyles.colors.ink40}
                 style={[shared.searchInput, styles.commentInput]}
-                value={commentInput}
+                value={commentsCase ? commentDrafts[commentsCase.id] || "" : ""}
                 onChangeText={(value) => {
                   setCommentsError("");
-                  setCommentInput(value);
+                  if (!commentsCase) return;
+                  setCommentDrafts((current) => ({
+                    ...current,
+                    [commentsCase.id]: value,
+                  }));
                 }}
               />
               <Pressable

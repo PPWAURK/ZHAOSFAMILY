@@ -8,6 +8,7 @@ import {
   type RefObject,
 } from "react";
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   Image,
@@ -22,6 +23,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { useNetInfo } from "@react-native-community/netinfo";
 import { scaleStyles } from "@/lib/responsive";
 import { useScreenName } from "@/lib/useScreenName";
 import { useNotificationNavigation } from "@/lib/useNotificationNavigation";
@@ -34,7 +36,7 @@ import type {
 } from "@zhao/types";
 import { canSeeNavEntry } from "@zhao/utils";
 import { dashboardNewsQueryKeys } from "@zhao/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsRestoring, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { WebView } from "react-native-webview";
@@ -100,6 +102,7 @@ import { useSplashCompletion } from "@/features/splash/SplashCompletionProvider"
 import { prepareHighFrequencyPages } from "@/lib/pagePreloadManager";
 
 type DashboardHomeScreenProps = {
+  isOffline?: boolean;
   language: AuthLanguage;
   user: AuthUser;
   onChangeLanguage: (language: AuthLanguage) => void;
@@ -121,6 +124,71 @@ const EMPTY_ONBOARDING_TARGETS: MobileOnboardingTargets = {
 
 const PDF_LOADING_MIN_DURATION_MS = 2000;
 const MAX_NEWS_PER_CATEGORY = 20;
+const MAX_MOUNTED_ENTRIES = 4;
+const DASHBOARD_ENTRY_TRANSITION_MS = 160;
+
+type DashboardEntryTransitionProps = {
+  animateOnMount: boolean;
+  children: ReactNode;
+  isActive: boolean;
+  reduceMotion: boolean;
+};
+
+function DashboardEntryTransition({
+  animateOnMount,
+  children,
+  isActive,
+  reduceMotion,
+}: DashboardEntryTransitionProps): ReactNode {
+  const progress = useRef(new Animated.Value(animateOnMount ? 0 : 1)).current;
+  const wasActive = useRef(isActive && !animateOnMount);
+
+  useEffect(() => {
+    if (!isActive) {
+      wasActive.current = false;
+      progress.stopAnimation();
+      return;
+    }
+
+    if (reduceMotion) {
+      progress.setValue(1);
+      wasActive.current = true;
+      return;
+    }
+
+    if (wasActive.current) return;
+
+    wasActive.current = true;
+    progress.setValue(0);
+    const animation = Animated.timing(progress, {
+      duration: DASHBOARD_ENTRY_TRANSITION_MS,
+      easing: Easing.out(Easing.cubic),
+      toValue: 1,
+      useNativeDriver: true,
+    });
+    animation.start();
+
+    return () => animation.stop();
+  }, [isActive, progress, reduceMotion]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: progress,
+        transform: [
+          {
+            translateX: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [reduceMotion ? 0 : 8, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
 
 type DashboardContentContainerProps = {
   children: ReactNode;
@@ -224,6 +292,27 @@ function resolveDashboardEntryId(entryId: string): string {
   return entryId === "new-order" ? "orders" : entryId;
 }
 
+function retainRecentDashboardEntries(
+  currentEntries: string[],
+  nextEntry: string,
+  dirtyEntries: Set<string>,
+): string[] {
+  const recency = [
+    ...currentEntries.filter((entryId) => entryId !== "home" && entryId !== nextEntry),
+    ...(nextEntry === "home" ? [] : [nextEntry]),
+  ];
+  const pinnedEntries = new Set(recency.filter((entryId) => dirtyEntries.has(entryId)));
+  if (nextEntry !== "home") pinnedEntries.add(nextEntry);
+  const targetCount = Math.max(MAX_MOUNTED_ENTRIES - 1, pinnedEntries.size);
+  const retainedEntries = new Set(pinnedEntries);
+
+  for (let index = recency.length - 1; index >= 0 && retainedEntries.size < targetCount; index -= 1) {
+    retainedEntries.add(recency[index]);
+  }
+
+  return ["home", ...recency.filter((entryId) => retainedEntries.has(entryId))];
+}
+
 function isConnectedDashboardEntry(entryId: string): boolean {
   return (
     entryId === "home" ||
@@ -242,6 +331,7 @@ function isConnectedDashboardEntry(entryId: string): boolean {
 }
 
 export function DashboardHomeScreen({
+  isOffline: isOfflineSession = false,
   language,
   user,
   onChangeLanguage,
@@ -252,11 +342,19 @@ export function DashboardHomeScreen({
   onDeleteAccount,
 }: DashboardHomeScreenProps) {
   useScreenName("dashboard");
+  const isQueryCacheRestoring = useIsRestoring();
+  const network = useNetInfo();
+  const isOffline =
+    isOfflineSession ||
+    network.isConnected === false ||
+    network.isInternetReachable === false;
   const copy = DASHBOARD_COPY[language];
   const orderCopy = ORDER_COPY[language];
   const isSplashComplete = useSplashCompletion();
   const [activeEntry, setActiveEntry] = useState("home");
   const [mountedEntries, setMountedEntries] = useState<string[]>(["home"]);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [shouldWarmAvatarCache, setShouldWarmAvatarCache] = useState(false);
   const [isOnboardingReplay, setIsOnboardingReplay] = useState(false);
   const [isOnboardingVisible, setIsOnboardingVisible] = useState(false);
   const [isOnboardingReplayPending, setIsOnboardingReplayPending] = useState(false);
@@ -314,12 +412,13 @@ export function DashboardHomeScreen({
   const [actionMessage, setActionMessage] = useState("");
   const [equippedTitle, setEquippedTitle] = useState<TrainingTitle | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const dirtyEntriesRef = useRef(new Set<string>());
   const preloadedHomeUserRef = useRef<string | null>(null);
   const pdfLoadingStartedAtRef = useRef(0);
   const pdfLoadingTokenRef = useRef(0);
   const [newsCarouselIndex, setNewsCarouselIndex] = useState(0);
   const { width: screenWidth } = useWindowDimensions();
-  const canViewNewsReadStats = hasDashboardJobRole(user, "holding");
+  const canViewNewsReadStats = !isOffline && hasDashboardJobRole(user, "holding");
   // Safe-area insets read here (outside the Modal) — RN Modal renders in a
   // separate native window where SafeAreaView resolves insets to 0.
   const insets = useSafeAreaInsets();
@@ -343,27 +442,87 @@ export function DashboardHomeScreen({
     });
   }, []);
 
+  const updateEntryDirtyState = useCallback((entryId: string, isDirty: boolean): void => {
+    if (isDirty) {
+      dirtyEntriesRef.current.add(entryId);
+      return;
+    }
+
+    dirtyEntriesRef.current.delete(entryId);
+  }, []);
+  const handleOrdersDirtyStateChange = useCallback(
+    (isDirty: boolean): void => updateEntryDirtyState("orders", isDirty),
+    [updateEntryDirtyState],
+  );
+  const handleStoresDirtyStateChange = useCallback(
+    (isDirty: boolean): void => updateEntryDirtyState("stores", isDirty),
+    [updateEntryDirtyState],
+  );
+  const handleInvitePartnerDirtyStateChange = useCallback(
+    (isDirty: boolean): void => updateEntryDirtyState("invite-partner", isDirty),
+    [updateEntryDirtyState],
+  );
+  const handleProfileDirtyStateChange = useCallback(
+    (isDirty: boolean): void => updateEntryDirtyState("profile", isDirty),
+    [updateEntryDirtyState],
+  );
+  const handleRecruitmentDirtyStateChange = useCallback(
+    (isDirty: boolean): void => updateEntryDirtyState("recruitment-requests", isDirty),
+    [updateEntryDirtyState],
+  );
+  const handlePublicCasesDirtyStateChange = useCallback(
+    (isDirty: boolean): void => updateEntryDirtyState("case-shares", isDirty),
+    [updateEntryDirtyState],
+  );
+  const handleMyCasesDirtyStateChange = useCallback(
+    (isDirty: boolean): void => updateEntryDirtyState("my-case-shares", isDirty),
+    [updateEntryDirtyState],
+  );
+
   const navigateToEntry = useCallback(
     (nextEntry: string): void => {
-      if (nextEntry === activeEntry) {
+      const resolvedEntry = resolveDashboardEntryId(nextEntry);
+
+      if (isOffline && resolvedEntry !== "home") return;
+
+      if (resolvedEntry === activeEntry) {
         scrollDashboardToTop();
         return;
       }
 
-      setActiveEntry(nextEntry);
+      setMountedEntries((currentEntries) =>
+        retainRecentDashboardEntries(currentEntries, resolvedEntry, dirtyEntriesRef.current),
+      );
+      setActiveEntry(resolvedEntry);
       scrollDashboardToTop();
     },
-    [activeEntry, scrollDashboardToTop],
+    [activeEntry, isOffline, scrollDashboardToTop],
   );
 
   // Route push-notification destinations through the same immediate navigation path.
   useNotificationNavigation(navigateToEntry);
 
   useEffect(() => {
-    setMountedEntries((currentEntries) =>
-      currentEntries.includes(activeEntry) ? currentEntries : [...currentEntries, activeEntry],
-    );
-  }, [activeEntry]);
+    if (isOffline && activeEntry !== "home") {
+      navigateToEntry("home");
+    }
+  }, [activeEntry, isOffline, navigateToEntry]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (isCurrent) setReduceMotion(enabled);
+      })
+      .catch(() => undefined);
+
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+
+    return () => {
+      isCurrent = false;
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (activeEntry === "home") return;
@@ -376,9 +535,7 @@ export function DashboardHomeScreen({
     pdfLoadingTokenRef.current += 1;
   }, [activeEntry]);
 
-  const renderedEntries = mountedEntries.includes(activeEntry)
-    ? mountedEntries
-    : [...mountedEntries, activeEntry];
+  const renderedEntries = mountedEntries;
 
   const moreDrawerTranslateX = moreDrawerProgress.interpolate({
     inputRange: [0, 1],
@@ -427,7 +584,7 @@ export function DashboardHomeScreen({
     let isActive = true;
 
     async function loadEquippedTitle(): Promise<void> {
-      if (!isMoreOpen) return;
+      if (!isMoreOpen || isOffline) return;
 
       try {
         const myTitles = await fetchTrainingMyTitles();
@@ -442,19 +599,28 @@ export function DashboardHomeScreen({
     return () => {
       isActive = false;
     };
-  }, [isMoreOpen, user.id]);
+  }, [isMoreOpen, isOffline, user.id]);
   const moreNavLabel = DASHBOARD_PRIMARY_NAV.find((item) => item.id === "more")?.label[language];
   const visiblePrimaryNav = useMemo(
-    () => DASHBOARD_PRIMARY_NAV.filter((item) => canSeeNavEntry(user, item)),
-    [user],
+    () =>
+      DASHBOARD_PRIMARY_NAV.filter(
+        (item) =>
+          isOffline
+            ? item.id === "home" || item.id === "more"
+            : canSeeNavEntry(user, item),
+      ),
+    [isOffline, user],
   );
   const visibleMoreGroups = useMemo(
-    () =>
-      DASHBOARD_MORE_NAV_GROUPS.map((group) => ({
+    () => {
+      if (isOffline) return [];
+
+      return DASHBOARD_MORE_NAV_GROUPS.map((group) => ({
         ...group,
         items: group.items.filter((item) => canSeeNavEntry(user, item)),
-      })).filter((group) => group.items.length > 0),
-    [user],
+      })).filter((group) => group.items.length > 0);
+    },
+    [isOffline, user],
   );
   const visibleNewsPosts = useMemo(
     () =>
@@ -467,13 +633,15 @@ export function DashboardHomeScreen({
         .slice(0, MAX_NEWS_PER_CATEGORY),
     [newsPosts, newsSearchTerm, selectedNewsCategory],
   );
-  const mandatoryNewsPost = useMemo(
-    () =>
+  const mandatoryNewsPost = useMemo(() => {
+    if (isOffline) return null;
+
+    return (
       newsPosts.find(
         (post) => post.readConfirmation?.isRequired && !post.readConfirmation.confirmedAt,
-      ) ?? null,
-    [newsPosts],
-  );
+      ) ?? null
+    );
+  }, [isOffline, newsPosts]);
 
   useEffect(() => {
     const attachment = mandatoryNewsPost?.attachment;
@@ -522,6 +690,12 @@ export function DashboardHomeScreen({
   }, [newsSearchTerm, selectedNewsCategory]);
 
   useEffect(() => {
+    if (isOffline) {
+      setIsOnboardingReplayPending(false);
+      setIsOnboardingVisible(false);
+      return;
+    }
+
     if (!isSplashComplete) return;
 
     const userId = String(user.id);
@@ -536,10 +710,18 @@ export function DashboardHomeScreen({
       setIsOnboardingReplay(false);
       setIsOnboardingVisible(true);
     }
-  }, [isSplashComplete, user.id, user.mobileOnboardingCompletedAt]);
+  }, [isOffline, isSplashComplete, user.id, user.mobileOnboardingCompletedAt]);
 
   useEffect(() => {
-    if (!isSplashComplete || isOnboardingVisible) return undefined;
+    if (
+      isOffline ||
+      activeEntry !== "home" ||
+      isMoreOpen ||
+      isQueryCacheRestoring ||
+      !isSplashComplete
+    ) {
+      return undefined;
+    }
 
     const preloadKey = `${user.id}:${language}`;
 
@@ -547,11 +729,21 @@ export function DashboardHomeScreen({
 
     const interaction = InteractionManager.runAfterInteractions(() => {
       preloadedHomeUserRef.current = preloadKey;
+      setShouldWarmAvatarCache(true);
       void prepareHighFrequencyPages({ language, queryClient, userId: user.id });
     });
 
     return () => interaction.cancel();
-  }, [isOnboardingVisible, isSplashComplete, language, queryClient, user.id]);
+  }, [
+    activeEntry,
+    isMoreOpen,
+    isOffline,
+    isQueryCacheRestoring,
+    isSplashComplete,
+    language,
+    queryClient,
+    user.id,
+  ]);
 
   const updateOnboardingTarget = useCallback(
     (target: MobileOnboardingTargetId, nextBounds: MobileOnboardingTargetBounds): void => {
@@ -655,6 +847,8 @@ export function DashboardHomeScreen({
   }
 
   async function completeOnboarding(destination: "home" | "training" | null): Promise<void> {
+    if (isOffline) return;
+
     if (destination === null) {
       setIsOnboardingVisible(false);
       setIsOnboardingReplay(false);
@@ -697,6 +891,12 @@ export function DashboardHomeScreen({
     async (post: DashboardNewsPost): Promise<void> => {
       setReaderError("");
       setSelectedNewsPost(post);
+
+      if (isOffline) {
+        setIsLoadingSelectedNews(false);
+        return;
+      }
+
       setIsLoadingSelectedNews(true);
 
       try {
@@ -712,7 +912,7 @@ export function DashboardHomeScreen({
         setIsLoadingSelectedNews(false);
       }
     },
-    [canViewNewsReadStats, copy.readerError, loadNewsReadStatus],
+    [canViewNewsReadStats, copy.readerError, isOffline, loadNewsReadStatus],
   );
 
   function handleCloseNewsReader(): void {
@@ -725,6 +925,8 @@ export function DashboardHomeScreen({
 
   const handleConfirmNewsRead = useCallback(
     async (postId: string): Promise<void> => {
+      if (isOffline) return;
+
       try {
         setReadConfirmationState({ postId, message: "" });
         const confirmation = await confirmDashboardNewsRead(postId);
@@ -752,6 +954,7 @@ export function DashboardHomeScreen({
       canViewNewsReadStats,
       copy.newsReadConfirmError,
       copy.newsReadConfirmed,
+      isOffline,
       loadNewsReadStatus,
       queryClient,
     ],
@@ -917,7 +1120,9 @@ export function DashboardHomeScreen({
             </View>
 
             <View style={styles.topActions}>
-              <NotificationCenter language={language} onOpenEntry={navigateToEntry} />
+              {!isOffline ? (
+                <NotificationCenter language={language} onOpenEntry={navigateToEntry} />
+              ) : null}
               {!isMoreOpen ? (
                 <SidebarMenuToggle
                   accessibilityLabel={moreNavLabel ?? copy.moreTitle}
@@ -931,6 +1136,19 @@ export function DashboardHomeScreen({
             </View>
           </View>
 
+          {isOffline ? (
+            <View accessibilityLiveRegion="polite" style={styles.offlineNotice}>
+              <Ionicons color="#ffffff" name="cloud-offline-outline" size={15} />
+              <Text style={styles.offlineNoticeText}>
+                {language === "zh"
+                  ? "离线模式 · 仅可查看已缓存的首页内容"
+                  : language === "fr"
+                    ? "Hors ligne · accueil enregistré en lecture seule"
+                    : "Offline · saved home content is read-only"}
+              </Text>
+            </View>
+          ) : null}
+
           <DashboardRefreshProvider onForegroundRefresh={refreshDashboardNews}>
             <DashboardContentContainer>
               {renderedEntries.map((entryId) => (
@@ -939,6 +1157,11 @@ export function DashboardHomeScreen({
                   pointerEvents={entryId === activeEntry ? "auto" : "none"}
                   style={entryId === activeEntry ? null : styles.keepAliveEntryHidden}
                 >
+                  <DashboardEntryTransition
+                    animateOnMount={entryId !== "home"}
+                    isActive={entryId === activeEntry}
+                    reduceMotion={reduceMotion}
+                  >
                   {entryId === "orders" ? (
                     <OrderModuleScreen
                       isActive={entryId === activeEntry}
@@ -947,12 +1170,14 @@ export function DashboardHomeScreen({
                         user.store?.name || user.storeName || user.establishment || undefined
                       }
                       onProductViewChange={setIsOrderProductView}
+                      onDirtyStateChange={handleOrdersDirtyStateChange}
                     />
                   ) : entryId === "stores" ? (
                     <StoresModuleScreen
                       isActive={entryId === activeEntry}
                       language={language}
                       user={user}
+                      onDirtyStateChange={handleStoresDirtyStateChange}
                     />
                   ) : entryId === "store-grade-ranking" ? (
                     <StoreGradeLeaderboard isActive={entryId === activeEntry} language={language} />
@@ -961,6 +1186,7 @@ export function DashboardHomeScreen({
                       isActive={entryId === activeEntry}
                       language={language}
                       user={user}
+                      onDirtyStateChange={handleProfileDirtyStateChange}
                       onChangeLanguage={onChangeLanguage}
                       onLogout={onLogout}
                       onChangePassword={onChangePassword}
@@ -972,11 +1198,13 @@ export function DashboardHomeScreen({
                       isActive={entryId === activeEntry}
                       language={language}
                       user={user}
+                      onDirtyStateChange={handleInvitePartnerDirtyStateChange}
                     />
                   ) : entryId === "recruitment-requests" ? (
                     <RecruitmentModuleScreen
                       isActive={entryId === activeEntry}
                       language={language}
+                      onDirtyStateChange={handleRecruitmentDirtyStateChange}
                     />
                   ) : entryId === "recipes" ? (
                     <RecipeModuleScreen
@@ -991,6 +1219,7 @@ export function DashboardHomeScreen({
                       isActive={entryId === activeEntry}
                       onRegisterPublishAction={handleCaseSharePublishActionChange}
                       onOpenMyCases={() => navigateToEntry("my-case-shares")}
+                      onDirtyStateChange={handlePublicCasesDirtyStateChange}
                     />
                   ) : entryId === "my-case-shares" ? (
                     <CaseSharesModuleScreen
@@ -999,6 +1228,7 @@ export function DashboardHomeScreen({
                       isActive={entryId === activeEntry}
                       onRegisterPublishAction={handleCaseSharePublishActionChange}
                       onOpenMyCases={() => navigateToEntry("my-case-shares")}
+                      onDirtyStateChange={handleMyCasesDirtyStateChange}
                     />
                   ) : entryId === "training" ? (
                     <TrainingModuleScreen
@@ -1028,13 +1258,29 @@ export function DashboardHomeScreen({
                         </Text>
                       </View>
 
+                      {shouldWarmAvatarCache && userCard.avatar ? (
+                        <View
+                          accessible={false}
+                          importantForAccessibility="no-hide-descendants"
+                          pointerEvents="none"
+                          style={styles.avatarCacheWarmup}
+                        >
+                          <RemoteImage
+                            cacheKey={`dashboard-user-avatar-${user.id}`}
+                            loadPriority="low"
+                            source={{ uri: userCard.avatar }}
+                            style={styles.avatarCacheWarmupImage}
+                          />
+                        </View>
+                      ) : null}
+
                       {!mandatoryNewsPost ? (
                         <DashboardNewsBoard
                           activeCategory={selectedNewsCategory}
                           activeIndex={newsCarouselIndex}
                           copy={copy}
                           error={newsError}
-                          isConfirmingRead={readConfirmationState.postId !== ""}
+                          isConfirmingRead={isOffline || readConfirmationState.postId !== ""}
                           isLoading={isLoadingNews}
                           posts={newsPosts}
                           searchTerm={newsSearchTerm}
@@ -1187,11 +1433,13 @@ export function DashboardHomeScreen({
                               <Pressable
                                 accessibilityRole="button"
                                 disabled={
+                                  isOffline ||
                                   !hasReachedMandatoryNewsEnd ||
                                   readConfirmationState.postId === mandatoryNewsPost.id
                                 }
                                 style={[
                                   styles.mandatoryNewsConfirmButton,
+                                  isOffline ||
                                   !hasReachedMandatoryNewsEnd ||
                                   readConfirmationState.postId === mandatoryNewsPost.id
                                     ? styles.mandatoryNewsConfirmButtonDisabled
@@ -1331,9 +1579,13 @@ export function DashboardHomeScreen({
                                         <Pressable
                                           accessibilityRole="button"
                                           disabled={
+                                            isOffline ||
                                             readConfirmationState.postId === selectedNewsPost.id
                                           }
-                                          style={styles.readConfirmationButton}
+                                          style={[
+                                            styles.readConfirmationButton,
+                                            isOffline ? styles.mandatoryNewsConfirmButtonDisabled : null,
+                                          ]}
                                           onPress={() =>
                                             void handleConfirmNewsRead(selectedNewsPost.id)
                                           }
@@ -1526,13 +1778,14 @@ export function DashboardHomeScreen({
                       ) : null}
                     </>
                   )}
+                  </DashboardEntryTransition>
                 </View>
               ))}
             </DashboardContentContainer>
           </DashboardRefreshProvider>
         </ScrollView>
 
-        {!isMoreOpen ? (
+        {!isMoreOpen && !isOffline ? (
           <BlurView intensity={80} tint="light" style={styles.bottomNav}>
             <View style={styles.bottomNavDepth} />
             {visiblePrimaryNav
@@ -1732,16 +1985,18 @@ export function DashboardHomeScreen({
                         </View>
                       </View>
                     ))}
-                    <FeedbackPressable
-                      accessibilityLabel={copy.onboarding}
-                      accessibilityRole="button"
-                      style={styles.moreItem}
-                      onPress={openOnboardingReplay}
-                    >
-                      <Text style={styles.moreIndex}>+</Text>
-                      <Text style={styles.moreText}>{copy.onboarding}</Text>
-                      <Text style={styles.moreArrow}>→</Text>
-                    </FeedbackPressable>
+                    {!isOffline ? (
+                      <FeedbackPressable
+                        accessibilityLabel={copy.onboarding}
+                        accessibilityRole="button"
+                        style={styles.moreItem}
+                        onPress={openOnboardingReplay}
+                      >
+                        <Text style={styles.moreIndex}>+</Text>
+                        <Text style={styles.moreText}>{copy.onboarding}</Text>
+                        <Text style={styles.moreArrow}>→</Text>
+                      </FeedbackPressable>
+                    ) : null}
                   </ScrollView>
 
                   <FeedbackPressable
@@ -1782,6 +2037,18 @@ const styles = StyleSheet.create(
       fontSize: 13,
       lineHeight: 20,
       marginTop: 12,
+    },
+    avatarCacheWarmup: {
+      height: 1,
+      left: -2,
+      opacity: 0,
+      position: "absolute",
+      top: -2,
+      width: 1,
+    },
+    avatarCacheWarmupImage: {
+      height: 1,
+      width: 1,
     },
     bottomNav: {
       backgroundColor: Platform.select({
@@ -2091,6 +2358,23 @@ const styles = StyleSheet.create(
       color: authControlStyles.colors.ink40,
       fontSize: 13,
       lineHeight: 20,
+    },
+    offlineNotice: {
+      alignItems: "center",
+      backgroundColor: authControlStyles.colors.ink60,
+      borderRadius: 10,
+      flexDirection: "row",
+      gap: 8,
+      marginHorizontal: 20,
+      marginTop: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+    },
+    offlineNoticeText: {
+      color: "#ffffff",
+      flex: 1,
+      fontSize: 12,
+      fontWeight: "600",
     },
     mandatoryNewsKicker: {
       color: authControlStyles.colors.red,

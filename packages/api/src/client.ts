@@ -7,9 +7,9 @@ import axios, {
 import { ApiClientError, toApiClientError } from "./errors";
 
 export type AccessTokenReader = () => string | null;
-export type AccessTokenWriter = (token: string | null) => void;
+export type AccessTokenWriter = (token: string | null) => void | Promise<void>;
 export type RefreshTokenReader = () => string | null;
-export type RefreshTokenWriter = (token: string | null) => void;
+export type RefreshTokenWriter = (token: string | null) => void | Promise<void>;
 
 export type CreateApiClientOptions = {
   baseURL: string;
@@ -18,6 +18,9 @@ export type CreateApiClientOptions = {
   getRefreshToken?: RefreshTokenReader;
   setRefreshToken?: RefreshTokenWriter;
   refreshPath?: string;
+  onAuthRejected?: (error: unknown) => void | Promise<void>;
+  onRefreshUnavailable?: (error: unknown) => void | Promise<void>;
+  preserveTokensOnRefreshFailure?: boolean;
 };
 
 export type RequestBody = Record<string, unknown> | unknown[] | string | number | boolean | null;
@@ -84,6 +87,9 @@ export function createApiClient({
   getRefreshToken: readRefreshToken = getRefreshToken,
   setRefreshToken: writeRefreshToken = setRefreshToken,
   refreshPath = "/auth/refresh",
+  onAuthRejected,
+  onRefreshUnavailable,
+  preserveTokensOnRefreshFailure = false,
 }: CreateApiClientOptions): ApiClient {
   const axiosInstance = axios.create({
     baseURL,
@@ -101,7 +107,7 @@ export function createApiClient({
     const currentRefreshToken = readRefreshToken();
 
     if (!currentRefreshToken) {
-      writeAccessToken(null);
+      await writeAccessToken(null);
       return null;
     }
 
@@ -113,16 +119,30 @@ export function createApiClient({
       .post<{ accessToken?: string; refreshToken?: string }>(refreshPath, {
         refreshToken: currentRefreshToken,
       })
-      .then((response) => {
+      .then(async (response) => {
         const nextToken = response.data.accessToken ?? null;
         const nextRefreshToken = response.data.refreshToken ?? null;
-        writeAccessToken(nextToken);
-        writeRefreshToken(nextRefreshToken);
+        await writeAccessToken(nextToken);
+        await writeRefreshToken(nextRefreshToken);
         return nextToken;
       })
-      .catch(() => {
-        writeAccessToken(null);
-        writeRefreshToken(null);
+      .catch(async (error: unknown) => {
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+
+        if (status === 401 || status === 403) {
+          if (onAuthRejected) {
+            await onAuthRejected(error);
+          } else {
+            await writeAccessToken(null);
+            await writeRefreshToken(null);
+          }
+        } else if (preserveTokensOnRefreshFailure) {
+          await onRefreshUnavailable?.(error);
+        } else {
+          await writeAccessToken(null);
+          await writeRefreshToken(null);
+        }
+
         return null;
       })
       .finally(() => {
@@ -151,11 +171,22 @@ export function createApiClient({
         config.url !== "/auth/login";
 
       if (shouldRefresh) {
+        const hasRefreshToken = Boolean(readRefreshToken());
         const nextToken = await refreshAccessToken();
 
         if (nextToken) {
           return request<TResponse>({ ...config, retried: true });
         }
+
+        if (!hasRefreshToken) {
+          if (onAuthRejected) {
+            await onAuthRejected(error);
+          } else {
+            await writeAccessToken(null);
+          }
+        }
+      } else if (status === 401 && config.retried && onAuthRejected) {
+        await onAuthRejected(error);
       }
 
       throw toApiClientError(error as AxiosError);

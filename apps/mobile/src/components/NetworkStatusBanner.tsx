@@ -1,12 +1,15 @@
 import { useNetInfo } from "@react-native-community/netinfo";
 import { type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useStore } from "zustand";
+import { mobileAuthStore } from "@/lib/api";
 
 export function NetworkStatusBanner(): ReactNode {
   const network = useNetInfo();
+  const authStatus = useStore(mobileAuthStore, (state) => state.status);
   const isOffline = network.isConnected === false || network.isInternetReachable === false;
 
-  if (!isOffline) return null;
+  if (!isOffline || authStatus === "authenticated" || authStatus === "offline") return null;
 
   return (
     <View accessibilityLiveRegion="polite" style={styles.root}>

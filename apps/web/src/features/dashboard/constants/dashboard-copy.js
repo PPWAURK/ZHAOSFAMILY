@@ -314,7 +314,7 @@ export const DASHBOARD_COPY = {
     gradeLeaderboard: {
       kicker: "ABC STORE GRADES",
       title: "门店 ABC 评级榜",
-      subtitle: "展示最新已发布周期的 A、B、C 级门店；检查报告仅向总部及管理层开放。",
+      subtitle: "展示最新已发布周期的 S、A、B、C 级门店；S 为每三个月轮换的特别等级。",
       cycleLabel: "检查周期",
       previousCycle: "查看较新周期",
       nextCycle: "查看较早周期",
@@ -532,7 +532,7 @@ export const DASHBOARD_COPY = {
       kicker: "ABC STORE GRADES",
       title: "ABC store grade board",
       subtitle:
-        "A, B and C store grades from the latest published cycle. Inspection reports stay restricted to headquarters and management.",
+        "S, A, B and C store grades from the latest published cycle. S is the special grade selected every three months.",
       cycleLabel: "Inspection cycle",
       previousCycle: "View newer cycle",
       nextCycle: "View older cycle",
@@ -753,7 +753,7 @@ export const DASHBOARD_COPY = {
       kicker: "NIVEAUX ABC DES BOUTIQUES",
       title: "Tableau des niveaux ABC",
       subtitle:
-        "Niveaux A, B et C du dernier cycle publie. Les rapports d'inspection restent reserves au siege et au management.",
+        "Niveaux S, A, B et C du dernier cycle publié. S est le niveau spécial renouvelé tous les trois mois.",
       cycleLabel: "Cycle d'inspection",
       previousCycle: "Voir le cycle plus récent",
       nextCycle: "Voir le cycle plus ancien",

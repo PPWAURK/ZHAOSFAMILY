@@ -18,7 +18,6 @@ import {
 import { fetchLocalizedTrainingPlan } from "@/features/training/trainingQueries";
 
 const MAX_CRITICAL_IMAGE_COUNT = 3;
-const PRELOAD_BATCH_DELAY_MS = 400;
 
 type HomePreloadOptions = {
   language: AuthLanguage;
@@ -48,16 +47,17 @@ export async function preloadCriticalImages(
 
   try {
     return await Image.prefetch(criticalImageUrls, "memory-disk");
-  } catch {
+  } catch (error) {
+    console.warn("Unable to prewarm critical mobile images.", error);
     return false;
   }
 }
 
 export async function prepareOrdersPage(queryClient: QueryClient): Promise<void> {
-  await queryClient.fetchQuery({
+  await queryClient.ensureQueryData({
+    meta: { persist: true },
     queryFn: fetchOrderSuppliers,
     queryKey: ordersQueryKeys.suppliers(),
-    staleTime: 0,
   });
 }
 
@@ -115,15 +115,9 @@ export async function prepareTrainingPage(
 async function runPreloadTask(task: () => Promise<void>): Promise<void> {
   try {
     await task();
-  } catch {
-    // Background preload failures should never interrupt the home screen.
+  } catch (error) {
+    console.warn("Unable to prewarm a high-frequency mobile page.", error);
   }
-}
-
-function waitForNextPreloadBatch(): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, PRELOAD_BATCH_DELAY_MS);
-  });
 }
 
 export async function prepareHighFrequencyPages({
@@ -131,11 +125,13 @@ export async function prepareHighFrequencyPages({
   queryClient,
   userId,
 }: HomePreloadOptions): Promise<void> {
-  await runPreloadTask(() => prepareStoresPage(queryClient, userId));
-  await waitForNextPreloadBatch();
-  await runPreloadTask(() => prepareStoreGradeRankingPage(queryClient));
-  await waitForNextPreloadBatch();
-  await runPreloadTask(() => prepareOrdersPage(queryClient));
-  await waitForNextPreloadBatch();
-  await runPreloadTask(() => prepareTrainingPage(queryClient, userId, language));
+  await Promise.all([
+    runPreloadTask(() => prepareOrdersPage(queryClient)),
+    runPreloadTask(() => prepareStoresPage(queryClient, userId)),
+  ]);
+
+  await Promise.all([
+    runPreloadTask(() => prepareTrainingPage(queryClient, userId, language)),
+    runPreloadTask(() => prepareStoreGradeRankingPage(queryClient)),
+  ]);
 }

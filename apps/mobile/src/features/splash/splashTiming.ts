@@ -3,15 +3,15 @@ export const SPLASH_STAGE = {
   height: 844,
 };
 
-export const SPLASH_DURATION_MS = 3_950;
+export const SPLASH_DURATION_MS = 900;
 
 export const SPLASH_TIMELINE = {
-  focusEnd: 400,
-  noodleInEnd: 1_800,
-  noodleOutEnd: 3_000,
-  logoStart: 2_850,
-  logoFull: 3_800,
-  holdEnd: 3_900,
+  focusEnd: 80,
+  noodleInEnd: 360,
+  noodleOutEnd: 680,
+  logoStart: 620,
+  logoFull: 820,
+  holdEnd: 880,
   exitEnd: SPLASH_DURATION_MS,
 };
 

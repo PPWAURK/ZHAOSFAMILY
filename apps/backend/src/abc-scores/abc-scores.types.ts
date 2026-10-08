@@ -1,8 +1,8 @@
 export type AbcCycleStatus = 'draft' | 'published';
 
-export type AbcGrade = 'A' | 'B' | 'C';
+export type AbcGrade = 'S' | 'A' | 'B' | 'C';
 
-export const ABC_GRADES: readonly AbcGrade[] = ['A', 'B', 'C'];
+export const ABC_GRADES: readonly AbcGrade[] = ['S', 'A', 'B', 'C'];
 
 export type AbcScoreActor = {
   id: number;
