@@ -1267,7 +1267,7 @@ export function DashboardHomeScreen({
                         >
                           <RemoteImage
                             cacheKey={`dashboard-user-avatar-${user.id}`}
-                            loadPriority="low"
+                            loadPriority="lazy"
                             source={{ uri: userCard.avatar }}
                             style={styles.avatarCacheWarmupImage}
                           />
