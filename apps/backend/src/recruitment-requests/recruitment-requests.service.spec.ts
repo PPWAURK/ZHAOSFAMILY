@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { RECRUITMENT_REQUEST_PERMISSIONS } from '../auth/permissions';
 import { RecruitmentRequestsService } from './recruitment-requests.service';
 
@@ -25,6 +29,7 @@ const REQUEST_RECORD = {
   headcount: 2,
   notes: 'Weekend shift',
   status: 'pending',
+  isPublished: false,
   handledNotes: null,
   handledByUserId: null,
   handledByUser: null,
@@ -120,6 +125,43 @@ describe('RecruitmentRequestsService', () => {
     });
   });
 
+  it('lists only public opening fields from published, unfinished requests', async () => {
+    const prismaService = createPrismaServiceMock();
+    prismaService.recruitmentRequest.findMany.mockResolvedValue([
+      {
+        id: REQUEST_RECORD.id,
+        position: REQUEST_RECORD.position,
+        contractType: REQUEST_RECORD.contractType,
+        headcount: REQUEST_RECORD.headcount,
+        restaurant: { address: '10 rue de Rivoli, 75004 Paris' },
+      },
+    ]);
+    const service = new RecruitmentRequestsService(prismaService as never);
+
+    const result = await service.listPublicOpenings();
+
+    expect(prismaService.recruitmentRequest.findMany).toHaveBeenCalledWith({
+      where: { isPublished: true, status: { not: 'completed' } },
+      select: {
+        id: true,
+        position: true,
+        contractType: true,
+        headcount: true,
+        restaurant: { select: { address: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(result).toEqual([
+      {
+        id: REQUEST_RECORD.id,
+        address: '10 rue de Rivoli, 75004 Paris',
+        position: 'waiter',
+        contractType: 'full_time',
+        headcount: 2,
+      },
+    ]);
+  });
+
   it('rejects updates from users without recruitment management permission', async () => {
     const prismaService = createPrismaServiceMock();
     const service = new RecruitmentRequestsService(prismaService as never);
@@ -143,12 +185,56 @@ describe('RecruitmentRequestsService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('rejects publishing a completed request', async () => {
+    const prismaService = createPrismaServiceMock();
+    prismaService.recruitmentRequest.findUnique.mockResolvedValue({
+      id: REQUEST_RECORD.id,
+      status: 'completed',
+    });
+    const service = new RecruitmentRequestsService(prismaService as never);
+
+    await expect(
+      service.updateRequest(HQ_ACTOR, REQUEST_RECORD.id, {
+        isPublished: true,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prismaService.recruitmentRequest.update).not.toHaveBeenCalled();
+  });
+
+  it('allows headquarters to publish an unfinished request', async () => {
+    const prismaService = createPrismaServiceMock();
+    prismaService.recruitmentRequest.findUnique.mockResolvedValue({
+      id: REQUEST_RECORD.id,
+      status: 'pending',
+    });
+    prismaService.recruitmentRequest.update.mockResolvedValue({
+      ...REQUEST_RECORD,
+      isPublished: true,
+    });
+    const service = new RecruitmentRequestsService(prismaService as never);
+
+    const result = await service.updateRequest(HQ_ACTOR, REQUEST_RECORD.id, {
+      isPublished: true,
+    });
+
+    expect(prismaService.recruitmentRequest.update).toHaveBeenCalledWith({
+      where: { id: REQUEST_RECORD.id },
+      data: { isPublished: true },
+      include: REQUEST_INCLUDES,
+    });
+    expect(result.isPublished).toBe(true);
+  });
+
   it('records the handler when a request is completed', async () => {
     const prismaService = createPrismaServiceMock();
-    prismaService.recruitmentRequest.findUnique.mockResolvedValue({ id: 11 });
+    prismaService.recruitmentRequest.findUnique.mockResolvedValue({
+      id: 11,
+      status: 'pending',
+    });
     prismaService.recruitmentRequest.update.mockResolvedValue({
       ...REQUEST_RECORD,
       status: 'completed',
+      isPublished: false,
       handledNotes: 'Assigned to HR',
       handledByUserId: HQ_ACTOR.id,
       handledByUser: {
@@ -169,6 +255,7 @@ describe('RecruitmentRequestsService', () => {
       where: { id: REQUEST_RECORD.id },
       data: {
         status: 'completed',
+        isPublished: false,
         handledNotes: 'Assigned to HR',
         handledByUserId: HQ_ACTOR.id,
         handledAt: ANY_DATE,

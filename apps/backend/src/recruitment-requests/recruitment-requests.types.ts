@@ -42,9 +42,18 @@ export type RecruitmentRequestItem = {
   headcount: number;
   notes: string | null;
   status: RecruitmentRequestStatus;
+  isPublished: boolean;
   handledNotes: string | null;
   handledBy: RecruitmentRequestUser | null;
   handledAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type PublicRecruitmentOpening = {
+  id: number;
+  address: string;
+  position: RecruitmentPosition;
+  contractType: RecruitmentContractType;
+  headcount: number;
 };

@@ -737,6 +737,7 @@ model RecruitmentRequest {
   headcount       Int
   notes           String?    @db.Text
   status          String     @default("pending") @db.VarChar(20)
+  isPublished     Boolean    @default(false) @map("is_published")
   handledNotes    String?    @map("handled_notes") @db.Text
   handledByUserId Int?       @map("handled_by_user_id")
   handledByUser   User?      @relation("RecruitmentRequestHandledBy", fields: [handledByUserId], references: [id], onDelete: SetNull)
@@ -745,6 +746,7 @@ model RecruitmentRequest {
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
   @@index([status, createdAt])
+  @@index([isPublished, status, createdAt])
   @@index([restaurantId, createdAt])
   @@index([createdByUserId])
   @@index([handledByUserId])

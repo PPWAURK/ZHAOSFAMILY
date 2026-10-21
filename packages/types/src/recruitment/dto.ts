@@ -18,4 +18,5 @@ export type ListRecruitmentRequestsQuery = {
 export type UpdateRecruitmentRequestRequest = {
   status?: RecruitmentRequestStatus;
   handledNotes?: string;
+  isPublished?: boolean;
 };

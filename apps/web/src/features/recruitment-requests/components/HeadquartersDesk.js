@@ -108,6 +108,19 @@ export default function HeadquartersDesk({ lang }) {
     }));
   }
 
+  function applyUpdatedRequest(updatedRequest) {
+    setRequests((current) =>
+      current.map((item) => (item.id === updatedRequest.id ? updatedRequest : item)),
+    );
+    setDrafts((current) => ({
+      ...current,
+      [updatedRequest.id]: {
+        status: updatedRequest.status,
+        handledNotes: updatedRequest.handledNotes || "",
+      },
+    }));
+  }
+
   async function handleSave(request) {
     const requestId = String(request.id);
     const draft = drafts[request.id] || {
@@ -122,19 +135,29 @@ export default function HeadquartersDesk({ lang }) {
         handledNotes: draft.handledNotes.trim() || undefined,
       });
 
-      setRequests((current) =>
-        current.map((item) => (item.id === updatedRequest.id ? updatedRequest : item)),
-      );
-      setDrafts((current) => ({
-        ...current,
-        [updatedRequest.id]: {
-          status: updatedRequest.status,
-          handledNotes: updatedRequest.handledNotes || "",
-        },
-      }));
+      applyUpdatedRequest(updatedRequest);
       toast.success(t.saveSuccess);
     } catch (error) {
       toast.error(resolveErrorMessage(error, t.saveError));
+    } finally {
+      setSavingRequestId("");
+    }
+  }
+
+  async function handlePublication(request) {
+    try {
+      setSavingRequestId(String(request.id));
+      const updatedRequest = await updateRecruitmentRequest(request.id, {
+        isPublished: !request.isPublished,
+      });
+      applyUpdatedRequest(updatedRequest);
+      toast.success(
+        updatedRequest.isPublished
+          ? t.publication.publishSuccess
+          : t.publication.withdrawSuccess,
+      );
+    } catch (error) {
+      toast.error(resolveErrorMessage(error, t.publication.updateError));
     } finally {
       setSavingRequestId("");
     }
@@ -253,6 +276,11 @@ export default function HeadquartersDesk({ lang }) {
                   />
                 </div>
                 <div className={styles.rowActions}>
+                  <span className={styles.publicationState}>
+                    {request.isPublished
+                      ? t.publication.published
+                      : t.publication.unpublished}
+                  </span>
                   <button
                     type="button"
                     className={`${styles.btn} ${styles.btnPrimary}`}
@@ -260,6 +288,20 @@ export default function HeadquartersDesk({ lang }) {
                     onClick={() => void handleSave(request)}
                   >
                     {isSaving ? t.saving : t.save}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    disabled={
+                      isSaving ||
+                      (!request.isPublished &&
+                        (request.status === "completed" || draft.status === "completed"))
+                    }
+                    onClick={() => void handlePublication(request)}
+                  >
+                    {request.isPublished
+                      ? t.publication.withdraw
+                      : t.publication.publish}
                   </button>
                 </div>
               </article>

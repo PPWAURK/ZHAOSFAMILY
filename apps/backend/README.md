@@ -14,4 +14,5 @@ Backend NestJS minimal pour le monorepo.
 
 - API: `http://localhost:3002/api`
 - Healthcheck: `GET http://localhost:3002/api/health`
+- API publique de recrutement : [documentation partenaire](docs/recruitment-openings-api.fr.md)
 - Accès MySQL direct: `docker exec -it webapp2026-mysql mysql -uroot -ppassword webapp2026`

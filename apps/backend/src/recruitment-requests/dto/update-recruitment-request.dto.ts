@@ -1,4 +1,11 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 import {
   RECRUITMENT_REQUEST_STATUSES,
   type RecruitmentRequestStatus,
@@ -10,6 +17,10 @@ export class UpdateRecruitmentRequestDto {
     message: 'INVALID_RECRUITMENT_REQUEST_STATUS',
   })
   status?: RecruitmentRequestStatus;
+
+  @ValidateIf((_, value: unknown) => value !== undefined)
+  @IsBoolean()
+  isPublished?: boolean;
 
   @IsOptional()
   @IsString()

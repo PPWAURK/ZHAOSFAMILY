@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -12,6 +13,7 @@ import type { UpdateRecruitmentRequestDto } from './dto/update-recruitment-reque
 import type {
   RecruitmentRequestActor,
   RecruitmentRequestItem,
+  PublicRecruitmentOpening,
 } from './recruitment-requests.types';
 
 type RecruitmentRequestRecord = Prisma.RecruitmentRequestGetPayload<{
@@ -69,6 +71,29 @@ export class RecruitmentRequestsService {
     return requests.map((request) => this.mapRequest(request));
   }
 
+  async listPublicOpenings(): Promise<PublicRecruitmentOpening[]> {
+    const requests = await this.prismaService.recruitmentRequest.findMany({
+      where: { isPublished: true, status: { not: 'completed' } },
+      select: {
+        id: true,
+        position: true,
+        contractType: true,
+        headcount: true,
+        restaurant: { select: { address: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return requests.map((request) => ({
+      id: request.id,
+      address: request.restaurant.address,
+      position: request.position as PublicRecruitmentOpening['position'],
+      contractType:
+        request.contractType as PublicRecruitmentOpening['contractType'],
+      headcount: request.headcount,
+    }));
+  }
+
   async updateRequest(
     actor: RecruitmentRequestActor,
     id: number,
@@ -79,7 +104,7 @@ export class RecruitmentRequestsService {
     const currentRequest =
       await this.prismaService.recruitmentRequest.findUnique({
         where: { id },
-        select: { id: true },
+        select: { id: true, status: true },
       });
 
     if (!currentRequest) {
@@ -87,10 +112,21 @@ export class RecruitmentRequestsService {
     }
 
     const status = dto.status;
+    if (
+      dto.isPublished === true &&
+      (status ?? currentRequest.status) === 'completed'
+    ) {
+      throw new BadRequestException('COMPLETED_REQUEST_CANNOT_BE_PUBLISHED');
+    }
+
     const request = await this.prismaService.recruitmentRequest.update({
       where: { id },
       data: {
         ...(status ? { status } : {}),
+        ...(dto.isPublished !== undefined
+          ? { isPublished: dto.isPublished }
+          : {}),
+        ...(status === 'completed' ? { isPublished: false } : {}),
         ...(dto.handledNotes !== undefined
           ? { handledNotes: this.normalizeOptionalText(dto.handledNotes) }
           : {}),
@@ -219,6 +255,7 @@ export class RecruitmentRequestsService {
       headcount: request.headcount,
       notes: request.notes,
       status: request.status as RecruitmentRequestItem['status'],
+      isPublished: request.isPublished,
       handledNotes: request.handledNotes,
       handledBy: request.handledByUser
         ? {
