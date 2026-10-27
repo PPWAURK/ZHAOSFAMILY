@@ -1,3 +1,5 @@
+// The seed module is CommonJS and intentionally has no generated TypeScript declaration.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { runSeed } = require('../../prisma/seed.js') as {
   runSeed: (
     seedOperation: () => Promise<void>,

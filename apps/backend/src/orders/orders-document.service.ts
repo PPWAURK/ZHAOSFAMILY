@@ -158,10 +158,12 @@ export class OrdersDocumentService {
     const withoutCjk = value.replace(/[\u3400-\u9FFF]/g, '');
     const suffixStart = Math.max(0, withoutCjk.length - 64);
     const prefix = withoutCjk.slice(0, suffixStart);
-    const suffix = withoutCjk.slice(suffixStart).replace(
-      /(\s*[xXx]?\s*\*?\s*\d+(\.\d+)?\s*(KG|G|L|ML|PCS|PC|CTN|BOT|BIDON|SAC))\s*$/i,
-      '',
-    );
+    const suffix = withoutCjk
+      .slice(suffixStart)
+      .replace(
+        /(\s*[xXx]?\s*\*?\s*\d+(\.\d+)?\s*(KG|G|L|ML|PCS|PC|CTN|BOT|BIDON|SAC))\s*$/i,
+        '',
+      );
 
     return `${prefix}${suffix}`.replace(/\s+/g, ' ').trim();
   }
