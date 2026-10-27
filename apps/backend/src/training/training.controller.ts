@@ -248,7 +248,7 @@ export class TrainingController {
     return fs
       .readdirSync(dir)
       .filter((f) => f.endsWith('.svg'))
-      .sort();
+      .sort((left, right) => left.localeCompare(right));
   }
 
   @Patch('badges/:code/image')

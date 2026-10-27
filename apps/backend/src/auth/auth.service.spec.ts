@@ -257,6 +257,31 @@ describe('AuthService', () => {
     };
   }
 
+  it('sorts permissions returned from assigned roles', async () => {
+    const { authService, prismaService } = createService();
+    prismaService.userRole.findMany.mockResolvedValue([
+      {
+        role: {
+          rolePermissions: [
+            { permission: { key: 'training.material.read' } },
+            { permission: { key: 'abc.inspection.read' } },
+          ],
+        },
+      },
+    ] as never);
+
+    const queryUserPermissions = (
+      authService as unknown as {
+        queryUserPermissions: (userId: number) => Promise<string[]>;
+      }
+    ).queryUserPermissions;
+
+    await expect(queryUserPermissions.call(authService, 7)).resolves.toEqual([
+      'abc.inspection.read',
+      'training.material.read',
+    ]);
+  });
+
   it('creates a user from the registration payload', async () => {
     const { authService, mailService, prismaService, restaurantsService } =
       createService();

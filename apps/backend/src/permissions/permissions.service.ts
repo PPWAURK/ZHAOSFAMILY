@@ -171,7 +171,7 @@ function toPermissionRoleItem(row: PermissionRoleRow): PermissionRoleItem {
     description: row.description,
     permissions: row.rolePermissions
       .map((rolePermission) => rolePermission.permission.key)
-      .sort(),
+      .sort((left, right) => left.localeCompare(right)),
   };
 }
 
@@ -198,7 +198,9 @@ function toPermissionUserItem(
     jobRole: row.jobRole,
     managedRestaurants: managedRestaurantsByUserId.get(row.id) ?? [],
     roles: sortRoleNames(roleNames),
-    permissions: [...new Set(permissions)].sort(),
+    permissions: [...new Set(permissions)].sort((left, right) =>
+      left.localeCompare(right),
+    ),
   };
 }
 

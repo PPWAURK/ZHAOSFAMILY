@@ -42,6 +42,19 @@ describe('OrdersDocumentService', () => {
       ),
     ).toBe('http://localhost:3002/api/orders/42/commande');
   });
+
+  it('removes a trailing French package unit from the label', () => {
+    const service = new OrdersDocumentService();
+
+    expect(service.makeFrLabel('Riz basmati 5 KG')).toBe('Riz basmati');
+  });
+
+  it('keeps long labels bounded while removing a trailing package unit', () => {
+    const service = new OrdersDocumentService();
+    const label = `${'a'.repeat(10_000)} 5 KG`;
+
+    expect(service.makeFrLabel(label)).toBe('a'.repeat(10_000));
+  });
 });
 
 function restoreEnv(name: string, value: string | undefined): void {

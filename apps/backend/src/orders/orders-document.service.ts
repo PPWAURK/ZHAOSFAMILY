@@ -156,12 +156,14 @@ export class OrdersDocumentService {
 
   makeFrLabel(value: string): string {
     const withoutCjk = value.replace(/[\u3400-\u9FFF]/g, '');
-    const withoutTrailingPack = withoutCjk.replace(
+    const suffixStart = Math.max(0, withoutCjk.length - 64);
+    const prefix = withoutCjk.slice(0, suffixStart);
+    const suffix = withoutCjk.slice(suffixStart).replace(
       /(\s*[xXx]?\s*\*?\s*\d+(\.\d+)?\s*(KG|G|L|ML|PCS|PC|CTN|BOT|BIDON|SAC))\s*$/i,
       '',
     );
 
-    return withoutTrailingPack.replace(/\s+/g, ' ').trim();
+    return `${prefix}${suffix}`.replace(/\s+/g, ' ').trim();
   }
 
   sanitizeLabel(value: string | null | undefined): string {

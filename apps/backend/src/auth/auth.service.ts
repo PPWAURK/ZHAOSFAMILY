@@ -1051,7 +1051,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           ),
         ),
       ),
-    ].sort();
+    ].sort((left, right) => left.localeCompare(right));
   }
 
   private toAuthUser(user: AuthUserRecord, permissions: string[]): AuthUser {
