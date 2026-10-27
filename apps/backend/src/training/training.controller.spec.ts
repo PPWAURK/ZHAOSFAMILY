@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import { TrainingController } from './training.controller';
 
 jest.mock('node:fs', () => ({
+  ...jest.requireActual<typeof import('node:fs')>('node:fs'),
   existsSync: jest.fn(),
   readdirSync: jest.fn(),
 }));

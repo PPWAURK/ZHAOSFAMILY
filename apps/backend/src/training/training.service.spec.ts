@@ -1192,7 +1192,7 @@ describe('TrainingService', () => {
     });
     expect(prismaService.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { restaurantId: 3 },
+        where: { accountStatus: 'approved', restaurantId: 3 },
       }),
     );
   });
@@ -1361,6 +1361,7 @@ describe('TrainingService', () => {
     expect(prismaService.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
+          accountStatus: 'approved',
           restaurantId: {
             in: [3, 8],
           },
@@ -1482,6 +1483,7 @@ describe('TrainingService', () => {
     expect(prismaService.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
+          accountStatus: 'approved',
           jobRole: {
             not: 'holding',
           },
