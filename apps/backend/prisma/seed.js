@@ -1492,6 +1492,22 @@ async function main() {
   await removeStoreManagerRoleFromNonManagers();
 }
 
-main().finally(async () => {
-  await prisma.$disconnect();
-});
+function runSeed(seedOperation = main, database = prisma, logger = console) {
+  return seedOperation()
+    .catch((error) => {
+      logger.error('Database seed failed:', error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await database.$disconnect();
+    });
+}
+
+if (require.main === module) {
+  runSeed().catch((error) => {
+    console.error('Database seed cleanup failed:', error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { runSeed };
