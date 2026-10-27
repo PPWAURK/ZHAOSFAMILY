@@ -154,7 +154,7 @@ export default function TrainingUploadPage() {
       }
     }
 
-    loadPositions();
+    void loadPositions();
 
     return () => {
       isActive = false;

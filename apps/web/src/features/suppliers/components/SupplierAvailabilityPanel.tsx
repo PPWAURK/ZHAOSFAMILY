@@ -200,6 +200,7 @@ export default function SupplierAvailabilityPanel({
               <input
                 type="radio"
                 name={`supplier-availability-${supplierId}`}
+                aria-label={copy.availabilityAll}
                 checked={draft.scope === "all"}
                 onChange={() => patchScope("all")}
                 disabled={isSaving}
@@ -215,6 +216,7 @@ export default function SupplierAvailabilityPanel({
               <input
                 type="radio"
                 name={`supplier-availability-${supplierId}`}
+                aria-label={copy.availabilitySelected}
                 checked={draft.scope === "selected"}
                 onChange={() => patchScope("selected")}
                 disabled={isSaving}

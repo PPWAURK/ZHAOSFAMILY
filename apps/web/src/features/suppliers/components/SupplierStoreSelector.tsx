@@ -112,6 +112,7 @@ export default function SupplierStoreSelector({
               <label key={store.id} className={styles.storeRow}>
                 <input
                   type="checkbox"
+                  aria-label={store.name || "—"}
                   checked={selectedRestaurantIds.has(restaurantId)}
                   onChange={() => toggleStore(restaurantId)}
                   disabled={disabled}

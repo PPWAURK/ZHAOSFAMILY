@@ -57,6 +57,24 @@ export default [
     },
   },
   {
+    files: ["**/*.test.{js,jsx,ts,tsx}"],
+    languageOptions: {
+      globals: {
+        afterEach: "readonly",
+        beforeEach: "readonly",
+        describe: "readonly",
+        expect: "readonly",
+        it: "readonly",
+        jest: "readonly",
+        require: "readonly",
+        test: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
     // Node tooling scripts (build/lint helpers), not browser code.
     files: ["scripts/**/*.mjs"],
     languageOptions: {
@@ -64,6 +82,18 @@ export default [
         console: "readonly",
         process: "readonly",
       },
+    },
+  },
+  {
+    files: ["jest.config.js", "jest.setup.js"],
+    languageOptions: {
+      globals: {
+        globalThis: "readonly",
+        require: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 ];

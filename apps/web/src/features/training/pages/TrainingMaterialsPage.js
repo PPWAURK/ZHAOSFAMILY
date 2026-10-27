@@ -160,7 +160,7 @@ export default function TrainingMaterialsPage() {
       }
     }
 
-    loadMaterials();
+    void loadMaterials();
 
     return () => {
       isActive = false;

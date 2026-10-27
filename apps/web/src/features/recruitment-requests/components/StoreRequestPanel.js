@@ -299,6 +299,7 @@ export default function StoreRequestPanel({ lang }) {
                 ref={selectAllRef}
                 type="checkbox"
                 className={styles.sendCheckbox}
+                aria-label={send.selectAll}
                 checked={
                   selectedIds.length > 0 &&
                   selectedIds.length === sortedRequests.length
@@ -352,6 +353,7 @@ export default function StoreRequestPanel({ lang }) {
                     <input
                       type="checkbox"
                       className={styles.sendCheckbox}
+                      aria-label={`${t.positions[request.position]} · ${t.contracts[request.contractType]}`}
                       checked={isSelected}
                       onChange={() => toggleSelect(request.id)}
                     />

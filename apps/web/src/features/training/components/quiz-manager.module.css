@@ -394,7 +394,6 @@
 
 .editor {
   border-top: 1px solid var(--ink-10);
-  padding-top: 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;

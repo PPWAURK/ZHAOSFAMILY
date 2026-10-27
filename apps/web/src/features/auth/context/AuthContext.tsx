@@ -166,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setAccessToken(accessToken);
     setRefreshToken(refreshToken);
-    loadMe().finally(() => setIsLoading(false));
+    void loadMe().finally(() => setIsLoading(false));
   }, [loadMe]);
 
   const login = useCallback(

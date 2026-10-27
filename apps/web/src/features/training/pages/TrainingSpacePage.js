@@ -165,7 +165,7 @@ export default function TrainingSpacePage() {
       }
     }
 
-    loadTrainingPlan();
+    void loadTrainingPlan();
 
     return () => {
       isActive = false;
@@ -213,7 +213,7 @@ export default function TrainingSpacePage() {
             .map((course) => course.positionId)
             .filter(Boolean),
         ),
-      ].sort(),
+      ].sort((left, right) => left.localeCompare(right)),
     [materialCourses],
   );
   return (

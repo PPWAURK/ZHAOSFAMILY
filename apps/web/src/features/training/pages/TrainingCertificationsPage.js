@@ -473,6 +473,7 @@ export default function TrainingCertificationsPage() {
                           >
                             <input
                               type="checkbox"
+                              aria-label={getMaterialTitle(material)}
                               checked={checked}
                               onChange={() => toggleMaterial(mid)}
                             />

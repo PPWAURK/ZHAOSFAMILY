@@ -33,6 +33,7 @@ const VisualEditorCanvas = forwardRef(function VisualEditorCanvas(
     showCount = true,
     warningThreshold,
     footerStatus,
+    onSelectionChange,
   },
   forwardedRef,
 ) {
@@ -179,6 +180,7 @@ const VisualEditorCanvas = forwardRef(function VisualEditorCanvas(
         contentEditable
         suppressContentEditableWarning
         role="textbox"
+        tabIndex={0}
         aria-label={ariaLabel}
         aria-multiline="true"
         aria-invalid={limitExceeded}
@@ -192,6 +194,8 @@ const VisualEditorCanvas = forwardRef(function VisualEditorCanvas(
         }}
         onKeyUp={saveSelection}
         onMouseUp={saveSelection}
+        onKeyUpCapture={onSelectionChange}
+        onMouseUpCapture={onSelectionChange}
         onPaste={handlePaste}
         onDrop={(event) => event.preventDefault()}
       />
@@ -522,24 +526,18 @@ const DashboardNewsMarkdownEditor = forwardRef(
           </span>
         </div>
 
-        <div
-          onMouseUp={() => {
-            updateActiveFormats();
-          }}
-          onKeyUp={updateActiveFormats}
-        >
-          <VisualEditorCanvas
-            ref={canvasRef}
-            value={value}
-            onChange={onChange}
-            placeholder={placeholder}
-            maxLength={maxLength}
-            previewRenderer={previewRenderer}
-            ariaLabel={ariaLabel}
-            onFocus={onFocus}
-            footerStatus={footerStatus}
-          />
-        </div>
+        <VisualEditorCanvas
+          ref={canvasRef}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          previewRenderer={previewRenderer}
+          ariaLabel={ariaLabel}
+          onFocus={onFocus}
+          onSelectionChange={updateActiveFormats}
+          footerStatus={footerStatus}
+        />
 
         <span className={styles.editorUploadControl}>
           <input

@@ -378,7 +378,7 @@ export default function TrainingPositionsPage() {
       }
     }
 
-    load();
+    void load();
 
     return () => {
       isActive = false;
@@ -425,13 +425,18 @@ export default function TrainingPositionsPage() {
   }
 
   async function savePosition(code) {
+    if (!editingForm) {
+      return;
+    }
+
+    const form = editingForm;
     setIsSaving(true);
     setMessage("");
 
     try {
       await updateTrainingPosition(code, {
-        ...editingForm,
-        sortOrder: Number(editingForm.sortOrder),
+        ...form,
+        sortOrder: Number(form.sortOrder),
       });
       setEditingCode(null);
       setEditingForm(null);

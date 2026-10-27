@@ -13,7 +13,11 @@ function buildCsv(rows: CsvValue[][]): string {
 }
 
 export function buildStoreUsageCsv(month: string, stores: StoreUsage[]): string {
-  const modules = [...new Set(stores.flatMap((store) => store.moduleUsage.map((item) => item.moduleName)))].sort();
+  const modules = [
+    ...new Set(
+      stores.flatMap((store) => store.moduleUsage.map((item) => item.moduleName)),
+    ),
+  ].sort((left, right) => left.localeCompare(right));
   const rows: CsvValue[][] = [[
     "month", "store_code", "establishment", "approved_users_current",
     "active_users", "activity_rate_percent", "module_opens",

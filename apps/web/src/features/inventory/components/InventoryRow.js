@@ -133,7 +133,6 @@ export default function InventoryRow({ line, copy, onApply, submitting }) {
                   placeholder={copy.qtyPlaceholder}
                   value={qty}
                   onChange={(e) => setQty(e.target.value)}
-                  autoFocus
                   disabled={submitting}
                 />
                 <input

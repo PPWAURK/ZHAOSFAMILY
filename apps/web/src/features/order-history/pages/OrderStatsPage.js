@@ -305,7 +305,7 @@ export default function OrderStatsPage() {
       }
     }
 
-    load();
+    void load();
 
     return () => {
       isCancelled = true;

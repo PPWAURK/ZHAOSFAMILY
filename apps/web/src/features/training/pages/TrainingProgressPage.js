@@ -73,7 +73,7 @@ export default function TrainingProgressPage() {
       }
     }
 
-    loadStoreProgress();
+    void loadStoreProgress();
 
     return () => {
       isActive = false;

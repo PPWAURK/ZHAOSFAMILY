@@ -263,6 +263,11 @@ export default function OrderHistoryPage() {
   }
 
   async function handleSubmitReturn() {
+    if (!returnDraft || isSubmittingReturn) {
+      return;
+    }
+
+    const draft = returnDraft;
     const reason = returnReason.trim();
     const items = Object.entries(returnQuantities)
       .map(([purchaseOrderItemId, quantity]) => ({
@@ -285,7 +290,7 @@ export default function OrderHistoryPage() {
       setIsSubmittingReturn(true);
       setReturnError("");
       await createPurchaseReturn({
-        orderId: returnDraft.orderId,
+        orderId: draft.orderId,
         reason,
         notes: returnNotes.trim() || undefined,
         items,

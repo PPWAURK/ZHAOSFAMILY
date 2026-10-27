@@ -69,7 +69,7 @@ export default function InventoryPage({ supplierId }) {
   }, [effectiveSupplierId, t.loadError]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleApply = useCallback(

@@ -113,7 +113,7 @@ export default function TrainingMaterialPlayerPage() {
       }
     }
 
-    loadMaterial();
+    void loadMaterial();
 
     return () => {
       isActive = false;

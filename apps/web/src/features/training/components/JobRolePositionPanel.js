@@ -275,6 +275,7 @@ function RoleMappingCard({
         >
           <input
             type="checkbox"
+            aria-label={t.descendants}
             checked={draft.includeDescendants}
             disabled={isBusy || draft.grantsAllPositions}
             onChange={(event) =>
@@ -294,6 +295,7 @@ function RoleMappingCard({
         >
           <input
             type="checkbox"
+            aria-label={isStoreManager ? t.grantsAllStoreManager : t.grantsAll}
             checked={draft.grantsAllPositions}
             disabled={isBusy}
             onChange={(event) =>

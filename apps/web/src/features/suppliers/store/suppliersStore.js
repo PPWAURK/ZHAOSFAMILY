@@ -47,7 +47,7 @@ export function useSuppliersList() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const addSupplier = useCallback(
@@ -103,7 +103,7 @@ export function useSupplierDetail(supplierId) {
   }, [supplierId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const saveInfo = useCallback(

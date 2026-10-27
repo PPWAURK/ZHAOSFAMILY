@@ -200,6 +200,7 @@ export function DashboardNewsTagInput({
           id={suggestionListId}
           className={styles.tagSuggestions}
           role="listbox"
+          tabIndex={-1}
           onMouseDown={(event) => event.preventDefault()}
         >
           {matchingSuggestions.map((suggestion, index) => (

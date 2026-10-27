@@ -88,7 +88,7 @@ export default function TrainingCoursePage({ courseId }) {
       }
     }
 
-    loadCourse();
+    void loadCourse();
 
     return () => {
       isActive = false;

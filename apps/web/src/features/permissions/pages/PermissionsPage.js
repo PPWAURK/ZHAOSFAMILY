@@ -322,7 +322,7 @@ function formatPermissionLabels(permissions, lang, fallback) {
 }
 
 function normalizeRoleNames(roleNames) {
-  return [...(roleNames || [])].sort();
+  return [...(roleNames || [])].sort((left, right) => left.localeCompare(right));
 }
 
 function areRoleNamesEqual(leftRoles, rightRoles) {
@@ -506,7 +506,7 @@ export default function PermissionsPage() {
       }
     }
 
-    loadPermissionsData();
+    void loadPermissionsData();
 
     return () => {
       isActive = false;
