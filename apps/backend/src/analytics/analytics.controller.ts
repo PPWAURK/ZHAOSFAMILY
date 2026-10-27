@@ -10,24 +10,49 @@ import {
 } from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator';
 import { MonitorAnalyticsTokenGuard } from '../auth/guards/monitor-analytics-token.guard';
+import { HoldingAnalyticsGuard } from './guards/holding-analytics.guard';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { AnalyticsService } from './analytics.service';
 import { MonthlyUsageQueryDto } from './dto/monthly-usage-query.dto';
-import { RecordMobileUsageDto } from './dto/record-mobile-usage.dto';
-import type { MonthlyUsageReport } from './analytics.types';
+import { RecordUsageEventDto } from './dto/record-usage-event.dto';
+import { PlatformReportService } from './platform-report.service';
+import type {
+  MonthlyUsageReport,
+  PlatformMonthlyReport,
+} from './analytics.types';
 
 @Controller('analytics')
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly platformReportService: PlatformReportService,
+  ) {}
 
   @Post('mobile/events')
   async recordMobileUsage(
     @Req() request: AuthenticatedRequest,
-    @Body() dto: RecordMobileUsageDto,
+    @Body() dto: RecordUsageEventDto,
   ): Promise<{ message: 'MOBILE_USAGE_RECORDED' }> {
-    await this.analyticsService.recordMobileUsage(request.user!, dto);
+    await this.analyticsService.recordUsageEvent(request.user!, dto);
 
     return { message: 'MOBILE_USAGE_RECORDED' };
+  }
+
+  @Post('web/events')
+  async recordWebUsage(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: RecordUsageEventDto,
+  ): Promise<{ message: 'WEB_USAGE_RECORDED' }> {
+    await this.analyticsService.recordUsageEvent(request.user!, dto);
+    return { message: 'WEB_USAGE_RECORDED' };
+  }
+
+  @Get('platform/monthly')
+  @UseGuards(HoldingAnalyticsGuard)
+  getPlatformMonthlyReport(
+    @Query() query: MonthlyUsageQueryDto,
+  ): Promise<PlatformMonthlyReport> {
+    return this.platformReportService.getMonthlyReport(query.month);
   }
 
   @Get('monthly')

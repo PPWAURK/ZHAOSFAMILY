@@ -84,9 +84,9 @@ describe('DashboardNewsService publish notifications', () => {
     const { service, prismaService, notificationsService } = createService();
     prismaService.dashboardPost.create.mockResolvedValue(createdPostRow());
     prismaService.user.findMany.mockResolvedValue([
-      { id: 2, preferredLanguage: 'zh' },
-      { id: 3, preferredLanguage: 'zh' },
-      { id: 4, preferredLanguage: 'en' },
+      { id: 2, restaurantId: 2, preferredLanguage: 'zh' },
+      { id: 3, restaurantId: 3, preferredLanguage: 'zh' },
+      { id: 4, restaurantId: 2, preferredLanguage: 'en' },
     ]);
 
     await service.createPost(holdingActor, createDto);
@@ -97,28 +97,33 @@ describe('DashboardNewsService publish notifications', () => {
         accountStatus: 'approved',
         id: { not: 1 },
       },
-      select: { id: true, jobRole: true, preferredLanguage: true },
+      select: {
+        id: true,
+        restaurantId: true,
+        jobRole: true,
+        preferredLanguage: true,
+      },
     });
     expect(
       prismaService.dashboardPostReadReceipt.createMany,
     ).toHaveBeenCalledWith({
       data: [
-        { postId: 7, userId: 2 },
-        { postId: 7, userId: 3 },
-        { postId: 7, userId: 4 },
+        { postId: 7, userId: 2, restaurantId: 2 },
+        { postId: 7, userId: 3, restaurantId: 3 },
+        { postId: 7, userId: 4, restaurantId: 2 },
       ],
     });
     expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
       [2, 3],
       expect.objectContaining({
-        title: '最新公告',
+        title: '有一则新消息想和你分享',
         data: { type: 'dashboard-news', postId: '7' },
       }),
     );
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
       [4],
-      expect.objectContaining({ title: 'New announcement' }),
+      expect.objectContaining({ title: 'Something new to share with you' }),
     );
   });
 
@@ -129,14 +134,16 @@ describe('DashboardNewsService publish notifications', () => {
       title: '[[zhao-style:size=20;weight=700]]Promo[[/zhao-style]] update',
     });
     prismaService.user.findMany.mockResolvedValue([
-      { id: 2, preferredLanguage: 'zh' },
+      { id: 2, restaurantId: 2, preferredLanguage: 'zh' },
     ]);
 
     await service.createPost(holdingActor, createDto);
 
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
       [2],
-      expect.objectContaining({ body: 'Promo update' }),
+      expect.objectContaining({
+        body: '新公告《Promo update》已发布，欢迎来看看。',
+      }),
     );
   });
 
@@ -147,9 +154,24 @@ describe('DashboardNewsService publish notifications', () => {
       visibility: 'management',
     });
     prismaService.user.findMany.mockResolvedValue([
-      { id: 2, jobRole: 'store-manager', preferredLanguage: 'zh' },
-      { id: 3, jobRole: 'front-server', preferredLanguage: 'zh' },
-      { id: 4, jobRole: 'front-assistant,front-host', preferredLanguage: 'en' },
+      {
+        id: 2,
+        restaurantId: 2,
+        jobRole: 'store-manager',
+        preferredLanguage: 'zh',
+      },
+      {
+        id: 3,
+        restaurantId: 3,
+        jobRole: 'front-server',
+        preferredLanguage: 'zh',
+      },
+      {
+        id: 4,
+        restaurantId: 2,
+        jobRole: 'front-assistant,front-host',
+        preferredLanguage: 'en',
+      },
     ]);
 
     await service.createPost(holdingActor, {
@@ -164,11 +186,11 @@ describe('DashboardNewsService publish notifications', () => {
     expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
       [2],
-      expect.objectContaining({ title: '最新公告' }),
+      expect.objectContaining({ title: '有一则新消息想和你分享' }),
     );
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
       [4],
-      expect.objectContaining({ title: 'New announcement' }),
+      expect.objectContaining({ title: 'Something new to share with you' }),
     );
   });
 
@@ -308,5 +330,23 @@ describe('DashboardNewsService publish notifications', () => {
       service.getReadStatus({ ...holdingActor, jobRole: 'store-manager' }, 7),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prismaService.dashboardPost.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('uses the establishment captured at publication for reading details', async () => {
+    const { service, prismaService } = createService();
+    prismaService.dashboardPost.findUnique.mockResolvedValue({
+      readTrackingStartedAt: new Date('2026-10-01T08:00:00Z'),
+    });
+    prismaService.dashboardPostReadReceipt.findMany.mockResolvedValue([
+      {
+        readAt: new Date('2026-10-02T08:00:00Z'),
+        user: { id: 2, name: 'Partner' },
+        restaurant: { name: 'Original store' },
+      },
+    ]);
+
+    const status = await service.getReadStatus(holdingActor, 7);
+
+    expect(status.read[0].restaurantName).toBe('Original store');
   });
 });

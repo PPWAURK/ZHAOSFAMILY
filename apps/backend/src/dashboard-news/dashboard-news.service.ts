@@ -54,6 +54,7 @@ type DashboardPostWithRelations = Prisma.DashboardPostGetPayload<{
 
 type DashboardPostAudienceMember = {
   id: number;
+  restaurantId: number;
   preferredLanguage: string | null;
 };
 
@@ -170,6 +171,7 @@ export class DashboardNewsService {
             data: audience.map((user) => ({
               postId: post.id,
               userId: user.id,
+              restaurantId: user.restaurantId,
             })),
           });
         }
@@ -243,7 +245,12 @@ export class DashboardNewsService {
         accountStatus: ACCOUNT_STATUS.approved,
         id: { not: authorId },
       },
-      select: { id: true, jobRole: true, preferredLanguage: true },
+      select: {
+        id: true,
+        restaurantId: true,
+        jobRole: true,
+        preferredLanguage: true,
+      },
     });
 
     if (visibility === 'management') {
@@ -251,12 +258,14 @@ export class DashboardNewsService {
         .filter((user) => this.hasManagementJobRole(user.jobRole))
         .map((user) => ({
           id: user.id,
+          restaurantId: user.restaurantId,
           preferredLanguage: user.preferredLanguage,
         }));
     }
 
     return users.map((user) => ({
       id: user.id,
+      restaurantId: user.restaurantId,
       preferredLanguage: user.preferredLanguage,
     }));
   }
@@ -333,9 +342,9 @@ export class DashboardNewsService {
             select: {
               id: true,
               name: true,
-              restaurant: { select: { name: true } },
             },
           },
+          restaurant: { select: { name: true } },
         },
         orderBy: [{ readAt: 'desc' }, { user: { name: 'asc' } }],
       },
@@ -344,7 +353,7 @@ export class DashboardNewsService {
     const items = receipts.map<DashboardNewsReadStatusItem>((receipt) => ({
       userId: receipt.user.id,
       name: receipt.user.name,
-      restaurantName: receipt.user.restaurant.name,
+      restaurantName: receipt.restaurant.name,
       confirmedAt: receipt.readAt?.toISOString() ?? null,
     }));
 

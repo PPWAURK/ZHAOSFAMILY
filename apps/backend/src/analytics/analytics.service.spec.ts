@@ -42,18 +42,18 @@ describe('AnalyticsService', () => {
     });
   });
 
-  it('records module usage for the authenticated user', async () => {
+  it('records module usage with the authenticated user’s establishment', async () => {
     const create = jest.fn().mockResolvedValue(undefined);
     const service = new AnalyticsService({
       appUsageEvent: { create },
     } as never);
 
-    await service.recordMobileUsage({ id: 10 } as never, {
+    await service.recordUsageEvent({ id: 10, restaurantId: 2 } as never, {
       moduleName: 'dashboard',
     });
 
     expect(create).toHaveBeenCalledWith({
-      data: { userId: 10, moduleName: 'dashboard' },
+      data: { userId: 10, restaurantId: 2, moduleName: 'dashboard' },
     });
   });
 });

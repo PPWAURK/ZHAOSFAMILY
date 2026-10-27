@@ -116,15 +116,18 @@ model Notification {
 }
 
 model AppUsageEvent {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @map("user_id")
-  moduleName String   @map("module_name") @db.VarChar(80)
-  occurredAt DateTime @default(now()) @map("occurred_at")
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           Int        @id @default(autoincrement())
+  userId       Int        @map("user_id")
+  restaurantId Int        @map("restaurant_id")
+  moduleName   String     @map("module_name") @db.VarChar(80)
+  occurredAt   DateTime   @default(now()) @map("occurred_at")
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
 
   @@index([occurredAt])
   @@index([userId, occurredAt])
   @@index([moduleName, occurredAt])
+  @@index([restaurantId, occurredAt])
   @@map("app_usage_events")
 }
 
@@ -208,6 +211,8 @@ model Restaurant {
   purchaseOrders      PurchaseOrder[]
   purchaseReturns     PurchaseReturn[]
   dashboardPosts      DashboardPost[]
+  appUsageEvents      AppUsageEvent[]
+  dashboardPostReadReceipts DashboardPostReadReceipt[]
   recruitmentRequests RecruitmentRequest[]
   abcStoreInspections AbcStoreInspection[]
   caseShares          CaseShare[]
@@ -712,17 +717,20 @@ model DashboardPost {
 }
 
 model DashboardPostReadReceipt {
-  id        Int           @id @default(autoincrement())
-  postId    Int           @map("post_id")
-  userId    Int           @map("user_id")
-  readAt    DateTime?     @map("read_at")
-  createdAt DateTime      @default(now()) @map("created_at")
-  post      DashboardPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           Int           @id @default(autoincrement())
+  postId       Int           @map("post_id")
+  userId       Int           @map("user_id")
+  restaurantId Int           @map("restaurant_id")
+  readAt       DateTime?     @map("read_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  post         DashboardPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
 
   @@unique([postId, userId])
   @@index([postId, readAt])
   @@index([userId, readAt])
+  @@index([restaurantId, postId])
   @@map("dashboard_post_read_receipts")
 }
 

@@ -17,7 +17,6 @@ import {
   confirmDashboardNewsRead,
   createDashboardNewsPost,
   deleteDashboardNewsPost,
-  fetchDashboardNewsReadStatus,
   fetchDashboardNewsPosts,
   getDashboardNewsAttachmentUrl,
   uploadDashboardNewsAttachment,
@@ -93,13 +92,6 @@ function groupPostsByColumn(posts) {
 
 function getDraftStorageKey(userId) {
   return `${DRAFT_STORAGE_PREFIX}_${userId}`;
-}
-
-function hasJobRole(jobRole, role) {
-  return `${jobRole || ""}`
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .includes(role);
 }
 
 function getBoardCategory(category) {
@@ -595,13 +587,6 @@ export default function DashboardNewsModule({ lang, copy }) {
     postId: "",
     message: "",
   });
-  const [readStatusState, setReadStatusState] = useState({
-    postId: "",
-    status: null,
-    error: "",
-    isLoading: false,
-  });
-  const [readStatusTab, setReadStatusTab] = useState("read");
   const [deleteState, setDeleteState] = useState({ postId: "", message: "" });
   const [hasReachedMandatoryPostEnd, setHasReachedMandatoryPostEnd] = useState(false);
   const [activePostIndexByColumn, setActivePostIndexByColumn] = useState({
@@ -610,7 +595,6 @@ export default function DashboardNewsModule({ lang, copy }) {
     issues: 0,
   });
   const canPublish = `${user?.jobRole || ""}`.toLowerCase() === HOLDING_JOB_ROLE;
-  const canViewReadStats = hasJobRole(user?.jobRole, HOLDING_JOB_ROLE);
 
   useEffect(() => {
     if (!isPreviewOpen) return undefined;
@@ -943,21 +927,6 @@ export default function DashboardNewsModule({ lang, copy }) {
     }
   }
 
-  async function loadReadStatus(postId) {
-    try {
-      setReadStatusState({ postId, status: null, error: "", isLoading: true });
-      const status = await fetchDashboardNewsReadStatus(postId);
-      setReadStatusState({ postId, status, error: "", isLoading: false });
-    } catch (error) {
-      setReadStatusState({
-        postId,
-        status: null,
-        error: error instanceof Error ? error.message : copy.reader.readStatusError,
-        isLoading: false,
-      });
-    }
-  }
-
   async function handleConfirmRead(postId) {
     try {
       setReadActionState({ postId, message: "" });
@@ -968,10 +937,6 @@ export default function DashboardNewsModule({ lang, copy }) {
       setSelectedPost(updateConfirmation);
       setPosts((previousPosts) => previousPosts.map(updateConfirmation));
       setReadActionState({ postId: "", message: copy.reader.readConfirmed });
-
-      if (canViewReadStats) {
-        await loadReadStatus(postId);
-      }
     } catch (error) {
       setReadActionState({
         postId: "",
@@ -1163,84 +1128,6 @@ export default function DashboardNewsModule({ lang, copy }) {
                         <p role="status">{readActionState.message}</p>
                       ) : null}
                     </div>
-                  ) : null}
-
-                  {canViewReadStats ? (
-                    <section className={styles.readStatus}>
-                      {activePost.readSummary ? (
-                        <p>
-                          {copy.reader.readProgress(
-                            activePost.readSummary.readCount,
-                            activePost.readSummary.totalRecipients,
-                            activePost.readSummary.readRate,
-                          )}
-                        </p>
-                      ) : (
-                        <p>{copy.reader.readTrackingUnavailable}</p>
-                      )}
-                      <button
-                        type="button"
-                        className={styles.readStatusButton}
-                        onClick={() => void loadReadStatus(activePost.id)}
-                      >
-                        {copy.reader.viewReadDetails}
-                      </button>
-
-                      {readStatusState.postId === activePost.id ? (
-                        <div className={styles.readStatusPanel}>
-                          {readStatusState.isLoading ? (
-                            <p>{copy.reader.readStatusLoading}</p>
-                          ) : null}
-                          {readStatusState.error ? (
-                            <p role="alert">{readStatusState.error}</p>
-                          ) : null}
-                          {!readStatusState.isLoading && readStatusState.status?.isTracked ? (
-                            <>
-                              <div className={styles.readStatusTabs} role="tablist">
-                                {[
-                                  ["read", copy.reader.readList],
-                                  ["unread", copy.reader.unreadList],
-                                ].map(([key, label]) => (
-                                  <button
-                                    key={key}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={readStatusTab === key}
-                                    className={
-                                      readStatusTab === key ? styles.readStatusTabActive : ""
-                                    }
-                                    onClick={() => setReadStatusTab(key)}
-                                  >
-                                    {label}
-                                  </button>
-                                ))}
-                              </div>
-                              <ul className={styles.readStatusList}>
-                                {(readStatusTab === "read"
-                                  ? readStatusState.status.read
-                                  : readStatusState.status.unread
-                                ).map((item) => (
-                                  <li key={item.userId}>
-                                    <strong>{item.name || "-"}</strong>
-                                    <span>{item.restaurantName || "-"}</span>
-                                    <small>
-                                      {item.confirmedAt
-                                        ? formatDate(item.confirmedAt)
-                                        : copy.reader.notRead}
-                                    </small>
-                                  </li>
-                                ))}
-                              </ul>
-                            </>
-                          ) : null}
-                          {!readStatusState.isLoading &&
-                          readStatusState.status &&
-                          !readStatusState.status.isTracked ? (
-                            <p>{copy.reader.readTrackingUnavailable}</p>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </section>
                   ) : null}
 
                   {activePost.canDelete ? (

@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
-import type { RecordMobileUsageDto } from './dto/record-mobile-usage.dto';
+import type { RecordUsageEventDto } from './dto/record-usage-event.dto';
 import type {
   DailyActiveUsers,
-  MobileUsageModule,
+  UsageModule,
   ModuleUsage,
   MonthlyUsageReport,
 } from './analytics.types';
@@ -19,13 +19,14 @@ type MonthRange = {
 export class AnalyticsService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async recordMobileUsage(
+  async recordUsageEvent(
     user: AuthUser,
-    dto: RecordMobileUsageDto,
+    dto: RecordUsageEventDto,
   ): Promise<void> {
     await this.prismaService.appUsageEvent.create({
       data: {
         userId: user.id,
+        restaurantId: user.restaurantId,
         moduleName: dto.moduleName,
       },
     });
@@ -52,7 +53,7 @@ export class AnalyticsService {
 
     const dailyUsers = new Map<string, Set<number>>();
     const modules = new Map<
-      MobileUsageModule,
+      UsageModule,
       { opens: number; users: Set<number> }
     >();
     const activeUsers = new Set<number>();
@@ -60,11 +61,7 @@ export class AnalyticsService {
     for (const event of events) {
       activeUsers.add(event.userId);
       addDailyUser(dailyUsers, event.occurredAt, event.userId);
-      addModuleUsage(
-        modules,
-        event.moduleName as MobileUsageModule,
-        event.userId,
-      );
+      addModuleUsage(modules, event.moduleName as UsageModule, event.userId);
     }
 
     return {
@@ -109,8 +106,8 @@ function addDailyUser(
 }
 
 function addModuleUsage(
-  modules: Map<MobileUsageModule, { opens: number; users: Set<number> }>,
-  moduleName: MobileUsageModule,
+  modules: Map<UsageModule, { opens: number; users: Set<number> }>,
+  moduleName: UsageModule,
   userId: number,
 ): void {
   const usage = modules.get(moduleName) ?? {
@@ -132,7 +129,7 @@ function formatDailyUsers(
 }
 
 function formatModuleUsage(
-  modules: Map<MobileUsageModule, { opens: number; users: Set<number> }>,
+  modules: Map<UsageModule, { opens: number; users: Set<number> }>,
 ): ModuleUsage[] {
   return [...modules.entries()]
     .map(([moduleName, usage]) => ({

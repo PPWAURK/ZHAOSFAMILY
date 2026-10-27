@@ -1,0 +1,271 @@
+.page {
+  grid-template-rows: auto 1fr auto;
+}
+
+.content {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 64px 0 48px;
+}
+
+.kicker {
+  margin: 0 0 20px;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
+
+.content h1 {
+  max-width: 24ch;
+  margin: 0 0 14px;
+  border-left: 4px solid var(--red);
+  padding-left: 18px;
+  font-family: var(--zh-serif);
+  font-size: clamp(34px, 4vw, 54px);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 0 0 28px 22px;
+  color: var(--ink-60);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 24px 0 36px;
+}
+
+.filter {
+  display: grid;
+  gap: 8px;
+  width: min(280px, 100%);
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.filter input,
+.filter select {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink-20);
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px var(--ui-sans);
+}
+
+.sectionHeading + .filter {
+  margin-bottom: 16px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 36px;
+  padding: 24px 0;
+  border-top: 1px solid var(--ink-20);
+  border-bottom: 1px solid var(--ink-20);
+}
+
+.metrics > div {
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+}
+
+.metrics span {
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.metrics strong {
+  font-family: var(--ui-sans);
+  font-size: clamp(24px, 2.8vw, 36px);
+  font-weight: 600;
+}
+
+.sectionHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 40px 0 16px;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  font-family: var(--zh-serif);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.sectionHeading button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--red);
+  background: var(--red);
+  color: #fff;
+  cursor: pointer;
+  font: 12px var(--ui-sans);
+}
+
+.sectionHeading button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.tableScroller {
+  width: 100%;
+  overflow-x: auto;
+  border-top: 1px solid var(--ink-20);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-family: var(--ui-sans);
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--ink-10);
+  vertical-align: top;
+}
+
+.table thead th {
+  color: var(--ink-60);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table tbody th {
+  min-width: 240px;
+  font-weight: 600;
+}
+
+.storeDetailsButton {
+  display: grid;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.storeDetailsButton span {
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.storeDetailsButton:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 4px;
+}
+
+.employeeModules {
+  min-width: 220px;
+  white-space: normal !important;
+}
+
+.table tbody td {
+  color: var(--ink-60);
+  white-space: nowrap;
+}
+
+.moduleDetails {
+  margin-top: 6px;
+  color: var(--ink-60);
+  font-size: 12px;
+}
+
+.moduleDetails summary {
+  cursor: pointer;
+  color: var(--red);
+}
+
+.moduleDetails ul {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  white-space: normal;
+}
+
+.note {
+  margin: 28px 0 0;
+  color: var(--ink-60);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.pagination button {
+  border: 0;
+  background: none;
+  color: var(--red);
+  cursor: pointer;
+  font: inherit;
+}
+
+.pagination button:disabled {
+  color: var(--ink-40);
+  cursor: not-allowed;
+}
+
+.footer {
+  padding-top: 20px;
+  border-top: 1px solid var(--ink-10);
+  color: var(--ink-40);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 44px 0 32px;
+  }
+
+  .subtitle {
+    margin-bottom: 24px;
+  }
+
+  .table {
+    min-width: 900px;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
