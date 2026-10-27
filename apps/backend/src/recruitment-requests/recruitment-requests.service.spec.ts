@@ -48,6 +48,7 @@ const ANY_DATE = expect.any(Date) as unknown as Date;
 
 function createPrismaServiceMock() {
   return {
+    user: { findMany: jest.fn().mockResolvedValue([]) },
     recruitmentRequest: {
       create: jest.fn(),
       findMany: jest.fn(),
@@ -57,11 +58,30 @@ function createPrismaServiceMock() {
   };
 }
 
+function createNotificationsServiceMock() {
+  return { sendToUsers: jest.fn() };
+}
+
+function createService(
+  prismaService: ReturnType<typeof createPrismaServiceMock>,
+  notificationsService = createNotificationsServiceMock(),
+): RecruitmentRequestsService {
+  return new RecruitmentRequestsService(
+    prismaService as never,
+    notificationsService as never,
+  );
+}
+
 describe('RecruitmentRequestsService', () => {
   it('creates a recruitment request for the actor store', async () => {
     const prismaService = createPrismaServiceMock();
+    const notificationsService = createNotificationsServiceMock();
+    prismaService.user.findMany.mockResolvedValue([
+      { id: 21, preferredLanguage: 'fr' },
+      { id: 22, preferredLanguage: 'en' },
+    ]);
     prismaService.recruitmentRequest.create.mockResolvedValue(REQUEST_RECORD);
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService, notificationsService);
 
     const result = await service.createRequest(STORE_ACTOR, {
       contractType: 'full_time',
@@ -89,6 +109,46 @@ describe('RecruitmentRequestsService', () => {
       position: 'waiter',
       headcount: 2,
     });
+    expect(prismaService.user.findMany).toHaveBeenCalledWith({
+      where: {
+        accountStatus: 'approved',
+        userRoles: {
+          some: { role: { name: 'recruitment-notification-recipient' } },
+        },
+      },
+      select: { id: true, preferredLanguage: true },
+    });
+    expect(notificationsService.sendToUsers).toHaveBeenNthCalledWith(1, [21], {
+      title: 'Une boutique cherche de nouveaux collègues',
+      body: 'ZHAO Store souhaite pourvoir 2 postes de serveur. Consultez sa demande quand vous le pouvez.',
+      data: { type: 'recruitment-request', recruitmentRequestId: '11' },
+    });
+    expect(notificationsService.sendToUsers).toHaveBeenNthCalledWith(2, [22], {
+      title: 'A store is looking for new teammates',
+      body: 'ZHAO Store is looking for 2 waiters. Take a look at the request when you can.',
+      data: { type: 'recruitment-request', recruitmentRequestId: '11' },
+    });
+  });
+
+  it('does not fail request creation when holding notification delivery fails', async () => {
+    const prismaService = createPrismaServiceMock();
+    const notificationsService = createNotificationsServiceMock();
+    prismaService.recruitmentRequest.create.mockResolvedValue(REQUEST_RECORD);
+    prismaService.user.findMany.mockResolvedValue([
+      { id: 21, preferredLanguage: 'fr' },
+    ]);
+    notificationsService.sendToUsers.mockRejectedValueOnce(
+      new Error('push unavailable'),
+    );
+    const service = createService(prismaService, notificationsService);
+
+    await expect(
+      service.createRequest(STORE_ACTOR, {
+        contractType: 'full_time',
+        position: 'waiter',
+        headcount: 2,
+      }),
+    ).resolves.toMatchObject({ id: REQUEST_RECORD.id });
   });
 
   it('limits regular users to their own restaurant requests', async () => {
@@ -96,7 +156,7 @@ describe('RecruitmentRequestsService', () => {
     prismaService.recruitmentRequest.findMany.mockResolvedValue([
       REQUEST_RECORD,
     ]);
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService);
 
     await service.listRequests(STORE_ACTOR, {});
 
@@ -113,7 +173,7 @@ describe('RecruitmentRequestsService', () => {
     prismaService.recruitmentRequest.findMany.mockResolvedValue([
       REQUEST_RECORD,
     ]);
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService);
 
     await service.listRequests(HQ_ACTOR, { status: 'pending' });
 
@@ -136,7 +196,7 @@ describe('RecruitmentRequestsService', () => {
         restaurant: { address: '10 rue de Rivoli, 75004 Paris' },
       },
     ]);
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService);
 
     const result = await service.listPublicOpenings();
 
@@ -164,7 +224,7 @@ describe('RecruitmentRequestsService', () => {
 
   it('rejects updates from users without recruitment management permission', async () => {
     const prismaService = createPrismaServiceMock();
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService);
 
     await expect(
       service.updateRequest(STORE_ACTOR, REQUEST_RECORD.id, {
@@ -176,7 +236,7 @@ describe('RecruitmentRequestsService', () => {
   it('throws when headquarters updates a missing request', async () => {
     const prismaService = createPrismaServiceMock();
     prismaService.recruitmentRequest.findUnique.mockResolvedValue(null);
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService);
 
     await expect(
       service.updateRequest(HQ_ACTOR, REQUEST_RECORD.id, {
@@ -191,7 +251,7 @@ describe('RecruitmentRequestsService', () => {
       id: REQUEST_RECORD.id,
       status: 'completed',
     });
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService);
 
     await expect(
       service.updateRequest(HQ_ACTOR, REQUEST_RECORD.id, {
@@ -211,7 +271,7 @@ describe('RecruitmentRequestsService', () => {
       ...REQUEST_RECORD,
       isPublished: true,
     });
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService);
 
     const result = await service.updateRequest(HQ_ACTOR, REQUEST_RECORD.id, {
       isPublished: true,
@@ -244,7 +304,7 @@ describe('RecruitmentRequestsService', () => {
       },
       handledAt: new Date('2026-06-05T11:00:00.000Z'),
     });
-    const service = new RecruitmentRequestsService(prismaService as never);
+    const service = createService(prismaService);
 
     const result = await service.updateRequest(HQ_ACTOR, REQUEST_RECORD.id, {
       status: 'completed',

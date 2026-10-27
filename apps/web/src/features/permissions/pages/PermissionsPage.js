@@ -21,6 +21,7 @@ const STORE_MANAGER_ROLE = "store-manager";
 const STORE_MANAGER_PARTNER_ROLE = "store-manager-partner";
 const STORE_MANAGER_PARTNER_POSITION = "STORE_MANAGER_PARTNER";
 const HOLDING_JOB_ROLE = "holding";
+const RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE = "recruitment-notification-recipient";
 const REGIONAL_MANAGER_JOB_ROLE = "regional-manager";
 
 const ROLE_LABELS = {
@@ -48,6 +49,11 @@ const ROLE_LABELS = {
     zh: "培训查看者",
     en: "Training viewer",
     fr: "Lecteur formation",
+  },
+  "recruitment-notification-recipient": {
+    zh: "招聘通知接收人",
+    en: "Recruitment notification recipient",
+    fr: "Destinataire des notifications de recrutement",
   },
 };
 
@@ -118,7 +124,7 @@ const PERMISSIONS_COPY = {
       stepDetail: "系统角色会立即影响后端权限校验。",
       boundaryNote: "岗位决定员工做什么和学习什么；系统角色决定员工能操作哪些后台能力。",
       metrics: [
-        { value: "05", label: "BUILT-IN ROLES" },
+        { value: "06", label: "BUILT-IN ROLES" },
         { value: "RBAC", label: "SYSTEM ACCESS" },
         { value: "HQ", label: "HOLDING ONLY" },
       ],
@@ -131,6 +137,7 @@ const PERMISSIONS_COPY = {
       loadError: "权限数据加载失败",
       saveError: "角色保存失败",
       roleLocked: "仅 holding 岗位可分配最高管理员",
+      recruitmentNotificationRoleLocked: "招聘通知接收人仅限 holding 岗位",
       partnerAssignerLocked: "仅最高管理员可分配店长合伙人",
       partnerTargetLocked: "店长合伙人只能分配给店长、区域经理或店长合伙人岗位",
       partnerConflict: "店长合伙人与门店经理系统角色不能同时分配",
@@ -175,7 +182,7 @@ const PERMISSIONS_COPY = {
       boundaryNote:
         "Positions define what employees do and learn; system roles define which admin capabilities they can use.",
       metrics: [
-        { value: "05", label: "BUILT-IN ROLES" },
+        { value: "06", label: "BUILT-IN ROLES" },
         { value: "RBAC", label: "SYSTEM ACCESS" },
         { value: "HQ", label: "HOLDING ONLY" },
       ],
@@ -188,6 +195,7 @@ const PERMISSIONS_COPY = {
       loadError: "Failed to load permission data",
       saveError: "Failed to save roles",
       roleLocked: "Only holding users can receive super admin",
+      recruitmentNotificationRoleLocked: "Only holding users can receive recruitment notifications",
       partnerAssignerLocked: "Only super admins can assign Store Manager Partner",
       partnerTargetLocked:
         "Store Manager Partner is limited to store managers, regional managers, and Store Manager Partner positions",
@@ -233,7 +241,7 @@ const PERMISSIONS_COPY = {
       boundaryNote:
         "Les postes définissent le travail et la formation ; les rôles système définissent les capacités d'administration.",
       metrics: [
-        { value: "05", label: "BUILT-IN ROLES" },
+        { value: "06", label: "BUILT-IN ROLES" },
         { value: "RBAC", label: "SYSTEM ACCESS" },
         { value: "HQ", label: "HOLDING ONLY" },
       ],
@@ -246,6 +254,8 @@ const PERMISSIONS_COPY = {
       loadError: "Échec du chargement des permissions",
       saveError: "Échec de l'enregistrement des rôles",
       roleLocked: "Seuls les utilisateurs holding peuvent recevoir super admin",
+      recruitmentNotificationRoleLocked:
+        "Les notifications de recrutement sont réservées aux utilisateurs holding",
       partnerAssignerLocked:
         "Seuls les super administrateurs peuvent attribuer Associé gérant de magasin",
       partnerTargetLocked:
@@ -328,6 +338,13 @@ function getRoleAssignmentRestriction(roleName, targetUser, actorRoleNames, draf
     !getJobRoleValues(targetUser?.jobRole).includes(HOLDING_JOB_ROLE)
   ) {
     return copy.roleLocked;
+  }
+
+  if (
+    roleName === RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE &&
+    !getJobRoleValues(targetUser?.jobRole).includes(HOLDING_JOB_ROLE)
+  ) {
+    return copy.recruitmentNotificationRoleLocked;
   }
 
   const rolesConflict =

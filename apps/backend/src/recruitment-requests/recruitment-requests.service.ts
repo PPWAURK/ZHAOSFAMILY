@@ -2,11 +2,15 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { RECRUITMENT_REQUEST_PERMISSIONS } from '../auth/permissions';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { recruitmentRequestNotification } from '../notifications/notification-content';
+import { RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE } from '../permissions/permissions.types';
 import type { CreateRecruitmentRequestDto } from './dto/create-recruitment-request.dto';
 import type { ListRecruitmentRequestsQueryDto } from './dto/list-recruitment-requests-query.dto';
 import type { UpdateRecruitmentRequestDto } from './dto/update-recruitment-request.dto';
@@ -26,7 +30,12 @@ type RecruitmentRequestRecord = Prisma.RecruitmentRequestGetPayload<{
 
 @Injectable()
 export class RecruitmentRequestsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  private readonly logger = new Logger(RecruitmentRequestsService.name);
+
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async createRequest(
     actor: RecruitmentRequestActor,
@@ -44,7 +53,48 @@ export class RecruitmentRequestsService {
       include: this.getRequestIncludes(),
     });
 
+    await this.notifyHoldingRecipients(request);
+
     return this.mapRequest(request);
+  }
+
+  private async notifyHoldingRecipients(
+    request: RecruitmentRequestRecord,
+  ): Promise<void> {
+    try {
+      const recipients = await this.prismaService.user.findMany({
+        where: {
+          accountStatus: 'approved',
+          userRoles: {
+            some: {
+              role: { name: RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE },
+            },
+          },
+        },
+        select: { id: true, preferredLanguage: true },
+      });
+
+      await Promise.all(
+        recipients.map((recipient) =>
+          this.notificationsService.sendToUsers(
+            [recipient.id],
+            recruitmentRequestNotification(
+              recipient.preferredLanguage,
+              request.id,
+              request.restaurant.name,
+              request.position,
+              request.headcount,
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to notify holding about recruitment request ${request.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   async listRequests(

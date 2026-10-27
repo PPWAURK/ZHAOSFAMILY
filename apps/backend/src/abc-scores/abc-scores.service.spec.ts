@@ -342,13 +342,13 @@ describe('AbcScoresService', () => {
       expect(notifications.sendToUsers).toHaveBeenCalledWith(
         [9],
         expect.objectContaining({
-          title: 'ABC 评级排行榜已公布',
+          title: '门店评级榜单出炉啦',
           data: { type: 'abc-grade-board', cycleId: '1' },
         }),
       );
       expect(notifications.sendToUsers).toHaveBeenCalledWith(
         [10],
-        expect.objectContaining({ title: 'Classement ABC publié' }),
+        expect.objectContaining({ title: 'Le classement ABC est arrivé' }),
       );
     });
 

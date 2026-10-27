@@ -5,7 +5,13 @@ import { isRunningInExpoGo } from "expo";
  * Dashboard entries a tapped notification can route to. These must match the
  * `activeEntry` values handled by DashboardHomeScreen.
  */
-export type NotificationEntry = "home" | "training" | "case-shares" | "store-grade-ranking";
+export type NotificationEntry =
+  | "home"
+  | "training"
+  | "case-shares"
+  | "store-grade-ranking"
+  | "stores"
+  | "recruitment-requests";
 
 // Maps a notification's `data.type` (set by the backend) to a dashboard entry.
 // Notification types resolve to their corresponding dashboard modules.
@@ -15,6 +21,8 @@ const TYPE_TO_ENTRY: Record<string, NotificationEntry> = {
   "training-material": "training",
   "abc-grade-board": "store-grade-ranking",
   "case-share": "case-shares",
+  "employee-registration": "stores",
+  "recruitment-request": "recruitment-requests",
 };
 
 type NotificationResponse = Awaited<

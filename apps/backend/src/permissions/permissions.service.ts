@@ -18,6 +18,7 @@ import { UpdateUserApprovalDto } from './dto/update-user-approval.dto';
 import { SendEmployeeInvitationDto } from './dto/send-employee-invitation.dto';
 import {
   BUILT_IN_ROLE_NAMES,
+  RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE,
   ManageableRestaurantItem,
   PermissionRoleItem,
   PermissionUserItem,
@@ -761,6 +762,15 @@ export class PermissionsService {
       !targetJobRoles.has(HOLDING_JOB_ROLE)
     ) {
       throw new BadRequestException('SUPER_ADMIN_REQUIRES_HOLDING');
+    }
+
+    if (
+      roleNames.includes(RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE) &&
+      !targetJobRoles.has(HOLDING_JOB_ROLE)
+    ) {
+      throw new BadRequestException(
+        'RECRUITMENT_NOTIFICATION_RECIPIENT_REQUIRES_HOLDING',
+      );
     }
 
     if (!roleNames.includes(STORE_MANAGER_PARTNER_ROLE_NAME)) {

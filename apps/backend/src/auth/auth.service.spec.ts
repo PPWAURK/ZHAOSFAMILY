@@ -120,6 +120,7 @@ describe('AuthService', () => {
       [CreateUserArgs]
     >();
     const findFirst = jest.fn();
+    const findManyUsers = jest.fn().mockResolvedValue([]);
     const update = jest.fn();
     const createRefreshSession = jest.fn();
     const updateManyRefreshSessions = jest.fn();
@@ -200,6 +201,7 @@ describe('AuthService', () => {
       user: {
         findUnique,
         findFirst,
+        findMany: findManyUsers,
         create,
         update,
       },
@@ -238,6 +240,7 @@ describe('AuthService', () => {
       sendEmployeeInvitationEmail,
       sendResetPasswordEmail,
     };
+    const notificationsService = { sendToUsers: jest.fn() };
 
     return {
       prismaService,
@@ -248,7 +251,9 @@ describe('AuthService', () => {
         restaurantsService as never,
         configService as never,
         mailService as never,
+        notificationsService as never,
       ),
+      notificationsService,
     };
   }
 
@@ -323,6 +328,71 @@ describe('AuthService', () => {
       email: 'lina@example.com',
       storeName: 'ZHAO Test',
     });
+  });
+
+  it('notifies every store manager at the registering employee restaurant', async () => {
+    const { authService, prismaService, notificationsService } =
+      createService();
+    prismaService.user.findMany.mockResolvedValue([
+      { id: 11, jobRole: 'store-manager', preferredLanguage: 'en' },
+      {
+        id: 12,
+        jobRole: 'front-of-house,store-manager',
+        preferredLanguage: 'zh',
+      },
+      { id: 13, jobRole: 'regional-manager', preferredLanguage: 'fr' },
+      { id: 14, jobRole: 'assistant-store-manager', preferredLanguage: 'fr' },
+    ]);
+
+    await authService.register({
+      familyName: 'Zhao',
+      givenName: 'Lina',
+      email: 'lina@example.com',
+      password: 'password123',
+      restaurantId: 3,
+      birthday: '1995-03-01',
+      acceptedTerms: true,
+      language: 'fr',
+    });
+
+    expect(prismaService.user.findMany).toHaveBeenCalledWith({
+      where: { restaurantId: 3, accountStatus: 'approved' },
+      select: { id: true, jobRole: true, preferredLanguage: true },
+    });
+    expect(notificationsService.sendToUsers).toHaveBeenNthCalledWith(1, [11], {
+      title: 'A new teammate would like to join',
+      body: 'Zhao Lina has applied to join ZHAO Test. Take a moment to review the application when you can.',
+      data: { type: 'employee-registration', employeeId: '7' },
+    });
+    expect(notificationsService.sendToUsers).toHaveBeenNthCalledWith(2, [12], {
+      title: '有新伙伴想加入',
+      body: 'Zhao Lina 申请加入 ZHAO Test，请抽空看看这份申请吧。',
+      data: { type: 'employee-registration', employeeId: '7' },
+    });
+    expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not fail registration when manager notification delivery fails', async () => {
+    const { authService, prismaService, notificationsService } =
+      createService();
+    prismaService.user.findMany.mockResolvedValue([
+      { id: 11, jobRole: 'store-manager', preferredLanguage: 'fr' },
+    ]);
+    notificationsService.sendToUsers.mockRejectedValueOnce(
+      new Error('push unavailable'),
+    );
+
+    await expect(
+      authService.register({
+        familyName: 'Zhao',
+        givenName: 'Lina',
+        email: 'lina@example.com',
+        password: 'password123',
+        restaurantId: 3,
+        acceptedTerms: true,
+        language: 'fr',
+      }),
+    ).resolves.toMatchObject({ message: 'REGISTRATION_PENDING_APPROVAL' });
   });
 
   it('rejects registration when terms are not accepted', async () => {

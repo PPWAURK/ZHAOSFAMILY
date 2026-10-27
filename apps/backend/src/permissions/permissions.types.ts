@@ -1,9 +1,13 @@
+export const RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE =
+  'recruitment-notification-recipient';
+
 export const BUILT_IN_ROLE_NAMES = [
   'super-admin',
   'store-manager',
   'store-manager-partner',
   'training-admin',
   'training-viewer',
+  RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE,
 ] as const;
 
 export type BuiltInRoleName = (typeof BUILT_IN_ROLE_NAMES)[number];

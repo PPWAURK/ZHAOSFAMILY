@@ -8,12 +8,14 @@ import { PermissionGuard } from './guards/permission.guard';
 import { AuthGuard } from './guards/auth.guard';
 import { MonitorAnalyticsTokenGuard } from './guards/monitor-analytics-token.guard';
 import { MailModule } from '../mail/mail.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     ConfigModule,
     forwardRef(() => RestaurantsModule),
     forwardRef(() => MailModule),
+    forwardRef(() => NotificationsModule),
   ],
   controllers: [AuthController],
   providers: [

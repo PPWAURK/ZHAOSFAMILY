@@ -22,6 +22,8 @@ import { RestaurantsService } from '../restaurants/restaurants.service';
 import { MailService } from '../mail/mail.service';
 import { ACCOUNT_STATUS } from './account-status';
 import { deleteUserAccountRecords } from './user-account-deletion';
+import { NotificationsService } from '../notifications/notifications.service';
+import { employeeRegistrationNotification } from '../notifications/notification-content';
 import type { AccountStatus } from './account-status';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { ChangeCurrentPasswordDto } from './dto/change-current-password.dto';
@@ -236,6 +238,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     private readonly restaurantsService: RestaurantsService,
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // Started only through Nest's lifecycle (not in unit tests that construct the
@@ -343,7 +346,10 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           include: restaurantInclude,
         });
 
-    await this.notifyPendingRegistration(user);
+    await Promise.all([
+      this.notifyPendingRegistration(user),
+      this.notifyStoreManagersOfRegistration(user),
+    ]);
 
     return {
       message: 'REGISTRATION_PENDING_APPROVAL',
@@ -565,6 +571,48 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(
         `Pending-registration email failed for ${user.email}: ${
           error instanceof Error ? error.message : 'UNKNOWN_ERROR'
+        }`,
+      );
+    }
+  }
+
+  private async notifyStoreManagersOfRegistration(user: {
+    id: number;
+    name: string;
+    restaurantId: number;
+    restaurant: { name: string };
+  }): Promise<void> {
+    try {
+      const restaurantUsers = await this.prismaService.user.findMany({
+        where: {
+          restaurantId: user.restaurantId,
+          accountStatus: ACCOUNT_STATUS.approved,
+        },
+        select: { id: true, jobRole: true, preferredLanguage: true },
+      });
+      const managers = restaurantUsers.filter((restaurantUser) =>
+        `${restaurantUser.jobRole ?? ''}`
+          .split(',')
+          .some((jobRole) => jobRole.trim() === 'store-manager'),
+      );
+
+      await Promise.all(
+        managers.map((manager) =>
+          this.notificationsService.sendToUsers(
+            [manager.id],
+            employeeRegistrationNotification(
+              manager.preferredLanguage,
+              user.id,
+              user.name,
+              user.restaurant.name,
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to notify store managers about registration ${user.id}: ${
+          error instanceof Error ? error.message : String(error)
         }`,
       );
     }

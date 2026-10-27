@@ -482,7 +482,7 @@ describe('TrainingService', () => {
     );
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
       [2],
-      expect.objectContaining({ title: '新培训材料' }),
+      expect.objectContaining({ title: '新学习内容来啦' }),
     );
   });
 

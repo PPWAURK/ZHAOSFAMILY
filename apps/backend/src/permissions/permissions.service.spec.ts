@@ -121,6 +121,12 @@ describe('PermissionsService', () => {
           { permission: { key: 'abc.inspection.read' } },
         ],
       },
+      {
+        id: 4,
+        name: 'recruitment-notification-recipient',
+        description: 'Recruitment notification recipient',
+        rolePermissions: [],
+      },
     ]);
 
     await expect(service.listRoles()).resolves.toEqual([
@@ -138,6 +144,11 @@ describe('PermissionsService', () => {
         name: 'training-admin',
         description: 'Training admin',
         permissions: ['training.material.create', 'training.material.update'],
+      },
+      {
+        name: 'recruitment-notification-recipient',
+        description: 'Recruitment notification recipient',
+        permissions: [],
       },
     ]);
   });
@@ -411,6 +422,20 @@ describe('PermissionsService', () => {
     await expect(
       service.updateUserRoles(99, 1, ['store-manager-partner']),
     ).rejects.toThrow('STORE_MANAGER_PARTNER_REQUIRES_SUPER_ADMIN');
+    expect(prismaService.role.findMany).not.toHaveBeenCalled();
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('restricts recruitment notification recipients to holding users', async () => {
+    const { service, prismaService } = createService();
+    prismaService.user.findUnique.mockResolvedValue({
+      id: 1,
+      jobRole: 'store-manager',
+    });
+
+    await expect(
+      service.updateUserRoles(99, 1, ['recruitment-notification-recipient']),
+    ).rejects.toThrow('RECRUITMENT_NOTIFICATION_RECIPIENT_REQUIRES_HOLDING');
     expect(prismaService.role.findMany).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
@@ -1431,7 +1456,7 @@ describe('PermissionsService', () => {
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
       [12],
       expect.objectContaining({
-        title: 'Account approved',
+        title: 'Welcome to the ZHAO family!',
         data: { type: 'account-approved' },
       }),
     );

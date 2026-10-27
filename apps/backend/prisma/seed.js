@@ -1110,6 +1110,11 @@ const ROLES = [
     permissions: ['training.material.read', 'training.material.play'],
   },
   {
+    name: 'recruitment-notification-recipient',
+    description: 'Receives notifications about new recruitment requests',
+    permissions: [],
+  },
+  {
     name: 'inspection-admin',
     description: 'Records ABC inspection grades and reports',
     permissions: ['abc.inspection.read', 'abc.inspection.manage'],

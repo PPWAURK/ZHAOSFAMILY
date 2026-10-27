@@ -11,6 +11,8 @@ export type NotificationType =
   | "dashboard-news"
   | "abc-grade-board"
   | "case-share"
+  | "employee-registration"
+  | "recruitment-request"
   | (string & {});
 
 export type NotificationItem = {
