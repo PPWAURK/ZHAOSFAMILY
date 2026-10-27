@@ -73,7 +73,7 @@ export function ProtectedScreen({
       }
     }
 
-    protect();
+    void protect();
 
     return () => {
       isMountedRef.current = false;

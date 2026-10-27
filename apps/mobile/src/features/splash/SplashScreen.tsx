@@ -60,9 +60,13 @@ export function SplashScreen({
 
     let isMounted = true;
 
-    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      if (isMounted) setReduceMotion(enabled);
-    });
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (isMounted) setReduceMotion(enabled);
+      })
+      .catch(() => {
+        if (isMounted) setReduceMotion(false);
+      });
 
     const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
 
