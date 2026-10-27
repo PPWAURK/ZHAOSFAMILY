@@ -632,7 +632,10 @@ export class TrainingService {
       this.listJobRolePositionRows(),
       this.listRequiredMaterials(),
       this.prismaService.user.findMany({
-        where: scope.userWhere,
+        where: {
+          ...scope.userWhere,
+          accountStatus: ACCOUNT_STATUS.approved,
+        },
         select: {
           id: true,
           name: true,
