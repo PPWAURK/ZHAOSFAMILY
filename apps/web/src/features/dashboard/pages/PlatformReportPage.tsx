@@ -38,6 +38,15 @@ function getCurrentParisMonth(): string {
   return `${year}-${month}`;
 }
 
+function getMonthOptions(language: ReportLanguage): Array<{ value: string; label: string }> {
+  const locale = language === "zh" ? "zh-CN" : language === "fr" ? "fr-FR" : "en-GB";
+  const formatter = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
+  return Array.from({ length: 12 }, (_, index) => {
+    const value = String(index + 1).padStart(2, "0");
+    return { value, label: formatter.format(new Date(Date.UTC(2026, index, 15))) };
+  });
+}
+
 function hasHeadquartersRole(jobRole: string | null | undefined): boolean {
   return `${jobRole || ""}`
     .split(",")
@@ -52,10 +61,14 @@ export default function PlatformReportPage() {
   const lang: ReportLanguage =
     preferredLanguage === "en" || preferredLanguage === "fr" ? preferredLanguage : "zh";
   const copy = PLATFORM_REPORT_COPY[lang];
+  const [month, setMonth] = useState(getCurrentParisMonth);
+  const currentYear = Number(getCurrentParisMonth().slice(0, 4));
+  const selectedYear = month.slice(0, 4);
+  const selectedMonth = month.slice(5, 7);
+  const monthOptions = getMonthOptions(lang);
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
   const isAuthorized = hasHeadquartersRole(user?.jobRole);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [month, setMonth] = useState(getCurrentParisMonth);
   const [report, setReport] = useState<PlatformMonthlyReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -189,10 +202,30 @@ export default function PlatformReportPage() {
 
         {!isAuthorized ? <p role="alert">{copy.denied}</p> : null}
         {isAuthorized ? (
-          <label className={styles.filter}>
-            <span>{copy.month}</span>
-            <input type="month" value={month} onChange={(event) => handleMonthChange(event.target.value)} />
-          </label>
+          <div className={styles.filters}>
+            <label className={styles.filter}>
+              <span>{copy.year}</span>
+              <select
+                value={selectedYear}
+                onChange={(event) => handleMonthChange(`${event.target.value}-${selectedMonth}`)}
+              >
+                {Array.from({ length: currentYear - 2010 }, (_, index) => currentYear - index).map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.filter}>
+              <span>{copy.month}</span>
+              <select
+                value={selectedMonth}
+                onChange={(event) => handleMonthChange(`${selectedYear}-${event.target.value}`)}
+              >
+                {monthOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         ) : null}
         {isAuthorized && isLoading ? <p role="status">{copy.loading}</p> : null}
         {isAuthorized && hasError ? <p role="alert">{copy.error}</p> : null}
