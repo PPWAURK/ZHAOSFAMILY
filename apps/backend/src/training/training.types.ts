@@ -52,6 +52,7 @@ export type TrainingMaterialItem = {
   positionId: string;
   type: string;
   isRequired: boolean;
+  isPrintable: boolean;
   title: string;
   description: string | null;
   originalName: string;

@@ -429,6 +429,98 @@ describe('TrainingService', () => {
     expect(prismaService.trainingMaterial.create).not.toHaveBeenCalled();
   });
 
+  it('rejects printable training materials that are not PDFs', async () => {
+    const { service, prismaService } = createService();
+
+    await expect(
+      service.createMaterial({
+        positionId: 'FOH',
+        type: 'IMAGE',
+        isPrintable: true,
+        title: 'Greeting guide',
+        description: '',
+        originalName: 'greeting.png',
+        mimeType: 'image/png',
+        sizeBytes: 120,
+        bucket: 'company-private-files',
+        objectKey: 'training/FOH/IMAGE/greeting.png',
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+
+    expect(prismaService.trainingMaterial.create).not.toHaveBeenCalled();
+  });
+
+  it('stores printable permission for PDF materials', async () => {
+    const { service, prismaService } = createService();
+    prismaService.trainingPosition.findUnique.mockResolvedValue({
+      isActive: true,
+    });
+    prismaService.trainingPosition.findMany.mockResolvedValue([]);
+    prismaService.user.findMany.mockResolvedValue([]);
+    prismaService.trainingMaterial.create.mockResolvedValue({
+      id: 42,
+      positionId: 'FOH',
+      type: 'PDF',
+      isRequired: false,
+      isPrintable: true,
+      title: 'Opening guide',
+      description: null,
+      originalName: 'opening.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: BigInt(120),
+      bucket: 'company-private-files',
+      objectKey: 'training/FOH/PDF/opening.pdf',
+      createdAt: new Date('2026-06-18T08:00:00.000Z'),
+      updatedAt: new Date('2026-06-18T08:00:00.000Z'),
+    });
+
+    await expect(
+      service.createMaterial({
+        positionId: 'FOH',
+        type: 'PDF',
+        isPrintable: true,
+        title: 'Opening guide',
+        description: '',
+        originalName: 'opening.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 120,
+        bucket: 'company-private-files',
+        objectKey: 'training/FOH/PDF/opening.pdf',
+      }),
+    ).resolves.toMatchObject({ isPrintable: true });
+    expect(prismaService.trainingMaterial.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ isPrintable: true }),
+      }),
+    );
+  });
+
+  it('rejects enabling printing for an existing non-PDF material', async () => {
+    const { service, prismaService } = createService();
+    prismaService.trainingMaterial.findUnique.mockResolvedValue({
+      id: 12,
+      positionId: 'FOH',
+      type: 'IMAGE',
+      isRequired: false,
+      isPrintable: false,
+      title: 'Greeting guide',
+      description: null,
+      originalName: 'greeting.png',
+      mimeType: 'image/png',
+      sizeBytes: BigInt(120),
+      bucket: 'company-private-files',
+      objectKey: 'training/FOH/IMAGE/greeting.png',
+      createdAt: new Date('2026-06-18T08:00:00.000Z'),
+      updatedAt: new Date('2026-06-18T08:00:00.000Z'),
+    });
+
+    await expect(
+      service.updateMaterial(12, { isPrintable: true }),
+    ).rejects.toMatchObject({ status: 400 });
+
+    expect(prismaService.trainingMaterial.update).not.toHaveBeenCalled();
+  });
+
   it('pushes a new material to matching users grouped by language', async () => {
     const { service, prismaService, notificationsService } = createService();
     prismaService.trainingPosition.findUnique.mockResolvedValue({
@@ -448,6 +540,7 @@ describe('TrainingService', () => {
       positionId: 'FOH',
       type: 'VIDEO',
       isRequired: true,
+      isPrintable: false,
       title: 'Greeting',
       description: null,
       originalName: 'greeting.mp4',
@@ -472,6 +565,12 @@ describe('TrainingService', () => {
       objectKey: 'training/FOH/VIDEO/greeting.mp4',
     });
 
+    expect(prismaService.trainingMaterial.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ isPrintable: false }),
+      }),
+    );
+
     // holding (fr) + front-of-house (zh) cover FOH; back-of-house (en) does not.
     expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
     expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
@@ -493,6 +592,7 @@ describe('TrainingService', () => {
       positionId: 'FOH',
       type: 'VIDEO',
       isRequired: true,
+      isPrintable: false,
       title: 'Greeting SOP',
       description: null,
       originalName: 'greeting.mp4',
@@ -622,6 +722,7 @@ describe('TrainingService', () => {
       positionId: 'FOH',
       type: 'VIDEO',
       isRequired: true,
+      isPrintable: false,
       title: 'Greeting SOP',
       description: null,
       originalName: 'greeting.mp4',
@@ -677,6 +778,7 @@ describe('TrainingService', () => {
       positionId: 'FOH',
       type: 'VIDEO',
       isRequired: true,
+      isPrintable: false,
       title: 'Greeting SOP',
       description: null,
       originalName: 'greeting.mp4',
@@ -1604,6 +1706,7 @@ function buildMaterialRow(overrides: {
     positionId: overrides.positionId,
     type: 'VIDEO',
     isRequired: overrides.isRequired,
+    isPrintable: false,
     title: `Training ${overrides.id}`,
     description: null,
     originalName: `training-${overrides.id}.mp4`,

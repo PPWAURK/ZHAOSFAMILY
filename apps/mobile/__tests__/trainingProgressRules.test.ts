@@ -31,6 +31,7 @@ function buildMaterial(
     positionId: "ALL",
     type: "PDF",
     isRequired: true,
+    isPrintable: false,
     title: "Hygiène",
     description: null,
     originalName: "hygiene.pdf",

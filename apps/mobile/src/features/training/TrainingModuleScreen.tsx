@@ -173,6 +173,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
   const [newlyEarnedBadges, setNewlyEarnedBadges] = useState<TrainingBadge[]>([]);
   const [pendingBadgeUnlocks, setPendingBadgeUnlocks] = useState<TrainingBadge[]>([]);
   const [previewFileUri, setPreviewFileUri] = useState<string | null>(null);
+  const [previewPrintFileUri, setPreviewPrintFileUri] = useState<string | null>(null);
   const [previewBaseUri, setPreviewBaseUri] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -197,6 +198,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
     if (isActive) return;
 
     setPreviewMaterial(null);
+    setPreviewPrintFileUri(null);
     setQuizMaterial(null);
     setVideoFeedInitialMaterialId(null);
     setMaterialSearchQuery("");
@@ -232,6 +234,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
 
       setPreviewMaterial(material);
       setPreviewFileUri(null);
+      setPreviewPrintFileUri(null);
       setPreviewBaseUri(null);
       setIsLoadingPreview(true);
       setPreviewError(null);
@@ -243,6 +246,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
         );
 
         if (isPdfMaterial(material)) {
+          setPreviewPrintFileUri(fileUri);
           const pdfDirectory = new Directory(directoryUri);
           const viewerFile = new File(pdfDirectory, "pdf-viewer.html");
           const downloadedFile = new File(fileUri);
@@ -259,6 +263,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
         setPreviewFileUri(fileUri);
         setPreviewBaseUri(directoryUri);
       } catch {
+        setPreviewPrintFileUri(null);
         setPreviewError(copy.openError);
       } finally {
         setIsLoadingPreview(false);
@@ -270,6 +275,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
   const handleClosePreview = useCallback(() => {
     setPreviewMaterial(null);
     setPreviewFileUri(null);
+    setPreviewPrintFileUri(null);
     setPreviewBaseUri(null);
     setPreviewError(null);
   }, []);
@@ -652,6 +658,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
         copy={copy}
         material={previewMaterial}
         fileUri={previewFileUri ?? ""}
+        printFileUri={previewPrintFileUri ?? ""}
         baseUri={previewBaseUri ?? ""}
         isLoading={isLoadingPreview}
         errorMessage={previewError ?? ""}

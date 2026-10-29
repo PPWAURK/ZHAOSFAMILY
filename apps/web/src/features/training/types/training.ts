@@ -19,6 +19,7 @@ export type TrainingMaterial = {
   title?: string | null;
   description?: string | null;
   type?: TrainingMaterialType | null;
+  isPrintable?: boolean;
   positionId?: string | null;
   objectKey?: string | null;
   [key: string]: unknown;

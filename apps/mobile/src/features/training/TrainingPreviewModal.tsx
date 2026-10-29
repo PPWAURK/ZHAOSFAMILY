@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Image, Modal, Platform, Pressable, Text, View } from "react-native";
+import { Alert, Image, Modal, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Print from "expo-print";
 import { WebView } from "react-native-webview";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import type { TRAINING_COPY } from "@/features/training/trainingCopy";
@@ -29,6 +30,7 @@ type TrainingPreviewModalProps = {
   copy: TrainingCopySet;
   material: TrainingPlanMaterial | null;
   fileUri: string;
+  printFileUri: string;
   baseUri: string;
   isLoading: boolean;
   errorMessage: string;
@@ -47,6 +49,7 @@ export function TrainingPreviewModal({
   copy,
   material,
   fileUri,
+  printFileUri,
   baseUri,
   isLoading,
   errorMessage,
@@ -63,6 +66,7 @@ export function TrainingPreviewModal({
   const [isMarking, setIsMarking] = useState(false);
   const [hasSyncFailed, setHasSyncFailed] = useState(false);
   const [isConfirmingComplete, setIsConfirmingComplete] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const lastSyncedPctRef = useRef(0);
   const latestPctRef = useRef(0);
 
@@ -122,6 +126,27 @@ export function TrainingPreviewModal({
     }
 
     setIsMarking(false);
+  }
+
+  async function printMaterial(): Promise<void> {
+    if (
+      !material ||
+      !material.isPrintable ||
+      !isPdfMaterial(material) ||
+      !printFileUri ||
+      isPrinting
+    ) {
+      return;
+    }
+
+    setIsPrinting(true);
+    try {
+      await Print.printAsync({ uri: printFileUri });
+    } catch {
+      Alert.alert(copy.printErrorTitle, copy.printErrorMessage);
+    } finally {
+      setIsPrinting(false);
+    }
   }
 
   useEffect(() => {
@@ -307,9 +332,23 @@ export function TrainingPreviewModal({
               {material?.title || "-"}
             </Text>
           </View>
-          <Pressable style={styles.previewCloseButton} onPress={handleClose}>
-            <Text style={styles.refreshButtonText}>{copy.close}</Text>
-          </Pressable>
+          <View style={styles.viewerHeaderActions}>
+            {material?.isPrintable && isPdfMaterial(material) ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={isPrinting || !printFileUri}
+                style={styles.previewCloseButton}
+                onPress={() => void printMaterial()}
+              >
+                <Text style={styles.refreshButtonText}>
+                  {isPrinting ? copy.printing : copy.print}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable style={styles.previewCloseButton} onPress={handleClose}>
+              <Text style={styles.refreshButtonText}>{copy.close}</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.viewerProgressBar}>

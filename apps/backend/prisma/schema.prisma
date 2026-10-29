@@ -449,6 +449,7 @@ model TrainingMaterial {
   positionId        String                     @map("position_id") @db.VarChar(40)
   type              String                     @db.VarChar(20)
   isRequired        Boolean                    @default(false) @map("is_required")
+  isPrintable       Boolean                    @default(false) @map("is_printable")
   title             String                     @db.VarChar(255)
   description       String?                    @db.VarChar(500)
   originalName      String                     @map("original_name") @db.VarChar(255)

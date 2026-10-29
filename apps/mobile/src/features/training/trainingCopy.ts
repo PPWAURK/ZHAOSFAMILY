@@ -41,6 +41,10 @@ type TrainingCopy = {
   guidedOptionalReady: string;
   open: string;
   close: string;
+  print: string;
+  printing: string;
+  printErrorTitle: string;
+  printErrorMessage: string;
   previewLoading: string;
   previewError: string;
   openError: string;
@@ -168,6 +172,10 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedOptionalReady: "你还可以继续查看可选资料",
     open: "开始学习",
     close: "关闭",
+    print: "打印 PDF",
+    printing: "正在打开…",
+    printErrorTitle: "无法开始打印",
+    printErrorMessage: "打印已取消或无法启动。请检查打印机设置后重试。",
     previewLoading: "正在打开学习内容…",
     previewError: "学习内容加载失败，请稍后再试。",
     openError: "学习内容打不开，请稍后再试。",
@@ -327,6 +335,11 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedOptionalReady: "You can still view optional materials",
     open: "Start learning",
     close: "Close",
+    print: "Print PDF",
+    printing: "Opening…",
+    printErrorTitle: "Could not start printing",
+    printErrorMessage:
+      "Printing was cancelled or could not start. Check printer settings and try again.",
     previewLoading: "Opening learning content…",
     previewError: "Could not load this content. Please try again later.",
     openError: "Could not open this content. Please try again later.",
@@ -487,6 +500,11 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedOptionalReady: "Vous pouvez encore consulter les contenus en plus",
     open: "Commencer",
     close: "Fermer",
+    print: "Imprimer le PDF",
+    printing: "Ouverture…",
+    printErrorTitle: "Impression impossible",
+    printErrorMessage:
+      "L’impression a été annulée ou n’a pas pu démarrer. Vérifiez les réglages de l’imprimante et réessayez.",
     previewLoading: "Ouverture du contenu…",
     previewError: "Impossible de charger ce contenu. Réessayez plus tard.",
     openError: "Impossible d’ouvrir ce contenu. Réessayez plus tard.",

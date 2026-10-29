@@ -30,6 +30,7 @@ function buildMaterial(
     positionLabel: "All team",
     type: "PDF",
     isRequired: true,
+    isPrintable: false,
     title: `Material ${id}`,
     description: null,
     originalName: `material-${id}.pdf`,

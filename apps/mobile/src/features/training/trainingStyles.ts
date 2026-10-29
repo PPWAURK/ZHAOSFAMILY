@@ -494,6 +494,11 @@ export const trainingStyles = StyleSheet.create(
       justifyContent: "space-between",
       padding: 14,
     },
+    viewerHeaderActions: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
     viewerHeaderTitleGroup: {
       flex: 1,
       gap: 4,

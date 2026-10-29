@@ -50,6 +50,7 @@ type TrainingMaterialRow = {
   positionId: string;
   type: string;
   isRequired: boolean;
+  isPrintable: boolean;
   title: string;
   description: string | null;
   originalName: string;
@@ -160,6 +161,7 @@ function toTrainingMaterialItem(
     positionId: row.positionId,
     type: row.type,
     isRequired: row.isRequired,
+    isPrintable: row.isPrintable,
     title: row.title,
     description: row.description,
     originalName: fixMojibakeFileName(row.originalName),
@@ -937,12 +939,14 @@ export class TrainingService {
     dto: CreateTrainingMaterialDto,
   ): Promise<TrainingMaterialItem> {
     await this.ensureActiveMaterialPosition(dto.positionId);
+    this.ensureMaterialCanBePrinted(dto.isPrintable, dto.mimeType);
 
     const row = await this.prismaService.trainingMaterial.create({
       data: {
         positionId: dto.positionId,
         type: dto.type,
         isRequired: dto.isRequired ?? false,
+        isPrintable: dto.isPrintable ?? false,
         title: dto.title,
         description: dto.description ?? null,
         originalName: fixMojibakeFileName(dto.originalName),
@@ -1017,11 +1021,12 @@ export class TrainingService {
     id: number,
     dto: UpdateTrainingMaterialDto,
   ): Promise<TrainingMaterialItem> {
-    await this.getMaterial(id);
+    const existing = await this.getMaterial(id);
 
     if (dto.positionId !== undefined) {
       await this.ensureActiveMaterialPosition(dto.positionId);
     }
+    this.ensureMaterialCanBePrinted(dto.isPrintable, existing.mimeType);
 
     const row = await this.prismaService.trainingMaterial.update({
       where: { id },
@@ -1029,6 +1034,9 @@ export class TrainingService {
         ...(dto.positionId !== undefined ? { positionId: dto.positionId } : {}),
         ...(dto.type !== undefined ? { type: dto.type } : {}),
         ...(dto.isRequired !== undefined ? { isRequired: dto.isRequired } : {}),
+        ...(dto.isPrintable !== undefined
+          ? { isPrintable: dto.isPrintable }
+          : {}),
         ...(dto.title !== undefined ? { title: dto.title } : {}),
         ...(dto.description !== undefined
           ? { description: dto.description || null }
@@ -1037,6 +1045,15 @@ export class TrainingService {
     });
 
     return toTrainingMaterialItem(row);
+  }
+
+  private ensureMaterialCanBePrinted(
+    isPrintable: boolean | undefined,
+    mimeType: string,
+  ): void {
+    if (isPrintable && mimeType.toLowerCase() !== 'application/pdf') {
+      throw new BadRequestException('ONLY_PDF_MATERIALS_CAN_BE_PRINTABLE');
+    }
   }
 
   async deleteMaterial(

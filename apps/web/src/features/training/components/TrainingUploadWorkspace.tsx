@@ -31,6 +31,7 @@ type TrainingUploadWorkspaceProps = {
   errorMessage: string;
   hasSingleFile: boolean;
   isRequired: boolean;
+  isPrintable: boolean;
   isUploading: boolean;
   materialTitle: string;
   mediaType: string;
@@ -50,6 +51,7 @@ type TrainingUploadWorkspaceProps = {
   onPositionQueryChange: (query: string) => void;
   onRemoveFile: (fileId: string) => void;
   onRequiredChange: (isRequired: boolean) => void;
+  onPrintableChange: (isPrintable: boolean) => void;
   onUpload: () => void;
   styles: Record<string, string>;
   t: {
@@ -88,6 +90,7 @@ function getUploadStatusLabel(status: QueuedTrainingFile["status"]): string {
 export default function TrainingUploadWorkspace({
   hasSingleFile,
   isRequired,
+  isPrintable,
   isUploading,
   materialTitle,
   mediaType,
@@ -107,6 +110,7 @@ export default function TrainingUploadWorkspace({
   onPositionQueryChange,
   onRemoveFile,
   onRequiredChange,
+  onPrintableChange,
   onUpload,
   styles,
   t,
@@ -205,6 +209,16 @@ export default function TrainingUploadWorkspace({
             />
             必修资料
           </label>
+          {mediaType === "PDF" || queuedFiles.some((item) => item.file.type === "application/pdf") ? (
+            <label className={styles.uploadRequiredToggle}>
+              <input
+                type="checkbox"
+                checked={isPrintable}
+                onChange={(event) => onPrintableChange(event.target.checked)}
+              />
+              允许 PDF 打印
+            </label>
+          ) : null}
           {hasSingleFile ? (
             <label className={styles.uploadTitleField}>
               资料标题

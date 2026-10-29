@@ -155,7 +155,7 @@ export default function TrainingMaterialPlayerPage() {
         }
 
         const isVideo = material.mimeType?.startsWith("video/");
-        const isPdf = material.mimeType === "application/pdf";
+        const isPdf = material.mimeType?.toLowerCase() === "application/pdf";
         const isImage = material.mimeType?.startsWith("image/");
 
         if (!mediaUrl) {
@@ -189,6 +189,16 @@ export default function TrainingMaterialPlayerPage() {
                 ) : null}
               </div>
               <div className={styles.playerActions}>
+                {isPdf && material.isPrintable ? (
+                  <a
+                    className={styles.completeButton}
+                    href={mediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    打印 PDF
+                  </a>
+                ) : null}
                 <button
                   type="button"
                   className={styles.completeButton}

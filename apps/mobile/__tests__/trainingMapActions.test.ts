@@ -29,6 +29,7 @@ function buildNode(
     positionId: "ALL",
     type: "PDF",
     isRequired: true,
+    isPrintable: false,
     title: "Hygiene",
     description: null,
     originalName: "hygiene.pdf",

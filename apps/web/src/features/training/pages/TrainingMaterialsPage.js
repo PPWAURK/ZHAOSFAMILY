@@ -51,6 +51,7 @@ function toMaterialListItem(material) {
     pos: material.positionId,
     type: material.type,
     req: Boolean(material.isRequired),
+    isPrintable: Boolean(material.isPrintable),
     sort: material.id,
     title: material.title,
     sub: material.description || material.originalName,
@@ -89,6 +90,7 @@ export default function TrainingMaterialsPage() {
     positionId: "FOH",
     type: "VIDEO",
     isRequired: false,
+    isPrintable: false,
   });
   const [savingMaterialId, setSavingMaterialId] = useState(null);
   const [deletingMaterialId, setDeletingMaterialId] = useState(null);
@@ -204,6 +206,7 @@ export default function TrainingMaterialsPage() {
       positionId: item.raw.positionId,
       type: item.raw.type,
       isRequired: Boolean(item.raw.isRequired),
+      isPrintable: Boolean(item.raw.isPrintable),
     });
     setMaterialsError("");
   }
@@ -216,6 +219,7 @@ export default function TrainingMaterialsPage() {
       positionId: "FOH",
       type: "VIDEO",
       isRequired: false,
+      isPrintable: false,
     });
   }
 
@@ -267,6 +271,7 @@ export default function TrainingMaterialsPage() {
         positionId: editingForm.positionId,
         type: editingForm.type,
         isRequired: editingForm.isRequired,
+        isPrintable: editingForm.isPrintable,
       });
       const updatedItem = toMaterialListItem(updatedMaterial);
       setMaterials((prev) =>
@@ -687,6 +692,21 @@ export default function TrainingMaterialsPage() {
                                 />
                                 必修
                               </label>
+                              {item.raw.mimeType?.toLowerCase() === "application/pdf" ? (
+                                <label className={styles.materialEditToggle}>
+                                  <input
+                                    type="checkbox"
+                                    checked={editingForm.isPrintable}
+                                    onChange={(event) =>
+                                      setEditingForm((prev) => ({
+                                        ...prev,
+                                        isPrintable: event.target.checked,
+                                      }))
+                                    }
+                                  />
+                                  允许打印
+                                </label>
+                              ) : null}
                               <textarea
                                 value={editingForm.description}
                                 onChange={(event) =>

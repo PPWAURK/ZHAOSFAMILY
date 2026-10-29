@@ -100,6 +100,7 @@ export default function TrainingUploadPage() {
   const [mediaType, setMediaType] = useState("AUTO");
   const [materialTitle, setMaterialTitle] = useState("");
   const [isRequired, setIsRequired] = useState(false);
+  const [isPrintable, setIsPrintable] = useState(false);
 
   const canCreateMaterial = user?.permissions?.includes("training.material.create");
   const positionOptions = useMemo(
@@ -253,6 +254,8 @@ export default function TrainingUploadPage() {
           positionId,
           type: materialType,
           isRequired,
+          isPrintable:
+            isPrintable && uploaded.mimeType?.toLowerCase() === "application/pdf",
           title: getMaterialTitle(item.file),
           description: "",
           originalName: uploaded.originalName,
@@ -299,6 +302,7 @@ export default function TrainingUploadPage() {
             <TrainingUploadWorkspace
               hasSingleFile={hasSingleFile}
               isRequired={isRequired}
+              isPrintable={isPrintable}
               isUploading={isUploading}
               materialTitle={materialTitle}
               mediaType={mediaType}
@@ -318,6 +322,7 @@ export default function TrainingUploadPage() {
               onPositionQueryChange={setPositionQuery}
               onRemoveFile={removeFile}
               onRequiredChange={setIsRequired}
+              onPrintableChange={setIsPrintable}
               onUpload={handleUpload}
               styles={styles}
               t={t}

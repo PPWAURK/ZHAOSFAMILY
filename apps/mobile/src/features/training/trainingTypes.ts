@@ -12,6 +12,7 @@ export type TrainingPlanMaterial = {
   positionLabel?: string;
   type: string;
   isRequired: boolean;
+  isPrintable: boolean;
   title: string;
   description: string | null;
   originalName: string;

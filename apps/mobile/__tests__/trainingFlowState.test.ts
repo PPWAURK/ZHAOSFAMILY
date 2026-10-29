@@ -31,6 +31,7 @@ function buildMaterial(
     positionId: "ALL",
     type: "PDF",
     isRequired: true,
+    isPrintable: false,
     title: `Material ${id}`,
     description: null,
     originalName: `material-${id}.pdf`,
