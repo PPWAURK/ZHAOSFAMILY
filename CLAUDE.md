@@ -19,7 +19,9 @@ Four shared workspace packages (TypeScript, source-imported via `workspace:*`):
 - `@zhao/types` — shared DTOs/contracts.
 - `@zhao/utils` — pure utilities (env, strings).
 
-Companion services run via [docker-compose.yml](docker-compose.yml): `mysql` (3307 → 3306) and `minio` (9000/9001). Note `db:up` starts **mysql only**; start MinIO explicitly with `docker compose up -d minio` if needed.
+Companion services run via [docker-compose.yml](docker-compose.yml): `mysql` (3307 → 3306) and `minio` (9000/9001). Note `db:up` starts **mysql only**; start MinIO explicitly with `docker compose up -d minio` if needed. The backend's `presence` module also needs Redis (`REDIS_URL`, default `redis://127.0.0.1:6379`), which the dev compose file does not provide.
+
+ZHAO Monitor (a native macOS ops app: health checks, `gh workflow run` deploys, EAS releases, server `.env` editing over SSH) now lives in its own repo at `~/Documents/GitHub/zhao-monitor`. `tools/zhao-monitor/` here holds only stale, gitignored build output. It reads the backend's `presence/mobile/summary`, `traffic/today` and `analytics/monthly` endpoints; the presence and analytics ones are guarded by `MONITOR_ANALYTICS_TOKEN` ([monitor-analytics-token.guard.ts](apps/backend/src/auth/guards/monitor-analytics-token.guard.ts)), so keep those response shapes stable.
 
 `ZHAO 2/`, `apps/web/Dashboard.html`, the `*.sql` dump files, and `backups/` are not part of the build.
 
@@ -38,6 +40,7 @@ pnpm dev:mobile              # expo start
 pnpm build                   # turbo build (web + backend; backend prebuild runs prisma generate)
 pnpm typecheck               # turbo typecheck across web/mobile/backend/packages
 pnpm lint                    # turbo lint across all workspaces
+pnpm test                    # turbo test (backend jest, web jest, mobile jest-expo)
 pnpm format                  # prettier --write . (root config governs the whole repo)
 pnpm db:push                 # prisma db push (no migration file)
 pnpm db:migrate              # ⚠️ wrapper hardcodes --name init; for new migrations run prisma directly
@@ -53,12 +56,18 @@ pnpm --filter @zhao/web typecheck
 pnpm --filter @zhao/mobile typecheck
 pnpm --filter backend test
 pnpm --filter backend test:e2e
-pnpm --filter backend exec jest path/to/file.spec.ts        # single test
+pnpm --filter backend exec jest path/to/file.spec.ts        # single backend test
+pnpm --filter @zhao/web exec jest tests/SomePage.test.js    # single web test
+pnpm --filter @zhao/mobile exec jest path/to/file.test.tsx  # single mobile test
 # New migration: write the SQL by hand (see Prisma Schema Notes), then apply with:
 pnpm --filter backend exec prisma migrate deploy   # ⚠️ NEVER `migrate dev` here — see Prisma Schema Notes
 ```
 
-The web and mobile apps now have `lint` and `typecheck` scripts — use them (the old "no scripts" guidance is obsolete). The web app has no test runner; verify changes by running `pnpm dev:web` and exercising the feature in the browser. Mobile uses `jest-expo`.
+Test runners: backend uses jest (`*.spec.ts` next to sources, DB mocked); web uses jest via `next/jest` with tests in `apps/web/tests/`; mobile uses `jest-expo`. The shared `packages/*` have no tests. For UI changes, also run `pnpm dev:web` and exercise the feature in the browser.
+
+Web `lint` also runs [check-no-new-js.mjs](apps/web/scripts/check-no-new-js.mjs), a JS→TS ratchet: it fails if the count of `.js`/`.jsx` files under `src/` + `app/` exceeds `BASELINE`. New web files must be `.ts`/`.tsx`; when you migrate a file to TS, lower `BASELINE` (never raise it).
+
+CI ([ci.yml](.github/workflows/ci.yml), on PRs and pushes to main) runs `db:generate` → `lint` → `typecheck` → `build` → backend tests → mobile tests. `format:check` is not a gate (repo isn't Prettier-clean). Pushes to main touching `apps/web/**` or `packages/**` auto-deploy the web static export via SFTP ([deploy-web.yml](.github/workflows/deploy-web.yml)). Backend deploy ([deploy-backend.yml](.github/workflows/deploy-backend.yml)) is manual-only: builds a GHCR image and runs [docker-compose.backend.yml](docker-compose.backend.yml) on the prod host; migrations run only if the `apply_migrations` input is checked.
 
 ## Local URLs / Env
 
@@ -71,7 +80,7 @@ The web and mobile apps now have `lint` and `typecheck` scripts — use them (th
 
 ## Backend Architecture
 
-Entry: [app.module.ts](apps/backend/src/app.module.ts) wires these feature modules: `auth`, `dashboard-news`, `health`, `products`, `recruitment-requests`, `restaurants`, `suppliers`, `orders`, `inventory`, `permissions`, `training`, `media`, `mail` (+ shared `prisma`, `minio`).
+Entry: [app.module.ts](apps/backend/src/app.module.ts) wires one module per folder in `apps/backend/src/` (auth, training, orders, inventory, recipes, case-shares, abc-scores, analytics, presence, traffic, notifications, waiting-queue, …) plus shared `prisma` and `minio`. A global `ThrottlerGuard` limits every route to 100 requests/min by default. `src/maintenance/` holds standalone scripts (e.g. inactive-user purge), not a Nest module.
 
 Layering enforced by [AGENTS.md](AGENTS.md): `controller` (thin) → `service` (business logic) → Prisma (data access). DTOs use `class-validator` and the global `ValidationPipe` runs with `whitelist` + `forbidNonWhitelisted` — unknown fields are rejected.
 
@@ -92,13 +101,13 @@ Permission keys live in [permissions.ts](apps/backend/src/auth/permissions.ts). 
 
 [schema.prisma](apps/backend/prisma/schema.prisma) maps to a legacy database with mixed French/Chinese column names: e.g. `Supplier` is table `fournisseurs` with column `nom`; `Product` has `nom_cn`, `designation_fr`, `prix_u_ht`. Use the Prisma model field names in code; only map names appear in raw SQL or migrations. `Product.id` and `InventoryMovement.id` are `BigInt` — be careful when serializing to JSON.
 
-Migrations directory: [apps/backend/prisma/migrations/](apps/backend/prisma/migrations/). Latest covers training RBAC, training positions, purchase orders, training material progress, dashboard posts, auth recovery tokens, refresh sessions, recruitment requests, ABC scores, and case shares.
+Migrations directory: [apps/backend/prisma/migrations/](apps/backend/prisma/migrations/), folders named `YYYYMMDDHHMMSS_description`.
 
 **⚠️ Never run `prisma migrate dev` against this DB.** The base tables (`users`, `restaurants`, …) were imported from an SQL dump and are NOT part of the migration history. `migrate dev` validates by replaying every migration on a fresh empty shadow DB, where the first migration's foreign key to `users` fails (`P3006 / Failed to open the referenced table 'users'`). That error happens during shadow validation only — it never touches the real DB. To apply a new migration: hand-write `migration.sql` in a new timestamped folder (copy the format of an existing one), then run `prisma migrate deploy` (applies pending migrations straight to the real DB, skips already-applied ones). `prisma db push` also works for dev. Verify with `prisma migrate status` (should say "up to date") and `prisma migrate diff` (should show no drift).
 
 ## Frontend (Web) Architecture
 
-App Router routes live in [apps/web/app](apps/web/app) (`accept-invitation`, `reset-password`, `dashboard/*`). Feature code lives in `apps/web/src/features/<domain>` — current domains: `auth`, `dashboard`, `inventory`, `orders`, `order-history`, `permissions`, `profile`, `recruitment-requests`, `stores`, `suppliers`, `training`. Shared cross-feature code goes in `apps/web/src/shared` (`api`, `constants`, `hooks`, `utils`).
+App Router routes live in [apps/web/app](apps/web/app): public pages (`accept-invitation`, `reset-password`, `privacy`, `support`, `delete-account`, …) and the authenticated `dashboard/*` tree. Route files stay thin; feature code lives in `apps/web/src/features/<domain>`, usually one domain per dashboard section. Shared cross-feature code goes in `apps/web/src/shared` (`api`, `constants`, `hooks`, `utils`).
 
 Path aliases (see [tsconfig.json](apps/web/tsconfig.json) and [jsconfig.json](apps/web/jsconfig.json)):
 
@@ -124,7 +133,7 @@ App-level providers live in [app/providers.tsx](apps/web/app/providers.tsx) (Tan
 
 ## Mobile Architecture
 
-Routes live in [apps/mobile/app](apps/mobile/app) (`_layout.tsx`, `index.tsx`, `reset-password.tsx`) — expo-router uses file-system routing similar to Next.js. Typed routes are enabled (`experiments.typedRoutes`). Feature code is under `apps/mobile/src/features/<domain>` (`auth`, `dashboard`, `orders`, `profile`, `recruitment`, `splash`, `stores`, `training`).
+Routes live in [apps/mobile/app](apps/mobile/app) (`_layout.tsx`, `index.tsx`, `reset-password.tsx`) — expo-router uses file-system routing similar to Next.js. Typed routes are enabled (`experiments.typedRoutes`). There are only three route files: `index.tsx` renders `LoginScreen`, which itself renders `DashboardHomeScreen` once authenticated, so in-app navigation is component state, not expo-router routes. Feature code is under `apps/mobile/src/features/<domain>`.
 
 `apps/mobile/src/lib/` wires the shared packages for native:
 
@@ -148,6 +157,10 @@ Styling is NativeWind (Tailwind syntax) configured by [tailwind.config.js](apps/
 - Don't fake "tests pass" / "build passes" / "lint passes" in your output unless you actually ran them — AGENTS.md calls this out explicitly.
 
 The repo's primary working language with the user is **French**. The codebase itself is multilingual: UI copy is trilingual zh/en/fr, comments are mixed, and DB column names are often French.
+
+## Committing
+
+After finishing each change, ask the user whether to commit it — never commit without their yes. With the question, propose how to split the work into logical commits (one concern per commit: e.g. backend vs web vs mobile, feature vs test vs chore/version bump), listing for each batch the files it contains and a ready-to-use commit message in the conventional format (`feat|fix|refactor|docs|test|chore|perf|ci(scope): description`, matching `git log` style). On approval, stage and commit each batch separately (`git add <files>`, never `git add -A` when unrelated changes are present).
 
 ## Memory
 
