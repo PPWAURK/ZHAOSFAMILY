@@ -488,11 +488,10 @@ describe('TrainingService', () => {
         objectKey: 'training/FOH/PDF/opening.pdf',
       }),
     ).resolves.toMatchObject({ isPrintable: true });
-    expect(prismaService.trainingMaterial.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ isPrintable: true }),
-      }),
-    );
+    const createCalls = prismaService.trainingMaterial.create.mock
+      .calls as unknown as unknown[][];
+    const createArgs = createCalls[0]?.[0];
+    expect(readIsPrintableFromCreateArgs(createArgs)).toBe(true);
   });
 
   it('rejects enabling printing for an existing non-PDF material', async () => {
@@ -565,11 +564,10 @@ describe('TrainingService', () => {
       objectKey: 'training/FOH/VIDEO/greeting.mp4',
     });
 
-    expect(prismaService.trainingMaterial.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ isPrintable: false }),
-      }),
-    );
+    const createCalls = prismaService.trainingMaterial.create.mock
+      .calls as unknown as unknown[][];
+    const createArgs = createCalls[0]?.[0];
+    expect(readIsPrintableFromCreateArgs(createArgs)).toBe(false);
 
     // holding (fr) + front-of-house (zh) cover FOH; back-of-house (en) does not.
     expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(2);
@@ -1717,4 +1715,23 @@ function buildMaterialRow(overrides: {
     createdAt: new Date('2026-04-27T08:00:00.000Z'),
     updatedAt: new Date('2026-04-27T08:00:00.000Z'),
   };
+}
+
+function readIsPrintableFromCreateArgs(
+  createArgs: unknown,
+): boolean | undefined {
+  if (
+    typeof createArgs !== 'object' ||
+    createArgs === null ||
+    !('data' in createArgs)
+  ) {
+    return undefined;
+  }
+
+  const { data } = createArgs;
+  if (typeof data !== 'object' || data === null || !('isPrintable' in data)) {
+    return undefined;
+  }
+
+  return typeof data.isPrintable === 'boolean' ? data.isPrintable : undefined;
 }
