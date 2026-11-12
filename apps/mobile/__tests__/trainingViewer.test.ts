@@ -30,6 +30,12 @@ describe("PDF training viewer", () => {
     expect(html).not.toContain("</script><script>alert(1)</script>");
   });
 
+  it("caps the canvas pixel ratio so 3x phones do not allocate oversized canvases", () => {
+    const html = buildPdfViewerHtml("dGVzdA==");
+
+    expect(html).toContain("var dpr=Math.min(window.devicePixelRatio||1,2);");
+  });
+
   it("can render PDFs without a watermark for non-training previews", () => {
     const html = buildPdfViewerHtml("dGVzdA==");
 

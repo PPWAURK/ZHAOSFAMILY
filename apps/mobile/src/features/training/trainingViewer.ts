@@ -333,7 +333,7 @@ html,body{min-height:100%;background:#525659}
     var raw=atob(${JSON.stringify(base64Data)});
     var bytes=new Uint8Array(raw.length);
     for(var i=0;i<raw.length;i++){bytes[i]=raw.charCodeAt(i);}
-    var dpr=window.devicePixelRatio||1;
+    var dpr=Math.min(window.devicePixelRatio||1,2);
     var maxWidth=Math.min(window.innerWidth-16,1000);
     pdfjsLib.getDocument({data:bytes}).promise.then(function(pdf){
       numPages=pdf.numPages;

@@ -7,8 +7,10 @@ import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import type { TRAINING_COPY } from "@/features/training/trainingCopy";
 import {
   assessViewerStats,
+  IMAGE_MIN_VIEW_SECONDS,
   type ViewerStats,
 } from "@/features/training/trainingProgressRules";
+import { useDwellTimer } from "@/features/training/useDwellTimer";
 import { trainingStyles as styles } from "@/features/training/trainingStyles";
 import {
   isImageMaterial,
@@ -96,19 +98,15 @@ export function TrainingPreviewModal({
   const usesDwellTracking =
     canShowPreview && !isVideoMaterial(material) && !isPdfMaterial(material);
 
-  useEffect(() => {
-    if (!usesDwellTracking || isCompleted) return;
-
-    const timer = setInterval(() => {
-      setStats((previous) => ({
-        kind: "image",
-        viewedSeconds:
-          previous?.kind === "image" ? previous.viewedSeconds + 1 : 1,
-      }));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [usesDwellTracking, isCompleted, materialId]);
+  // Dwell assessment only changes once the minimum time is reached, so a single
+  // timeout replaces a per-second state update that re-rendered the whole modal.
+  useDwellTimer({
+    enabled: usesDwellTracking && !isCompleted,
+    seconds: IMAGE_MIN_VIEW_SECONDS,
+    resetKey: materialId,
+    onReached: () =>
+      setStats({ kind: "image", viewedSeconds: IMAGE_MIN_VIEW_SECONDS }),
+  });
 
   async function completeMaterial(): Promise<void> {
     if (materialId === null || isMarking || isCompleted) return;
