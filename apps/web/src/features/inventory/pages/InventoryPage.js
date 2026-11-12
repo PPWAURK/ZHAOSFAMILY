@@ -10,8 +10,9 @@ import {
 } from "@/features/dashboard/constants/dashboard-copy";
 import InventoryRow from "@/features/inventory/components/InventoryRow";
 import {
+  BUREAU_INVENTORY_SUPPLIER_IDS,
   INVENTORY_COPY,
-  ZHAO_BUREAU_SUPPLIER_ID,
+  INVENTORY_SUPPLIER_NAMES,
 } from "@/features/inventory/constants/inventory-copy";
 import {
   createMovement,
@@ -37,8 +38,20 @@ function formatDateTime(iso, lang) {
   }
 }
 
+const MOVEMENTS_LIMIT = 50;
+
+function mergeMovements(movementLists) {
+  return movementLists
+    .flat()
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, MOVEMENTS_LIMIT);
+}
+
 export default function InventoryPage({ supplierId }) {
-  const effectiveSupplierId = supplierId || ZHAO_BUREAU_SUPPLIER_ID;
+  const supplierIds = useMemo(
+    () => (supplierId ? [supplierId] : BUREAU_INVENTORY_SUPPLIER_IDS),
+    [supplierId],
+  );
 
   const [lang, setLang] = usePreferredLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,6 +61,8 @@ export default function InventoryPage({ supplierId }) {
   const [loadError, setLoadError] = useState("");
   const [submittingFor, setSubmittingFor] = useState(null);
 
+  const showSupplierGroups = supplierIds.length > 1;
+
   const t = INVENTORY_COPY[lang];
   const menuLabels = DASHBOARD_MENU_LABELS[lang];
 
@@ -55,18 +70,22 @@ export default function InventoryPage({ supplierId }) {
     setIsLoading(true);
     setLoadError("");
     try {
-      const [inv, mvs] = await Promise.all([
-        fetchInventory(effectiveSupplierId),
-        fetchMovements({ supplierId: effectiveSupplierId, limit: 50 }),
+      const [invLists, mvLists] = await Promise.all([
+        Promise.all(supplierIds.map((id) => fetchInventory(id))),
+        Promise.all(
+          supplierIds.map((id) =>
+            fetchMovements({ supplierId: id, limit: MOVEMENTS_LIMIT }),
+          ),
+        ),
       ]);
-      setLines(inv);
-      setMovements(mvs);
+      setLines(invLists.flat());
+      setMovements(mergeMovements(mvLists));
     } catch (err) {
       setLoadError(err?.message || t.loadError);
     } finally {
       setIsLoading(false);
     }
-  }, [effectiveSupplierId, t.loadError]);
+  }, [supplierIds, t.loadError]);
 
   useEffect(() => {
     void refresh();
@@ -185,14 +204,24 @@ export default function InventoryPage({ supplierId }) {
                 </tr>
               </thead>
               <tbody>
-                {lines.map((line) => (
-                  <InventoryRow
-                    key={line.id}
-                    line={line}
-                    copy={t}
-                    submitting={submittingFor === line.id}
-                    onApply={(payload) => handleApply(line.id, payload)}
-                  />
+                {lines.map((line, index) => (
+                  <Fragment key={line.id}>
+                    {showSupplierGroups &&
+                    line.supplierId !== lines[index - 1]?.supplierId ? (
+                      <tr className={styles.supplierGroupRow}>
+                        <td colSpan={5}>
+                          {INVENTORY_SUPPLIER_NAMES[line.supplierId] ||
+                            `#${line.supplierId}`}
+                        </td>
+                      </tr>
+                    ) : null}
+                    <InventoryRow
+                      line={line}
+                      copy={t}
+                      submitting={submittingFor === line.id}
+                      onApply={(payload) => handleApply(line.id, payload)}
+                    />
+                  </Fragment>
                 ))}
               </tbody>
             </table>

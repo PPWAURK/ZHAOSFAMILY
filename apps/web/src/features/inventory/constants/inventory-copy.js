@@ -1,6 +1,15 @@
-// Supplier fixed for this page: ZHAO Bureau (DB id = 8).
-// Can be overridden via `?supplierId=X` query param if needed.
+// Suppliers shown on this page: ZHAO Bureau (DB id = 8) and Emballage (DB id = 6).
+// Can be overridden via `?supplierId=X` query param to show a single supplier.
 export const ZHAO_BUREAU_SUPPLIER_ID = 8;
+export const EMBALLAGE_SUPPLIER_ID = 6;
+export const INVENTORY_SUPPLIER_NAMES = {
+  [ZHAO_BUREAU_SUPPLIER_ID]: "ZHAO Bureau",
+  [EMBALLAGE_SUPPLIER_ID]: "Emballage",
+};
+export const BUREAU_INVENTORY_SUPPLIER_IDS = [
+  ZHAO_BUREAU_SUPPLIER_ID,
+  EMBALLAGE_SUPPLIER_ID,
+];
 
 export const INVENTORY_COPY = {
   zh: {
@@ -11,7 +20,7 @@ export const INVENTORY_COPY = {
     title: "ZHAO Bureau",
     titleEm: "库存",
     titleSuffix: "。",
-    lede: "记录 ZHAO Bureau 供应商的库存变动。正数表示入库，负数表示出库或调整。",
+    lede: "记录 ZHAO Bureau 与 Emballage 供应商的库存变动。正数表示入库，负数表示出库或调整。",
     back: "返回首页",
     footer: "Since 2011 — ZHAO's Family Holding",
 
@@ -68,7 +77,7 @@ export const INVENTORY_COPY = {
     title: "ZHAO Bureau ",
     titleEm: "stock",
     titleSuffix: ".",
-    lede: "Track stock movements for the ZHAO Bureau supplier. Positive = incoming, negative = outgoing or adjustment.",
+    lede: "Track stock movements for the ZHAO Bureau and Emballage suppliers. Positive = incoming, negative = outgoing or adjustment.",
     back: "Back to home",
     footer: "Since 2011 — ZHAO's Family Holding",
 
@@ -125,7 +134,7 @@ export const INVENTORY_COPY = {
     title: "Stock ",
     titleEm: "ZHAO Bureau",
     titleSuffix: ".",
-    lede: "Suivi des mouvements de stock pour le fournisseur ZHAO Bureau. Positif = entrée, négatif = sortie ou correction.",
+    lede: "Suivi des mouvements de stock pour les fournisseurs ZHAO Bureau et Emballage. Positif = entrée, négatif = sortie ou correction.",
     back: "Retour à l'accueil",
     footer: "Since 2011 — ZHAO's Family Holding",
 

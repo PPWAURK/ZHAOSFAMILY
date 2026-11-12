@@ -498,6 +498,17 @@
   cursor: not-allowed;
 }
 
+.supplierGroupRow td {
+  padding: 10px 10px 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+  background: var(--red-soft);
+  border-top: 1px solid var(--red);
+}
+
 .rowError {
   padding: 6px 10px;
   font-family: var(--mono);
