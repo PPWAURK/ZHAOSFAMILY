@@ -16,7 +16,6 @@ import {
 const colors = authControlStyles.colors;
 const GRADES = ["S", "A", "B", "C"] as const;
 const GRADE_TIERS = [...GRADES, null] as const;
-const MAX_INITIAL_ENTRIES_PER_GRADE = 2;
 const GRADE_COLORS = {
   S: colors.red,
   A: "#c79a1e",
@@ -34,8 +33,6 @@ const COPY = {
     cycleLabel: "检查周期",
     previousCycle: "查看较新周期",
     nextCycle: "查看较早周期",
-    showAll: "查看完整榜单",
-    showLess: "收起完整榜单",
     loading: "正在加载门店评级…",
     empty: "暂无已发布的门店评级周期。",
     error: "门店评级加载失败，请稍后重试。",
@@ -50,8 +47,6 @@ const COPY = {
     cycleLabel: "Inspection cycle",
     previousCycle: "View newer cycle",
     nextCycle: "View older cycle",
-    showAll: "View full ranking",
-    showLess: "Collapse full ranking",
     loading: "Loading store grades…",
     empty: "No published store grade cycle yet.",
     error: "Store grades could not be loaded. Please try again later.",
@@ -66,8 +61,6 @@ const COPY = {
     cycleLabel: "Cycle d'inspection",
     previousCycle: "Voir le cycle plus récent",
     nextCycle: "Voir le cycle plus ancien",
-    showAll: "Voir le classement complet",
-    showLess: "Réduire le classement",
     loading: "Chargement des niveaux…",
     empty: "Aucun cycle de niveaux publié pour le moment.",
     error: "Impossible de charger les niveaux. Réessayez plus tard.",
@@ -125,7 +118,6 @@ function RankMedal({ rank }: { rank: number }) {
 export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeLeaderboardProps) {
   const copy = COPY[language];
   const [cycleIndex, setCycleIndex] = useState(0);
-  const [isFullRankingVisible, setIsFullRankingVisible] = useState(false);
   const cyclesQuery = useQuery({
     enabled: isActive,
     meta: { persist: true },
@@ -165,10 +157,6 @@ export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeL
   useEffect(() => {
     setCycleIndex((index) => Math.min(index, Math.max(cycles.length - 1, 0)));
   }, [cycles.length]);
-
-  useEffect(() => {
-    setIsFullRankingVisible(false);
-  }, [board?.cycle.id]);
 
   const showPreviousCycle = useCallback(() => {
     setCycleIndex((index) => Math.max(0, index - 1));
@@ -287,10 +275,7 @@ export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeL
                     {gradeLabel} · {gradeEntries.length} {copy.storeUnit}
                   </Text>
 
-                  {(isFullRankingVisible
-                    ? gradeEntries
-                    : gradeEntries.slice(0, MAX_INITIAL_ENTRIES_PER_GRADE)
-                  ).map((entry) => (
+                  {gradeEntries.map((entry) => (
                     <View key={entry.id} style={[styles.storeCard, { borderColor: gradeColor }]}>
                       {entry.photoUri ? (
                         <RemoteImage
@@ -324,17 +309,6 @@ export function StoreGradeLeaderboard({ isActive = true, language }: StoreGradeL
                 </View>
               );
             })}
-            {entries.length > MAX_INITIAL_ENTRIES_PER_GRADE ? (
-              <Pressable
-                accessibilityRole="button"
-                style={styles.fullRankingButton}
-                onPress={() => setIsFullRankingVisible((visible) => !visible)}
-              >
-                <Text style={styles.fullRankingButtonText}>
-                  {isFullRankingVisible ? copy.showLess : copy.showAll}
-                </Text>
-              </Pressable>
-            ) : null}
           </View>
         </>
       ) : null}
@@ -451,19 +425,6 @@ const styles = StyleSheet.create({
   gradeSection: {
     gap: 10,
     marginBottom: 20,
-  },
-  fullRankingButton: {
-    alignItems: "center",
-    borderColor: colors.ink20,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-  fullRankingButtonText: {
-    color: colors.red,
-    fontSize: 14,
-    fontWeight: "700",
   },
   gradeHeader: {
     fontSize: 10.5,
