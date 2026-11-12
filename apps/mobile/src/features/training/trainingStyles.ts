@@ -1993,6 +1993,20 @@ export const trainingStyles = StyleSheet.create(
     mapContainer: {
       gap: 18,
     },
+    folderPageHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+      paddingVertical: 4,
+    },
+    folderPageTitle: {
+      color: authControlStyles.colors.ink,
+      flex: 1,
+      fontFamily: "serif",
+      fontSize: 20,
+      fontWeight: "700",
+      lineHeight: 25,
+    },
     mapContainerHidden: {
       display: "none",
     },

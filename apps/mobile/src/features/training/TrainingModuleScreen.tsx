@@ -1,9 +1,12 @@
+import { Ionicons } from "@expo/vector-icons";
+import { RevealList } from "@/features/training/TrainingFolderReveal";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Directory, File } from "expo-file-system";
 import { trainingQueryKeys } from "@zhao/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@zhao/types";
 import {
+  BackHandler,
   Pressable,
   ScrollView,
   Text,
@@ -18,9 +21,7 @@ import {
   fetchTrainingMyBadges,
   updateTrainingMaterialProgress,
 } from "@/features/training/trainingApi";
-import {
-  getTrainingMapNodePrimaryAction,
-} from "@/features/training/trainingMapActions";
+import { getTrainingMapNodePrimaryAction } from "@/features/training/trainingMapActions";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { buildTrainingMapData } from "@/features/training/trainingMapState";
 import { fetchLocalizedTrainingPlan } from "@/features/training/trainingQueries";
@@ -45,6 +46,8 @@ import type {
   TrainingPlanMaterial,
   UpdateTrainingProgressInput,
 } from "@/features/training/trainingTypes";
+
+type TrainingLayerKey = "shared" | "required" | "advanced";
 
 type TrainingModuleScreenProps = {
   isActive?: boolean;
@@ -158,7 +161,11 @@ function buildPdfWatermarkIdentity(user: AuthUser): PdfWatermarkIdentity {
  *
  * 成就/称号由底部入口进入单独页面
  */
-export function TrainingModuleScreen({ isActive = true, language, user }: TrainingModuleScreenProps) {
+export function TrainingModuleScreen({
+  isActive = true,
+  language,
+  user,
+}: TrainingModuleScreenProps) {
   const copy = TRAINING_COPY[language];
   const pdfWatermarkIdentity = buildPdfWatermarkIdentity(user);
   const insets = useSafeAreaInsets();
@@ -167,9 +174,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
 
   const [previewMaterial, setPreviewMaterial] = useState<TrainingPlanMaterial | null>(null);
   const [quizMaterial, setQuizMaterial] = useState<TrainingPlanMaterial | null>(null);
-  const [videoFeedInitialMaterialId, setVideoFeedInitialMaterialId] = useState<number | null>(
-    null,
-  );
+  const [videoFeedInitialMaterialId, setVideoFeedInitialMaterialId] = useState<number | null>(null);
   const [newlyEarnedBadges, setNewlyEarnedBadges] = useState<TrainingBadge[]>([]);
   const [pendingBadgeUnlocks, setPendingBadgeUnlocks] = useState<TrainingBadge[]>([]);
   const [previewFileUri, setPreviewFileUri] = useState<string | null>(null);
@@ -177,7 +182,8 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
   const [previewBaseUri, setPreviewBaseUri] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [expandedPositions, setExpandedPositions] = useState<Record<string, boolean>>({});
+  const [openLayer, setOpenLayer] = useState<TrainingLayerKey | null>(null);
+  const [openPositionId, setOpenPositionId] = useState<string | null>(null);
   const [materialSearchQuery, setMaterialSearchQuery] = useState("");
 
   const trainingPlanQuery = useQuery({
@@ -214,9 +220,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
 
     const unlockedMaterials = [
       ...mapData.sharedMaterials,
-      ...(mapData.layer2Unlocked
-        ? mapData.positionGates.flatMap((gate) => gate.materials)
-        : []),
+      ...(mapData.layer2Unlocked ? mapData.positionGates.flatMap((gate) => gate.materials) : []),
       ...(mapData.layer3Unlocked ? mapData.advancedMaterials : []),
     ];
 
@@ -240,10 +244,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
       setPreviewError(null);
 
       try {
-        const { fileUri, directoryUri } = await downloadTrainingMaterialToCache(
-          material,
-          user.id,
-        );
+        const { fileUri, directoryUri } = await downloadTrainingMaterialToCache(material, user.id);
 
         if (isPdfMaterial(material)) {
           setPreviewPrintFileUri(fileUri);
@@ -252,9 +253,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
           const downloadedFile = new File(fileUri);
           const base64Data = await downloadedFile.base64();
 
-          await viewerFile.write(
-            buildPdfViewerHtml(base64Data, pdfWatermarkIdentity),
-          );
+          await viewerFile.write(buildPdfViewerHtml(base64Data, pdfWatermarkIdentity));
           setPreviewFileUri(viewerFile.uri);
           setPreviewBaseUri(pdfDirectory.uri);
           return;
@@ -320,8 +319,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
           try {
             const badges = await fetchTrainingMyBadges();
             const newBadges = badges.badges.filter(
-              (badge) =>
-                badge.status === "certified" && !earnedBadgeCodes.has(badge.code),
+              (badge) => badge.status === "certified" && !earnedBadgeCodes.has(badge.code),
             );
 
             if (newBadges.length > 0) {
@@ -362,12 +360,29 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
     [loadPlan],
   );
 
-  const togglePosition = useCallback((positionId: string) => {
-    setExpandedPositions((prev) => ({
-      ...prev,
-      [positionId]: !prev[positionId],
-    }));
+  const openFolderLayer = useCallback((layer: TrainingLayerKey) => {
+    setOpenLayer(layer);
+    setOpenPositionId(null);
   }, []);
+
+  const goBackFolder = useCallback((): boolean => {
+    if (openPositionId) {
+      setOpenPositionId(null);
+      return true;
+    }
+    if (openLayer) {
+      setOpenLayer(null);
+      return true;
+    }
+    return false;
+  }, [openLayer, openPositionId]);
+
+  useEffect(() => {
+    if (!isActive) return undefined;
+    const subscription = BackHandler.addEventListener("hardwareBackPress", goBackFolder);
+
+    return () => subscription.remove();
+  }, [goBackFolder, isActive]);
 
   const handleStudy = useCallback(
     (material: TrainingPlanMaterial) => {
@@ -452,199 +467,222 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
     summary.sharedCompleted + summary.requiredCompleted + summary.advancedCompleted;
   const isSearchingMaterials = Boolean(materialSearchQuery.trim());
 
+  const layerMeta: Record<
+    TrainingLayerKey,
+    {
+      title: string;
+      body: string;
+      completed: number;
+      total: number;
+      unlocked: boolean;
+      unlockHint?: string;
+    }
+  > = {
+    shared: {
+      title: copy.mapLayerShared,
+      body: copy.mapLayerSharedBody,
+      completed: summary.sharedCompleted,
+      total: summary.sharedTotal,
+      unlocked: layer1Unlocked,
+      unlockHint: copy.mapUnlockNext,
+    },
+    required: {
+      title: copy.mapLayerRequired,
+      body: copy.mapLayerRequiredBody,
+      completed: summary.requiredCompleted,
+      total: summary.requiredTotal,
+      unlocked: layer2Unlocked,
+      unlockHint: layer1Unlocked ? undefined : copy.mapUnlockNext,
+    },
+    advanced: {
+      title: copy.mapLayerAdvanced,
+      body: copy.mapLayerAdvancedBody,
+      completed: summary.advancedCompleted,
+      total: summary.advancedTotal,
+      unlocked: layer3Unlocked,
+      unlockHint: copy.mapUnlockCondition,
+    },
+  };
+  const activeGate =
+    openLayer === "required" && openPositionId
+      ? (mapData.positionGates.find((gate) => gate.positionId === openPositionId) ?? null)
+      : null;
+  const folderBreadcrumb = openLayer
+    ? [layerMeta[openLayer].title, activeGate?.positionLabel].filter(Boolean).join(" / ")
+    : "";
+  const renderNodes = (nodes: typeof mapData.sharedMaterials) =>
+    nodes.map((node, index) => (
+      <MapNodeCard
+        key={node.material.id}
+        node={node}
+        index={index}
+        onStudy={handleStudy}
+        onQuiz={handleQuiz}
+        copy={copy}
+      />
+    ));
+  let folderPageContent: ReactNode = null;
+  if (openLayer === "shared") {
+    folderPageContent = renderNodes(mapData.sharedMaterials);
+  } else if (openLayer === "advanced") {
+    folderPageContent = renderNodes(mapData.advancedMaterials);
+  } else if (openLayer === "required") {
+    folderPageContent = activeGate
+      ? renderNodes(activeGate.materials)
+      : mapData.positionGates.map((gate) => (
+          <Pressable
+            key={gate.positionId}
+            accessibilityRole="button"
+            style={trainingStyles.mapPositionGateHeader}
+            onPress={() => setOpenPositionId(gate.positionId)}
+          >
+            <Ionicons color="#c11616" name="folder" size={20} />
+            <Text style={trainingStyles.mapPositionGateTitle}>{gate.positionLabel}</Text>
+            <Text style={trainingStyles.mapPositionGateProgress}>
+              {gate.completedCount}/{gate.totalCount}
+            </Text>
+            <Ionicons color="#6b6b6b" name="chevron-forward" size={16} />
+          </Pressable>
+        ));
+  }
+
   const hubContent = (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={trainingStyles.container}>
-      <View style={trainingStyles.mapHeroPanel}>
-        <View style={trainingStyles.mapHeroHeader}>
-          <View style={trainingStyles.mapHeroTitleGroup}>
-            <Text style={trainingStyles.mapHeroKicker}>{copy.kicker}</Text>
-            <Text style={trainingStyles.mapHeroTitle}>{copy.title}</Text>
-          </View>
-          <Pressable style={trainingStyles.mapHeroRefreshButton} onPress={() => void loadPlan()}>
-            <Text style={trainingStyles.mapHeroRefreshText}>{copy.refresh}</Text>
-          </Pressable>
-        </View>
-        <Text style={trainingStyles.mapHeroIntro}>{copy.intro}</Text>
-        {planError ? (
-          <View style={trainingStyles.mapHeroErrorRow}>
-            <Text style={trainingStyles.message}>{planError}</Text>
-            <Pressable style={trainingStyles.refreshButton} onPress={() => void loadPlan()}>
-              <Text style={trainingStyles.refreshButtonText}>{copy.refresh}</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        <View style={trainingStyles.mapHeroProgressRow}>
-          <View style={trainingStyles.mapHeroProgressCopy}>
-            <Text style={trainingStyles.mapHeroProgressLabel}>{copy.hubOverallProgress}</Text>
-            <Text style={trainingStyles.mapHeroProgressValue}>{summary.overallPercent}%</Text>
-          </View>
-          <View style={trainingStyles.mapHeroProgressTrack}>
-            <View
-              style={[trainingStyles.mapHeroProgressFill, { width: `${summary.overallPercent}%` }]}
-            />
-          </View>
-        </View>
-
-        {nextFocus ? (
-          <Pressable
-            style={trainingStyles.mapFocusCard}
-            onPress={() => handleStudy(nextFocus.material)}
-          >
-            <View style={trainingStyles.mapFocusTopRow}>
-              <Text style={trainingStyles.mapFocusLabel}>{copy.guidedFocusLabel}</Text>
-              <Text style={trainingStyles.mapFocusLayer}>{nextFocus.layerLabel}</Text>
-            </View>
-            <Text style={trainingStyles.mapFocusTitle}>{nextFocus.material.title}</Text>
-            <Text style={trainingStyles.mapFocusMeta}>
-              {getMaterialTypeLabel(nextFocus.material, copy)}
-              {nextFocus.material.hasQuiz ? ` · ${copy.quizTag}` : ""}
-            </Text>
-            <Text style={trainingStyles.mapFocusAction}>{copy.hubActionContinue}</Text>
-          </Pressable>
-        ) : (
-          <View style={trainingStyles.mapFocusCardCompleted}>
-            <Text style={trainingStyles.mapFocusLabel}>{copy.guidedStageCompleted}</Text>
-            <Text style={trainingStyles.mapFocusTitle}>{copy.guidedCompletedTitle}</Text>
-            <Text style={trainingStyles.mapFocusMeta}>
-              {copy.completed} {completedMaterials}/{totalMaterials}
-            </Text>
-          </View>
-        )}
-
-        <View style={trainingStyles.mapLayerSummaryRow}>
-          {layerProgressItems.map((item) => (
-            <View
-              key={item.label}
-              style={[
-                trainingStyles.mapLayerSummaryItem,
-                !item.unlocked && trainingStyles.mapLayerSummaryItemLocked,
-              ]}
-            >
-              <Text
-                style={[
-                  trainingStyles.mapLayerSummaryLabel,
-                  !item.unlocked && trainingStyles.mapLayerSummaryLabelLocked,
-                ]}
-              >
-                {item.label}
-              </Text>
-              <Text
-                style={[
-                  trainingStyles.mapLayerSummaryValue,
-                  !item.unlocked && trainingStyles.mapLayerSummaryValueLocked,
-                ]}
-              >
-                {formatLayerProgress(item)}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <TrainingMaterialIndex
-        copy={copy}
-        mapData={mapData}
-        query={materialSearchQuery}
-        onOpenMaterial={handleStudy}
-        onQueryChange={setMaterialSearchQuery}
-      />
-
-      <View
-        style={[
-          trainingStyles.mapContainer,
-          isSearchingMaterials ? trainingStyles.mapContainerHidden : null,
-        ]}
-      >
-        <MapLayerSection
-          title={copy.mapLayerShared}
-          body={copy.mapLayerSharedBody}
-          completed={summary.sharedCompleted}
-          total={summary.sharedTotal}
-          unlocked={layer1Unlocked}
-          unlockHint={copy.mapUnlockNext}
+      {openLayer ? (
+        <FolderPage
+          backLabel={copy.folderBack}
+          breadcrumb={folderBreadcrumb}
+          completed={layerMeta[openLayer].completed}
+          total={layerMeta[openLayer].total}
+          onBack={goBackFolder}
         >
-          {mapData.sharedMaterials.map((node, index) => (
-            <MapNodeCard
-              key={node.material.id}
-              node={node}
-              index={index}
-              onStudy={handleStudy}
-              onQuiz={handleQuiz}
-              copy={copy}
-            />
-          ))}
-        </MapLayerSection>
-
-        <View style={trainingStyles.mapLayerDivider} />
-
-        <MapLayerSection
-          title={copy.mapLayerRequired}
-          body={copy.mapLayerRequiredBody}
-          completed={summary.requiredCompleted}
-          total={summary.requiredTotal}
-          unlocked={layer2Unlocked}
-          unlockHint={layer1Unlocked ? undefined : copy.mapUnlockNext}
-        >
-          {mapData.positionGates.map((gate) => {
-            const isExpanded = expandedPositions[gate.positionId] ?? false;
-            const positionLabel = gate.positionLabel;
-
-            return (
-              <View key={gate.positionId}>
-                <Pressable
-                  style={[
-                    trainingStyles.mapPositionGateHeader,
-                    isExpanded && { borderColor: "#c11616" },
-                  ]}
-                  onPress={() => togglePosition(gate.positionId)}
-                >
-                  <Text style={trainingStyles.mapPositionGateTitle}>{positionLabel}</Text>
-                  <Text style={trainingStyles.mapPositionGateProgress}>
-                    {gate.completedCount}/{gate.totalCount}
-                  </Text>
-                </Pressable>
-                {isExpanded && (
-                  <View style={trainingStyles.mapNodeList}>
-                    {gate.materials.map((node, index) => (
-                      <MapNodeCard
-                        key={node.material.id}
-                        node={node}
-                        index={index}
-                        onStudy={handleStudy}
-                        onQuiz={handleQuiz}
-                        copy={copy}
-                      />
-                    ))}
-                  </View>
-                )}
+          {folderPageContent}
+        </FolderPage>
+      ) : (
+        <>
+          <View style={trainingStyles.mapHeroPanel}>
+            <View style={trainingStyles.mapHeroHeader}>
+              <View style={trainingStyles.mapHeroTitleGroup}>
+                <Text style={trainingStyles.mapHeroKicker}>{copy.kicker}</Text>
+                <Text style={trainingStyles.mapHeroTitle}>{copy.title}</Text>
               </View>
-            );
-          })}
-        </MapLayerSection>
+              <Pressable
+                style={trainingStyles.mapHeroRefreshButton}
+                onPress={() => void loadPlan()}
+              >
+                <Text style={trainingStyles.mapHeroRefreshText}>{copy.refresh}</Text>
+              </Pressable>
+            </View>
+            <Text style={trainingStyles.mapHeroIntro}>{copy.intro}</Text>
+            {planError ? (
+              <View style={trainingStyles.mapHeroErrorRow}>
+                <Text style={trainingStyles.message}>{planError}</Text>
+                <Pressable style={trainingStyles.refreshButton} onPress={() => void loadPlan()}>
+                  <Text style={trainingStyles.refreshButtonText}>{copy.refresh}</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
-        <View style={trainingStyles.mapLayerDivider} />
+            <View style={trainingStyles.mapHeroProgressRow}>
+              <View style={trainingStyles.mapHeroProgressCopy}>
+                <Text style={trainingStyles.mapHeroProgressLabel}>{copy.hubOverallProgress}</Text>
+                <Text style={trainingStyles.mapHeroProgressValue}>{summary.overallPercent}%</Text>
+              </View>
+              <View style={trainingStyles.mapHeroProgressTrack}>
+                <View
+                  style={[
+                    trainingStyles.mapHeroProgressFill,
+                    { width: `${summary.overallPercent}%` },
+                  ]}
+                />
+              </View>
+            </View>
 
-        <MapLayerSection
-          title={copy.mapLayerAdvanced}
-          body={copy.mapLayerAdvancedBody}
-          completed={summary.advancedCompleted}
-          total={summary.advancedTotal}
-          unlocked={layer3Unlocked}
-          unlockHint={copy.mapUnlockCondition}
-        >
-          {mapData.advancedMaterials.map((node, index) => (
-            <MapNodeCard
-              key={node.material.id}
-              node={node}
-              index={index}
-              onStudy={handleStudy}
-              onQuiz={handleQuiz}
-              copy={copy}
-            />
-          ))}
-        </MapLayerSection>
-      </View>
+            {nextFocus ? (
+              <Pressable
+                style={trainingStyles.mapFocusCard}
+                onPress={() => handleStudy(nextFocus.material)}
+              >
+                <View style={trainingStyles.mapFocusTopRow}>
+                  <Text style={trainingStyles.mapFocusLabel}>{copy.guidedFocusLabel}</Text>
+                  <Text style={trainingStyles.mapFocusLayer}>{nextFocus.layerLabel}</Text>
+                </View>
+                <Text style={trainingStyles.mapFocusTitle}>{nextFocus.material.title}</Text>
+                <Text style={trainingStyles.mapFocusMeta}>
+                  {getMaterialTypeLabel(nextFocus.material, copy)}
+                  {nextFocus.material.hasQuiz ? ` · ${copy.quizTag}` : ""}
+                </Text>
+                <Text style={trainingStyles.mapFocusAction}>{copy.hubActionContinue}</Text>
+              </Pressable>
+            ) : (
+              <View style={trainingStyles.mapFocusCardCompleted}>
+                <Text style={trainingStyles.mapFocusLabel}>{copy.guidedStageCompleted}</Text>
+                <Text style={trainingStyles.mapFocusTitle}>{copy.guidedCompletedTitle}</Text>
+                <Text style={trainingStyles.mapFocusMeta}>
+                  {copy.completed} {completedMaterials}/{totalMaterials}
+                </Text>
+              </View>
+            )}
+
+            <View style={trainingStyles.mapLayerSummaryRow}>
+              {layerProgressItems.map((item) => (
+                <View
+                  key={item.label}
+                  style={[
+                    trainingStyles.mapLayerSummaryItem,
+                    !item.unlocked && trainingStyles.mapLayerSummaryItemLocked,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      trainingStyles.mapLayerSummaryLabel,
+                      !item.unlocked && trainingStyles.mapLayerSummaryLabelLocked,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  <Text
+                    style={[
+                      trainingStyles.mapLayerSummaryValue,
+                      !item.unlocked && trainingStyles.mapLayerSummaryValueLocked,
+                    ]}
+                  >
+                    {formatLayerProgress(item)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <TrainingMaterialIndex
+            copy={copy}
+            mapData={mapData}
+            query={materialSearchQuery}
+            onOpenMaterial={handleStudy}
+            onQueryChange={setMaterialSearchQuery}
+          />
+
+          <View
+            style={[
+              trainingStyles.mapContainer,
+              isSearchingMaterials ? trainingStyles.mapContainerHidden : null,
+            ]}
+          >
+            {(Object.keys(layerMeta) as TrainingLayerKey[]).map((layer) => (
+              <MapLayerSection
+                key={layer}
+                title={layerMeta[layer].title}
+                body={layerMeta[layer].body}
+                completed={layerMeta[layer].completed}
+                total={layerMeta[layer].total}
+                unlocked={layerMeta[layer].unlocked}
+                unlockHint={layerMeta[layer].unlockHint}
+                onOpen={() => openFolderLayer(layer)}
+              />
+            ))}
+          </View>
+        </>
+      )}
 
       <View style={{ height: 40 }} />
     </ScrollView>
@@ -695,7 +733,7 @@ export function TrainingModuleScreen({ isActive = true, language, user }: Traini
 }
 
 /**
- * 单层地图区域
+ * 单层地图入口：点击进入该层的新页面
  */
 function MapLayerSection({
   title,
@@ -704,7 +742,7 @@ function MapLayerSection({
   total,
   unlocked,
   unlockHint,
-  children,
+  onOpen,
 }: {
   title: string;
   body: string;
@@ -712,35 +750,52 @@ function MapLayerSection({
   total: number;
   unlocked: boolean;
   unlockHint?: string;
-  children: ReactNode;
+  onOpen: () => void;
 }) {
   const percent = total === 0 ? 100 : Math.round((completed / total) * 100);
+  const isDone = total > 0 && completed === total;
 
   return (
-    <View style={[trainingStyles.mapLayerCard, !unlocked && trainingStyles.mapLayerCardLocked]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !unlocked }}
+      disabled={!unlocked}
+      style={[trainingStyles.mapLayerCard, !unlocked && trainingStyles.mapLayerCardLocked]}
+      onPress={onOpen}
+    >
       <View style={trainingStyles.mapLayerHeader}>
+        <Ionicons
+          color={unlocked ? "#c11616" : "#9a9a9a"}
+          name={unlocked ? "folder" : "lock-closed"}
+          size={22}
+        />
         <Text
-          style={[trainingStyles.mapLayerTitle, !unlocked && trainingStyles.mapLayerTitleLocked]}
+          style={[
+            trainingStyles.mapLayerTitle,
+            { flex: 1 },
+            !unlocked && trainingStyles.mapLayerTitleLocked,
+          ]}
         >
           {title}
         </Text>
         <View
           style={[
             trainingStyles.mapLayerBadge,
-            total > 0 && completed === total && trainingStyles.mapLayerBadgeDone,
+            isDone && trainingStyles.mapLayerBadgeDone,
             !unlocked && trainingStyles.mapLayerBadgeLocked,
           ]}
         >
           <Text
             style={[
               trainingStyles.mapLayerBadgeText,
-              total > 0 && completed === total && trainingStyles.mapLayerBadgeTextDone,
+              isDone && trainingStyles.mapLayerBadgeTextDone,
               !unlocked && trainingStyles.mapLayerBadgeTextLocked,
             ]}
           >
             {completed}/{total}
           </Text>
         </View>
+        {unlocked ? <Ionicons color="#6b6b6b" name="chevron-forward" size={18} /> : null}
       </View>
 
       <Text style={[trainingStyles.mapLayerBody, !unlocked && trainingStyles.mapLayerBodyLocked]}>
@@ -759,8 +814,48 @@ function MapLayerSection({
           <Text style={trainingStyles.mapLayerProgressLabel}>{percent}%</Text>
         </View>
       ) : null}
+    </Pressable>
+  );
+}
 
-      {unlocked ? <View style={trainingStyles.mapNodeList}>{children}</View> : null}
+/**
+ * 文件夹子页面：返回按钮 + 面包屑 + 依次渐显的内容
+ */
+function FolderPage({
+  backLabel,
+  breadcrumb,
+  completed,
+  total,
+  onBack,
+  children,
+}: {
+  backLabel: string;
+  breadcrumb: string;
+  completed: number;
+  total: number;
+  onBack: () => boolean;
+  children: ReactNode;
+}) {
+  return (
+    <View style={trainingStyles.mapContainer}>
+      <Pressable
+        accessibilityLabel={backLabel}
+        accessibilityRole="button"
+        hitSlop={8}
+        style={trainingStyles.folderPageHeader}
+        onPress={() => onBack()}
+      >
+        <Ionicons color="#c11616" name="chevron-back" size={22} />
+        <Text numberOfLines={2} style={trainingStyles.folderPageTitle}>
+          {breadcrumb}
+        </Text>
+        <Text style={trainingStyles.mapPositionGateProgress}>
+          {completed}/{total}
+        </Text>
+      </Pressable>
+      <View style={trainingStyles.mapNodeList}>
+        <RevealList key={breadcrumb}>{children}</RevealList>
+      </View>
     </View>
   );
 }
@@ -789,11 +884,7 @@ function MapNodeCard({
   const description = material.description || material.originalName;
   const primaryAction = getTrainingMapNodePrimaryAction(node);
   const primaryActionLabel =
-    primaryAction === "quiz"
-      ? node.isQuizPassed
-        ? c.reviewQuiz
-        : c.mapNodeQuiz
-      : c.mapNodeStudy;
+    primaryAction === "quiz" ? (node.isQuizPassed ? c.reviewQuiz : c.mapNodeQuiz) : c.mapNodeStudy;
   const handlePrimaryPress = () => {
     if (primaryAction === "quiz") {
       onQuiz(material);

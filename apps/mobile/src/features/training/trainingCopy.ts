@@ -28,6 +28,9 @@ type TrainingCopy = {
   guidedLibraryBody: string;
   guidedJourney: string;
   guidedLibrary: string;
+  folderBack: string;
+  libraryExpandAll: string;
+  libraryCollapseAll: string;
   guidedCurrent: string;
   guidedLocked: string;
   guidedCompleteSeal: string;
@@ -159,6 +162,9 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
     guidedLibraryBody: "这里可以查看与你岗位相关的学习资料，也可以随时回看已学内容。",
     guidedJourney: "学习路线",
     guidedLibrary: "资料库",
+    folderBack: "返回上一级",
+    libraryExpandAll: "全部展开",
+    libraryCollapseAll: "全部收起",
     guidedCurrent: "当前步骤",
     guidedLocked: "未解锁",
     guidedCompleteSeal: "已完成",
@@ -322,6 +328,9 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
       "Find materials linked to your position here. You can also come back anytime to review them.",
     guidedJourney: "Learning path",
     guidedLibrary: "Library",
+    folderBack: "Back",
+    libraryExpandAll: "Expand all",
+    libraryCollapseAll: "Collapse all",
     guidedCurrent: "Current step",
     guidedLocked: "Locked",
     guidedCompleteSeal: "Completed",
@@ -487,6 +496,9 @@ export const TRAINING_COPY: Record<AuthLanguage, TrainingCopy> = {
       "Retrouvez ici les supports liés à votre poste. Vous pouvez les consulter à tout moment.",
     guidedJourney: "Parcours de formation",
     guidedLibrary: "Bibliothèque",
+    folderBack: "Retour",
+    libraryExpandAll: "Tout déplier",
+    libraryCollapseAll: "Tout replier",
     guidedCurrent: "Étape en cours",
     guidedLocked: "Verrouillé",
     guidedCompleteSeal: "Terminé",
