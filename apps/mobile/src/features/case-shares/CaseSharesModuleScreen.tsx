@@ -22,6 +22,7 @@ import type {
   CaseShareStatus,
   CaseShareType,
 } from "@zhao/types";
+import { useProgressiveList } from "@/lib/useProgressiveList";
 import { useScreenName } from "@/lib/useScreenName";
 import { useDashboardRefreshVersion } from "@/features/dashboard/DashboardRefreshContext";
 import { triggerSuccessFeedback } from "@/lib/useOperationFeedback";
@@ -480,6 +481,11 @@ export function CaseSharesModuleScreen({
 
   const isMineMode = mode === "mine";
   const visibleList = isMineMode ? mine : feed;
+  const visibleListCount = useProgressiveList(visibleList.length, {
+    initial: 6,
+    batch: 6,
+    resetKey: mode,
+  });
   const emptyText = isMineMode ? copy.mineEmpty : copy.feedEmpty;
   const title = isMineMode ? copy.mineTitle : copy.title;
   const intro = isMineMode ? copy.mineIntro : copy.intro;
@@ -520,7 +526,7 @@ export function CaseSharesModuleScreen({
       ) : null}
 
       {!isLoading && visibleList.length > 0 ? (
-        <View style={shared.list}>{visibleList.map((item) => renderCard(item, isMineMode))}</View>
+        <View style={shared.list}>{visibleList.slice(0, visibleListCount).map((item) => renderCard(item, isMineMode))}</View>
       ) : null}
 
       {!onRegisterPublishAction ? (

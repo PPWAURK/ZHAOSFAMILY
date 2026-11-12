@@ -1,4 +1,4 @@
-import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Alert,
@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ordersQueryKeys } from "@zhao/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Sharing from "expo-sharing";
+import { useProgressiveList } from "@/lib/useProgressiveList";
 import { useScreenName } from "@/lib/useScreenName";
 import { authControlStyles } from "@/features/auth/AuthFormControls";
 import type { AuthLanguage } from "@/features/auth/authCopy";
@@ -392,6 +393,14 @@ export function OrderModuleScreen({
     () => filterProducts(products, productSearch, selectedCategory, language),
     [language, productSearch, products, selectedCategory],
   );
+  const visibleProductCount = useProgressiveList(filteredProducts.length, {
+    resetKey: `${selectedSupplierId}|${productSearch}|${selectedCategory}`,
+  });
+  const visibleHistoryCount = useProgressiveList(filteredOrderHistory.length, {
+    initial: 10,
+    batch: 10,
+    resetKey: selectedHistorySupplierId,
+  });
   const selectedLines = useMemo(
     () => getSelectedLines(products, quantities),
     [products, quantities],
@@ -421,11 +430,11 @@ export function OrderModuleScreen({
   useEffect(() => {
     onDirtyStateChange?.(hasUnsavedChanges);
   }, [hasUnsavedChanges, onDirtyStateChange]);
-  function updateQuantity(variantId: string, value: string): void {
+  const updateQuantity = useCallback((variantId: string, value: string): void => {
     const sanitizedValue = value.replace(/[^0-9]/g, "");
     setQuantities((current) => ({ ...current, [variantId]: sanitizedValue }));
     setErrorMessage("");
-  }
+  }, []);
 
   function validateOrderDraft(): boolean {
     if (!selectedSupplierId) {
@@ -861,7 +870,7 @@ export function OrderModuleScreen({
             <Text style={styles.stateText}>{copy.emptyOrders}</Text>
           ) : null}
           <View style={styles.orderHistoryList}>
-            {filteredOrderHistory.map((order) => {
+            {filteredOrderHistory.slice(0, visibleHistoryCount).map((order) => {
               const isLocked = Boolean(order.returnCount && order.returnCount > 0);
               const isDeletingOrder = deletingOrderId === String(order.id);
               const isSharingOrder = sharingHistoryOrderId === String(order.id);
@@ -1189,7 +1198,7 @@ export function OrderModuleScreen({
               isTablet ? { justifyContent: "flex-start" } : null,
             ]}
           >
-            {filteredProducts.map((product, index) => (
+            {filteredProducts.slice(0, visibleProductCount).map((product, index) => (
               <ProductQuantityRow
                 key={product.id}
                 imageLoadPriority={index < 3 ? "critical" : "lazy"}

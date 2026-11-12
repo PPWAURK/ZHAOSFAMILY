@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   Pressable,
   Text,
@@ -168,7 +169,7 @@ export function StateRow({ label }: { label: string }) {
   );
 }
 
-export function ProductQuantityRow({
+function ProductQuantityRowBase({
   language,
   product,
   quantities,
@@ -409,3 +410,32 @@ export function SecondaryButton({ label, onPress }: { label: string; onPress: ()
     </Pressable>
   );
 }
+
+type ProductQuantityRowProps = Parameters<typeof ProductQuantityRowBase>[0];
+
+// Rows re-render only when something they display changes. `quantities` and `stockMap`
+// are whole-order maps whose identity changes on every keystroke, so compare just this
+// product's slice instead of the references.
+function areProductRowsEqual(
+  previous: ProductQuantityRowProps,
+  next: ProductQuantityRowProps,
+): boolean {
+  if (
+    previous.product !== next.product ||
+    previous.language !== next.language ||
+    previous.showStock !== next.showStock ||
+    previous.inStockLabel !== next.inStockLabel ||
+    previous.outOfStockLabel !== next.outOfStockLabel ||
+    previous.imageLoadPriority !== next.imageLoadPriority ||
+    previous.onChangeQuantity !== next.onChangeQuantity ||
+    previous.stockMap[next.product.id] !== next.stockMap[next.product.id]
+  ) {
+    return false;
+  }
+
+  return getOrderProductVariants(next.product).every(
+    (variant) => previous.quantities[variant.id] === next.quantities[variant.id],
+  );
+}
+
+export const ProductQuantityRow = memo(ProductQuantityRowBase, areProductRowsEqual);

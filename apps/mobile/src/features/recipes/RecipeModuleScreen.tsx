@@ -13,6 +13,7 @@ import type { AuthLanguage } from "@/features/auth/authCopy";
 import { fetchRecipes } from "@/features/recipes/recipesApi";
 import { recipeStyles as styles } from "@/features/recipes/recipeStyles";
 import { MOBILE_API_URL } from "@/lib/env";
+import { useProgressiveList } from "@/lib/useProgressiveList";
 import type { AppImageLoadPriority } from "@/lib/imagePriority";
 import fallbackRecipeImage from "../../../assets/四大天王/recipe-fallback.jpg";
 
@@ -213,6 +214,9 @@ export function RecipeModuleScreen({ isActive = true, language, user }: RecipeMo
       return matchesCategory && matchesSearch;
     });
   }, [allCategories, language, recipes, category, searchTerm]);
+  const renderedRecipeCount = useProgressiveList(visibleRecipes.length, {
+    resetKey: `${category}|${searchTerm}`,
+  });
   const featuredRecipe = visibleRecipes[0];
   const hasActiveRecipeFilter = Boolean(searchTerm.trim()) || category !== allCategories;
 
@@ -428,7 +432,7 @@ export function RecipeModuleScreen({ isActive = true, language, user }: RecipeMo
         ))}
       </ScrollView>
       <View style={styles.recipeList}>
-        {visibleRecipes.map((recipe, index) => (
+        {visibleRecipes.slice(0, renderedRecipeCount).map((recipe, index) => (
           <FeedbackPressable
             accessibilityRole="button"
             key={recipe.id}
