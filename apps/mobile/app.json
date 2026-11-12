@@ -43,6 +43,7 @@
       "expo-router",
       "expo-secure-store",
       "./plugins/with-android-release-network-security",
+      "./plugins/with-android-release-optimizations",
       [
         "@react-native-firebase/app",
         {
