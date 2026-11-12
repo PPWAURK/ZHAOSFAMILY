@@ -18,7 +18,8 @@
     "ios": "expo run:ios",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "eas-build-post-install": "node scripts/strip-dev-client.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
