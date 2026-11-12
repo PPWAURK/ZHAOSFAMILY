@@ -63,7 +63,7 @@ function createMobileQueryClient(): QueryClient {
       queries: {
         gcTime: CACHE_MAX_AGE_MS,
         refetchOnReconnect: true,
-        refetchOnWindowFocus: "always",
+        refetchOnWindowFocus: true,
         retry: shouldRetryQuery,
         staleTime: 5 * 60 * 1000,
       },

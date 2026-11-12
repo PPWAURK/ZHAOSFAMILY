@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  AppState,
   Dimensions,
   Modal,
   PanResponder,
@@ -130,9 +131,31 @@ export function NotificationCenter({ language, onOpenEntry }: NotificationCenter
   }, []);
 
   useEffect(() => {
-    void refreshUnreadCount();
-    const timer = setInterval(() => void refreshUnreadCount(), UNREAD_POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const stop = () => {
+      if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+    const start = () => {
+      if (timer !== null) return;
+      void refreshUnreadCount();
+      timer = setInterval(() => void refreshUnreadCount(), UNREAD_POLL_INTERVAL_MS);
+    };
+
+    // Only poll while the app is in the foreground (saves radio wake-ups on Android).
+    if (AppState.currentState === "active") start();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") start();
+      else stop();
+    });
+
+    return () => {
+      subscription.remove();
+      stop();
+    };
   }, [refreshUnreadCount]);
 
   const loadList = useCallback(async () => {

@@ -80,6 +80,8 @@ function attachAccessToken(
   return config;
 }
 
+const UPLOAD_MIN_TIMEOUT_MS = 120_000;
+
 export function createApiClient({
   baseURL,
   getAccessToken: readAccessToken = getAccessToken,
@@ -210,6 +212,11 @@ export function createApiClient({
         method: "POST",
         url: path,
         data: formData,
+        // Uploads (photos/videos) need more headroom than regular calls, but only
+        // when the client enforces a timeout at all (0 = unlimited stays unlimited).
+        timeout: axiosInstance.defaults.timeout
+          ? Math.max(axiosInstance.defaults.timeout, UPLOAD_MIN_TIMEOUT_MS)
+          : 0,
         headers: {
           "Content-Type": "multipart/form-data",
         },
