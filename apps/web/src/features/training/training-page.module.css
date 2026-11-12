@@ -6,6 +6,7 @@
   --ink-70: #2a2a2a;
   --ink-50: #6b6b6b;
   --ink-40: rgba(10, 10, 10, 0.4);
+  --ink-35: rgba(10, 10, 10, 0.35);
   --ink-30: #b8b8b8;
   --ink-20: #d4d4d4;
   --ink-10: #e8e8e8;
@@ -636,6 +637,10 @@
   border: 1px solid var(--ink-10);
   background: var(--paper);
   overflow: hidden;
+}
+
+.courseDetailCard {
+  max-width: 560px;
 }
 
 .courseCover {

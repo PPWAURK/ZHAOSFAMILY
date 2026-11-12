@@ -25,12 +25,12 @@ export function getJobRoleValues(jobRole) {
 }
 
 export function canEditStoreJobRoles(jobRole) {
-  return !getJobRoleValues(jobRole).some((role) =>
-    ORGANIZATION_JOB_ROLE_VALUES.has(role),
-  );
+  return !getJobRoleValues(jobRole).some((role) => ORGANIZATION_JOB_ROLE_VALUES.has(role));
 }
 
-export function formatProgressDate(iso) {
+const PROGRESS_DATE_LOCALES = { zh: "zh-CN", en: "en-GB", fr: "fr-FR" };
+
+export function formatProgressDate(iso, lang = "zh") {
   if (!iso) {
     return "-";
   }
@@ -40,7 +40,7 @@ export function formatProgressDate(iso) {
     return "-";
   }
 
-  return date.toLocaleDateString("zh-CN", {
+  return date.toLocaleDateString(PROGRESS_DATE_LOCALES[lang] ?? "zh-CN", {
     month: "2-digit",
     day: "2-digit",
   });
@@ -51,8 +51,7 @@ export function getProgressScope(roleValues) {
     return {
       canView: true,
       canManageStoreJobRoles: false,
-      title: "全部门店进度",
-      titleEn: "All stores training progress",
+      key: "all",
     };
   }
 
@@ -60,8 +59,7 @@ export function getProgressScope(roleValues) {
     return {
       canView: true,
       canManageStoreJobRoles: true,
-      title: "负责门店进度",
-      titleEn: "Assigned stores training progress",
+      key: "assigned",
     };
   }
 
@@ -69,16 +67,14 @@ export function getProgressScope(roleValues) {
     return {
       canView: true,
       canManageStoreJobRoles: true,
-      title: "本店进度",
-      titleEn: "Store training progress",
+      key: "store",
     };
   }
 
   return {
     canView: false,
     canManageStoreJobRoles: false,
-    title: "培训进度",
-    titleEn: "Training progress",
+    key: "self",
   };
 }
 
@@ -87,7 +83,7 @@ export function getStoreKey(employee) {
 }
 
 export function getStoreLabel(employee) {
-  return employee.restaurant?.name || "未分配门店";
+  return employee.restaurant?.name || "";
 }
 
 export function groupUsersByStore(users) {
@@ -98,6 +94,7 @@ export function groupUsersByStore(users) {
     const current = groupsByStoreId.get(storeId) ?? {
       id: storeId,
       name: getStoreLabel(employee),
+      isUnassigned: !employee.restaurant?.name,
       users: [],
     };
 
@@ -105,8 +102,10 @@ export function groupUsersByStore(users) {
     groupsByStoreId.set(storeId, current);
   }
 
-  return [...groupsByStoreId.values()].sort((left, right) =>
-    left.name.localeCompare(right.name, "zh-CN"),
+  return [...groupsByStoreId.values()].sort(
+    (left, right) =>
+      Number(left.isUnassigned) - Number(right.isUnassigned) ||
+      left.name.localeCompare(right.name, "zh-CN"),
   );
 }
 
@@ -115,15 +114,9 @@ export function matchesEmployeeSearch(employee, query) {
     return true;
   }
 
-  const roleLabel = formatJobRoleLabel(employee.jobRole, "zh");
+  const roleLabels = ["zh", "en", "fr"].map((lang) => formatJobRoleLabel(employee.jobRole, lang));
   const storeLabel = getStoreLabel(employee);
-  const haystack = [
-    employee.name,
-    employee.email,
-    employee.jobRole,
-    roleLabel,
-    storeLabel,
-  ]
+  const haystack = [employee.name, employee.email, employee.jobRole, ...roleLabels, storeLabel]
     .join(" ")
     .toLowerCase();
 

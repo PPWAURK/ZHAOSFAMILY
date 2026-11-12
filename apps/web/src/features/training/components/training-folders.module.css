@@ -1,0 +1,366 @@
+/* Folder list + material cards for the training space home page.
+   Design tokens (--ink-*, --red, ...) are inherited from the page shell. */
+
+.folderList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.folderOpen {
+  grid-column: 1 / -1;
+}
+
+.folderToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.folder {
+  border: 1px solid var(--ink-10);
+  background: var(--paper);
+  min-width: 0;
+}
+
+.folderHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.folderHead:hover {
+  background: var(--ink-05);
+}
+
+.folderHead:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: -2px;
+}
+
+.folderIcon {
+  color: var(--red);
+}
+
+.folderName {
+  overflow: hidden;
+  font-family: var(--zh-serif);
+  font-size: 18px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderCount {
+  grid-column: 2 / 4;
+  color: var(--ink-50);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.folderProgress {
+  grid-column: 2 / 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.folderProgressBar {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  background: var(--ink-10);
+}
+
+.folderProgressBar i {
+  display: block;
+  height: 100%;
+  background: var(--red);
+}
+
+.folderRequired {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--ink-50);
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.folderPanel {
+  padding: 4px 20px 20px;
+  border-top: 1px solid var(--ink-10);
+  background: var(--cream);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.empty {
+  padding: 28px 16px;
+  border: 1px dashed var(--ink-20);
+  color: var(--ink-50);
+  font-size: 13px;
+  text-align: center;
+}
+
+.error {
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--red);
+  background: var(--red-soft);
+  color: var(--red-deep);
+  font-size: 13px;
+}
+
+/* ---- material card ---- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--ink-10);
+  background: var(--paper);
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: var(--ink);
+  transform: translateY(-2px);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+.cover {
+  position: relative;
+  height: 112px;
+  overflow: hidden;
+}
+
+.coverVIDEO {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d0a0a 100%);
+}
+
+.coverPDF {
+  background: linear-gradient(135deg, var(--cream) 0%, #f0e9dc 100%);
+}
+
+.coverQUIZ {
+  background: linear-gradient(135deg, var(--red) 0%, var(--red-deep) 100%);
+}
+
+.coverARTICLE {
+  background: linear-gradient(135deg, #f7f2ea 0%, #e8dfd0 100%);
+}
+
+.coverIMAGE {
+  background: linear-gradient(135deg, #eef5f4 0%, #d8e8e4 100%);
+}
+
+.coverOTHER {
+  background: linear-gradient(135deg, #f1f1f1 0%, #dedede 100%);
+}
+
+.coverTags {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  left: 10px;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kindTag,
+.requiredTag {
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.kindTag {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+}
+
+.coverVIDEO .kindTag,
+.coverQUIZ .kindTag {
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+
+.requiredTag {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+}
+
+.coverQUIZ .requiredTag {
+  background: #fff;
+  color: var(--red);
+}
+
+.glyph {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  font-family: var(--zh-serif);
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.08);
+}
+
+.coverVIDEO .glyph,
+.coverQUIZ .glyph {
+  color: rgba(255, 255, 255, 0.1);
+}
+
+.play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding-left: 3px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%);
+}
+
+.meta {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  max-width: calc(100% - 90px);
+  overflow: hidden;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 16px;
+}
+
+.title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.desc {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink-50);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--ink-10);
+}
+
+.progressBar {
+  height: 4px;
+  background: var(--ink-10);
+}
+
+.progressBar i {
+  display: block;
+  height: 100%;
+  background: var(--red);
+}
+
+.status {
+  color: var(--ink-70);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .folderPanel {
+    padding: 4px 12px 16px;
+  }
+}

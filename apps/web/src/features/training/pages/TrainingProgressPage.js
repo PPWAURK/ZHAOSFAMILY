@@ -26,7 +26,8 @@ export default function TrainingProgressPage() {
   const { user } = useAuth();
   const [storeProgress, setStoreProgress] = useState(null);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
-  const [storeProgressError, setStoreProgressError] = useState("");
+  // { message, fallbackKey }: message comes from the API, fallbackKey is localized at render time.
+  const [storeProgressError, setStoreProgressError] = useState(null);
   const [storeFilter, setStoreFilter] = useState("all");
   const [completionFilter, setCompletionFilter] = useState("all");
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -34,7 +35,6 @@ export default function TrainingProgressPage() {
   const [savingJobRoleUserId, setSavingJobRoleUserId] = useState(null);
   const roleValues = getUserRoleValues(user);
   const progressScope = getProgressScope(roleValues);
-  const storeJobRoleGroups = getStoreJobRoleGroups("zh");
 
   useEffect(() => {
     let isActive = true;
@@ -46,7 +46,7 @@ export default function TrainingProgressPage() {
       }
 
       setIsLoadingProgress(true);
-      setStoreProgressError("");
+      setStoreProgressError(null);
 
       try {
         const nextStoreProgress = await fetchTrainingStoreProgress();
@@ -64,7 +64,10 @@ export default function TrainingProgressPage() {
       } catch (error) {
         if (isActive) {
           setStoreProgress(null);
-          setStoreProgressError(error.message || "培训进度加载失败");
+          setStoreProgressError({
+            message: error.message,
+            fallbackKey: "loadFailed",
+          });
         }
       } finally {
         if (isActive) {
@@ -98,12 +101,12 @@ export default function TrainingProgressPage() {
     const nextRoles = draftJobRolesByUserId[userId] || [];
 
     if (nextRoles.length === 0) {
-      setStoreProgressError("至少保留一个岗位");
+      setStoreProgressError({ fallbackKey: "keepOneRole" });
       return;
     }
 
     setSavingJobRoleUserId(userId);
-    setStoreProgressError("");
+    setStoreProgressError(null);
 
     try {
       await updatePermissionUserJobRole(userId, nextRoles.join(","));
@@ -118,16 +121,16 @@ export default function TrainingProgressPage() {
         ),
       );
     } catch (error) {
-      setStoreProgressError(error.message || "岗位保存失败");
+      setStoreProgressError({
+        message: error.message,
+        fallbackKey: "saveFailed",
+      });
     } finally {
       setSavingJobRoleUserId(null);
     }
   }
 
-  const storeGroups = useMemo(
-    () => groupUsersByStore(storeProgress?.users ?? []),
-    [storeProgress],
-  );
+  const storeGroups = useMemo(() => groupUsersByStore(storeProgress?.users ?? []), [storeProgress]);
   const filteredStoreGroups = useMemo(() => {
     const query = employeeSearch.trim().toLowerCase();
 
@@ -140,8 +143,7 @@ export default function TrainingProgressPage() {
             (completionFilter === "completed" &&
               employee.requiredTotal > 0 &&
               employee.completionPercent === 100) ||
-            (completionFilter === "incomplete" &&
-              employee.completionPercent < 100);
+            (completionFilter === "incomplete" && employee.completionPercent < 100);
 
           return matchesStatus && matchesEmployeeSearch(employee, query);
         });
@@ -153,10 +155,7 @@ export default function TrainingProgressPage() {
       })
       .filter((group) => group.users.length > 0);
   }, [completionFilter, employeeSearch, storeFilter, storeGroups]);
-  const filteredUserCount = filteredStoreGroups.reduce(
-    (sum, group) => sum + group.users.length,
-    0,
-  );
+  const filteredUserCount = filteredStoreGroups.reduce((sum, group) => sum + group.users.length, 0);
 
   return (
     <TrainingLayout
@@ -166,242 +165,235 @@ export default function TrainingProgressPage() {
         fr: { shared: TRAINING_COPY.fr.shared, page: TRAINING_COPY.fr.progress },
       }}
     >
-      {({ styles }) => (
-        <>
-          <section className={styles.pageHeaderCard}>
-            <div>
-              <p className={styles.pageStep}>
-                <span className={styles.stepBadge}>PROGRESS</span>
-                <span>{progressScope.titleEn}</span>
-              </p>
-            </div>
-            <div className={styles.metricGrid}>
-              <article className={styles.metricCard}>
-                <p className={styles.metricValue}>
-                  {storeProgress?.summary?.averageCompletionPercent ?? 0}%
-                </p>
-                <p className={styles.metricLabel}>AVERAGE</p>
-              </article>
-              <article className={styles.metricCard}>
-                <p className={styles.metricValue}>
-                  {storeProgress?.summary?.completedEmployeeCount ?? 0}/
-                  {storeProgress?.summary?.employeeCount ?? 0}
-                </p>
-                <p className={styles.metricLabel}>COMPLETED</p>
-              </article>
-              <article className={styles.metricCard}>
-                <p className={styles.metricValue}>{filteredUserCount}</p>
-                <p className={styles.metricLabel}>CURRENT VIEW</p>
-              </article>
-            </div>
-          </section>
+      {({ lang, t, styles }) => {
+        const storeJobRoleGroups = getStoreJobRoleGroups(lang);
+        const scopeCopy = t.page.scope[progressScope.key];
+        const getGroupName = (group) =>
+          group.isUnassigned ? t.page.messages.unassignedStore : group.name;
+        const fillTemplate = (template, values) =>
+          Object.entries(values).reduce(
+            (text, [key, value]) => text.replace(`{${key}}`, String(value)),
+            template,
+          );
 
-          <section className={styles.section}>
-            <div className={styles.sectionBar}>
-              <h2 className={styles.sectionTitle}>
-                <span className={styles.sectionCounter}>00</span>
-                <span>{progressScope.title}</span>
-                <span className={styles.sectionTitleEn}>
-                  {progressScope.titleEn}
-                </span>
-              </h2>
-              <div className={styles.filterButtons}>
-                <select
-                  className={styles.positionSearch}
-                  value={storeFilter}
-                  onChange={(event) => setStoreFilter(event.target.value)}
-                >
-                  <option value="all">全部门店</option>
-                  {storeGroups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className={styles.positionSearch}
-                  value={employeeSearch}
-                  onChange={(event) => setEmployeeSearch(event.target.value)}
-                  placeholder="搜索员工 / 邮箱 / 岗位"
-                />
-                {[
-                  ["all", "全部"],
-                  ["incomplete", "未完成"],
-                  ["completed", "已完成"],
-                ].map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`${styles.filterButton} ${
-                      completionFilter === value ? styles.filterButtonActive : ""
-                    }`}
-                    onClick={() => setCompletionFilter(value)}
+        return (
+          <>
+            <section className={styles.pageHeaderCard}>
+              <div>
+                <p className={styles.pageStep}>
+                  <span className={styles.stepBadge}>PROGRESS</span>
+                  <span>{scopeCopy.subtitle}</span>
+                </p>
+              </div>
+              <div className={styles.metricGrid}>
+                <article className={styles.metricCard}>
+                  <p className={styles.metricValue}>
+                    {storeProgress?.summary?.averageCompletionPercent ?? 0}%
+                  </p>
+                  <p className={styles.metricLabel}>AVERAGE</p>
+                </article>
+                <article className={styles.metricCard}>
+                  <p className={styles.metricValue}>
+                    {storeProgress?.summary?.completedEmployeeCount ?? 0}/
+                    {storeProgress?.summary?.employeeCount ?? 0}
+                  </p>
+                  <p className={styles.metricLabel}>COMPLETED</p>
+                </article>
+                <article className={styles.metricCard}>
+                  <p className={styles.metricValue}>{filteredUserCount}</p>
+                  <p className={styles.metricLabel}>CURRENT VIEW</p>
+                </article>
+              </div>
+            </section>
+
+            <section className={styles.section}>
+              <div className={styles.sectionBar}>
+                <h2 className={styles.sectionTitle}>
+                  <span className={styles.sectionCounter}>00</span>
+                  <span>{scopeCopy.title}</span>
+                  <span className={styles.sectionTitleEn}>{scopeCopy.subtitle}</span>
+                </h2>
+                <div className={styles.filterButtons}>
+                  <select
+                    className={styles.positionSearch}
+                    value={storeFilter}
+                    onChange={(event) => setStoreFilter(event.target.value)}
                   >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {!progressScope.canView ? (
-              <div className={styles.materialEmpty}>
-                当前岗位只显示自己的培训任务；团队进度由总部、区域经理或店长查看。
-              </div>
-            ) : storeProgressError ? (
-              <div className={styles.materialEmpty}>
-                培训进度暂时不可用：{storeProgressError}
-              </div>
-            ) : storeProgress ? (
-              <>
-                <div className={styles.storeProgressSummary}>
-                  <span>{storeProgress.restaurant.name}</span>
-                  <strong>
-                    {storeProgress.summary.averageCompletionPercent}%
-                  </strong>
-                  <span>
-                    {storeProgress.summary.completedEmployeeCount}/
-                    {storeProgress.summary.employeeCount} 人完成必修
-                  </span>
+                    <option value="all">{t.page.filters.allStores}</option>
+                    {storeGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {getGroupName(group)}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={styles.positionSearch}
+                    value={employeeSearch}
+                    onChange={(event) => setEmployeeSearch(event.target.value)}
+                    placeholder={t.page.filters.searchPlaceholder}
+                  />
+                  {Object.entries(t.page.filters.completion).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`${styles.filterButton} ${
+                        completionFilter === value ? styles.filterButtonActive : ""
+                      }`}
+                      onClick={() => setCompletionFilter(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {filteredStoreGroups.map((group) => (
-                  <div key={group.id} className={styles.storeProgressGroup}>
-                    <h3 className={styles.storeProgressGroupTitle}>
-                      <span>{group.name}</span>
-                      <small>{group.users.length} 人</small>
-                    </h3>
-                    <div className={styles.storeProgressTableWrap}>
-                      <table className={styles.storeProgressTable}>
-                        <thead>
-                          <tr>
-                            <th>员工</th>
-                            <th>岗位</th>
-                            <th>必修完成</th>
-                            <th>完成率</th>
-                            <th>最近学习</th>
-                            {progressScope.canManageStoreJobRoles ? (
-                              <th>操作</th>
-                            ) : null}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.users.map((employee) => {
-                            const selectedRoles =
-                              draftJobRolesByUserId[employee.userId] ||
-                              normalizeJobRoleValues(
-                                getJobRoleValues(employee.jobRole),
-                              );
-                            const isSaving =
-                              savingJobRoleUserId === employee.userId;
-                            const canEditEmployeeJobRoles =
-                              progressScope.canManageStoreJobRoles &&
-                              canEditStoreJobRoles(employee.jobRole);
+              {!progressScope.canView ? (
+                <div className={styles.materialEmpty}>{t.page.messages.selfOnly}</div>
+              ) : storeProgressError ? (
+                <div className={styles.materialEmpty}>
+                  {t.page.messages.unavailable}
+                  {storeProgressError.message || t.page.messages[storeProgressError.fallbackKey]}
+                </div>
+              ) : storeProgress ? (
+                <>
+                  <div className={styles.storeProgressSummary}>
+                    <span>{storeProgress.restaurant.name}</span>
+                    <strong>{storeProgress.summary.averageCompletionPercent}%</strong>
+                    <span>
+                      {fillTemplate(t.page.summary.completedRequired, {
+                        done: storeProgress.summary.completedEmployeeCount,
+                        total: storeProgress.summary.employeeCount,
+                      })}
+                    </span>
+                  </div>
 
-                            return (
-                              <tr key={employee.userId}>
-                                <td>
-                                  <strong>{employee.name}</strong>
-                                  <span>{employee.email}</span>
-                                </td>
-                                <td>
-                                  {canEditEmployeeJobRoles ? (
-                                    <div className={styles.jobRoleEditor}>
-                                      {storeJobRoleGroups.map((roleGroup) => (
-                                        <div
-                                          className={styles.jobRoleGroup}
-                                          key={roleGroup.id}
-                                        >
-                                          <span>{roleGroup.label}</span>
-                                          <div className={styles.jobRolePillRow}>
-                                            {roleGroup.options.map((option) => {
-                                              const isSelected =
-                                                selectedRoles.includes(
+                  {filteredStoreGroups.map((group) => (
+                    <div key={group.id} className={styles.storeProgressGroup}>
+                      <h3 className={styles.storeProgressGroupTitle}>
+                        <span>{getGroupName(group)}</span>
+                        <small>
+                          {fillTemplate(t.page.summary.people, {
+                            count: group.users.length,
+                          })}
+                        </small>
+                      </h3>
+                      <div className={styles.storeProgressTableWrap}>
+                        <table className={styles.storeProgressTable}>
+                          <thead>
+                            <tr>
+                              <th>{t.page.table.employee}</th>
+                              <th>{t.page.table.position}</th>
+                              <th>{t.page.table.requiredDone}</th>
+                              <th>{t.page.table.rate}</th>
+                              <th>{t.page.table.lastStudy}</th>
+                              {progressScope.canManageStoreJobRoles ? (
+                                <th>{t.page.table.action}</th>
+                              ) : null}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.users.map((employee) => {
+                              const selectedRoles =
+                                draftJobRolesByUserId[employee.userId] ||
+                                normalizeJobRoleValues(getJobRoleValues(employee.jobRole));
+                              const isSaving = savingJobRoleUserId === employee.userId;
+                              const canEditEmployeeJobRoles =
+                                progressScope.canManageStoreJobRoles &&
+                                canEditStoreJobRoles(employee.jobRole);
+
+                              return (
+                                <tr key={employee.userId}>
+                                  <td>
+                                    <strong>{employee.name}</strong>
+                                    <span>{employee.email}</span>
+                                  </td>
+                                  <td>
+                                    {canEditEmployeeJobRoles ? (
+                                      <div className={styles.jobRoleEditor}>
+                                        {storeJobRoleGroups.map((roleGroup) => (
+                                          <div className={styles.jobRoleGroup} key={roleGroup.id}>
+                                            <span>{roleGroup.label}</span>
+                                            <div className={styles.jobRolePillRow}>
+                                              {roleGroup.options.map((option) => {
+                                                const isSelected = selectedRoles.includes(
                                                   option.value,
                                                 );
 
-                                              return (
-                                                <button
-                                                  key={option.value}
-                                                  type="button"
-                                                  className={`${styles.jobRolePill} ${
-                                                    isSelected
-                                                      ? styles.jobRolePillActive
-                                                      : ""
-                                                  }`}
-                                                  disabled={isSaving}
-                                                  onClick={() =>
-                                                    updateDraftJobRoles(
-                                                      employee.userId,
-                                                      option.value,
-                                                    )
-                                                  }
-                                                >
-                                                  {option.label}
-                                                </button>
-                                              );
-                                            })}
+                                                return (
+                                                  <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    className={`${styles.jobRolePill} ${
+                                                      isSelected ? styles.jobRolePillActive : ""
+                                                    }`}
+                                                    disabled={isSaving}
+                                                    onClick={() =>
+                                                      updateDraftJobRoles(
+                                                        employee.userId,
+                                                        option.value,
+                                                      )
+                                                    }
+                                                  >
+                                                    {option.label}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
                                           </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : progressScope.canManageStoreJobRoles ? (
-                                    <span className={styles.jobRoleReadOnly}>
-                                      {formatJobRoleLabel(employee.jobRole, "zh")}
-                                      <small>非门店岗位由总部管理</small>
-                                    </span>
-                                  ) : (
-                                    formatJobRoleLabel(employee.jobRole, "zh")
-                                  )}
-                                </td>
-                                <td>
-                                  {employee.requiredCompleted}/
-                                  {employee.requiredTotal}
-                                </td>
-                                <td>{employee.completionPercent}%</td>
-                                <td>
-                                  {formatProgressDate(employee.lastOpenedAt)}
-                                </td>
-                                {progressScope.canManageStoreJobRoles ? (
-                                  <td>
-                                    {canEditEmployeeJobRoles ? (
-                                      <button
-                                        type="button"
-                                        className={styles.permissionSaveButton}
-                                        disabled={isSaving}
-                                        onClick={() =>
-                                          saveEmployeeJobRoles(employee.userId)
-                                        }
-                                      >
-                                        {isSaving ? "保存中" : "保存"}
-                                      </button>
-                                    ) : (
+                                        ))}
+                                      </div>
+                                    ) : progressScope.canManageStoreJobRoles ? (
                                       <span className={styles.jobRoleReadOnly}>
-                                        总部
+                                        {formatJobRoleLabel(employee.jobRole, lang)}
+                                        <small>{t.page.actions.hqManagedRole}</small>
                                       </span>
+                                    ) : (
+                                      formatJobRoleLabel(employee.jobRole, lang)
                                     )}
                                   </td>
-                                ) : null}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                  <td>
+                                    {employee.requiredCompleted}/{employee.requiredTotal}
+                                  </td>
+                                  <td>{employee.completionPercent}%</td>
+                                  <td>{formatProgressDate(employee.lastOpenedAt, lang)}</td>
+                                  {progressScope.canManageStoreJobRoles ? (
+                                    <td>
+                                      {canEditEmployeeJobRoles ? (
+                                        <button
+                                          type="button"
+                                          className={styles.permissionSaveButton}
+                                          disabled={isSaving}
+                                          onClick={() => saveEmployeeJobRoles(employee.userId)}
+                                        >
+                                          {isSaving ? t.page.actions.saving : t.page.actions.save}
+                                        </button>
+                                      ) : (
+                                        <span className={styles.jobRoleReadOnly}>
+                                          {t.page.actions.headquarters}
+                                        </span>
+                                      )}
+                                    </td>
+                                  ) : null}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {filteredStoreGroups.length === 0 ? (
-                  <div className={styles.materialEmpty}>
-                    当前筛选下没有员工。
-                  </div>
-                ) : null}
-              </>
-            ) : isLoadingProgress ? (
-              <div className={styles.materialEmpty}>正在加载培训进度...</div>
-            ) : null}
-          </section>
-        </>
-      )}
+                  {filteredStoreGroups.length === 0 ? (
+                    <div className={styles.materialEmpty}>{t.page.filters.noMatches}</div>
+                  ) : null}
+                </>
+              ) : isLoadingProgress ? (
+                <div className={styles.materialEmpty}>{t.page.messages.loading}</div>
+              ) : null}
+            </section>
+          </>
+        );
+      }}
     </TrainingLayout>
   );
 }

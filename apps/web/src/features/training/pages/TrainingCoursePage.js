@@ -130,7 +130,7 @@ export default function TrainingCoursePage({ courseId }) {
 
         return (
           <section className={styles.section}>
-            <div className={styles.courseCard} style={{ maxWidth: 560 }}>
+            <div className={`${styles.courseCard} ${styles.courseDetailCard}`}>
               <div
                 className={`${styles.courseCover} ${styles[`courseCover${course.type}`]}`}
               >
@@ -161,14 +161,13 @@ export default function TrainingCoursePage({ courseId }) {
                 )}
 
                 <div className={styles.courseProgress}>
-                  <div
-                    className={styles.courseProgressBar}
-                    style={{ width: `${course.prog}%` }}
-                  />
+                  <div className={styles.courseProgressBar}>
+                    <i style={{ width: `${course.prog}%` }} />
+                  </div>
+                  <span className={styles.courseStatus}>
+                    {course.prog}% · {t.shared.courseStatus[course.status]}
+                  </span>
                 </div>
-                <p className={styles.courseKind} style={{ margin: "4px 0 20px" }}>
-                  {course.prog}% · {t.shared.courseStatus[course.status]}
-                </p>
 
                 <Link
                   href="/dashboard/training/materials"

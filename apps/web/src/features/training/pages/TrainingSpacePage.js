@@ -4,30 +4,26 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
+import CourseCard from "@/features/training/components/CourseCard";
+import TrainingFolder from "@/features/training/components/TrainingFolder";
+import folderStyles from "@/features/training/components/training-folders.module.css";
 import TrainingLayout from "@/features/training/components/TrainingLayout";
 import { TRAINING_COPY } from "@/features/training/constants/training-copy";
-import { fetchTrainingMyPlan } from "@/features/training/services/trainingMediaApi";
 import {
+  fetchTrainingMyPlan,
+  fetchTrainingPositions,
+} from "@/features/training/services/trainingMediaApi";
+import {
+  UNCATEGORIZED_FOLDER_ID,
+  groupByPosition,
+} from "@/features/training/utils/trainingFolders";
+import {
+  DEFAULT_TRAINING_POSITION_TREE,
   TRAINING_POSITION_MANAGE_PERMISSION,
+  findTrainingPosition,
+  getTrainingPositionLabel,
+  mergeDefaultTrainingPositions,
 } from "@/features/training/utils/trainingPositions";
-
-const COURSE_GLYPHS = {
-  VIDEO: "影",
-  PDF: "册",
-  QUIZ: "测",
-  ARTICLE: "文",
-  IMAGE: "图",
-  OTHER: "件",
-};
-
-const COURSE_KIND_LABELS = {
-  VIDEO: "VIDEO",
-  PDF: "PDF",
-  QUIZ: "QUIZ",
-  ARTICLE: "ARTICLE",
-  IMAGE: "IMAGE",
-  OTHER: "OTHER",
-};
 
 const MATERIAL_CATEGORY_TYPES = [
   "all",
@@ -39,13 +35,7 @@ const MATERIAL_CATEGORY_TYPES = [
   "OTHER",
 ];
 
-function filterCourses(
-  items,
-  statusFilter,
-  categoryFilter,
-  positionFilter,
-  searchQuery,
-) {
+function filterCourses(items, statusFilter, categoryFilter, searchQuery) {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
   return items.filter((item) => {
@@ -53,15 +43,12 @@ function filterCourses(
       statusFilter === "all" || item.status === statusFilter;
     const matchesCategory =
       categoryFilter === "all" || item.type === categoryFilter;
-    const matchesPosition =
-      positionFilter === "all" || item.positionId === positionFilter;
     const searchableContent = [
       item.title,
       item.desc,
       item.positionId,
       item.type,
       item.dur,
-      ...item.tags,
     ]
       .filter(Boolean)
       .join(" ")
@@ -69,11 +56,11 @@ function filterCourses(
     const matchesSearch =
       !normalizedSearchQuery || searchableContent.includes(normalizedSearchQuery);
 
-    return matchesStatus && matchesCategory && matchesPosition && matchesSearch;
+    return matchesStatus && matchesCategory && matchesSearch;
   });
 }
 
-function toCourseCard(material) {
+function toCourseCard(material, isRequired) {
   const status = material.progress?.status || "not_started";
   const progressPct = Number(material.progress?.progressPct ?? 0);
 
@@ -82,19 +69,12 @@ function toCourseCard(material) {
     materialId: material.id,
     type: material.type,
     positionId: material.positionId,
-    req: Boolean(material.isRequired),
+    req: isRequired,
     title: material.title,
-    en: material.positionId,
     dur: material.mimeType || material.type,
     prog: Number.isFinite(progressPct) ? progressPct : 0,
     status,
     desc: material.description || material.originalName,
-    tags: [
-      material.positionId,
-      material.type,
-      material.isRequired ? "必修" : "选修",
-      material.mimeType || "FILE",
-    ],
   };
 }
 
@@ -102,7 +82,14 @@ function replaceCourseTitle(template, title) {
   return template.replace("{title}", title);
 }
 
-function buildOnboardingContent(course, t) {
+function fillTemplate(template, values) {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replace(`{${key}}`, String(value)),
+    template,
+  );
+}
+
+function buildOnboardingContent(course, t, positionName) {
   const copy = t.page.onboarding;
 
   if (!course) {
@@ -125,20 +112,43 @@ function buildOnboardingContent(course, t) {
 
   return {
     mark: markByStatus[status] || markByStatus.not_started,
-    kicker: `${copy.requiredKicker} · ${course.positionId} · ${copy.progressLabel} ${course.prog}%`,
+    kicker: `${copy.requiredKicker} · ${positionName} · ${copy.progressLabel} ${course.prog}%`,
     title: replaceCourseTitle(statusTemplate, course.title),
     desc: course.desc || copy.defaultDesc,
     action: t.shared.courseAction[status] || t.shared.courseAction.not_started,
   };
 }
 
+function FilterButtons({ options, value, onChange, label, styles }) {
+  return (
+    <div className={styles.filterButtons} role="group" aria-label={label}>
+      {options.map(([optionValue, optionLabel]) => (
+        <button
+          key={optionValue}
+          type="button"
+          aria-pressed={value === optionValue}
+          className={`${styles.filterButton} ${
+            value === optionValue ? styles.filterButtonActive : ""
+          }`}
+          onClick={() => onChange(optionValue)}
+        >
+          {optionLabel}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function TrainingSpacePage() {
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [positionFilter, setPositionFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedIds, setExpandedIds] = useState(null);
   const [trainingPlan, setTrainingPlan] = useState(null);
+  const [positionTree, setPositionTree] = useState(
+    DEFAULT_TRAINING_POSITION_TREE,
+  );
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planError, setPlanError] = useState("");
 
@@ -150,13 +160,18 @@ export default function TrainingSpacePage() {
       setPlanError("");
 
       try {
-        const nextPlan = await fetchTrainingMyPlan();
+        const [nextPlan, nextPositions] = await Promise.all([
+          fetchTrainingMyPlan(),
+          // Position names are cosmetic: fall back to defaults if this fails.
+          fetchTrainingPositions().catch(() => []),
+        ]);
         if (isActive) {
           setTrainingPlan(nextPlan);
+          setPositionTree(mergeDefaultTrainingPositions(nextPositions));
         }
       } catch (error) {
         if (isActive) {
-          setPlanError(error.message || "培训任务加载失败");
+          setPlanError(error.message || "Error");
         }
       } finally {
         if (isActive) {
@@ -199,23 +214,53 @@ export default function TrainingSpacePage() {
     ],
     [optionalPlanItems.length, planSummary],
   );
-  const materialCourses = useMemo(() => {
-    return {
-      required: requiredPlanItems.map(toCourseCard),
-      optional: optionalPlanItems.map(toCourseCard),
-    };
-  }, [optionalPlanItems, requiredPlanItems]);
-  const positionCategories = useMemo(
-    () =>
-      [
-        ...new Set(
-          [...materialCourses.required, ...materialCourses.optional]
-            .map((course) => course.positionId)
-            .filter(Boolean),
-        ),
-      ].sort((left, right) => left.localeCompare(right)),
-    [materialCourses],
+  const requiredCourses = useMemo(
+    () => requiredPlanItems.map((item) => toCourseCard(item, true)),
+    [requiredPlanItems],
   );
+  const allCourses = useMemo(
+    () => [
+      ...requiredCourses,
+      ...optionalPlanItems.map((item) => toCourseCard(item, false)),
+    ],
+    [optionalPlanItems, requiredCourses],
+  );
+  const continueCourse =
+    requiredCourses.find((course) => course.status !== "completed") ??
+    requiredCourses[0] ??
+    null;
+  const continueHref = continueCourse
+    ? `/dashboard/training/materials/player?id=${continueCourse.materialId}`
+    : "/dashboard/training";
+  const hasActiveFilters =
+    statusFilter !== "all" ||
+    categoryFilter !== "all" ||
+    Boolean(searchQuery.trim());
+  const folders = useMemo(
+    () =>
+      groupByPosition(
+        filterCourses(allCourses, statusFilter, categoryFilter, searchQuery),
+      ),
+    [allCourses, categoryFilter, searchQuery, statusFilter],
+  );
+
+  const defaultExpandedIds = useMemo(
+    () =>
+      new Set(continueCourse?.positionId ? [continueCourse.positionId] : []),
+    [continueCourse],
+  );
+  const effectiveExpandedIds = expandedIds ?? defaultExpandedIds;
+
+  function toggleFolder(folderId) {
+    const next = new Set(effectiveExpandedIds);
+    if (next.has(folderId)) {
+      next.delete(folderId);
+    } else {
+      next.add(folderId);
+    }
+    setExpandedIds(next);
+  }
+
   return (
     <TrainingLayout
       pageCopy={{
@@ -224,36 +269,27 @@ export default function TrainingSpacePage() {
         fr: { shared: TRAINING_COPY.fr.shared, page: TRAINING_COPY.fr.training },
       }}
     >
-      {({ t, styles }) => {
-        const requiredCourses = filterCourses(
-          materialCourses.required,
-          statusFilter,
-          categoryFilter,
-          positionFilter,
-          searchQuery,
+      {({ lang, t, styles }) => {
+        const copy = t.shared.folders;
+        const getFolderName = (positionId) => {
+          if (positionId === UNCATEGORIZED_FOLDER_ID) {
+            return copy.uncategorized;
+          }
+          const position = findTrainingPosition(positionTree, positionId);
+          return position
+            ? getTrainingPositionLabel(position, lang)
+            : positionId;
+        };
+        const onboardingContent = buildOnboardingContent(
+          continueCourse,
+          t,
+          continueCourse ? getFolderName(continueCourse.positionId) : "",
         );
-        const optionalCourses = filterCourses(
-          materialCourses.optional,
-          "all",
-          categoryFilter,
-          positionFilter,
-          searchQuery,
-        );
-        const hasActiveFilters =
-          statusFilter !== "all" ||
-          categoryFilter !== "all" ||
-          positionFilter !== "all" ||
-          Boolean(searchQuery.trim());
-        const continueCourse =
-          materialCourses.required.find(
-            (course) => course.status !== "completed",
-          ) ??
-          materialCourses.required[0] ??
-          null;
-        const continueHref = continueCourse
-          ? `/dashboard/training/materials/player?id=${continueCourse.materialId}`
-          : "/dashboard/training";
-        const onboardingContent = buildOnboardingContent(continueCourse, t);
+        const statusOptions = Object.entries(t.shared.courseFilters);
+        const categoryOptions = MATERIAL_CATEGORY_TYPES.map((type) => [
+          type,
+          t.shared.materialFilters[type],
+        ]);
 
         return (
           <>
@@ -268,7 +304,7 @@ export default function TrainingSpacePage() {
                     href="/dashboard/training/positions"
                     className={styles.uploadEntryLink}
                   >
-                    岗位管理
+                    {copy.positionManage}
                   </Link>
                 ) : null}
               </div>
@@ -296,9 +332,10 @@ export default function TrainingSpacePage() {
             </section>
 
             {planError ? (
-              <section className={styles.uploadMessageError}>
-                培训任务加载失败：{planError}
-              </section>
+              <p className={folderStyles.error} role="alert">
+                {copy.planLoadFailed}
+                {planError}
+              </p>
             ) : null}
 
             <section
@@ -309,56 +346,22 @@ export default function TrainingSpacePage() {
                 <span className={styles.courseCategoryLabel}>
                   {t.shared.materialCategoryLabel}
                 </span>
-                <div
-                  className={styles.filterButtons}
-                  role="group"
-                  aria-label={t.shared.materialCategoryLabel}
-                >
-                  {MATERIAL_CATEGORY_TYPES.map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      className={`${styles.filterButton} ${
-                        categoryFilter === type ? styles.filterButtonActive : ""
-                      }`}
-                      onClick={() => setCategoryFilter(type)}
-                    >
-                      {t.shared.materialFilters[type]}
-                    </button>
-                  ))}
-                </div>
+                <FilterButtons
+                  options={categoryOptions}
+                  value={categoryFilter}
+                  onChange={setCategoryFilter}
+                  label={t.shared.materialCategoryLabel}
+                  styles={styles}
+                />
               </div>
               <div className={styles.courseFilterGroup}>
-                <span className={styles.courseCategoryLabel}>
-                  {t.shared.positionCategoryLabel}
-                </span>
-                <div
-                  className={styles.filterButtons}
-                  role="group"
-                  aria-label={t.shared.positionCategoryLabel}
-                >
-                  <button
-                    type="button"
-                    className={`${styles.filterButton} ${
-                      positionFilter === "all" ? styles.filterButtonActive : ""
-                    }`}
-                    onClick={() => setPositionFilter("all")}
-                  >
-                    {t.shared.allPositionsLabel}
-                  </button>
-                  {positionCategories.map((positionId) => (
-                    <button
-                      key={positionId}
-                      type="button"
-                      className={`${styles.filterButton} ${
-                        positionFilter === positionId ? styles.filterButtonActive : ""
-                      }`}
-                      onClick={() => setPositionFilter(positionId)}
-                    >
-                      {positionId}
-                    </button>
-                  ))}
-                </div>
+                <FilterButtons
+                  options={statusOptions}
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  label={copy.progressFilterLabel}
+                  styles={styles}
+                />
               </div>
               <label className={styles.courseSearch}>
                 <span className={styles.courseCategoryLabel}>
@@ -374,173 +377,73 @@ export default function TrainingSpacePage() {
               </label>
             </section>
 
-            <section className={styles.section}>
-              <div className={styles.sectionBar}>
-                <h2 className={styles.sectionTitle}>
-                  <span className={styles.sectionCounter}>01</span>
-                  <span>{t.page.requiredHeading}</span>
-                  <span className={styles.sectionTitleEn}>{t.page.requiredEn}</span>
-                </h2>
-                <div
-                  className={styles.filterButtons}
-                  role="group"
-                  aria-label="按学习进度筛选"
-                >
-                  {Object.entries(t.shared.courseFilters).map(([value, label]) => (
+            <section aria-label={copy.foldersLabel}>
+              {folders.length > 0 && !hasActiveFilters ? (
+                <div className={folderStyles.folderToolbar}>
+                  <span />
+                  <div className={folderStyles.toolbarActions}>
                     <button
-                      key={value}
                       type="button"
-                      className={`${styles.filterButton} ${
-                        statusFilter === value ? styles.filterButtonActive : ""
-                      }`}
-                      onClick={() => setStatusFilter(value)}
+                      className={styles.filterButton}
+                      onClick={() =>
+                        setExpandedIds(new Set(folders.map((f) => f.positionId)))
+                      }
                     >
-                      {label}
+                      {copy.expandAll}
                     </button>
+                    <button
+                      type="button"
+                      className={styles.filterButton}
+                      onClick={() => setExpandedIds(new Set())}
+                    >
+                      {copy.collapseAll}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {isLoadingPlan ? (
+                <div className={folderStyles.empty}>{copy.loading}</div>
+              ) : planError ? (
+                <div className={folderStyles.empty}>{copy.loadFailed}</div>
+              ) : folders.length === 0 ? (
+                <div className={folderStyles.empty}>
+                  {hasActiveFilters ? t.shared.empty : copy.empty}
+                </div>
+              ) : (
+                <div className={folderStyles.folderList}>
+                  {folders.map((folder) => (
+                    <TrainingFolder
+                      key={folder.positionId}
+                      folder={folder}
+                      name={getFolderName(folder.positionId)}
+                      countLabel={fillTemplate(copy.materialCount, {
+                        count: folder.totalCount,
+                      })}
+                      requiredLabel={fillTemplate(copy.requiredCount, {
+                        done: folder.completedRequiredCount,
+                        total: folder.requiredCount,
+                      })}
+                      isExpanded={
+                        hasActiveFilters ||
+                        effectiveExpandedIds.has(folder.positionId)
+                      }
+                      onToggle={toggleFolder}
+                    >
+                      <div className={folderStyles.cardGrid}>
+                        {folder.courses.map((course) => (
+                          <CourseCard
+                            key={course.id}
+                            course={course}
+                            statusLabel={t.shared.courseStatus[course.status]}
+                            requiredLabel={copy.requiredBadge}
+                          />
+                        ))}
+                      </div>
+                    </TrainingFolder>
                   ))}
                 </div>
-              </div>
-              <div className={styles.courseGrid}>
-                {isLoadingPlan ? (
-                  <div className={styles.materialEmpty}>正在加载培训资料...</div>
-                ) : planError ? (
-                  <div className={styles.materialEmpty}>资料加载失败，请稍后重试。</div>
-                ) : requiredCourses.length > 0 ? (
-                  requiredCourses.map((course) => (
-                    <Link
-                      key={course.id}
-                      href={`/dashboard/training/materials/player?id=${course.materialId}`}
-                      className={styles.courseCard}
-                    >
-                      <div
-                        className={`${styles.courseCover} ${
-                          styles[`courseCover${course.type}`] ||
-                          styles.courseCoverOTHER
-                        }`}
-                      >
-                        <span className={styles.courseKind}>
-                          {COURSE_KIND_LABELS[course.type]}
-                        </span>
-                        {course.req ? (
-                          <span className={styles.courseReq}>
-                            必修 · REQUIRED
-                          </span>
-                        ) : null}
-                        <span className={styles.courseGlyph}>
-                          {COURSE_GLYPHS[course.type]}
-                        </span>
-                        {course.type === "VIDEO" ? (
-                          <span className={styles.coursePlay}>▶</span>
-                        ) : null}
-                        <span className={styles.courseDuration}>
-                          {course.dur}
-                        </span>
-                      </div>
-                      <div className={styles.courseBody}>
-                        <h3 className={styles.courseTitle}>
-                          {course.title}
-                          <span className={styles.courseTitleEn}>
-                            {course.en}
-                          </span>
-                        </h3>
-                        <p className={styles.courseDesc}>{course.desc}</p>
-                        <div className={styles.courseTags}>
-                          {course.tags.map((tag) => (
-                            <span key={tag}>{tag}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className={styles.courseProgress}>
-                        <div className={styles.courseProgressBar}>
-                          <i style={{ width: `${course.prog}%` }} />
-                        </div>
-                        <div className={styles.courseStatus}>
-                          {t.shared.courseStatus[course.status]}
-                        </div>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <div className={styles.materialEmpty}>
-                    {hasActiveFilters
-                      ? t.shared.empty
-                      : "暂无必修资料。请在资料库上传并标记为必修。"}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className={styles.section}>
-              <div className={styles.sectionBar}>
-                <h2 className={styles.sectionTitle}>
-                  <span className={styles.sectionCounter}>02</span>
-                  <span>{t.page.optionalHeading}</span>
-                  <span className={styles.sectionTitleEn}>{t.page.optionalEn}</span>
-                </h2>
-              </div>
-              <div className={styles.courseGrid}>
-                {isLoadingPlan ? (
-                  <div className={styles.materialEmpty}>正在加载培训资料...</div>
-                ) : planError ? (
-                  <div className={styles.materialEmpty}>资料加载失败，请稍后重试。</div>
-                ) : optionalCourses.length > 0 ? (
-                  optionalCourses.map((course) => (
-                    <Link
-                      key={course.id}
-                      href={`/dashboard/training/materials/player?id=${course.materialId}`}
-                      className={styles.courseCard}
-                    >
-                      <div
-                        className={`${styles.courseCover} ${
-                          styles[`courseCover${course.type}`] ||
-                          styles.courseCoverOTHER
-                        }`}
-                      >
-                        <span className={styles.courseKind}>
-                          {COURSE_KIND_LABELS[course.type]}
-                        </span>
-                        <span className={styles.courseGlyph}>
-                          {COURSE_GLYPHS[course.type]}
-                        </span>
-                        {course.type === "VIDEO" ? (
-                          <span className={styles.coursePlay}>▶</span>
-                        ) : null}
-                        <span className={styles.courseDuration}>
-                          {course.dur}
-                        </span>
-                      </div>
-                      <div className={styles.courseBody}>
-                        <h3 className={styles.courseTitle}>
-                          {course.title}
-                          <span className={styles.courseTitleEn}>
-                            {course.en}
-                          </span>
-                        </h3>
-                        <p className={styles.courseDesc}>{course.desc}</p>
-                        <div className={styles.courseTags}>
-                          {course.tags.map((tag) => (
-                            <span key={tag}>{tag}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className={styles.courseProgress}>
-                        <div className={styles.courseProgressBar}>
-                          <i style={{ width: `${course.prog}%` }} />
-                        </div>
-                        <div className={styles.courseStatus}>
-                          {t.shared.courseStatus[course.status]}
-                        </div>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <div className={styles.materialEmpty}>
-                    {hasActiveFilters
-                      ? t.shared.empty
-                      : "暂无选修资料。员工仍可先完成上方必修内容。"}
-                  </div>
-                )}
-              </div>
+              )}
             </section>
           </>
         );
