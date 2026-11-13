@@ -6,7 +6,7 @@
     "version": "0.1.6",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "icon": "./assets/play-store/app-icon-1024.png",
+    "icon": "./assets/play-store/app-icon-1024-christmas.png",
     "splash": {
       "backgroundColor": "#6F0D10"
     },
@@ -26,8 +26,8 @@
       "package": "com.zhao.family",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/play-store/adaptive-foreground-1024.png",
-        "backgroundColor": "#FFFFFF"
+        "foregroundImage": "./assets/play-store/adaptive-foreground-1024-christmas.png",
+        "backgroundColor": "#164832"
       },
       "permissions": [
         "android.permission.POST_NOTIFICATIONS"
