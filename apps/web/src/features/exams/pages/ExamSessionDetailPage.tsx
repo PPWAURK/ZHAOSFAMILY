@@ -7,6 +7,7 @@ import type { ExamSessionDetail, ExamSessionParticipant } from "@zhao/types";
 
 import { downloadCsv } from "@/features/dashboard/utils/platformReportCsv";
 
+import RegistrationPanel from "../components/RegistrationPanel";
 import ExamSessionsLayout from "../components/ExamSessionsLayout";
 import StatusBadge from "../components/StatusBadge";
 import { describeExamError } from "../constants/exam-errors-copy";
@@ -16,7 +17,12 @@ import styles from "../exams.module.css";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { useConfirmAction } from "../hooks/useConfirmAction";
 import { useInterval } from "../hooks/useInterval";
-import { closeExamSession, fetchExamSession, openExamSession } from "../services/examSessionsApi";
+import {
+  closeExamSession,
+  fetchExamSession,
+  fetchRegistrations,
+  openExamSession,
+} from "../services/examSessionsApi";
 import { formatDateTime } from "../utils/examFormat";
 import { buildExamSessionCsv, summarizeSession } from "../utils/examSessionCsv";
 import { sessionWindowText } from "./ExamSessionsPage";
@@ -137,17 +143,22 @@ function DetailContent({ copy, lang }: { copy: ExamSessionCopy; lang: ExamUiLang
   const sessionId = Number(useSearchParams().get("sessionId"));
   const confirm = useConfirmAction();
   const detail = useAsyncData(() => fetchExamSession(sessionId), [sessionId], sessionId > 0);
+  const roster = useAsyncData(() => fetchRegistrations(sessionId), [sessionId], sessionId > 0);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const session = detail.data;
-  useInterval(detail.reload, session && session.status !== "CLOSED" ? REFRESH_MS : null);
+  const reloadAll = () => {
+    detail.reload();
+    roster.reload();
+  };
+  useInterval(reloadAll, session && session.status !== "CLOSED" ? REFRESH_MS : null);
 
   const run = async (action: () => Promise<unknown>) => {
     setIsBusy(true);
     setError(null);
     try {
       await action();
-      detail.reload();
+      reloadAll();
     } catch (reason) {
       setError(describeExamError(reason, lang));
     } finally {
@@ -219,7 +230,10 @@ function DetailContent({ copy, lang }: { copy: ExamSessionCopy; lang: ExamUiLang
                 className={styles.button}
                 disabled={!session.participants.length}
                 onClick={() =>
-                  downloadCsv(`exam-session-${session.code}.csv`, buildExamSessionCsv(session))
+                  downloadCsv(
+                    `exam-session-${session.code}.csv`,
+                    buildExamSessionCsv(session, roster.data ?? []),
+                  )
                 }
               >
                 {copy.exportCsv}
@@ -230,6 +244,13 @@ function DetailContent({ copy, lang }: { copy: ExamSessionCopy; lang: ExamUiLang
             </div>
             {error ? <p className={styles.error}>{error}</p> : null}
           </div>
+          <RegistrationPanel
+            session={session}
+            registrations={roster.data ?? []}
+            copy={copy}
+            lang={lang}
+            onChanged={reloadAll}
+          />
           <SessionBody session={session} copy={copy} lang={lang} />
         </>
       ) : null}

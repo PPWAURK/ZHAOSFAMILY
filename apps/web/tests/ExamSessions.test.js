@@ -8,8 +8,10 @@ import ExamSessionDetailPage from "@/features/exams/pages/ExamSessionDetailPage"
 import {
   closeExamSession,
   fetchExamSession,
+  fetchRegistrations,
   joinExamSession,
   openExamSession,
+  removeRegistration,
 } from "@/features/exams/services/examSessionsApi";
 import { buildExamSessionCsv, summarizeSession } from "@/features/exams/utils/examSessionCsv";
 
@@ -28,9 +30,16 @@ jest.mock("@/features/exams/components/ExamSessionsLayout", () => {
 jest.mock("@/shared/components/confirm/ConfirmProvider", () => ({
   useConfirm: () => jest.fn().mockResolvedValue(true),
 }));
+jest.mock("@/features/stores/services/restaurantsApi", () => ({
+  fetchRestaurants: jest.fn().mockResolvedValue([]),
+}));
 jest.mock("@/features/exams/services/examSessionsApi", () => ({
   closeExamSession: jest.fn(),
   fetchExamSession: jest.fn(),
+  fetchRegistrations: jest.fn(),
+  fetchCandidates: jest.fn().mockResolvedValue([]),
+  addRegistrations: jest.fn(),
+  removeRegistration: jest.fn(),
   joinExamSession: jest.fn(),
   openExamSession: jest.fn(),
 }));
@@ -73,6 +82,8 @@ const session = (overrides = {}) => ({
   openedAt: null,
   closedAt: null,
   createdAt: "2026-11-23T09:00:00.000Z",
+  requireRegistration: false,
+  registeredCount: 0,
   participantCount: 0,
   submittedCount: 0,
   serverNow: "2026-11-23T10:00:00.000Z",
@@ -101,7 +112,10 @@ const textOf = (node) => [].concat(node.props.children).join("");
 const button = (renderer, text) =>
   renderer.root.findAllByType("button").find((b) => textOf(b) === text);
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  fetchRegistrations.mockResolvedValue([]);
+});
 
 describe("session helpers", () => {
   test("keeps only six digits of a typed code", () => {
@@ -218,5 +232,47 @@ describe("ExamSessionDetailPage", () => {
     expect(texts).toContain("第 2/2 场");
     expect(texts).toContain("休息中");
     expect(texts.filter((t) => t.startsWith("第 "))).toHaveLength(1);
+  });
+
+  test("lists the roster and removes someone who has not joined", async () => {
+    fetchExamSession.mockResolvedValue(session({ requireRegistration: true, registeredCount: 2 }));
+    fetchRegistrations.mockResolvedValue([
+      registration({ userId: 5, name: "Wang", status: "NOT_STARTED" }),
+      registration({ userId: 6, name: "Zhou", status: "SUBMITTED" }),
+    ]);
+    removeRegistration.mockResolvedValue(undefined);
+    const renderer = await render(<ExamSessionDetailPage />);
+
+    const html = JSON.stringify(renderer.toJSON());
+    for (const text of ["Wang", "Zhou", "未进场", "已交卷"]) expect(html).toContain(text);
+    const removeButtons = renderer.root.findAllByType("button").filter((b) => textOf(b) === "移除");
+    expect(removeButtons).toHaveLength(1);
+
+    await ReactTestRenderer.act(async () => removeButtons[0].props.onClick());
+    expect(removeRegistration).toHaveBeenCalledWith(3, 5);
+  });
+});
+
+const registration = (overrides = {}) => ({
+  userId: 5,
+  name: "Wang",
+  restaurant: { id: 3, name: "Paris" },
+  jobRole: "store-manager",
+  status: "NOT_STARTED",
+  registeredAt: "2026-11-26T09:00:00.000Z",
+  ...overrides,
+});
+
+describe("roster CSV", () => {
+  test("adds registered users who never joined as extra rows", () => {
+    const detail = session({ participants: [participant()] });
+    const lines = buildExamSessionCsv(detail, [
+      registration({ userId: 2, name: "Li", status: "SUBMITTED" }),
+      registration({ userId: 9, name: "Absent", status: "ABSENT" }),
+    ])
+      .trim()
+      .split("\r\n");
+    expect(lines).toHaveLength(3);
+    expect(lines[2]).toContain('"Absent","Paris","ABSENT"');
   });
 });

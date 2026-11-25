@@ -60,6 +60,7 @@ function CreateSessionForm({ copy, lang, templates, onCreated }: CreateFormProps
   const [label, setLabel] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
+  const [requireRegistration, setRequireRegistration] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -75,6 +76,7 @@ function CreateSessionForm({ copy, lang, templates, onCreated }: CreateFormProps
           label: label.trim() || undefined,
           startsAt: toIso(startsAt),
           endsAt: toIso(endsAt),
+          requireRegistration,
         }),
       );
     } catch (reason) {
@@ -116,6 +118,16 @@ function CreateSessionForm({ copy, lang, templates, onCreated }: CreateFormProps
         <label className={styles.field}>
           {copy.create.endsAt}
           <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+        </label>
+        <label className={styles.field}>
+          <span>
+            <input
+              type="checkbox"
+              checked={requireRegistration}
+              onChange={(e) => setRequireRegistration(e.target.checked)}
+            />{" "}
+            {copy.registration.requireLabel}
+          </span>
         </label>
         <button type="submit" className={styles.buttonPrimary} disabled={isSaving || !templateId}>
           {copy.create.submit}
