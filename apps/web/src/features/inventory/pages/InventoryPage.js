@@ -9,16 +9,23 @@ import {
   DASHBOARD_MENU_LABELS,
 } from "@/features/dashboard/constants/dashboard-copy";
 import InventoryRow from "@/features/inventory/components/InventoryRow";
+import MonthlyRecordsPanel from "@/features/inventory/components/MonthlyRecordsPanel";
+import MovementEntryForm from "@/features/inventory/components/MovementEntryForm";
 import {
   BUREAU_INVENTORY_SUPPLIER_IDS,
   INVENTORY_COPY,
   INVENTORY_SUPPLIER_NAMES,
 } from "@/features/inventory/constants/inventory-copy";
 import {
+  INVENTORY_ENTRY_COPY,
+  INVENTORY_RECORDS_COPY,
+} from "@/features/inventory/constants/inventory-records-copy";
+import {
   createMovement,
   fetchInventory,
   fetchMovements,
 } from "@/features/inventory/services/inventoryApi";
+import { fetchRestaurants } from "@/features/stores/services/restaurantsApi";
 import { usePreferredLanguage } from "@/shared/hooks/usePreferredLanguage";
 import styles from "@/features/inventory/inventory-page.module.css";
 
@@ -40,6 +47,18 @@ function formatDateTime(iso, lang) {
 
 const MOVEMENTS_LIMIT = 50;
 
+async function loadStoreChoices() {
+  try {
+    const restaurants = await fetchRestaurants();
+    return restaurants
+      .map((r) => ({ id: String(r.id), name: r.name ?? `#${r.id}` }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    // Store list only feeds optional pickers; the page still works without it.
+    return [];
+  }
+}
+
 function mergeMovements(movementLists) {
   return movementLists
     .flat()
@@ -60,6 +79,8 @@ export default function InventoryPage({ supplierId }) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [submittingFor, setSubmittingFor] = useState(null);
+  const [stores, setStores] = useState([]);
+  const [recordsReloadKey, setRecordsReloadKey] = useState(0);
 
   const showSupplierGroups = supplierIds.length > 1;
 
@@ -91,11 +112,31 @@ export default function InventoryPage({ supplierId }) {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    let isActive = true;
+    void loadStoreChoices().then((choices) => {
+      if (isActive) setStores(choices);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const handleEntrySubmit = useCallback(
+    async (input) => {
+      await createMovement(input);
+      setRecordsReloadKey((key) => key + 1);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const handleApply = useCallback(
     async (productId, { delta, reason }) => {
       setSubmittingFor(productId);
       try {
         await createMovement({ productId, delta, reason, source: "manual" });
+        setRecordsReloadKey((key) => key + 1);
         await refresh();
       } finally {
         setSubmittingFor(null);
@@ -178,6 +219,16 @@ export default function InventoryPage({ supplierId }) {
 
         <p className={styles.lede}>{t.lede}</p>
 
+        {!isLoading && !loadError && lines.length > 0 ? (
+          <MovementEntryForm
+            copy={INVENTORY_ENTRY_COPY[lang]}
+            lines={lines}
+            stores={stores}
+            supplierNames={INVENTORY_SUPPLIER_NAMES}
+            onSubmit={handleEntrySubmit}
+          />
+        ) : null}
+
         <p className={styles.listHeading}>
           <span>{t.listHeading}</span>
           <span className={styles.listHeadingCount}>
@@ -228,6 +279,14 @@ export default function InventoryPage({ supplierId }) {
           </div>
         )}
 
+        <MonthlyRecordsPanel
+          copy={INVENTORY_RECORDS_COPY[lang]}
+          supplierIds={supplierIds}
+          supplierNames={INVENTORY_SUPPLIER_NAMES}
+          stores={stores}
+          reloadKey={recordsReloadKey}
+        />
+
         <div className={styles.movementsSection}>
           <div className={styles.movementsHeader}>
             <h2 className={styles.movementsHeading}>{t.movementsHeading}</h2>
@@ -254,7 +313,7 @@ export default function InventoryPage({ supplierId }) {
                     return (
                       <tr key={m.id}>
                         <td className={styles.dateCell}>
-                          {formatDateTime(m.createdAt, lang)}
+                          {formatDateTime(m.occurredAt || m.createdAt, lang)}
                         </td>
                         <td className={styles.cellProduct}>
                           {m.productNameCn || "—"}

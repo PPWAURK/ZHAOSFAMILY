@@ -34,6 +34,8 @@ export type InventoryMovementApiRecord = {
   source?: string | null;
   sourceId?: string | null;
   userId?: number | string | null;
+  restaurantId?: number | string | null;
+  occurredAt?: string | null;
   createdAt?: string | null;
 };
 
@@ -47,6 +49,8 @@ export type InventoryMovement = {
   source: string;
   sourceId: string;
   userId: number | string | null;
+  restaurantId: number | null;
+  occurredAt?: string | null;
   createdAt?: string | null;
 };
 
@@ -62,4 +66,44 @@ export type CreateInventoryMovementInput = {
   reason?: string;
   source?: string;
   sourceId?: string;
+  /** Business date YYYY-MM-DD; defaults to now on the server. */
+  occurredOn?: string;
+  /** Destination store, outbound only. */
+  restaurantId?: number | string;
+};
+
+/** in / out = manual movements; store_order = a store's purchase-order line. */
+export type InventoryRecordType = "in" | "out" | "store_order";
+
+export type InventoryRecord = {
+  id: string;
+  type: InventoryRecordType;
+  date: string;
+  supplierId: number;
+  productId: string;
+  productReference: string | null;
+  productNameCn: string;
+  productDesignationFr: string | null;
+  specification: string | null;
+  unit: string | null;
+  quantity: number;
+  restaurantId: number | null;
+  restaurantName: string | null;
+  orderNumber: string | null;
+  deliveryDate: string | null;
+  unitPriceHt: string | null;
+  lineTotal: string | null;
+  handlerName: string | null;
+  note: string | null;
+};
+
+export type InventoryRecordsResponse = {
+  month: string;
+  records: InventoryRecord[];
+};
+
+export type InventoryRecordFilters = {
+  month: string;
+  supplierIds: readonly (number | string)[];
+  restaurantId?: string;
 };

@@ -3,11 +3,12 @@ import { forwardRef, Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { InventoryController } from './inventory.controller';
+import { InventoryRecordsService } from './inventory-records.service';
 import { InventoryService } from './inventory.service';
 
 @Module({
   imports: [PrismaModule, forwardRef(() => AuthModule)],
   controllers: [InventoryController],
-  providers: [InventoryService],
+  providers: [InventoryService, InventoryRecordsService],
 })
 export class InventoryModule {}
