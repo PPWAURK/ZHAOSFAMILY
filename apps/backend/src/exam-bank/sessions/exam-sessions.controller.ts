@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -14,8 +16,12 @@ import {
   EXAM_PERMISSIONS,
   RequireAnyPermissions,
 } from '../../auth/permissions';
+import { AddExamRegistrationsDto } from './dto/exam-registration.dto';
 import { CreateExamSessionDto } from './dto/exam-session.dto';
+import { ExamSessionRegistrationsService } from './exam-session-registrations.service';
 import type {
+  ExamCandidateView,
+  ExamRegistrationView,
   ExamSessionDetailView,
   ExamSessionTemplateOption,
   ExamSessionView,
@@ -30,11 +36,29 @@ import { ExamSessionsService } from './exam-sessions.service';
   EXAM_PERMISSIONS.manageBank,
 )
 export class ExamSessionsController {
-  constructor(private readonly sessions: ExamSessionsService) {}
+  constructor(
+    private readonly sessions: ExamSessionsService,
+    private readonly registrations: ExamSessionRegistrationsService,
+  ) {}
 
   @Get('templates')
   listTemplates(): Promise<ExamSessionTemplateOption[]> {
     return this.sessions.listTemplates();
+  }
+
+  @Get('candidates')
+  candidates(
+    @Query('restaurantId') restaurantId?: string,
+    @Query('jobRole') jobRole?: string,
+    @Query('q') q?: string,
+    @Query('sessionId') sessionId?: string,
+  ): Promise<ExamCandidateView[]> {
+    return this.registrations.candidates({
+      restaurantId: toPositiveInt(restaurantId),
+      jobRole: jobRole?.trim() || undefined,
+      q,
+      sessionId: toPositiveInt(sessionId),
+    });
   }
 
   @Get()
@@ -73,4 +97,35 @@ export class ExamSessionsController {
   ): Promise<ExamSessionDetailView> {
     return this.sessions.close(request.user!, id);
   }
+
+  @Get(':id/registrations')
+  listRegistrations(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ExamRegistrationView[]> {
+    return this.registrations.list(request.user!, id);
+  }
+
+  @Post(':id/registrations')
+  addRegistrations(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddExamRegistrationsDto,
+  ): Promise<{ added: number }> {
+    return this.registrations.add(request.user!, id, dto.userIds);
+  }
+
+  @Delete(':id/registrations/:userId')
+  async removeRegistration(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<void> {
+    await this.registrations.remove(request.user!, id, userId);
+  }
+}
+
+function toPositiveInt(value?: string): number | undefined {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }

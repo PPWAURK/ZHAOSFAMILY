@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ExamSessionJoinService } from './exam-session-join.service';
 
 const NOW = new Date('2026-11-23T10:00:00Z');
@@ -19,6 +23,9 @@ function buildService(found: unknown = session()) {
   const prisma = {
     examSession: { findUnique: jest.fn().mockResolvedValue(found) },
     examAttempt: { findUnique: jest.fn().mockResolvedValue(null) },
+    examSessionRegistration: {
+      findUnique: jest.fn().mockResolvedValue({ id: 1 }),
+    },
   };
   const starter = { open: jest.fn().mockResolvedValue({ id: 99 }) };
   const service = new ExamSessionJoinService(prisma as never, starter as never);
@@ -95,5 +102,28 @@ describe('ExamSessionJoinService', () => {
       new ConflictException('EXAM_SESSION_ALREADY_TAKEN'),
     );
     expect(graded.starter.open).not.toHaveBeenCalled();
+  });
+
+  it('refuses users who are not on the roster of a registration-only session', async () => {
+    const { service, prisma, starter } = buildService(
+      session({ requireRegistration: true }),
+    );
+    prisma.examSessionRegistration.findUnique.mockResolvedValue(null);
+    await expect(service.join(USER, '123456', NOW)).rejects.toEqual(
+      new ForbiddenException('EXAM_NOT_REGISTERED'),
+    );
+    expect(starter.open).not.toHaveBeenCalled();
+  });
+
+  it('lets a registered user in and skips the roster check on open sessions', async () => {
+    const restricted = buildService(session({ requireRegistration: true }));
+    await expect(restricted.service.join(USER, '123456', NOW)).resolves.toEqual(
+      { id: 99 },
+    );
+    const open = buildService(session({ requireRegistration: false }));
+    await open.service.join(USER, '123456', NOW);
+    expect(
+      open.prisma.examSessionRegistration.findUnique,
+    ).not.toHaveBeenCalled();
   });
 });

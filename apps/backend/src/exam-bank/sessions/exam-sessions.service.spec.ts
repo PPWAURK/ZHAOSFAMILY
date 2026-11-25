@@ -63,17 +63,26 @@ function buildService(sufficient = true) {
         { sessionId: 3, status: 'SUBMITTED', _count: { _all: 5 } },
       ]),
     },
+    examSessionRegistration: {
+      groupBy: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+    },
   };
   const templates = {
     isFillable: jest.fn().mockResolvedValue(sufficient),
   };
   const closer = { close: jest.fn().mockResolvedValue(undefined) };
+  const registrations = {
+    addForNewSession: jest.fn().mockResolvedValue(2),
+    notifyOpen: jest.fn().mockResolvedValue(undefined),
+  };
   const service = new ExamSessionsService(
     prisma as never,
     templates as never,
     closer as never,
+    registrations as never,
   );
-  return { service, prisma, templates, closer };
+  return { service, prisma, templates, closer, registrations };
 }
 
 describe('ExamSessionsService', () => {
@@ -281,5 +290,39 @@ describe('ExamSessionCloserService', () => {
         where: { status: { in: ['SCHEDULED', 'OPEN'] }, endsAt: { lt: NOW } },
       }) as unknown,
     );
+  });
+
+  it('puts the roster on a new session and requires registration', async () => {
+    const { service, prisma, registrations } = buildService();
+    const view = await service.create(EXAMINER, {
+      templateId: 4,
+      registrationUserIds: [11, 12],
+    });
+    const data = callArg<{ data: Record<string, unknown> }>(
+      prisma.examSession.create,
+    ).data;
+    expect(data.requireRegistration).toBe(true);
+    expect(registrations.addForNewSession).toHaveBeenCalledWith(
+      EXAMINER,
+      expect.anything(),
+      [11, 12],
+    );
+    expect(view.registeredCount).toBe(2);
+  });
+
+  it('leaves registration off when no roster is given', async () => {
+    const { service, prisma, registrations } = buildService();
+    await service.create(EXAMINER, { templateId: 4 });
+    const data = callArg<{ data: Record<string, unknown> }>(
+      prisma.examSession.create,
+    ).data;
+    expect(data.requireRegistration).toBe(false);
+    expect(registrations.addForNewSession).not.toHaveBeenCalled();
+  });
+
+  it('notifies the roster when the examiner opens the session', async () => {
+    const { service, registrations } = buildService();
+    await service.open(EXAMINER, 3);
+    expect(registrations.notifyOpen).toHaveBeenCalledTimes(1);
   });
 });

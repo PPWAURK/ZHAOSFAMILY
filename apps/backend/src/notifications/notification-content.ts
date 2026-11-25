@@ -271,3 +271,61 @@ export function caseShareCommentNotification(
     data: { type: 'case-share', caseShareId: String(caseShareId) },
   };
 }
+
+const EXAM_REGISTRATION: Record<
+  NotificationLanguage,
+  (examTitle: string) => LocalizedText
+> = {
+  zh: (examTitle) => ({
+    title: '你被安排了一场考试',
+    body: `考官已将你加入《${examTitle}》的考生名单，开考时请向考官获取口令。`,
+  }),
+  en: (examTitle) => ({
+    title: 'You have been scheduled for an exam',
+    body: `The examiner added you to "${examTitle}". Ask the examiner for the code when it starts.`,
+  }),
+  fr: (examTitle) => ({
+    title: 'Un examen vous a été attribué',
+    body: `L'examinateur vous a inscrit à « ${examTitle} ». Demandez-lui le code au moment du début.`,
+  }),
+};
+
+export function examRegistrationNotification(
+  language: string | null | undefined,
+  sessionId: number,
+  examTitle: string,
+): NotificationPayload {
+  return {
+    ...EXAM_REGISTRATION[normalizeLanguage(language)](examTitle),
+    data: { type: 'exam-registration', sessionId: String(sessionId) },
+  };
+}
+
+const EXAM_SESSION_OPEN: Record<
+  NotificationLanguage,
+  (examTitle: string) => LocalizedText
+> = {
+  zh: (examTitle) => ({
+    title: '考试开始了',
+    body: `《${examTitle}》已开考，请向考官获取口令后进入考场。`,
+  }),
+  en: (examTitle) => ({
+    title: 'Your exam is open',
+    body: `"${examTitle}" has started. Get the code from the examiner to join.`,
+  }),
+  fr: (examTitle) => ({
+    title: "L'examen a commencé",
+    body: `« ${examTitle} » est ouvert. Demandez le code à l'examinateur pour entrer.`,
+  }),
+};
+
+export function examSessionOpenNotification(
+  language: string | null | undefined,
+  sessionId: number,
+  examTitle: string,
+): NotificationPayload {
+  return {
+    ...EXAM_SESSION_OPEN[normalizeLanguage(language)](examTitle),
+    data: { type: 'exam-session-open', sessionId: String(sessionId) },
+  };
+}

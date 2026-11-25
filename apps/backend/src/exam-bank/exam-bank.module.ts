@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { MediaModule } from '../media/media.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ExamAttemptExpiryService } from './attempts/exam-attempt-expiry.service';
@@ -33,6 +34,7 @@ import { ExamResultsController } from './results/exam-results.controller';
 import { ExamResultsService } from './results/exam-results.service';
 import { ExamSessionCloserService } from './sessions/exam-session-closer.service';
 import { ExamSessionJoinService } from './sessions/exam-session-join.service';
+import { ExamSessionRegistrationsService } from './sessions/exam-session-registrations.service';
 import { ExamSessionsController } from './sessions/exam-sessions.controller';
 import { ExamSessionsService } from './sessions/exam-sessions.service';
 import { ExamTemplatesController } from './templates/exam-templates.controller';
@@ -40,7 +42,7 @@ import { ExamTemplatesService } from './templates/exam-templates.service';
 import { ExamWorkerService } from './worker/exam-worker.service';
 
 @Module({
-  imports: [AuthModule, MediaModule, PrismaModule],
+  imports: [AuthModule, MediaModule, PrismaModule, NotificationsModule],
   controllers: [
     KnowledgeMaterialsController,
     GenerationJobsController,
@@ -73,6 +75,7 @@ import { ExamWorkerService } from './worker/exam-worker.service';
     ExamBlueprintService,
     ExamAttemptStarterService,
     ExamSessionCloserService,
+    ExamSessionRegistrationsService,
     ExamSessionsService,
     ExamSessionJoinService,
     ExamAttemptsService,
