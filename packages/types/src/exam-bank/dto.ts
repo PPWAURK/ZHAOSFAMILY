@@ -92,6 +92,15 @@ export type CreateExamSessionInput = {
   label?: string;
   startsAt?: string;
   endsAt?: string;
+  requireRegistration?: boolean;
+  registrationUserIds?: number[];
+};
+
+export type ExamSessionCandidateQuery = {
+  restaurantId?: number;
+  jobRole?: string;
+  q?: string;
+  sessionId?: number;
 };
 
 export type ExamAnswersInput = { answers: ExamAnswer[] };
