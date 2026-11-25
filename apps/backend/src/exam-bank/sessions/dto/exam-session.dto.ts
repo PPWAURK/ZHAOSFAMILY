@@ -1,4 +1,7 @@
 import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
   IsDateString,
   IsInt,
   IsOptional,
@@ -23,6 +26,17 @@ export class CreateExamSessionDto {
   @IsOptional()
   @IsDateString({}, { message: 'EXAM_SESSION_WINDOW_INVALID' })
   endsAt?: string;
+
+  /** Only users on the roster may join with the code. */
+  @IsOptional()
+  @IsBoolean({ message: 'EXAM_SESSION_REGISTRATION_INVALID' })
+  requireRegistration?: boolean;
+
+  @IsOptional()
+  @IsArray({ message: 'EXAM_REGISTRATION_USERS_INVALID' })
+  @ArrayMaxSize(200, { message: 'EXAM_REGISTRATION_USERS_INVALID' })
+  @IsInt({ each: true, message: 'EXAM_REGISTRATION_USERS_INVALID' })
+  registrationUserIds?: number[];
 }
 
 export class JoinExamSessionDto {
