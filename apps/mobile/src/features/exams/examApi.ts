@@ -3,6 +3,7 @@ import type {
   ExamAttempt,
   ExamCard,
   MyExamAttempt,
+  MyExamSession,
   SubmitExamAnswersInput,
 } from "@zhao/types";
 
@@ -58,4 +59,9 @@ export function startExamSection(attemptId: number, sectionIndex: number): Promi
 /** Enter the examiner's 6-digit code to start or resume that session's paper. */
 export function joinExamSession(code: string): Promise<ExamAttempt> {
   return mobileApiClient.post<ExamAttempt>("/exams/sessions/join", { code });
+}
+
+/** Sessions the examiner registered me for that have not ended. */
+export function fetchMyExamSessions(): Promise<MyExamSession[]> {
+  return mobileApiClient.get<MyExamSession[]>("/exams/sessions/mine");
 }
