@@ -7,6 +7,8 @@ import type {
   InventoryMovement,
   InventoryMovementApiRecord,
   InventoryMovementFilters,
+  InventoryRecordFilters,
+  InventoryRecordsResponse,
 } from "@/features/inventory/types/inventory";
 
 function normalizeLine(raw: InventoryApiRecord | null): InventoryLine | null {
@@ -39,6 +41,8 @@ function normalizeMovement(
     source: raw.source || "manual",
     sourceId: raw.sourceId ?? "",
     userId: raw.userId ?? null,
+    restaurantId: isDefined(raw.restaurantId) ? Number(raw.restaurantId) : null,
+    occurredAt: raw.occurredAt ?? raw.createdAt,
     createdAt: raw.createdAt,
   };
 }
@@ -71,6 +75,8 @@ export async function createMovement({
   reason,
   source,
   sourceId,
+  occurredOn,
+  restaurantId,
 }: CreateInventoryMovementInput): Promise<InventoryMovement | null> {
   const body: Record<string, unknown> = {
     productId: Number(productId),
@@ -79,9 +85,31 @@ export async function createMovement({
   if (reason !== undefined && reason !== "") body.reason = reason;
   if (source !== undefined) body.source = source;
   if (sourceId !== undefined && sourceId !== "") body.sourceId = sourceId;
+  if (occurredOn) body.occurredOn = occurredOn;
+  if (restaurantId !== undefined && restaurantId !== "") {
+    body.restaurantId = Number(restaurantId);
+  }
   const data = await apiClient.post<InventoryMovementApiRecord>(
     "/inventory/movements",
     body,
   );
   return normalizeMovement(data);
+}
+
+export async function fetchRecords({
+  month,
+  supplierIds,
+  restaurantId,
+}: InventoryRecordFilters): Promise<InventoryRecordsResponse> {
+  const params = new URLSearchParams();
+  params.set("month", month);
+  params.set("supplierIds", supplierIds.join(","));
+  if (restaurantId) params.set("restaurantId", restaurantId);
+  const data = await apiClient.get<InventoryRecordsResponse>(
+    `/inventory/records?${params.toString()}`,
+  );
+  return {
+    month: data?.month ?? month,
+    records: Array.isArray(data?.records) ? data.records : [],
+  };
 }

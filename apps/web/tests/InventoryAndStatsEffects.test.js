@@ -2,7 +2,12 @@ import React from "react";
 import ReactTestRenderer from "react-test-renderer";
 import InventoryPage from "@/features/inventory/pages/InventoryPage";
 import OrderStatsPage from "@/features/order-history/pages/OrderStatsPage";
-import { fetchInventory, fetchMovements } from "@/features/inventory/services/inventoryApi";
+import {
+  fetchInventory,
+  fetchMovements,
+  fetchRecords,
+} from "@/features/inventory/services/inventoryApi";
+import { fetchRestaurants } from "@/features/stores/services/restaurantsApi";
 import { fetchProductOrderStats } from "@/features/orders/services/ordersApi";
 
 jest.mock("motion/react", () => {
@@ -44,6 +49,11 @@ jest.mock("@/features/inventory/services/inventoryApi", () => ({
   createMovement: jest.fn(),
   fetchInventory: jest.fn(),
   fetchMovements: jest.fn(),
+  fetchRecords: jest.fn(),
+}));
+
+jest.mock("@/features/stores/services/restaurantsApi", () => ({
+  fetchRestaurants: jest.fn(),
 }));
 
 jest.mock("@/features/orders/services/ordersApi", () => ({
@@ -54,6 +64,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   fetchInventory.mockResolvedValue([]);
   fetchMovements.mockResolvedValue([]);
+  fetchRecords.mockResolvedValue({ month: "2026-11", records: [] });
+  fetchRestaurants.mockResolvedValue([]);
   fetchProductOrderStats.mockRejectedValue(new Error("offline"));
 });
 
