@@ -10,6 +10,7 @@
     "./access/nav-visibility": "./src/access/nav-visibility.ts",
     "./case-quantity": "./src/case-quantity.ts",
     "./env": "./src/env.ts",
+    "./exam": "./src/exam.ts",
     "./strings": "./src/strings.ts"
   },
   "scripts": {
