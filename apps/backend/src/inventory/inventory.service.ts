@@ -3,90 +3,75 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { InventoryMovement } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateMovementDto } from './dto/create-movement.dto';
+import { fixMojibake } from './inventory-text';
+import type {
+  InventoryLineItem,
+  InventoryMovementItem,
+} from './inventory.types';
 
-export type InventoryLineItem = {
-  id: string;
-  supplierId: number;
-  reference: string | null;
-  category: string;
-  nameCn: string;
-  designationFr: string | null;
-  image: string | null;
-  unit: string | null;
-  specification: string | null;
-  stock: number;
-};
+export type {
+  InventoryLineItem,
+  InventoryMovementItem,
+} from './inventory.types';
 
-export type InventoryMovementItem = {
-  id: string;
-  productId: string;
-  productNameCn: string;
-  productDesignationFr: string | null;
-  delta: number;
-  reason: string | null;
-  source: string;
-  sourceId: string | null;
-  userId: number | null;
-  createdAt: string;
-};
+const PARIS_TIME_ZONE = 'Europe/Paris';
+const DEFAULT_MOVEMENTS_LIMIT = 50;
 
-// Maps Windows-1252 special characters back to their source byte (legacy mojibake fix).
-const CP1252_REVERSE: Record<number, number> = {
-  0x20ac: 0x80,
-  0x201a: 0x82,
-  0x0192: 0x83,
-  0x201e: 0x84,
-  0x2026: 0x85,
-  0x2020: 0x86,
-  0x2021: 0x87,
-  0x02c6: 0x88,
-  0x2030: 0x89,
-  0x0160: 0x8a,
-  0x2039: 0x8b,
-  0x0152: 0x8c,
-  0x017d: 0x8e,
-  0x2018: 0x91,
-  0x2019: 0x92,
-  0x201c: 0x93,
-  0x201d: 0x94,
-  0x2022: 0x95,
-  0x2013: 0x96,
-  0x2014: 0x97,
-  0x02dc: 0x98,
-  0x2122: 0x99,
-  0x0161: 0x9a,
-  0x203a: 0x9b,
-  0x0153: 0x9c,
-  0x017e: 0x9e,
-  0x0178: 0x9f,
-};
+type ProductNames = { nameCn: string; designationFr: string | null };
 
-function fixMojibake(value: string): string;
-function fixMojibake(value: string | null): string | null;
-function fixMojibake(value: string | null): string | null {
-  if (value === null || value === '') return value;
-
-  if (containsCjk(value)) {
-    return value;
-  }
-
-  const bytes = new Uint8Array(value.length);
-  for (let i = 0; i < value.length; i++) {
-    const code = value.charCodeAt(i);
-    const mapped = CP1252_REVERSE[code];
-    bytes[i] = mapped !== undefined ? mapped : code & 0xff;
-  }
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    return value;
-  }
+/** Today's date in Paris as YYYY-MM-DD. */
+export function getParisToday(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: PARIS_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
 }
 
-function containsCjk(value: string): boolean {
-  return /[\u3400-\u9FFF]/.test(value);
+/**
+ * A back-dated business day is stored at 12:00 UTC so it stays on the same
+ * calendar day in Paris (UTC+1/+2) and inside that day's month range.
+ */
+export function resolveOccurredAt(
+  occurredOn: string | undefined,
+  now: Date = new Date(),
+): Date {
+  if (!occurredOn) return now;
+  if (occurredOn > getParisToday(now)) {
+    throw new BadRequestException('OCCURRED_ON_IN_FUTURE');
+  }
+  const date = new Date(`${occurredOn}T12:00:00.000Z`);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== occurredOn
+  ) {
+    throw new BadRequestException('OCCURRED_ON_INVALID');
+  }
+  return date;
+}
+
+function toMovementItem(
+  row: InventoryMovement,
+  product: ProductNames | null,
+): InventoryMovementItem {
+  return {
+    id: row.id.toString(),
+    productId: row.productId.toString(),
+    productNameCn: fixMojibake(product?.nameCn ?? ''),
+    productDesignationFr: fixMojibake(product?.designationFr ?? null),
+    delta: row.delta,
+    reason: fixMojibake(row.reason),
+    source: row.source,
+    sourceId: row.sourceId,
+    userId: row.userId,
+    restaurantId: row.restaurantId,
+    occurredAt: row.occurredAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
 @Injectable()
@@ -152,72 +137,66 @@ export class InventoryService {
       where.product = { supplierId: options.supplierId };
     }
 
-    const limit = options.limit ?? 50;
-
     const rows = await this.prismaService.inventoryMovement.findMany({
       where,
       include: {
-        product: {
-          select: {
-            nameCn: true,
-            designationFr: true,
-          },
-        },
+        product: { select: { nameCn: true, designationFr: true } },
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
+      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+      take: options.limit ?? DEFAULT_MOVEMENTS_LIMIT,
     });
 
-    return rows.map((row) => ({
-      id: row.id.toString(),
-      productId: row.productId.toString(),
-      productNameCn: fixMojibake(row.product?.nameCn ?? ''),
-      productDesignationFr: fixMojibake(row.product?.designationFr ?? null),
-      delta: row.delta,
-      reason: fixMojibake(row.reason),
-      source: row.source,
-      sourceId: row.sourceId,
-      userId: row.userId,
-      createdAt: row.createdAt.toISOString(),
-    }));
+    return rows.map((row) => toMovementItem(row, row.product));
   }
 
-  async createMovement(dto: CreateMovementDto): Promise<InventoryMovementItem> {
+  async createMovement(
+    dto: CreateMovementDto,
+    actorUserId: number,
+  ): Promise<InventoryMovementItem> {
     if (dto.delta === 0) {
       throw new BadRequestException('DELTA_MUST_BE_NON_ZERO');
     }
+    if (dto.restaurantId !== undefined && dto.delta > 0) {
+      throw new BadRequestException('RESTAURANT_ONLY_FOR_OUTBOUND');
+    }
+    const occurredAt = resolveOccurredAt(dto.occurredOn);
 
     const productId = BigInt(dto.productId);
     const product = await this.prismaService.product.findUnique({
       where: { id: productId },
       select: { id: true, nameCn: true, designationFr: true },
     });
-
     if (!product) {
       throw new NotFoundException('PRODUCT_NOT_FOUND');
     }
+    await this.assertRestaurantExists(dto.restaurantId);
 
     const created = await this.prismaService.inventoryMovement.create({
       data: {
         productId,
         delta: dto.delta,
-        reason: dto.reason ?? null,
+        reason: dto.reason?.trim() || null,
         source: dto.source ?? 'manual',
         sourceId: dto.sourceId ?? null,
+        userId: actorUserId,
+        restaurantId: dto.restaurantId ?? null,
+        occurredAt,
       },
     });
 
-    return {
-      id: created.id.toString(),
-      productId: created.productId.toString(),
-      productNameCn: fixMojibake(product.nameCn),
-      productDesignationFr: fixMojibake(product.designationFr),
-      delta: created.delta,
-      reason: fixMojibake(created.reason),
-      source: created.source,
-      sourceId: created.sourceId,
-      userId: created.userId,
-      createdAt: created.createdAt.toISOString(),
-    };
+    return toMovementItem(created, product);
+  }
+
+  private async assertRestaurantExists(
+    restaurantId: number | undefined,
+  ): Promise<void> {
+    if (restaurantId === undefined) return;
+    const restaurant = await this.prismaService.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { id: true },
+    });
+    if (!restaurant) {
+      throw new NotFoundException('RESTAURANT_NOT_FOUND');
+    }
   }
 }

@@ -221,6 +221,7 @@ model Restaurant {
   waitingQueueEntries WaitingQueueEntry[]
   supplierAvailabilities SupplierRestaurantAvailability[]
   examAttempts        ExamAttempt[]
+  inventoryMovements  InventoryMovement[]
 
   @@map("restaurants")
 }
@@ -317,12 +318,19 @@ model InventoryMovement {
   source    String   @default("manual") @db.VarChar(50)
   sourceId  String?  @map("source_id") @db.VarChar(100)
   userId    Int?     @map("user_id")
+  // Business date of the movement (may be back-dated); month filters/exports use it.
+  occurredAt   DateTime @default(now()) @map("occurred_at") @db.Timestamp(0)
+  // Optional destination store for manual outbound movements.
+  restaurantId Int?     @map("restaurant_id")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(0)
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
 
   @@index([productId])
   @@index([createdAt])
+  @@index([occurredAt])
+  @@index([restaurantId])
   @@map("inventory_movements")
 }
 
