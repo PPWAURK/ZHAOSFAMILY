@@ -90,6 +90,11 @@ export const DASHBOARD_MORE_NAV_GROUPS: DashboardMenuGroup[] = [
         label: { zh: "培训记录", en: "Training records", fr: "Historique formation" },
       },
       {
+        id: "online-exams",
+        icon: "考",
+        label: { zh: "在线考试", en: "Online exams", fr: "Examens en ligne" },
+      },
+      {
         id: "my-case-shares",
         icon: "案",
         label: { zh: "我的案例", en: "My cases", fr: "Mes cas" },

@@ -27,6 +27,12 @@ export const TRAINING_TITLE_PERMISSIONS = {
   manage: 'training.title.manage',
 } as const;
 
+export const EXAM_PERMISSIONS = {
+  manageBank: 'exam.bank.manage',
+  viewResults: 'exam.result.view',
+  manageSessions: 'exam.session.manage',
+} as const;
+
 export const SCREEN_SECURITY_PERMISSIONS = {
   audit: 'screen_security.audit',
   delete: 'screen_security.delete',

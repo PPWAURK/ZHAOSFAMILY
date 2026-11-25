@@ -1,0 +1,167 @@
+import type { ExamUiLanguage } from "./exam-languages";
+
+type ErrorCopy = Record<string, string>;
+
+const ZH: ErrorCopy = {
+  EXAM_AI_NOT_CONFIGURED: "未配置 Claude API Key(ANTHROPIC_API_KEY)。",
+  EXAM_EMBEDDING_NOT_CONFIGURED: "未配置 Voyage API Key(VOYAGE_API_KEY)。",
+  EXAM_GENERATION_JOB_ACTIVE: "已有生成任务在进行,请等待完成或取消后再试。",
+  EXAM_MATERIALS_NOT_READY: "所选材料尚未处理完成。",
+  EXAM_GENERATION_COUNT_TOO_HIGH: "题目数量超过单次任务上限。",
+  EXAM_GENERATION_NOTHING_TO_PLAN: "没有需要生成的题目:材料内容太少,或已达到目标题数。",
+  KB_FILE_TYPE_NOT_ALLOWED: "只支持 PDF、DOCX、TXT 文件。",
+  KB_FILE_TOO_LARGE: "文件过大。",
+  KB_MATERIAL_IN_USE: "该材料正被生成任务使用,暂时不能删除。",
+  KB_MATERIAL_ALREADY_QUEUED: "该材料已在处理队列中。",
+  EXAM_POOL_INSUFFICIENT: "已审核通过的题目不足,无法组卷。",
+  EXAM_TEMPLATE_EMPTY: "试卷至少需要 1 道题。",
+  EXAM_TEMPLATE_TITLE_REQUIRED: "请填写中法文标题。",
+  EXAM_TEMPLATE_HAS_ATTEMPTS: "已有考生作答,不能删除,请改为停用。",
+  EXAM_NO_ATTEMPTS_LEFT: "答题次数已用完。",
+  EXAM_ATTEMPT_EXPIRED: "考试时间已到。",
+  EXAM_ATTEMPT_ALREADY_SUBMITTED: "这份试卷已经交卷。",
+  EXAM_CATEGORY_CODE_TAKEN: "分类代码已存在。",
+  INSUFFICIENT_PERMISSIONS: "没有权限。",
+  EXAM_SESSION_NOT_FOUND: "编号不存在或已失效，请向考官确认。",
+  EXAM_SESSION_NOT_OPEN: "考试还没开始，请等考官开始后再输入编号。",
+  EXAM_SESSION_ENDED: "这场考试已经结束。",
+  EXAM_SESSION_ALREADY_TAKEN: "你已经参加过这场考试。",
+  EXAM_SESSION_TOO_MANY_TRIES: "编号输错次数太多，请 10 分钟后再试。",
+  EXAM_SESSION_CODE_INVALID: "请输入 6 位数字编号。",
+  EXAM_SESSION_WINDOW_INVALID: "时间设置不正确：结束时间要晚于现在和开始时间。",
+  EXAM_SESSION_FORBIDDEN: "这不是你开的场次。",
+  EXAM_SESSION_ALREADY_CLOSED: "场次已经结束。",
+  EXAM_SESSION_NOT_SCHEDULED: "场次已经开始或结束。",
+  EXAM_SECTION_ON_BREAK: "现在是场间休息，下一场开始后才能作答或交卷。",
+  EXAM_SECTION_INVALID: "场次不对，请刷新页面后重试。",
+  EXAM_BLUEPRINT_SECTION_COUNT_INVALID: "分场组卷需要 1 到 4 场。",
+  EXAM_BLUEPRINT_SECTION_TITLE_REQUIRED: "每一场都要填写中法文标题。",
+  EXAM_BLUEPRINT_SECTION_EMPTY: "每一场至少要选一个文件。",
+  EXAM_BLUEPRINT_ITEM_COUNT_INVALID: "每个文件的题数至少为 1。",
+  EXAM_BLUEPRINT_DIFFICULTY_MISMATCH: "固定难度的三个数加起来要等于该文件的题数。",
+  EXAM_BLUEPRINT_TYPE_MISMATCH: "每一场的单选、多选、判断题数合计要等于该场各文件题数之和。",
+  EXAM_BLUEPRINT_DUPLICATE_MATERIAL: "同一个文件只能在一行里出现(不能跨场重复)。",
+  EXAM_BLUEPRINT_TOO_MANY_ITEMS: "文件行数太多(最多 120 行)。",
+  EXAM_BLUEPRINT_DUPLICATE_RULE: "同一个分类只能设一条否决规则。",
+  EXAM_BLUEPRINT_MATERIAL_INVALID: "有文件没有选择或已被删除。",
+  EXAM_BLUEPRINT_RULE_INVALID: "否决规则的分类没有选择或已被删除。",
+  EXAM_BLUEPRINT_BREAK_INVALID: "场间休息要在 0 到 120 分钟之间。",
+  EXAM_TEMPLATE_TIME_LIMIT_INVALID: "限时设置不正确。",
+};
+
+const EN: ErrorCopy = {
+  EXAM_AI_NOT_CONFIGURED: "Claude API key (ANTHROPIC_API_KEY) is not configured.",
+  EXAM_EMBEDDING_NOT_CONFIGURED: "Voyage API key (VOYAGE_API_KEY) is not configured.",
+  EXAM_GENERATION_JOB_ACTIVE: "A generation job is already running. Wait for it or cancel it.",
+  EXAM_MATERIALS_NOT_READY: "Some selected materials are not processed yet.",
+  EXAM_GENERATION_COUNT_TOO_HIGH: "Too many questions for one job.",
+  EXAM_GENERATION_NOTHING_TO_PLAN:
+    "Nothing to generate: the material is too short or its targets are already met.",
+  KB_FILE_TYPE_NOT_ALLOWED: "Only PDF, DOCX and TXT files are supported.",
+  KB_FILE_TOO_LARGE: "File is too large.",
+  KB_MATERIAL_IN_USE: "This material is used by a running job and cannot be deleted yet.",
+  KB_MATERIAL_ALREADY_QUEUED: "This material is already queued.",
+  EXAM_POOL_INSUFFICIENT: "Not enough approved questions to build this exam.",
+  EXAM_TEMPLATE_EMPTY: "An exam needs at least one question.",
+  EXAM_TEMPLATE_TITLE_REQUIRED: "Chinese and French titles are required.",
+  EXAM_TEMPLATE_HAS_ATTEMPTS: "This exam already has attempts. Deactivate it instead.",
+  EXAM_NO_ATTEMPTS_LEFT: "No attempts left.",
+  EXAM_ATTEMPT_EXPIRED: "Time is up.",
+  EXAM_ATTEMPT_ALREADY_SUBMITTED: "This exam was already submitted.",
+  EXAM_CATEGORY_CODE_TAKEN: "This category code already exists.",
+  INSUFFICIENT_PERMISSIONS: "Permission denied.",
+  EXAM_SESSION_NOT_FOUND: "Unknown or expired code. Check it with your examiner.",
+  EXAM_SESSION_NOT_OPEN: "The exam has not started yet. Wait for the examiner.",
+  EXAM_SESSION_ENDED: "This exam session has ended.",
+  EXAM_SESSION_ALREADY_TAKEN: "You already took this exam session.",
+  EXAM_SESSION_TOO_MANY_TRIES: "Too many wrong codes. Try again in 10 minutes.",
+  EXAM_SESSION_CODE_INVALID: "Enter the 6-digit code.",
+  EXAM_SESSION_WINDOW_INVALID: "Invalid times: the end must be after now and after the start.",
+  EXAM_SESSION_FORBIDDEN: "This session belongs to another examiner.",
+  EXAM_SESSION_ALREADY_CLOSED: "This session has already ended.",
+  EXAM_SESSION_NOT_SCHEDULED: "This session has already started or ended.",
+  EXAM_SECTION_ON_BREAK: "You are on the break: answer and submit once the next part starts.",
+  EXAM_SECTION_INVALID: "Wrong exam part. Reload the page and try again.",
+  EXAM_BLUEPRINT_SECTION_COUNT_INVALID: "A sectioned exam needs 1 to 4 parts.",
+  EXAM_BLUEPRINT_SECTION_TITLE_REQUIRED: "Every part needs a Chinese and a French title.",
+  EXAM_BLUEPRINT_SECTION_EMPTY: "Every part needs at least one file.",
+  EXAM_BLUEPRINT_ITEM_COUNT_INVALID: "Each file needs at least 1 question.",
+  EXAM_BLUEPRINT_DIFFICULTY_MISMATCH:
+    "A fixed difficulty split must add up to the file's question count.",
+  EXAM_BLUEPRINT_TYPE_MISMATCH:
+    "In each part, single + multiple + true/false must equal the sum of its files.",
+  EXAM_BLUEPRINT_DUPLICATE_MATERIAL: "A file can be used in one row only (not in two parts).",
+  EXAM_BLUEPRINT_TOO_MANY_ITEMS: "Too many file rows (120 at most).",
+  EXAM_BLUEPRINT_DUPLICATE_RULE: "Only one veto rule per category.",
+  EXAM_BLUEPRINT_MATERIAL_INVALID: "A file is not chosen or no longer exists.",
+  EXAM_BLUEPRINT_RULE_INVALID: "A veto rule has no category or its category no longer exists.",
+  EXAM_BLUEPRINT_BREAK_INVALID: "The break must be between 0 and 120 minutes.",
+  EXAM_TEMPLATE_TIME_LIMIT_INVALID: "Invalid time limit.",
+};
+
+const FR: ErrorCopy = {
+  EXAM_AI_NOT_CONFIGURED: "La clé API Claude (ANTHROPIC_API_KEY) n'est pas configurée.",
+  EXAM_EMBEDDING_NOT_CONFIGURED: "La clé API Voyage (VOYAGE_API_KEY) n'est pas configurée.",
+  EXAM_GENERATION_JOB_ACTIVE: "Une génération est déjà en cours. Attendez-la ou annulez-la.",
+  EXAM_MATERIALS_NOT_READY: "Certains documents ne sont pas encore traités.",
+  EXAM_GENERATION_COUNT_TOO_HIGH: "Trop de questions pour une seule génération.",
+  EXAM_GENERATION_NOTHING_TO_PLAN:
+    "Rien à générer : contenu trop court ou objectifs déjà atteints.",
+  KB_FILE_TYPE_NOT_ALLOWED: "Seuls les fichiers PDF, DOCX et TXT sont acceptés.",
+  KB_FILE_TOO_LARGE: "Fichier trop volumineux.",
+  KB_MATERIAL_IN_USE: "Ce document est utilisé par une génération en cours.",
+  KB_MATERIAL_ALREADY_QUEUED: "Ce document est déjà en file d'attente.",
+  EXAM_POOL_INSUFFICIENT: "Pas assez de questions validées pour cet examen.",
+  EXAM_TEMPLATE_EMPTY: "Un examen doit contenir au moins une question.",
+  EXAM_TEMPLATE_TITLE_REQUIRED: "Les titres chinois et français sont obligatoires.",
+  EXAM_TEMPLATE_HAS_ATTEMPTS: "Cet examen a déjà des passages. Désactivez-le plutôt.",
+  EXAM_NO_ATTEMPTS_LEFT: "Plus aucune tentative disponible.",
+  EXAM_ATTEMPT_EXPIRED: "Le temps est écoulé.",
+  EXAM_ATTEMPT_ALREADY_SUBMITTED: "Cet examen a déjà été rendu.",
+  EXAM_CATEGORY_CODE_TAKEN: "Ce code de catégorie existe déjà.",
+  INSUFFICIENT_PERMISSIONS: "Accès refusé.",
+  EXAM_SESSION_NOT_FOUND: "Code inconnu ou expiré. Vérifiez-le auprès de l'examinateur.",
+  EXAM_SESSION_NOT_OPEN: "L'examen n'a pas encore commencé. Attendez l'examinateur.",
+  EXAM_SESSION_ENDED: "Cette session est terminée.",
+  EXAM_SESSION_ALREADY_TAKEN: "Vous avez déjà passé cette session.",
+  EXAM_SESSION_TOO_MANY_TRIES: "Trop de codes erronés. Réessayez dans 10 minutes.",
+  EXAM_SESSION_CODE_INVALID: "Saisissez le code à 6 chiffres.",
+  EXAM_SESSION_WINDOW_INVALID:
+    "Horaires invalides : la fin doit être après maintenant et après le début.",
+  EXAM_SESSION_FORBIDDEN: "Cette session appartient à un autre examinateur.",
+  EXAM_SESSION_ALREADY_CLOSED: "Cette session est déjà terminée.",
+  EXAM_SESSION_NOT_SCHEDULED: "Cette session a déjà commencé ou est terminée.",
+  EXAM_SECTION_ON_BREAK:
+    "C'est la pause : répondez et rendez une fois la partie suivante commencée.",
+  EXAM_SECTION_INVALID: "Mauvaise partie d'examen. Rechargez la page et réessayez.",
+  EXAM_BLUEPRINT_SECTION_COUNT_INVALID: "Un examen en parties doit en compter 1 à 4.",
+  EXAM_BLUEPRINT_SECTION_TITLE_REQUIRED: "Chaque partie doit avoir un titre chinois et français.",
+  EXAM_BLUEPRINT_SECTION_EMPTY: "Chaque partie doit contenir au moins un document.",
+  EXAM_BLUEPRINT_ITEM_COUNT_INVALID: "Chaque document doit fournir au moins 1 question.",
+  EXAM_BLUEPRINT_DIFFICULTY_MISMATCH:
+    "Une répartition fixe des niveaux doit égaler le nombre de questions du document.",
+  EXAM_BLUEPRINT_TYPE_MISMATCH:
+    "Dans chaque partie, unique + multiple + vrai/faux doit égaler la somme des documents.",
+  EXAM_BLUEPRINT_DUPLICATE_MATERIAL:
+    "Un document ne peut figurer que sur une ligne (pas dans deux parties).",
+  EXAM_BLUEPRINT_TOO_MANY_ITEMS: "Trop de lignes de documents (120 au maximum).",
+  EXAM_BLUEPRINT_DUPLICATE_RULE: "Une seule règle éliminatoire par catégorie.",
+  EXAM_BLUEPRINT_MATERIAL_INVALID: "Un document n'est pas choisi ou n'existe plus.",
+  EXAM_BLUEPRINT_RULE_INVALID:
+    "Une règle éliminatoire n'a pas de catégorie ou celle-ci n'existe plus.",
+  EXAM_BLUEPRINT_BREAK_INVALID: "La pause doit durer entre 0 et 120 minutes.",
+  EXAM_TEMPLATE_TIME_LIMIT_INVALID: "Durée invalide.",
+};
+
+const ERRORS: Record<ExamUiLanguage, ErrorCopy> = { zh: ZH, en: EN, fr: FR };
+const FALLBACK: Record<ExamUiLanguage, string> = {
+  zh: "操作失败,请稍后重试。",
+  en: "Something went wrong. Please try again.",
+  fr: "Une erreur est survenue. Réessayez.",
+};
+
+/** Maps a backend error code (ApiClientError.message) to a user-facing sentence. */
+export function describeExamError(error: unknown, lang: ExamUiLanguage): string {
+  const code = error instanceof Error ? error.message : "";
+  return ERRORS[lang][code] ?? FALLBACK[lang];
+}

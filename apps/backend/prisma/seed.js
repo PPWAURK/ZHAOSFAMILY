@@ -60,6 +60,19 @@ const PERMISSIONS = [
     description: 'Manage training badge definitions and requirements',
   },
   {
+    key: 'exam.bank.manage',
+    description:
+      'Manage the exam knowledge base, question bank and exam templates',
+  },
+  {
+    key: 'exam.result.view',
+    description: 'View and export exam results of all employees',
+  },
+  {
+    key: 'exam.session.manage',
+    description: 'Open proctored exam sessions and follow their participants',
+  },
+  {
     key: 'training.title.manage',
     description: 'Assign and revoke employee training titles',
   },
@@ -1102,7 +1115,15 @@ const ROLES = [
       'training.badge.manage',
       'training.title.manage',
       'recipe.manage',
+      'exam.bank.manage',
+      'exam.result.view',
+      'exam.session.manage',
     ],
+  },
+  {
+    name: 'examiner',
+    description: 'Opens exam sessions with a join code and follows them live',
+    permissions: ['exam.session.manage'],
   },
   {
     name: 'training-viewer',

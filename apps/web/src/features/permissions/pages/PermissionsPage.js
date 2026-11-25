@@ -55,9 +55,29 @@ const ROLE_LABELS = {
     en: "Recruitment notification recipient",
     fr: "Destinataire des notifications de recrutement",
   },
+  examiner: {
+    zh: "考官",
+    en: "Examiner",
+    fr: "Examinateur",
+  },
 };
 
 const PERMISSION_LABELS = {
+  "exam.bank.manage": {
+    zh: "管理题库与试卷",
+    en: "Manage question bank and exams",
+    fr: "Gérer la banque de questions et les examens",
+  },
+  "exam.result.view": {
+    zh: "查看全部考试成绩",
+    en: "View all exam results",
+    fr: "Voir tous les résultats d'examen",
+  },
+  "exam.session.manage": {
+    zh: "开考试场次(考官)",
+    en: "Run exam sessions (examiner)",
+    fr: "Organiser des sessions d'examen (examinateur)",
+  },
   "system.permission.manage": {
     zh: "管理系统权限",
     en: "Manage system permissions",

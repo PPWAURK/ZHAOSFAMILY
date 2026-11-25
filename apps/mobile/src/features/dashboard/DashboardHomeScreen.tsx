@@ -88,6 +88,7 @@ import { ORDER_COPY } from "@/features/orders/orderCopy";
 import { ProfileScreen } from "@/features/profile/ProfileScreen";
 import { RecruitmentModuleScreen } from "@/features/recruitment/RecruitmentModuleScreen";
 import { RecipeModuleScreen } from "@/features/recipes/RecipeModuleScreen";
+import { ExamModuleScreen } from "@/features/exams/ExamModuleScreen";
 import { StoresModuleScreen } from "@/features/stores/StoresModuleScreen";
 import { InvitePartnerScreen } from "@/features/stores/InvitePartnerScreen";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
@@ -299,7 +300,8 @@ function isConnectedDashboardEntry(entryId: string): boolean {
     entryId === "store-grade-ranking" ||
     entryId === "stores" ||
     entryId === "training" ||
-    entryId === "training-records"
+    entryId === "training-records" ||
+    entryId === "online-exams"
   );
 }
 
@@ -421,6 +423,10 @@ export function DashboardHomeScreen({
   );
   const handleProfileDirtyStateChange = useCallback(
     (isDirty: boolean): void => updateEntryDirtyState("profile", isDirty),
+    [updateEntryDirtyState],
+  );
+  const handleExamsDirtyStateChange = useCallback(
+    (isDirty: boolean): void => updateEntryDirtyState("online-exams", isDirty),
     [updateEntryDirtyState],
   );
   const handleRecruitmentDirtyStateChange = useCallback(
@@ -1060,6 +1066,12 @@ export function DashboardHomeScreen({
                       copy={TRAINING_COPY[language]}
                       isActive={entryId === activeEntry}
                       language={language}
+                    />
+                  ) : entryId === "online-exams" ? (
+                    <ExamModuleScreen
+                      isActive={entryId === activeEntry}
+                      language={language}
+                      onDirtyStateChange={handleExamsDirtyStateChange}
                     />
                   ) : (
                     <>

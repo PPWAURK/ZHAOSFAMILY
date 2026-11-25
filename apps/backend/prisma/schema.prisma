@@ -59,6 +59,8 @@ model User {
   caseShareLikes             CaseShareLike[]            @relation("CaseShareLikeUser")
   createdRecipes             Recipe[]                   @relation("RecipeCreatedBy")
   updatedRecipes             Recipe[]                   @relation("RecipeUpdatedBy")
+  examAttempts               ExamAttempt[]
+  examinedSessions           ExamSession[]              @relation("ExamSessionExaminer")
 
   @@index([restaurantId])
   @@index([accountStatus])
@@ -218,6 +220,7 @@ model Restaurant {
   caseShares          CaseShare[]
   waitingQueueEntries WaitingQueueEntry[]
   supplierAvailabilities SupplierRestaurantAvailability[]
+  examAttempts        ExamAttempt[]
 
   @@map("restaurants")
 }
@@ -1174,4 +1177,280 @@ enum LegacyRecruitmentStatus {
   PROCESSED
 
   @@map("legacy_recruitment_requests_status")
+}
+// ---------------------------------------------------------------------------
+// Exam bank: RAG knowledge base, AI-generated question bank, online exams.
+// ---------------------------------------------------------------------------
+
+model ExamKnowledgeMaterial {
+  id               Int       @id @default(autoincrement())
+  title            String    @db.VarChar(200)
+  description      String?   @db.VarChar(1000)
+  bucket           String    @db.VarChar(100)
+  objectKey        String    @unique @map("object_key") @db.VarChar(255)
+  originalName     String    @map("original_name") @db.VarChar(255)
+  mimeType         String    @map("mime_type") @db.VarChar(120)
+  sizeBytes        Int       @map("size_bytes")
+  language         String?   @db.VarChar(10)
+  status           String    @default("PENDING") @db.VarChar(20)
+  errorCode        String?   @map("error_code") @db.VarChar(60)
+  charCount        Int       @default(0) @map("char_count")
+  chunkCount       Int       @default(0) @map("chunk_count")
+  /// Exam category every question generated from this file belongs to.
+  categoryId       Int?      @map("category_id")
+  /// Bank targets per difficulty (记忆 / 理解 / 情景); NULL = no target.
+  targetRecall     Int?      @map("target_recall")
+  targetUnderstand Int?      @map("target_understand")
+  targetScenario   Int?      @map("target_scenario")
+  lockedUntil      DateTime? @map("locked_until")
+  uploadedByUserId Int?      @map("uploaded_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  category  ExamCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  chunks    ExamKnowledgeChunk[]
+  questions ExamQuestion[]
+
+  @@index([status])
+  @@map("exam_knowledge_materials")
+}
+
+model ExamKnowledgeChunk {
+  id             Int      @id @default(autoincrement())
+  materialId     Int      @map("material_id")
+  ordinal        Int
+  content        String   @db.Text
+  tokenEstimate  Int      @map("token_estimate")
+  embedding      Bytes?   @db.Blob
+  embeddingModel String?  @map("embedding_model") @db.VarChar(40)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  material  ExamKnowledgeMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  questions ExamQuestion[]
+
+  @@unique([materialId, ordinal])
+  @@map("exam_knowledge_chunks")
+}
+
+model ExamCategory {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(40)
+  nameZh    String   @map("name_zh") @db.VarChar(100)
+  nameFr    String   @map("name_fr") @db.VarChar(100)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  questions ExamQuestion[]
+  materials ExamKnowledgeMaterial[]
+
+  @@map("exam_categories")
+}
+
+model ExamQuestion {
+  id               Int       @id @default(autoincrement())
+  type             String    @db.VarChar(20)
+  status           String    @default("DRAFT") @db.VarChar(20)
+  origin           String    @default("AI") @db.VarChar(10)
+  difficulty       String    @default("understand") @db.VarChar(10)
+  knowledgePoint   String?   @map("knowledge_point") @db.VarChar(100)
+  categoryId       Int?      @map("category_id")
+  promptZh         String    @map("prompt_zh") @db.VarChar(1000)
+  promptFr         String    @map("prompt_fr") @db.VarChar(1000)
+  options          Json
+  correctKeys      Json      @map("correct_keys")
+  explanationZh    String?   @map("explanation_zh") @db.Text
+  explanationFr    String?   @map("explanation_fr") @db.Text
+  evidence         String?   @db.VarChar(1000)
+  promptEmbedding  Bytes?    @map("prompt_embedding") @db.Blob
+  embeddingModel   String?   @map("embedding_model") @db.VarChar(40)
+  sourceMaterialId Int?      @map("source_material_id")
+  sourceChunkId    Int?      @map("source_chunk_id")
+  generationJobId  Int?      @map("generation_job_id")
+  reviewedByUserId Int?      @map("reviewed_by_user_id")
+  reviewedAt       DateTime? @map("reviewed_at")
+  rejectReason     String?   @map("reject_reason") @db.VarChar(300)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  category       ExamCategory?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  sourceMaterial ExamKnowledgeMaterial? @relation(fields: [sourceMaterialId], references: [id], onDelete: SetNull)
+  sourceChunk    ExamKnowledgeChunk?    @relation(fields: [sourceChunkId], references: [id], onDelete: SetNull)
+  generationJob  ExamGenerationJob?     @relation(fields: [generationJobId], references: [id], onDelete: SetNull)
+
+  @@index([status, type])
+  @@index([status, categoryId])
+  @@index([sourceMaterialId])
+  @@index([sourceChunkId])
+  @@index([generationJobId])
+  @@map("exam_questions")
+}
+
+model ExamGenerationJob {
+  id                Int       @id @default(autoincrement())
+  status            String    @default("PLANNED") @db.VarChar(20)
+  requestedCount    Int       @map("requested_count")
+  plannedCount      Int       @map("planned_count")
+  materialIds       Json      @map("material_ids")
+  typeMix           Json      @map("type_mix")
+  model             String    @db.VarChar(60)
+  effort            String    @db.VarChar(10)
+  /// COUNT: a number of questions over materials · TARGET: fill material targets.
+  mode              String    @default("COUNT") @db.VarChar(10)
+  round             Int       @default(1)
+  currentBatchId    String?   @map("current_batch_id") @db.VarChar(100)
+  totalRequests     Int       @default(0) @map("total_requests")
+  succeededRequests Int       @default(0) @map("succeeded_requests")
+  failedRequests    Int       @default(0) @map("failed_requests")
+  generatedCount    Int       @default(0) @map("generated_count")
+  keptCount         Int       @default(0) @map("kept_count")
+  duplicateCount    Int       @default(0) @map("duplicate_count")
+  invalidCount      Int       @default(0) @map("invalid_count")
+  inputTokens       Int       @default(0) @map("input_tokens")
+  outputTokens      Int       @default(0) @map("output_tokens")
+  errorCode         String?   @map("error_code") @db.VarChar(60)
+  errorMessage      String?   @map("error_message") @db.VarChar(500)
+  lockedUntil       DateTime? @map("locked_until")
+  createdByUserId   Int?      @map("created_by_user_id")
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  requests  ExamGenerationRequest[]
+  questions ExamQuestion[]
+
+  @@index([status])
+  @@map("exam_generation_jobs")
+}
+
+model ExamGenerationRequest {
+  id            Int      @id @default(autoincrement())
+  jobId         Int      @map("job_id")
+  chunkId       Int      @map("chunk_id")
+  round         Int
+  quota         Json
+  variant       Int      @default(0)
+  variantCount  Int      @default(1) @map("variant_count")
+  /// Difficulty every question of this request must have (TARGET jobs).
+  difficulty    String?  @db.VarChar(10)
+  customId      String?  @unique @map("custom_id") @db.VarChar(64)
+  status        String   @default("PENDING") @db.VarChar(20)
+  attempt       Int      @default(1)
+  batchId       String?  @map("batch_id") @db.VarChar(100)
+  errorType     String?  @map("error_type") @db.VarChar(60)
+  producedCount Int      @default(0) @map("produced_count")
+  keptCount     Int      @default(0) @map("kept_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  job ExamGenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, status])
+  @@map("exam_generation_requests")
+}
+
+model ExamTemplate {
+  id               Int      @id @default(autoincrement())
+  titleZh          String   @map("title_zh") @db.VarChar(200)
+  titleFr          String   @map("title_fr") @db.VarChar(200)
+  descriptionZh    String?  @map("description_zh") @db.Text
+  descriptionFr    String?  @map("description_fr") @db.Text
+  singleCount      Int      @default(0) @map("single_count")
+  multipleCount    Int      @default(0) @map("multiple_count")
+  booleanCount     Int      @default(0) @map("boolean_count")
+  categoryIds      Json?    @map("category_ids")
+  materialIds      Json?    @map("material_ids")
+  difficulties     Json?
+  timeLimitMinutes Int?     @map("time_limit_minutes")
+  passingScore     Int      @default(80) @map("passing_score")
+  maxAttempts      Int?     @map("max_attempts")
+  shuffleOptions   Boolean  @default(true) @map("shuffle_options")
+  showExplanations Boolean  @default(true) @map("show_explanations")
+  isActive         Boolean  @default(false) @map("is_active")
+  accessMode       String   @default("LIST") @map("access_mode") @db.VarChar(10)
+  /// Sectioned paper rules (per-file and per-difficulty quotas, veto rules).
+  /// When set it replaces the per-type counts and pool filters above.
+  blueprint        Json?
+  createdByUserId  Int?     @map("created_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  attempts ExamAttempt[]
+  sessions ExamSession[]
+
+  @@index([isActive])
+  @@map("exam_templates")
+}
+
+model ExamAttempt {
+  id           Int       @id @default(autoincrement())
+  templateId   Int       @map("template_id")
+  userId       Int       @map("user_id")
+  restaurantId Int       @map("restaurant_id")
+  status       String    @default("IN_PROGRESS") @db.VarChar(20)
+  sessionId    Int?      @map("session_id")
+  activeKey    String?   @unique @map("active_key") @db.VarChar(40)
+  questionIds  Json      @map("question_ids")
+  snapshot     Json
+  answers      Json?
+  results      Json?
+  totalCount   Int       @map("total_count")
+  correctCount Int?      @map("correct_count")
+  score        Int?
+  passed       Boolean?
+  startedAt    DateTime  @default(now()) @map("started_at")
+  deadlineAt   DateTime? @map("deadline_at")
+  submittedAt  DateTime? @map("submitted_at")
+  /// Current section of a sectioned paper (0 for single-section papers).
+  sectionIndex Int       @default(0) @map("section_index")
+  /// Questions of the current section stay hidden until this moment.
+  breakEndsAt  DateTime? @map("break_ends_at")
+  ruleResults  Json?     @map("rule_results")
+  /// Frozen at start for sectioned papers: section titles/limits, break, veto rules.
+  layout       Json?
+
+  template   ExamTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  session    ExamSession? @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  // One attempt per employee per session; NULL sessionId (self-service exams) is not constrained.
+  @@unique([sessionId, userId])
+  @@index([userId, templateId])
+  @@index([templateId, submittedAt])
+  @@index([restaurantId, submittedAt])
+  @@index([status, deadlineAt])
+  @@map("exam_attempts")
+}
+
+/// A proctored sitting: an examiner opens it, employees join with its 6-digit
+/// code, and closing it (or reaching endsAt) force-submits running attempts.
+model ExamSession {
+  id             Int       @id @default(autoincrement())
+  code           String    @db.VarChar(6)
+  /// Same as code while the session is not CLOSED, NULL afterwards, so a code
+  /// is unique among live sessions and can be reused later.
+  activeCode     String?   @unique @map("active_code") @db.VarChar(6)
+  templateId     Int       @map("template_id")
+  label          String?   @db.VarChar(100)
+  examinerUserId Int       @map("examiner_user_id")
+  status         String    @default("SCHEDULED") @db.VarChar(20)
+  startsAt       DateTime? @map("starts_at")
+  endsAt         DateTime? @map("ends_at")
+  openedAt       DateTime? @map("opened_at")
+  closedAt       DateTime? @map("closed_at")
+  lockedUntil    DateTime? @map("locked_until")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  template ExamTemplate  @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  examiner User          @relation("ExamSessionExaminer", fields: [examinerUserId], references: [id], onDelete: Restrict)
+  attempts ExamAttempt[]
+
+  @@index([examinerUserId, createdAt])
+  @@index([status, endsAt])
+  @@index([templateId])
+  @@map("exam_sessions")
 }

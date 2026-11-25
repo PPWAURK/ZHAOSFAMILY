@@ -44,3 +44,28 @@ svg {
   max-width: 100%;
   height: auto;
 }
+
+@font-face {
+  font-family: "KaiTi GB2312";
+  src: url("/fonts/KaiTi_GB2312.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Headings (大标题) use 楷体_GB2312. !important beats per-feature
+   CSS-module classes that set their own font-family. The [class*=] selectors
+   match CSS-module "title"/"sectionTitle" classes used for heading-like divs. */
+h1,
+h2,
+[class*="_title__"],
+[class*="_sectionTitle__"],
+[class*="_pageTitle__"],
+[class*="_heroTitle__"] {
+  font-family:
+    "KaiTi GB2312", "KaiTi", "Kaiti SC", "STKaiti", "楷体", serif !important;
+  /* Synthetic bold is too heavy for this font; a hairline stroke adds just a
+     touch of weight. Raise/lower 0.4px to taste (0 = regular). */
+  font-weight: 400 !important;
+  -webkit-text-stroke: 0.4px currentColor;
+}

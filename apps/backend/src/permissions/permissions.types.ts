@@ -7,6 +7,7 @@ export const BUILT_IN_ROLE_NAMES = [
   'store-manager-partner',
   'training-admin',
   'training-viewer',
+  'examiner',
   RECRUITMENT_NOTIFICATION_RECIPIENT_ROLE,
 ] as const;
 

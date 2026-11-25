@@ -1,0 +1,187 @@
+/* Sectioned papers, bank targets and coverage. Shares the tokens of exams.module.css. */
+
+.fieldset,
+.sectionBox {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--ink-20);
+  min-width: 0;
+}
+
+.sectionLegend {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 0 6px;
+  font-family: var(--zh-serif);
+  font-size: 16px;
+}
+
+.narrowField {
+  width: 120px;
+}
+
+.modeSwitch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+  margin: 20px 0 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ink-10);
+}
+
+.wideModal {
+  width: min(1080px, 100%);
+}
+
+.blueprint {
+  display: grid;
+  gap: 4px;
+}
+
+/* Compact tables: ~50 file rows must stay scannable. */
+.compactTable th,
+.compactTable td {
+  padding: 4px 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.compactInput {
+  max-width: 260px;
+  min-height: 30px;
+  padding: 2px 6px;
+  border: 1px solid var(--control-border, var(--ink-20));
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px var(--ui-sans);
+}
+
+.numberInput {
+  width: 56px;
+  min-height: 30px;
+  padding: 2px 6px;
+  border: 1px solid var(--control-border, var(--ink-20));
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px var(--ui-sans);
+  box-sizing: border-box;
+}
+
+.numberInput:disabled {
+  opacity: 0.4;
+}
+
+.cellOk,
+.cellAlert {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.cellAlert {
+  color: var(--red-deep);
+  font-weight: 600;
+}
+
+.cellTotal {
+  margin-left: 6px;
+  color: var(--ink-60);
+  font-size: 11px;
+}
+
+.cellTotal::before {
+  content: "Σ";
+  margin-right: 2px;
+}
+
+.groupRow th {
+  padding-top: 12px;
+  background: var(--ink-05);
+  font-family: var(--zh-serif);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.totalRow td {
+  border-top: 2px solid var(--ink-40);
+  font-weight: 600;
+}
+
+.sumOk,
+.sumBad {
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px solid #2f7d4f;
+  color: #2f7d4f;
+}
+
+.sumBad {
+  border-color: var(--red);
+  color: var(--red-deep);
+}
+
+.linkDanger {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--red-deep);
+  font: 13px var(--ui-sans);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.issueList {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+/* Taking a sectioned paper */
+.sectionHeader {
+  margin: 0 0 12px;
+  font-family: var(--zh-serif);
+  font-size: 18px;
+}
+
+.breakPanel {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  margin: 24px 0;
+  padding: 24px;
+  border: 1px solid var(--ink-20);
+  background: var(--paper);
+}
+
+.breakPanel h2 {
+  margin: 0;
+  font-family: var(--zh-serif);
+  font-weight: 500;
+}
+
+.breakCountdown {
+  font-family: var(--mono);
+  font-size: 40px;
+  letter-spacing: 0.04em;
+}
+
+/* Result: per-section scores and veto rules */
+.resultBlock {
+  margin: 16px 0;
+}
+
+.resultBlock ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resultBlock li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ink-10);
+  font-size: 14px;
+}

@@ -22,6 +22,7 @@
     "users:purge-inactive": "node dist/maintenance/purge-inactive-users.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
     "@getbrevo/brevo": "^5.0.4",
     "@nestjs/common": "^11.1.19",
     "@nestjs/config": "^4.0.4",
@@ -34,6 +35,7 @@
     "express": "^5.2.1",
     "helmet": "^8.2.0",
     "ioredis": "^6.0.0",
+    "mammoth": "^1.13.0",
     "minio": "^8.0.7",
     "multer": "^2.2.0",
     "openai": "^6.42.0",

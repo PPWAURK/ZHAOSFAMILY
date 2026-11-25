@@ -2,6 +2,7 @@ export type * from "./common";
 export type * from "./abc-scores";
 export type * from "./auth";
 export type * from "./case-shares";
+export type * from "./exam-bank";
 export type * from "./notifications";
 export type * from "./products";
 export type * from "./recruitment";
