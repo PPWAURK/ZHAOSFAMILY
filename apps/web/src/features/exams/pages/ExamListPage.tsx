@@ -7,6 +7,7 @@ import type { ExamCard } from "@zhao/types";
 
 import ExamShell from "../components/ExamShell";
 import JoinSessionPanel from "../components/JoinSessionPanel";
+import MySessionsSection from "../components/MySessionsSection";
 import { EXAM_COPY, type ExamCopy } from "../constants/exam-copy";
 import { describeExamError } from "../constants/exam-errors-copy";
 import { defaultContentLanguage, pickText, type ExamUiLanguage } from "../constants/exam-languages";
@@ -96,6 +97,7 @@ export default function ExamListPage() {
         lang={lang}
         onJoined={(attempt) => router.push(`/dashboard/exams/take?attemptId=${attempt.id}`)}
       />
+      <MySessionsSection copy={copy} lang={lang} />
       <p>
         <Link className={styles.linkButton} href="/dashboard/exams/history">
           {copy.history} →

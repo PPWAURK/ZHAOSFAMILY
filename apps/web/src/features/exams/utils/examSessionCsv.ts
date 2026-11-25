@@ -1,4 +1,4 @@
-import type { ExamSessionDetail } from "@zhao/types";
+import type { ExamSessionDetail, ExamSessionRegistration } from "@zhao/types";
 
 import { buildCsv, type CsvValue } from "./csv";
 
@@ -17,8 +17,28 @@ const HEADER: CsvValue[] = [
   "submitted_at",
 ];
 
-/** One row per participant of a session. */
-export function buildExamSessionCsv(session: ExamSessionDetail): string {
+/** One row per participant of a session, plus registered users who never joined. */
+export function buildExamSessionCsv(
+  session: ExamSessionDetail,
+  registrations: readonly ExamSessionRegistration[] = [],
+): string {
+  const joined = new Set(session.participants.map((p) => p.user.id));
+  const missing: CsvValue[][] = registrations
+    .filter((r) => !joined.has(r.userId))
+    .map((r) => [
+      session.code,
+      session.template.titleZh,
+      session.template.titleFr,
+      r.name,
+      r.restaurant.name,
+      r.status,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
   const rows: CsvValue[][] = session.participants.map((p) => [
     session.code,
     session.template.titleZh,
@@ -33,7 +53,7 @@ export function buildExamSessionCsv(session: ExamSessionDetail): string {
     p.startedAt,
     p.submittedAt,
   ]);
-  return buildCsv([HEADER, ...rows]);
+  return buildCsv([HEADER, ...rows, ...missing]);
 }
 
 export function summarizeSession(session: ExamSessionDetail) {

@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -45,6 +46,17 @@ export class ExamSessionJoinService {
     }
     if (session.endsAt && session.endsAt <= now) {
       throw new ConflictException('EXAM_SESSION_ENDED');
+    }
+    if (session.requireRegistration) {
+      const registration = await this.prisma.examSessionRegistration.findUnique(
+        {
+          where: {
+            sessionId_userId: { sessionId: session.id, userId: user.id },
+          },
+          select: { id: true },
+        },
+      );
+      if (!registration) throw new ForbiddenException('EXAM_NOT_REGISTERED');
     }
     const existing = await this.prisma.examAttempt.findUnique({
       where: { sessionId_userId: { sessionId: session.id, userId: user.id } },

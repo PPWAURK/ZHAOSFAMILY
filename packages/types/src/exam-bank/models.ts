@@ -383,6 +383,9 @@ export type ExamSession = {
   code: string;
   label: string | null;
   status: ExamSessionStatus;
+  /** When true only users on the roster can join with the code. */
+  requireRegistration: boolean;
+  registeredCount: number;
   template: {
     id: number;
     titleZh: string;
@@ -423,6 +426,37 @@ export type ExamSessionParticipant = {
 export type ExamSessionDetail = ExamSession & {
   serverNow: string;
   participants: ExamSessionParticipant[];
+};
+
+export type ExamRegistrationStatus = "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "ABSENT";
+
+export type ExamSessionRegistration = {
+  userId: number;
+  name: string;
+  restaurant: { id: number; name: string };
+  jobRole: string | null;
+  status: ExamRegistrationStatus;
+  registeredAt: string;
+};
+
+export type ExamSessionCandidate = {
+  id: number;
+  name: string;
+  restaurant: { id: number; name: string };
+  jobRole: string | null;
+  isRegistered: boolean;
+};
+
+/** A session the signed-in employee was put on; never carries the join code. */
+export type MyExamSession = {
+  id: number;
+  label: string | null;
+  status: ExamSessionStatus;
+  template: { titleZh: string; titleFr: string; timeLimitMinutes: number | null };
+  examiner: { name: string };
+  startsAt: string | null;
+  endsAt: string | null;
+  attemptStatus: ExamAttemptStatus | null;
 };
 
 export type ExamSessionTemplateOption = {

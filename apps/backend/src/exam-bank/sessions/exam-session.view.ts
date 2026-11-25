@@ -6,6 +6,8 @@ export type ExamSessionView = {
   code: string;
   label: string | null;
   status: string;
+  requireRegistration: boolean;
+  registeredCount: number;
   template: {
     id: number;
     titleZh: string;
@@ -68,7 +70,11 @@ const iso = (value: Date | null) => value?.toISOString() ?? null;
 
 export function toSessionView(
   session: SessionWithRelations,
-  counts: { participantCount: number; submittedCount: number },
+  counts: {
+    participantCount: number;
+    submittedCount: number;
+    registeredCount?: number;
+  },
 ): ExamSessionView {
   const t = session.template;
   return {
@@ -76,6 +82,7 @@ export function toSessionView(
     code: session.code,
     label: session.label,
     status: session.status,
+    requireRegistration: session.requireRegistration,
     template: {
       id: t.id,
       titleZh: t.titleZh,
@@ -91,6 +98,46 @@ export function toSessionView(
     openedAt: iso(session.openedAt),
     closedAt: iso(session.closedAt),
     createdAt: session.createdAt.toISOString(),
-    ...counts,
+    participantCount: counts.participantCount,
+    submittedCount: counts.submittedCount,
+    registeredCount: counts.registeredCount ?? 0,
   };
 }
+
+export type ExamRegistrationStatus =
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'SUBMITTED'
+  | 'ABSENT';
+
+export type ExamRegistrationView = {
+  userId: number;
+  name: string;
+  restaurant: { id: number; name: string };
+  jobRole: string | null;
+  status: ExamRegistrationStatus;
+  registeredAt: string;
+};
+
+export type ExamCandidateView = {
+  id: number;
+  name: string;
+  restaurant: { id: number; name: string };
+  jobRole: string | null;
+  isRegistered: boolean;
+};
+
+export type MyExamSessionView = {
+  id: number;
+  label: string | null;
+  status: string;
+  template: {
+    titleZh: string;
+    titleFr: string;
+    timeLimitMinutes: number | null;
+  };
+  examiner: { name: string };
+  startsAt: string | null;
+  endsAt: string | null;
+  attemptStatus: string | null;
+};

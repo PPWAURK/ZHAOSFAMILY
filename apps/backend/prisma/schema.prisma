@@ -60,6 +60,8 @@ model User {
   createdRecipes             Recipe[]                   @relation("RecipeCreatedBy")
   updatedRecipes             Recipe[]                   @relation("RecipeUpdatedBy")
   examAttempts               ExamAttempt[]
+  examRegistrations           ExamSessionRegistration[]  @relation("ExamRegistrationUser")
+  examRegistrationsCreated    ExamSessionRegistration[]  @relation("ExamRegistrationCreator")
   examinedSessions           ExamSession[]              @relation("ExamSessionExaminer")
 
   @@index([restaurantId])
@@ -1450,15 +1452,36 @@ model ExamSession {
   openedAt       DateTime? @map("opened_at")
   closedAt       DateTime? @map("closed_at")
   lockedUntil    DateTime? @map("locked_until")
+  /// When true only users on the registration roster can join with the code.
+  requireRegistration Boolean @default(false) @map("require_registration")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  template ExamTemplate  @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  examiner User          @relation("ExamSessionExaminer", fields: [examinerUserId], references: [id], onDelete: Restrict)
-  attempts ExamAttempt[]
+  template      ExamTemplate  @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  examiner      User          @relation("ExamSessionExaminer", fields: [examinerUserId], references: [id], onDelete: Restrict)
+  attempts      ExamAttempt[]
+  registrations ExamSessionRegistration[]
 
   @@index([examinerUserId, createdAt])
   @@index([status, endsAt])
   @@index([templateId])
   @@map("exam_sessions")
+}
+
+/// An examinee the examiner put on a session's roster.
+model ExamSessionRegistration {
+  id              Int       @id @default(autoincrement())
+  sessionId       Int       @map("session_id")
+  userId          Int       @map("user_id")
+  createdByUserId Int       @map("created_by_user_id")
+  notifiedAt      DateTime? @map("notified_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  session   ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User        @relation("ExamRegistrationUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User        @relation("ExamRegistrationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@map("exam_session_registrations")
 }

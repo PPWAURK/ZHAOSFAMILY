@@ -11,7 +11,8 @@ export type NotificationEntry =
   | "case-shares"
   | "store-grade-ranking"
   | "stores"
-  | "recruitment-requests";
+  | "recruitment-requests"
+  | "online-exams";
 
 // Maps a notification's `data.type` (set by the backend) to a dashboard entry.
 // Notification types resolve to their corresponding dashboard modules.
@@ -23,6 +24,8 @@ const TYPE_TO_ENTRY: Record<string, NotificationEntry> = {
   "case-share": "case-shares",
   "employee-registration": "stores",
   "recruitment-request": "recruitment-requests",
+  "exam-registration": "online-exams",
+  "exam-session-open": "online-exams",
 };
 
 type NotificationResponse = Awaited<

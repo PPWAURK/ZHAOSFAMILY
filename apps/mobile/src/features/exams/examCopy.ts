@@ -106,8 +106,18 @@ const ZH = {
     EXAM_SESSION_CODE_INVALID: "请输入 6 位数字编号。",
     EXAM_SECTION_ON_BREAK: "正在休息，下一场开始后才能作答和交卷。",
     EXAM_SECTION_INVALID: "这一场已经结束或还没开始。",
+    EXAM_NOT_REGISTERED: "你不在这场考试的考生名单里，请联系考官。",
     fallback: "操作失败，请检查网络后重试。",
   } as Record<string, string>,
+  mySessions: {
+    title: "我的考试安排",
+    hint: "考官把你加入了这些考试。开考后向考官获取编号，在上方输入进场。",
+    waiting: "未开始",
+    open: "进行中，输入编号进场",
+    inProgress: "你正在答题，输入编号可继续",
+    submitted: "已交卷",
+    examiner: (name: string) => `考官：${name}`,
+  },
 };
 
 export type ExamCopy = typeof ZH;
@@ -218,7 +228,17 @@ const EN: ExamCopy = {
     EXAM_SESSION_CODE_INVALID: "Enter the 6-digit code.",
     EXAM_SECTION_ON_BREAK: "You are on the break. Answer and submit once the next part starts.",
     EXAM_SECTION_INVALID: "This part has already ended or has not started yet.",
+    EXAM_NOT_REGISTERED: "You are not on this exam's roster. Contact the examiner.",
     fallback: "Something went wrong. Check your connection and retry.",
+  },
+  mySessions: {
+    title: "My scheduled exams",
+    hint: "The examiner registered you for these. Get the code from the examiner and enter it above.",
+    waiting: "Not started",
+    open: "Running — enter the code to join",
+    inProgress: "You are mid-exam — enter the code to resume",
+    submitted: "Submitted",
+    examiner: (name: string) => `Examiner: ${name}`,
   },
 };
 
@@ -329,7 +349,17 @@ const FR: ExamCopy = {
     EXAM_SECTION_ON_BREAK:
       "Vous êtes en pause. Répondez et rendez la copie une fois la partie suivante commencée.",
     EXAM_SECTION_INVALID: "Cette partie est déjà terminée ou n'a pas encore commencé.",
+    EXAM_NOT_REGISTERED: "Vous n'êtes pas sur la liste de cet examen. Contactez l'examinateur.",
     fallback: "Une erreur est survenue. Vérifiez la connexion et réessayez.",
+  },
+  mySessions: {
+    title: "Mes examens programmés",
+    hint: "L'examinateur vous a inscrit. Demandez-lui le code et saisissez-le ci-dessus.",
+    waiting: "Pas commencé",
+    open: "En cours — saisissez le code pour entrer",
+    inProgress: "Examen en cours — saisissez le code pour reprendre",
+    submitted: "Rendu",
+    examiner: (name: string) => `Examinateur : ${name}`,
   },
 };
 

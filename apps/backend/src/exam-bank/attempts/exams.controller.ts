@@ -19,6 +19,8 @@ import { ExamAttemptsService } from './exam-attempts.service';
 import type { ExamCardView, MyAttemptView } from './exam-catalog.view';
 import { ExamCatalogService } from './exam-catalog.service';
 import { JoinExamSessionDto } from '../sessions/dto/exam-session.dto';
+import type { MyExamSessionView } from '../sessions/exam-session.view';
+import { ExamSessionRegistrationsService } from '../sessions/exam-session-registrations.service';
 import { ExamSessionJoinService } from '../sessions/exam-session-join.service';
 
 /** Employee routes: any signed-in user may take active exams. */
@@ -28,6 +30,7 @@ export class ExamsController {
     private readonly catalog: ExamCatalogService,
     private readonly attempts: ExamAttemptsService,
     private readonly sessionJoin: ExamSessionJoinService,
+    private readonly registrations: ExamSessionRegistrationsService,
   ) {}
 
   /** Enter the examiner's 6-digit code to start or resume that session's paper. */
@@ -37,6 +40,14 @@ export class ExamsController {
     @Body() dto: JoinExamSessionDto,
   ): Promise<ExamAttemptView> {
     return this.sessionJoin.join(request.user!, dto.code);
+  }
+
+  /** Sessions the examiner put the signed-in user on, not yet closed. */
+  @Get('exams/sessions/mine')
+  listMySessions(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<MyExamSessionView[]> {
+    return this.registrations.listMine(request.user!.id);
   }
 
   @Get('exams')

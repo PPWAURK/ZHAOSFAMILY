@@ -3,18 +3,18 @@ import { readBlueprint } from '../blueprint/exam-blueprint';
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../../auth/auth.service';
-import { EXAM_PERMISSIONS } from '../../auth/permissions';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AttemptAnswer } from '../attempts/exam-grading';
 import { ExamTemplatesService } from '../templates/exam-templates.service';
 import type { CreateExamSessionDto } from './dto/exam-session.dto';
 import { ExamSessionCloserService } from './exam-session-closer.service';
+import { ExamSessionRegistrationsService } from './exam-session-registrations.service';
+import { assertCanManageSession, canSeeAllSessions } from './session-access';
 import {
   toSessionView,
   type ExamSessionDetailView,
@@ -32,15 +32,13 @@ const SESSION_INCLUDE = {
 const RECENT_SESSIONS = 50;
 const CODE_ATTEMPTS = 8;
 
-const canSeeAll = (user: AuthUser) =>
-  user.permissions.includes(EXAM_PERMISSIONS.manageBank);
-
 @Injectable()
 export class ExamSessionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly templates: ExamTemplatesService,
     private readonly closer: ExamSessionCloserService,
+    private readonly registrations: ExamSessionRegistrationsService,
   ) {}
 
   async listTemplates(): Promise<ExamSessionTemplateOption[]> {
@@ -83,13 +81,26 @@ export class ExamSessionsService {
       examinerUserId: user.id,
       startsAt,
       endsAt,
+      requireRegistration:
+        dto.requireRegistration ?? Boolean(dto.registrationUserIds?.length),
     });
-    return toSessionView(session, { participantCount: 0, submittedCount: 0 });
+    const registeredCount = dto.registrationUserIds?.length
+      ? await this.registrations.addForNewSession(
+          user,
+          session,
+          dto.registrationUserIds,
+        )
+      : 0;
+    return toSessionView(session, {
+      participantCount: 0,
+      submittedCount: 0,
+      registeredCount,
+    });
   }
 
   async list(user: AuthUser): Promise<ExamSessionView[]> {
     const sessions = await this.prisma.examSession.findMany({
-      where: canSeeAll(user) ? {} : { examinerUserId: user.id },
+      where: canSeeAllSessions(user) ? {} : { examinerUserId: user.id },
       include: SESSION_INCLUDE,
       orderBy: { createdAt: 'desc' },
       take: RECENT_SESSIONS,
@@ -99,9 +110,16 @@ export class ExamSessionsService {
       where: { sessionId: { in: sessions.map((s) => s.id) } },
       _count: { _all: true },
     });
+    const registered = await this.prisma.examSessionRegistration.groupBy({
+      by: ['sessionId'],
+      where: { sessionId: { in: sessions.map((s) => s.id) } },
+      _count: { _all: true },
+    });
     return sessions.map((session) => {
       const rows = counts.filter((c) => c.sessionId === session.id);
       return toSessionView(session, {
+        registeredCount:
+          registered.find((r) => r.sessionId === session.id)?._count._all ?? 0,
         participantCount: rows.reduce((sum, c) => sum + c._count._all, 0),
         submittedCount: rows
           .filter((c) => c.status !== 'IN_PROGRESS')
@@ -138,8 +156,12 @@ export class ExamSessionsService {
       sectionCount: readLayout(a.layout)?.sections.length ?? 1,
       isOnBreak: a.status === 'IN_PROGRESS' && isOnBreak(a),
     }));
+    const registeredCount = await this.prisma.examSessionRegistration.count({
+      where: { sessionId: id },
+    });
     return {
       ...toSessionView(session, {
+        registeredCount,
         participantCount: participants.length,
         submittedCount: participants.filter((p) => p.status !== 'IN_PROGRESS')
           .length,
@@ -159,6 +181,7 @@ export class ExamSessionsService {
       where: { id, status: 'SCHEDULED' },
       data: { status: 'OPEN', openedAt: new Date() },
     });
+    await this.registrations.notifyOpen(session);
     return this.detail(user, id);
   }
 
@@ -201,9 +224,7 @@ export class ExamSessionsService {
       include: SESSION_INCLUDE,
     });
     if (!session) throw new NotFoundException('EXAM_SESSION_NOT_FOUND');
-    if (session.examinerUserId !== user.id && !canSeeAll(user)) {
-      throw new ForbiddenException('EXAM_SESSION_FORBIDDEN');
-    }
+    assertCanManageSession(user, session);
     return session;
   }
 }

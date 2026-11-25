@@ -10,6 +10,7 @@ import { FeedbackPressable } from "@/components/FeedbackPressable";
 import { ZhaoLoadingIndicator } from "@/components/ZhaoLoadingIndicator";
 import { fetchAvailableExams, startExamAttempt } from "@/features/exams/examApi";
 import { ExamJoinCard } from "@/features/exams/ExamJoinCard";
+import { MyExamSessionsCard } from "@/features/exams/MyExamSessionsCard";
 import { describeExamError, type ExamCopy } from "@/features/exams/examCopy";
 import { examColors, examStyles as styles } from "@/features/exams/examStyles";
 
@@ -119,6 +120,7 @@ export function ExamListView({
       <Text style={styles.title}>{copy.title}</Text>
       <Text style={styles.subtitle}>{copy.subtitle}</Text>
       <ExamJoinCard copy={copy} onJoined={onStarted} />
+      <MyExamSessionsCard isActive={isActive} copy={copy} language={language} />
       <FeedbackPressable
         accessibilityRole="button"
         onPress={onOpenHistory}

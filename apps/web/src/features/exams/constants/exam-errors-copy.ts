@@ -3,6 +3,12 @@ import type { ExamUiLanguage } from "./exam-languages";
 type ErrorCopy = Record<string, string>;
 
 const ZH: ErrorCopy = {
+  EXAM_NOT_REGISTERED: "你不在这场考试的考生名单里，请联系考官。",
+  EXAM_REGISTRATION_HAS_ATTEMPT: "该考生已经进场，不能移除。",
+  EXAM_REGISTRATION_NOT_FOUND: "名单里没有这位考生。",
+  EXAM_REGISTRATION_USER_NOT_FOUND: "有考生账号不存在或未通过审核。",
+  EXAM_REGISTRATION_USERS_INVALID: "请选择 1 至 200 位考生。",
+  EXAM_SESSION_REGISTRATION_INVALID: "名单设置不正确。",
   EXAM_AI_NOT_CONFIGURED: "未配置 Claude API Key(ANTHROPIC_API_KEY)。",
   EXAM_EMBEDDING_NOT_CONFIGURED: "未配置 Voyage API Key(VOYAGE_API_KEY)。",
   EXAM_GENERATION_JOB_ACTIVE: "已有生成任务在进行,请等待完成或取消后再试。",
@@ -50,6 +56,12 @@ const ZH: ErrorCopy = {
 };
 
 const EN: ErrorCopy = {
+  EXAM_NOT_REGISTERED: "You are not on this exam's roster. Contact the examiner.",
+  EXAM_REGISTRATION_HAS_ATTEMPT: "This examinee already joined and cannot be removed.",
+  EXAM_REGISTRATION_NOT_FOUND: "This examinee is not on the roster.",
+  EXAM_REGISTRATION_USER_NOT_FOUND: "Some accounts do not exist or are not approved.",
+  EXAM_REGISTRATION_USERS_INVALID: "Select between 1 and 200 examinees.",
+  EXAM_SESSION_REGISTRATION_INVALID: "Invalid roster setting.",
   EXAM_AI_NOT_CONFIGURED: "Claude API key (ANTHROPIC_API_KEY) is not configured.",
   EXAM_EMBEDDING_NOT_CONFIGURED: "Voyage API key (VOYAGE_API_KEY) is not configured.",
   EXAM_GENERATION_JOB_ACTIVE: "A generation job is already running. Wait for it or cancel it.",
@@ -100,6 +112,12 @@ const EN: ErrorCopy = {
 };
 
 const FR: ErrorCopy = {
+  EXAM_NOT_REGISTERED: "Vous n'êtes pas sur la liste de cet examen. Contactez l'examinateur.",
+  EXAM_REGISTRATION_HAS_ATTEMPT: "Ce candidat est déjà entré et ne peut pas être retiré.",
+  EXAM_REGISTRATION_NOT_FOUND: "Ce candidat n'est pas sur la liste.",
+  EXAM_REGISTRATION_USER_NOT_FOUND: "Certains comptes n'existent pas ou ne sont pas validés.",
+  EXAM_REGISTRATION_USERS_INVALID: "Sélectionnez entre 1 et 200 candidats.",
+  EXAM_SESSION_REGISTRATION_INVALID: "Réglage de liste invalide.",
   EXAM_AI_NOT_CONFIGURED: "La clé API Claude (ANTHROPIC_API_KEY) n'est pas configurée.",
   EXAM_EMBEDDING_NOT_CONFIGURED: "La clé API Voyage (VOYAGE_API_KEY) n'est pas configurée.",
   EXAM_GENERATION_JOB_ACTIVE: "Une génération est déjà en cours. Attendez-la ou annulez-la.",
