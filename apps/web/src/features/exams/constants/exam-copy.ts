@@ -91,6 +91,16 @@ const ZH = {
   statuses: { IN_PROGRESS: "作答中", SUBMITTED: "已交卷", EXPIRED: "超时交卷" },
   historyColumns: { exam: "考试", status: "状态", score: "得分", date: "时间", actions: "" },
   view: "查看",
+  mySessions: {
+    title: "我的考试安排",
+    hint: "考官把你加入了这些考试。开考后向考官获取编号，在上方输入进场。",
+    empty: "",
+    waiting: "未开始",
+    open: "进行中，输入编号进场",
+    inProgress: "你正在答题，输入编号可继续",
+    submitted: "已交卷",
+    examiner: (name: string) => `考官：${name}`,
+  },
 };
 
 export type ExamCopy = typeof ZH;
@@ -185,6 +195,16 @@ const EN: ExamCopy = {
   statuses: { IN_PROGRESS: "In progress", SUBMITTED: "Submitted", EXPIRED: "Time up" },
   historyColumns: { exam: "Exam", status: "Status", score: "Score", date: "Date", actions: "" },
   view: "View",
+  mySessions: {
+    title: "My scheduled exams",
+    hint: "The examiner registered you for these. Get the code from the examiner and enter it above.",
+    empty: "",
+    waiting: "Not started",
+    open: "Running — enter the code to join",
+    inProgress: "You are mid-exam — enter the code to resume",
+    submitted: "Submitted",
+    examiner: (name) => `Examiner: ${name}`,
+  },
 };
 
 const FR: ExamCopy = {
@@ -280,6 +300,16 @@ const FR: ExamCopy = {
   statuses: { IN_PROGRESS: "En cours", SUBMITTED: "Rendu", EXPIRED: "Temps écoulé" },
   historyColumns: { exam: "Examen", status: "Statut", score: "Score", date: "Date", actions: "" },
   view: "Voir",
+  mySessions: {
+    title: "Mes examens programmés",
+    hint: "L'examinateur vous a inscrit. Demandez-lui le code et saisissez-le ci-dessus.",
+    empty: "",
+    waiting: "Pas commencé",
+    open: "En cours — saisissez le code pour entrer",
+    inProgress: "Examen en cours — saisissez le code pour reprendre",
+    submitted: "Rendu",
+    examiner: (name) => `Examinateur : ${name}`,
+  },
 };
 
 export const EXAM_COPY: Record<ExamUiLanguage, ExamCopy> = { zh: ZH, en: EN, fr: FR };
