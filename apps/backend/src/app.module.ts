@@ -7,6 +7,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { CaseSharesModule } from './case-shares/case-shares.module';
 import { DashboardNewsModule } from './dashboard-news/dashboard-news.module';
+import { ExamBankModule } from './exam-bank/exam-bank.module';
 import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { MailModule } from './mail/mail.module';
@@ -44,6 +45,7 @@ import { WaitingQueueModule } from './waiting-queue/waiting-queue.module';
     AbcScoresModule,
     CaseSharesModule,
     DashboardNewsModule,
+    ExamBankModule,
     HealthModule,
     ProductsModule,
     RecruitmentRequestsModule,
