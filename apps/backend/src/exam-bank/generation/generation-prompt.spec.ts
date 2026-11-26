@@ -121,6 +121,8 @@ describe('SYSTEM_PROMPT content rules', () => {
     expect(SYSTEM_PROMPT).toContain('Komia goods-receipt');
     expect(SYSTEM_PROMPT).toContain('Do not state a clock time');
     expect(SYSTEM_PROMPT).toContain('"Pennylane" (never "Pennyline")');
-    expect(SYSTEM_PROMPT).toContain('"伙伴" in Chinese and "partenaire" in French');
+    expect(SYSTEM_PROMPT).toContain(
+      '"伙伴" in Chinese and "partenaire" in French',
+    );
   });
 });
