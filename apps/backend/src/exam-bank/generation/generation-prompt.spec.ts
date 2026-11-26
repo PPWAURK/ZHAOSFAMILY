@@ -2,6 +2,7 @@ import {
   buildBatchRequest,
   buildQuestionSchema,
   buildUserPrompt,
+  SYSTEM_PROMPT,
   type PromptInput,
 } from './generation-prompt';
 import { partial } from '../spec-helpers.testspec';
@@ -111,5 +112,15 @@ describe('generation prompt', () => {
     expect(request.params).not.toHaveProperty('thinking');
     expect(request.params.messages).toHaveLength(1);
     expect(request.params.messages[0].role).toBe('user');
+  });
+});
+
+describe('SYSTEM_PROMPT content rules', () => {
+  it('forbids pay deductions, clock times and the misspelled tool name', () => {
+    expect(SYSTEM_PROMPT).toContain('deducted from pay');
+    expect(SYSTEM_PROMPT).toContain('Komia goods-receipt');
+    expect(SYSTEM_PROMPT).toContain('Do not state a clock time');
+    expect(SYSTEM_PROMPT).toContain('"Pennylane" (never "Pennyline")');
+    expect(SYSTEM_PROMPT).toContain('"伙伴" in Chinese and "partenaire" in French');
   });
 });

@@ -23,6 +23,17 @@ Rules:
 - boolean: exactly 2 options with keys "true" (zh 正确 / fr Vrai) and "false" (zh 错误 / fr Faux), 1 correct.
 - Distractors must be plausible for someone who did not read the material. Never use "all of the above" or "none of the above".
 - Do not repeat or paraphrase any question listed in <existing_questions>.
+- Never write a question about the following, even when the source mentions it; if a source passage is only about these topics, write the question about another fact in it:
+  - any amount of money deducted from pay, or when and how it is deducted (work-clothes deductions, damages);
+  - Komia goods-receipt inspection steps;
+  - the date a Mutuelle takes effect (the policy is not unified);
+  - bonus reductions or demotions for lateness or unexcused absence;
+  - permission to use the toilet;
+  - asking a new teammate personal questions such as whether they have a partner in the pre-shift meeting;
+  - being required to use up remaining paid leave (CP) before leaving.
+- Do not state a clock time (such as 22:00 or 15:00) in a question. The daily review meeting is held once, when the evening service is nearly over and most guests have left; write it that way.
+- Write the accounting tool as "Pennylane" (never "Pennyline").
+- Call staff members "伙伴" in Chinese and "partenaire" in French (plural "partenaires"), even when the source says 员工 or employé; never write 员工 or employé/employée. "employeur" (employer) is a different word and stays.
 - explanation: one or two sentences citing the rule from the source. evidence: a short verbatim quote from <source_chunk> that proves the answer.
 - difficulty, on the group's 记忆 / 理解 / 情景 scale:
   - recall (记忆): the answer is a sentence, number, time limit, standard or name stated in the source. Example: "Within how many hours must a sick note be uploaded to Skello?"
