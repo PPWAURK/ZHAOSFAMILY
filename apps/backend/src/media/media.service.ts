@@ -102,8 +102,13 @@ export class MediaService {
   async getSignedUrl(
     objectKey: string,
     expirySeconds: number,
+    responseHeaders?: Record<string, string>,
   ): Promise<string> {
-    return this.minioService.getPresignedGetUrl(objectKey, expirySeconds);
+    return this.minioService.getPresignedGetUrl(
+      objectKey,
+      expirySeconds,
+      responseHeaders,
+    );
   }
 
   async getFile(objectKey: string): Promise<MediaFile> {
