@@ -50,6 +50,20 @@ export async function createTrainingMaterial(
   return apiClient.post<TrainingMaterial>("/training/materials", input);
 }
 
+export type TrainingMaterialDownload = {
+  url: string;
+  fileName: string;
+  expiresAt: string;
+};
+
+export async function fetchTrainingMaterialDownload(
+  id: number | string,
+): Promise<TrainingMaterialDownload> {
+  return apiClient.get<TrainingMaterialDownload>(
+    `/training/materials/${encodeURIComponent(String(id))}/download`,
+  );
+}
+
 export async function fetchTrainingMaterials(
   filters: TrainingMaterialFilters = {},
 ): Promise<TrainingMaterial[]> {

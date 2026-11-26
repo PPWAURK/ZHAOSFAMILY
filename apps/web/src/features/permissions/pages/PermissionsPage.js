@@ -113,6 +113,11 @@ const PERMISSION_LABELS = {
     en: "Delete training materials",
     fr: "Supprimer les supports de formation",
   },
+  "training.material.download": {
+    zh: "下载培训资料",
+    en: "Download training materials",
+    fr: "Télécharger les supports de formation",
+  },
   "training.position.manage": {
     zh: "管理培训岗位",
     en: "Manage training positions",
