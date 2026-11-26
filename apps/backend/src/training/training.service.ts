@@ -117,6 +117,7 @@ type TrainingStoreProgressScope = {
   };
 };
 
+const MATERIAL_DOWNLOAD_TTL_SECONDS = 300;
 const HOLDING_JOB_ROLE = 'holding';
 const STORE_MANAGER_JOB_ROLE = 'store-manager';
 const REGIONAL_MANAGER_JOB_ROLE = 'regional-manager';
@@ -527,6 +528,28 @@ export class TrainingService {
     }
 
     return toTrainingMaterialItem(row);
+  }
+
+  async getMaterialDownload(
+    id: number,
+  ): Promise<{ url: string; fileName: string; expiresAt: string }> {
+    const material = await this.getMaterial(id);
+    const fileName = material.originalName || `material-${material.id}`;
+    const url = await this.mediaService.getSignedUrl(
+      material.objectKey,
+      MATERIAL_DOWNLOAD_TTL_SECONDS,
+      {
+        'response-content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      },
+    );
+
+    return {
+      url,
+      fileName,
+      expiresAt: new Date(
+        Date.now() + MATERIAL_DOWNLOAD_TTL_SECONDS * 1000,
+      ).toISOString(),
+    };
   }
 
   async listProgressForUser(

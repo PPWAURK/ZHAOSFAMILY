@@ -12,6 +12,7 @@ import { TRAINING_COPY } from "@/features/training/constants/training-copy";
 import {
   deleteTrainingMaterial,
   fetchTrainingPositions,
+  fetchTrainingMaterialDownload,
   fetchTrainingMaterials,
   updateTrainingMaterial,
 } from "@/features/training/services/trainingMediaApi";
@@ -94,6 +95,7 @@ export default function TrainingMaterialsPage() {
   });
   const [savingMaterialId, setSavingMaterialId] = useState(null);
   const [deletingMaterialId, setDeletingMaterialId] = useState(null);
+  const [downloadingMaterialId, setDownloadingMaterialId] = useState(null);
   const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [quizMaterial, setQuizMaterial] = useState(null);
@@ -104,6 +106,7 @@ export default function TrainingMaterialsPage() {
   const canCreateMaterials = permissions.includes("training.material.create");
   const canUpdateMaterials = permissions.includes("training.material.update");
   const canDeleteMaterials = permissions.includes("training.material.delete");
+  const canDownloadMaterials = permissions.includes("training.material.download");
   const canManagePositions = permissions.includes(TRAINING_POSITION_MANAGE_PERMISSION);
   const flatPositions = flattenTrainingPositions(positions);
   const activePositionOptions = flatPositions.filter((position) => position.isActive);
@@ -197,6 +200,27 @@ export default function TrainingMaterialsPage() {
     ],
     [activePosition, materials],
   );
+
+  async function downloadMaterial(item) {
+    if (downloadingMaterialId !== null) return;
+
+    setDownloadingMaterialId(item.materialId);
+    setMaterialsError("");
+
+    try {
+      const { url } = await fetchTrainingMaterialDownload(item.materialId);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } catch (error) {
+      setMaterialsError(error.message || "资料下载失败");
+    } finally {
+      setDownloadingMaterialId(null);
+    }
+  }
 
   function startEditingMaterial(item) {
     setEditingMaterialId(item.materialId);
@@ -733,6 +757,18 @@ export default function TrainingMaterialsPage() {
                             <b>
                               {item.title}
                               {item.req ? <span className={styles.materialReqTag}>REQ</span> : null}
+                              {canDownloadMaterials && item.objectKey ? (
+                                <button
+                                  type="button"
+                                  className={styles.materialRenameButton}
+                                  disabled={downloadingMaterialId === item.materialId}
+                                  onClick={() => downloadMaterial(item)}
+                                >
+                                  {downloadingMaterialId === item.materialId
+                                    ? "下载中"
+                                    : "下载"}
+                                </button>
+                              ) : null}
                               {canUpdateMaterials ? (
                                 <button
                                   type="button"

@@ -129,6 +129,7 @@ export class MinioService implements OnModuleInit {
   async getPresignedGetUrl(
     objectKey: string,
     expirySeconds: number,
+    responseHeaders?: Record<string, string>,
   ): Promise<string> {
     if (!this.isConfigured()) {
       throw new ServiceUnavailableException('MINIO_NOT_CONFIGURED');
@@ -138,6 +139,7 @@ export class MinioService implements OnModuleInit {
       this.bucket,
       objectKey,
       expirySeconds,
+      responseHeaders,
     );
   }
 

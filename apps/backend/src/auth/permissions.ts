@@ -9,6 +9,7 @@ export const TRAINING_MATERIAL_PERMISSIONS = {
   create: 'training.material.create',
   update: 'training.material.update',
   delete: 'training.material.delete',
+  download: 'training.material.download',
 } as const;
 
 export const TRAINING_POSITION_PERMISSIONS = {

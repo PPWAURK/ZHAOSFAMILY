@@ -48,6 +48,10 @@ const PERMISSIONS = [
     description: 'Delete training materials',
   },
   {
+    key: 'training.material.download',
+    description: 'Download original training material files',
+  },
+  {
     key: 'training.position.manage',
     description: 'Manage training positions',
   },

@@ -297,6 +297,15 @@ export class TrainingController {
     return this.trainingService.getMaterial(id);
   }
 
+  @Get('materials/:id/download')
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(TRAINING_MATERIAL_PERMISSIONS.download)
+  getMaterialDownload(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ url: string; fileName: string; expiresAt: string }> {
+    return this.trainingService.getMaterialDownload(id);
+  }
+
   @Get('progress')
   async listMyProgress(
     @Headers('authorization') authorization: string | undefined,
