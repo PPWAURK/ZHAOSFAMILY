@@ -261,9 +261,9 @@ video{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
 // library is fetched.
 // First paint uses the device ratio (capped); pinch-zoom re-renders the visible
 // pages up to PDF_MAX_PIXEL_RATIO, never exceeding the per-canvas pixel budget.
-const PDFJS_VERSION = "3.11.174";
-const PDFJS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
-const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+// Library files sit next to pdf-viewer.html (see pdfJsAssets.ts).
+export const PDFJS_LIB_FILE_NAME = "pdf.min.js";
+export const PDFJS_WORKER_FILE_NAME = "pdf.worker.min.js";
 const PDF_BASE_PIXEL_RATIO_CAP = 3;
 const PDF_MAX_PIXEL_RATIO = 8;
 const PDF_MAX_CANVAS_PIXELS = 8_000_000;
@@ -299,7 +299,7 @@ html,body{min-height:100%;background:#525659}
 <body>
 <div id="pages"></div>
 <div id="err"></div>
-<script src="${PDFJS_LIB_URL}"></script>
+<script src="${PDFJS_LIB_FILE_NAME}"></script>
 <script>
 (function(){
   var maxPage=0,numPages=0,readSeconds=0,lastSent='';
@@ -334,8 +334,8 @@ html,body{min-height:100%;background:#525659}
   }
   window.onerror=function(m){showError('PDF error: '+m);return true;};
   try{
-    if(!window.pdfjsLib){showError('PDF library failed to load (check network).');return;}
-    pdfjsLib.GlobalWorkerOptions.workerSrc=${JSON.stringify(PDFJS_WORKER_URL)};
+    if(!window.pdfjsLib){showError('PDF library failed to load.');return;}
+    pdfjsLib.GlobalWorkerOptions.workerSrc=new URL(${JSON.stringify(PDFJS_WORKER_FILE_NAME)},window.location.href).href;
     var raw=atob(${JSON.stringify(base64Data)});
     var bytes=new Uint8Array(raw.length);
     for(var i=0;i<raw.length;i++){bytes[i]=raw.charCodeAt(i);}

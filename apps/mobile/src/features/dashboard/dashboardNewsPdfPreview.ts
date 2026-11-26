@@ -4,9 +4,8 @@ import {
   downloadDashboardNewsAttachmentToCache,
   type DashboardNewsAttachment,
 } from "@/features/dashboard/dashboardNewsApi";
-import {
-  buildPdfViewerHtml,
-} from "@/features/training/trainingViewer";
+import { ensurePdfJsAssets } from "@/features/training/pdfJsAssets";
+import { buildPdfViewerHtml } from "@/features/training/trainingViewer";
 
 export type DashboardNewsPdfViewer = {
   baseUri: string;
@@ -20,6 +19,8 @@ export async function createDashboardNewsPdfViewer(
   const { directoryUri, fileUri } = await downloadDashboardNewsAttachmentToCache(attachment, userId);
   const pdfDirectory = new Directory(directoryUri);
   const viewerFile = new File(pdfDirectory, "pdf-viewer.html");
+
+  await ensurePdfJsAssets(pdfDirectory);
 
   if (!viewerFile.exists || viewerFile.size === 0) {
     const downloadedFile = new File(fileUri);

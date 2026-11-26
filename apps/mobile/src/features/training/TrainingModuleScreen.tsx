@@ -22,6 +22,7 @@ import {
   updateTrainingMaterialProgress,
 } from "@/features/training/trainingApi";
 import { getTrainingMapNodePrimaryAction } from "@/features/training/trainingMapActions";
+import { ensurePdfJsAssets } from "@/features/training/pdfJsAssets";
 import { TRAINING_COPY } from "@/features/training/trainingCopy";
 import { buildTrainingMapData } from "@/features/training/trainingMapState";
 import { fetchLocalizedTrainingPlan } from "@/features/training/trainingQueries";
@@ -253,6 +254,7 @@ export function TrainingModuleScreen({
           const downloadedFile = new File(fileUri);
           const base64Data = await downloadedFile.base64();
 
+          await ensurePdfJsAssets(pdfDirectory);
           await viewerFile.write(buildPdfViewerHtml(base64Data, pdfWatermarkIdentity));
           setPreviewFileUri(viewerFile.uri);
           setPreviewBaseUri(pdfDirectory.uri);

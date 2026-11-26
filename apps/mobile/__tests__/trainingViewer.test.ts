@@ -43,6 +43,14 @@ describe("PDF training viewer", () => {
     expect(html).toContain("window.visualViewport.addEventListener('resize',scheduleRefresh)");
   });
 
+  it("loads the bundled pdf.js files instead of a CDN", () => {
+    const html = buildPdfViewerHtml("dGVzdA==");
+
+    expect(html).toContain('<script src="pdf.min.js"></script>');
+    expect(html).toContain('"pdf.worker.min.js"');
+    expect(html).not.toContain("cdnjs");
+  });
+
   it("can render PDFs without a watermark for non-training previews", () => {
     const html = buildPdfViewerHtml("dGVzdA==");
 
