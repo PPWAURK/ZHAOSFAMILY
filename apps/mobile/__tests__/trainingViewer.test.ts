@@ -30,10 +30,17 @@ describe("PDF training viewer", () => {
     expect(html).not.toContain("</script><script>alert(1)</script>");
   });
 
-  it("caps the canvas pixel ratio so 3x phones do not allocate oversized canvases", () => {
+  it("caps the canvas pixel ratio and per-canvas pixel budget", () => {
     const html = buildPdfViewerHtml("dGVzdA==");
 
-    expect(html).toContain("var dpr=Math.min(window.devicePixelRatio||1,2);");
+    expect(html).toContain("var baseRatio=Math.min(deviceRatio,3);");
+    expect(html).toContain("Math.sqrt(8000000/(viewport.width*viewport.height))");
+  });
+
+  it("re-renders visible pages at a higher ratio after pinch zoom", () => {
+    const html = buildPdfViewerHtml("dGVzdA==");
+
+    expect(html).toContain("window.visualViewport.addEventListener('resize',scheduleRefresh)");
   });
 
   it("can render PDFs without a watermark for non-training previews", () => {
