@@ -980,7 +980,9 @@ export class TrainingService {
       },
     });
 
-    await this.notifyNewTrainingMaterial(row.id, row.positionId, row.title);
+    if (dto.notifyUsers !== false) {
+      await this.notifyNewTrainingMaterial(row.id, row.positionId, row.title);
+    }
 
     return toTrainingMaterialItem(row);
   }

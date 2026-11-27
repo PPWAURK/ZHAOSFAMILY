@@ -29,6 +29,10 @@ export class CreateTrainingMaterialDto {
   @IsBoolean({ message: 'INVALID_TRAINING_PRINTABLE_FLAG' })
   isPrintable?: boolean;
 
+  @IsOptional()
+  @IsBoolean({ message: 'INVALID_TRAINING_NOTIFY_FLAG' })
+  notifyUsers?: boolean;
+
   @IsString({ message: 'TRAINING_MATERIAL_TITLE_REQUIRED' })
   @Length(1, 255, { message: 'TRAINING_MATERIAL_TITLE_INVALID_LENGTH' })
   title!: string;
