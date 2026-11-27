@@ -38,6 +38,7 @@
     "@zhao/utils": "workspace:*",
     "axios": "^1.16.1",
     "expo": "~54.0.35",
+    "expo-asset": "~12.0.14",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",
     "expo-dev-client": "^6.0.21",

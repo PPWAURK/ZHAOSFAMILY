@@ -259,9 +259,15 @@ video{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
 // reading position. The PDF bytes are injected as base64 and decoded
 // in-memory — the document never leaves the device; only the (public) pdf.js
 // library is fetched.
-const PDFJS_VERSION = "3.11.174";
-const PDFJS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
-const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+// First paint uses the device ratio (capped); pinch-zoom re-renders the visible
+// pages up to PDF_MAX_PIXEL_RATIO, never exceeding the per-canvas pixel budget.
+// Library files sit next to pdf-viewer.html (see pdfJsAssets.ts).
+export const PDFJS_LIB_FILE_NAME = "pdf.min.js";
+export const PDFJS_WORKER_FILE_NAME = "pdf.worker.min.js";
+const PDF_BASE_PIXEL_RATIO_CAP = 3;
+const PDF_MAX_PIXEL_RATIO = 8;
+const PDF_MAX_CANVAS_PIXELS = 8_000_000;
+const PDF_REFRESH_DEBOUNCE_MS = 250;
 
 export function buildPdfViewerHtml(
   base64Data: string,
@@ -293,7 +299,7 @@ html,body{min-height:100%;background:#525659}
 <body>
 <div id="pages"></div>
 <div id="err"></div>
-<script src="${PDFJS_LIB_URL}"></script>
+<script src="${PDFJS_LIB_FILE_NAME}"></script>
 <script>
 (function(){
   var maxPage=0,numPages=0,readSeconds=0,lastSent='';
@@ -328,13 +334,64 @@ html,body{min-height:100%;background:#525659}
   }
   window.onerror=function(m){showError('PDF error: '+m);return true;};
   try{
-    if(!window.pdfjsLib){showError('PDF library failed to load (check network).');return;}
-    pdfjsLib.GlobalWorkerOptions.workerSrc=${JSON.stringify(PDFJS_WORKER_URL)};
+    if(!window.pdfjsLib){showError('PDF library failed to load.');return;}
+    pdfjsLib.GlobalWorkerOptions.workerSrc=new URL(${JSON.stringify(PDFJS_WORKER_FILE_NAME)},window.location.href).href;
     var raw=atob(${JSON.stringify(base64Data)});
     var bytes=new Uint8Array(raw.length);
     for(var i=0;i<raw.length;i++){bytes[i]=raw.charCodeAt(i);}
-    var dpr=Math.min(window.devicePixelRatio||1,2);
+    var deviceRatio=window.devicePixelRatio||1;
+    var baseRatio=Math.min(deviceRatio,${PDF_BASE_PIXEL_RATIO_CAP});
     var maxWidth=Math.min(window.innerWidth-16,1000);
+    var entries=[];
+    var queue=Promise.resolve();
+    function enqueue(task){queue=queue.then(task).catch(function(){});}
+    // Keeps one canvas under the pixel budget so a pinch-zoomed page cannot exhaust WebView memory.
+    function fitRatio(viewport,wanted){
+      var budget=Math.sqrt(${PDF_MAX_CANVAS_PIXELS}/(viewport.width*viewport.height));
+      return Math.max(1,Math.min(wanted,${PDF_MAX_PIXEL_RATIO},budget));
+    }
+    // Renders into a fresh canvas and swaps it in, so the old bitmap stays visible until the sharp one is ready.
+    function drawPage(entry,wanted){
+      var ratio=fitRatio(entry.viewport,wanted);
+      if(entry.canvas&&Math.abs(ratio-entry.ratio)<0.01)return Promise.resolve();
+      var canvas=document.createElement('canvas');
+      var ctx=canvas.getContext('2d');
+      canvas.width=Math.floor(entry.viewport.width*ratio);
+      canvas.height=Math.floor(entry.viewport.height*ratio);
+      canvas.style.width=entry.viewport.width+'px';
+      canvas.style.height=entry.viewport.height+'px';
+      ctx.scale(ratio,ratio);
+      return entry.page.render({canvasContext:ctx,viewport:entry.viewport}).promise.then(function(){
+        var previous=entry.canvas;
+        if(previous&&previous.parentNode===entry.element){entry.element.replaceChild(canvas,previous);previous.width=0;previous.height=0;}
+        else{entry.element.insertBefore(canvas,entry.element.firstChild);}
+        entry.canvas=canvas;
+        entry.ratio=ratio;
+      });
+    }
+    function refreshSharpness(){
+      var viewportScale=window.visualViewport&&window.visualViewport.scale||1;
+      var zoomedRatio=viewportScale>1.05?deviceRatio*viewportScale:baseRatio;
+      entries.forEach(function(entry){
+        if(!entry.canvas)return;
+        var wanted=entry.isVisible?Math.max(baseRatio,zoomedRatio):baseRatio;
+        if(Math.abs(fitRatio(entry.viewport,wanted)-entry.ratio)<0.01)return;
+        enqueue(function(){return drawPage(entry,wanted);});
+      });
+    }
+    var refreshTimer=0;
+    function scheduleRefresh(){
+      window.clearTimeout(refreshTimer);
+      refreshTimer=window.setTimeout(refreshSharpness,${PDF_REFRESH_DEBOUNCE_MS});
+    }
+    if(window.visualViewport){window.visualViewport.addEventListener('resize',scheduleRefresh);}
+    var visibilityObserver=new IntersectionObserver(function(items){
+      items.forEach(function(item){
+        var entry=entries[Number(item.target.getAttribute('data-page'))-1];
+        if(entry){entry.isVisible=item.isIntersecting;}
+      });
+      scheduleRefresh();
+    },{rootMargin:'50% 0px'});
     pdfjsLib.getDocument({data:bytes}).promise.then(function(pdf){
       numPages=pdf.numPages;
       send();
@@ -351,13 +408,6 @@ html,body{min-height:100%;background:#525659}
               pageElement.style.width=viewport.width+'px';
               pageElement.style.height=viewport.height+'px';
               pageElement.setAttribute('data-page',String(pageNum));
-              var canvas=document.createElement('canvas');
-              var ctx=canvas.getContext('2d');
-              canvas.width=Math.floor(viewport.width*dpr);
-              canvas.height=Math.floor(viewport.height*dpr);
-              canvas.style.width=viewport.width+'px';
-              canvas.style.height=viewport.height+'px';
-              pageElement.appendChild(canvas);
               if(${shouldRenderWatermark})['top','middle','bottom'].forEach(function(position){
                 var watermark=document.createElement('div');
                 watermark.className='watermark watermark--'+position;
@@ -371,15 +421,17 @@ html,body{min-height:100%;background:#525659}
                 watermark.appendChild(watermarkEmail);
                 pageElement.appendChild(watermark);
               });
-              ctx.scale(dpr,dpr);
+              var entry={element:pageElement,page:page,viewport:viewport,canvas:null,ratio:0,isVisible:false};
+              entries[pageNum-1]=entry;
               container.appendChild(pageElement);
               observer.observe(pageElement);
-              return page.render({canvasContext:ctx,viewport:viewport}).promise;
+              visibilityObserver.observe(pageElement);
+              return drawPage(entry,baseRatio);
             });
           });
         })(p);
       }
-      return chain;
+      return chain.then(scheduleRefresh);
     }).catch(function(e){showError('Cannot render PDF: '+(e&&e.message?e.message:e));});
   }catch(e){showError('Cannot open PDF: '+(e&&e.message?e.message:e));}
 })();
