@@ -520,6 +520,45 @@ describe('TrainingService', () => {
     expect(prismaService.trainingMaterial.update).not.toHaveBeenCalled();
   });
 
+  it('skips the push notification when notifyUsers is false', async () => {
+    const { service, prismaService, notificationsService } = createService();
+    prismaService.trainingPosition.findUnique.mockResolvedValue({
+      isActive: true,
+    });
+    prismaService.trainingMaterial.create.mockResolvedValue({
+      id: 43,
+      positionId: 'FOH',
+      type: 'VIDEO',
+      isRequired: false,
+      isPrintable: false,
+      title: 'Greeting',
+      description: null,
+      originalName: 'greeting.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: BigInt(120),
+      bucket: 'company-private-files',
+      objectKey: 'training/FOH/VIDEO/greeting.mp4',
+      createdAt: new Date('2026-06-18T08:00:00.000Z'),
+      updatedAt: new Date('2026-06-18T08:00:00.000Z'),
+    });
+
+    await service.createMaterial({
+      positionId: 'FOH',
+      type: 'VIDEO',
+      notifyUsers: false,
+      title: 'Greeting',
+      description: '',
+      originalName: 'greeting.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: 120,
+      bucket: 'company-private-files',
+      objectKey: 'training/FOH/VIDEO/greeting.mp4',
+    });
+
+    expect(prismaService.user.findMany).not.toHaveBeenCalled();
+    expect(notificationsService.sendToUsers).not.toHaveBeenCalled();
+  });
+
   it('pushes a new material to matching users grouped by language', async () => {
     const { service, prismaService, notificationsService } = createService();
     prismaService.trainingPosition.findUnique.mockResolvedValue({

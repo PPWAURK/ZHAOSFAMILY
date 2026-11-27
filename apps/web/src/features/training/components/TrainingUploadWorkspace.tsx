@@ -32,6 +32,7 @@ type TrainingUploadWorkspaceProps = {
   hasSingleFile: boolean;
   isRequired: boolean;
   isPrintable: boolean;
+  shouldNotify: boolean;
   isUploading: boolean;
   materialTitle: string;
   mediaType: string;
@@ -52,6 +53,7 @@ type TrainingUploadWorkspaceProps = {
   onRemoveFile: (fileId: string) => void;
   onRequiredChange: (isRequired: boolean) => void;
   onPrintableChange: (isPrintable: boolean) => void;
+  onNotifyChange: (shouldNotify: boolean) => void;
   onUpload: () => void;
   styles: Record<string, string>;
   t: {
@@ -91,6 +93,7 @@ export default function TrainingUploadWorkspace({
   hasSingleFile,
   isRequired,
   isPrintable,
+  shouldNotify,
   isUploading,
   materialTitle,
   mediaType,
@@ -111,6 +114,7 @@ export default function TrainingUploadWorkspace({
   onRemoveFile,
   onRequiredChange,
   onPrintableChange,
+  onNotifyChange,
   onUpload,
   styles,
   t,
@@ -208,6 +212,14 @@ export default function TrainingUploadWorkspace({
               onChange={(event) => onRequiredChange(event.target.checked)}
             />
             必修资料
+          </label>
+          <label className={styles.uploadRequiredToggle}>
+            <input
+              type="checkbox"
+              checked={shouldNotify}
+              onChange={(event) => onNotifyChange(event.target.checked)}
+            />
+            推送消息通知
           </label>
           {mediaType === "PDF" || queuedFiles.some((item) => item.file.type === "application/pdf") ? (
             <label className={styles.uploadRequiredToggle}>
